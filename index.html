@@ -1,1 +1,2296 @@
-placeholder - will be replaced
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Spell">
+<title>Spelling Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6f0;
+    --surface: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #8a8580;
+    --border: #e8e2d8;
+    --blue: #2e8bff;
+    --blue-soft: #dbe9ff;
+    --blue-glow: rgba(46, 139, 255, 0.45);
+    --green: #34c759;
+    --green-soft: #d4f5d8;
+    --green-tint: #ebfaee;
+    --red: #ff453a;
+    --red-soft: #ffe0dc;
+    --red-tint: #fff0ee;
+    --yellow: #ffd60a;
+    --yellow-warm: #ffc94d;
+    --gold: #ffb800;
+    --shadow: 0 2px 0 rgba(0,0,0,0.04), 0 8px 24px rgba(120,100,80,0.06);
+    --press-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    --l3: #ffd60a;
+    --l2: #ffe066;
+    --l1: #fff3a8;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    overflow: hidden; overscroll-behavior: none;
+    touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+    background: var(--bg);
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--ink);
+  }
+
+  .view {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+    display: flex; flex-direction: column;
+  }
+  .view.active { opacity: 1; pointer-events: auto; }
+
+  /* ===== SPLASH ===== */
+  .view-splash {
+    background: linear-gradient(160deg, var(--yellow) 0%, var(--yellow-warm) 60%, #ffb84d 100%);
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    padding: 20px;
+    overflow: hidden;
+  }
+  .splash-stars { position: absolute; inset: 0; pointer-events: none; }
+  .star {
+    position: absolute; font-size: 32px; opacity: 0.7;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  .star:nth-child(1) { top: 12%; left: 14%; animation-delay: 0s; }
+  .star:nth-child(2) { top: 20%; right: 18%; animation-delay: 0.5s; font-size: 24px; }
+  .star:nth-child(3) { bottom: 22%; left: 18%; animation-delay: 1s; font-size: 28px; }
+  .star:nth-child(4) { bottom: 16%; right: 14%; animation-delay: 1.5s; }
+  .star:nth-child(5) { top: 50%; left: 8%; animation-delay: 2s; font-size: 22px; }
+  .star:nth-child(6) { top: 45%; right: 10%; animation-delay: 0.8s; font-size: 26px; }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.4; transform: scale(0.9); }
+    50% { opacity: 0.9; transform: scale(1.1); }
+  }
+  .splash-inner {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 30px; position: relative; z-index: 1;
+  }
+  .spell-tiles { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .spell-tile {
+    width: clamp(64px, 11vw, 110px);
+    height: clamp(78px, 13.5vw, 134px);
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.12), 0 20px 40px rgba(120, 80, 30, 0.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(40px, 7vw, 72px);
+    font-weight: 900; color: var(--ink);
+    animation: tilebounce 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    transform-origin: center bottom;
+  }
+  .spell-tile:nth-child(1) { animation-delay: 0s; --rot: -4deg; }
+  .spell-tile:nth-child(2) { animation-delay: 0.12s; --rot: 2deg; }
+  .spell-tile:nth-child(3) { animation-delay: 0.24s; --rot: -2deg; }
+  .spell-tile:nth-child(4) { animation-delay: 0.36s; --rot: 3deg; }
+  .spell-tile:nth-child(5) { animation-delay: 0.48s; --rot: -3deg; }
+  @keyframes tilebounce {
+    0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+    50% { transform: translateY(-22px) rotate(var(--rot, 0deg)); }
+  }
+  .splash-subtitle {
+    font-size: clamp(18px, 2.5vw, 26px);
+    font-weight: 800;
+    color: rgba(40, 25, 0, 0.65);
+    letter-spacing: 0.5px;
+    margin-top: 12px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+
+  /* ===== SETUP ===== */
+  .view-setup {
+    background: var(--bg);
+    align-items: center;
+    padding: 24px 20px;
+    overflow-y: auto;
+  }
+  .setup-inner {
+    width: 100%; max-width: 640px;
+    display: flex; flex-direction: column;
+    gap: 16px; padding-bottom: 24px;
+  }
+  .setup-header { text-align: center; margin-bottom: 4px; }
+  .setup-header h1 {
+    font-size: clamp(28px, 5vw, 40px);
+    margin: 0 0 4px 0;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+  }
+  .setup-header p { margin: 0; color: var(--muted); font-size: 16px; font-weight: 700; }
+  .setup-section {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .setup-label {
+    font-size: 11px; font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1.4px;
+    margin-bottom: 10px;
+  }
+  .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    flex: 1; min-width: 0;
+    background: var(--bg);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 14px 12px;
+    font-family: inherit;
+    font-size: 17px; font-weight: 800;
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 0.08s ease;
+    text-align: center;
+  }
+  .pill:active { transform: scale(0.96); }
+  .pill.selected { background: var(--blue); color: white; border-color: var(--blue); }
+
+  .word-button {
+    width: 100%;
+    background: var(--bg);
+    border: none; border-radius: 12px;
+    padding: 14px 16px;
+    font-family: inherit;
+    font-size: 18px; font-weight: 800;
+    color: var(--ink);
+    cursor: pointer;
+    text-align: left;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .word-button.has-target { background: var(--blue-soft); color: var(--blue); }
+  .word-button::after { content: '›'; font-size: 24px; color: var(--muted); }
+
+  .voice-picker {
+    width: 100%;
+    background: var(--bg);
+    border: none; border-radius: 12px;
+    padding: 14px 40px 14px 16px;
+    font-family: inherit;
+    font-size: 16px; font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238a8580' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+  }
+  .voice-preview-btn {
+    margin-top: 8px; width: 100%;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 15px; font-weight: 800;
+    color: var(--ink); cursor: pointer;
+  }
+  .voice-hint {
+    font-size: 13px; color: var(--muted);
+    line-height: 1.5;
+    margin-top: 10px; padding: 12px 14px;
+    background: var(--bg); border-radius: 10px;
+    font-weight: 600;
+  }
+  .voice-hint b { color: var(--ink); font-weight: 800; }
+
+  .start-button {
+    background: var(--ink); color: white;
+    border: none; border-radius: 18px;
+    padding: 18px 24px;
+    font-family: inherit;
+    font-size: 20px; font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #000, 0 14px 30px rgba(0,0,0,0.18);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+    margin-top: 8px;
+  }
+  .start-button:active {
+    transform: translateY(3px);
+    box-shadow: 0 3px 0 #000, 0 6px 12px rgba(0,0,0,0.18);
+  }
+
+  /* ===== KEYBOARD ===== */
+  .view-keyboard {
+    flex-direction: column;
+    padding: 14px; gap: 12px;
+  }
+
+  .target-banner {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 14px 22px;
+    box-shadow: var(--shadow);
+    display: none;
+    align-items: center; gap: 16px;
+  }
+  .target-banner.active { display: flex; }
+  .target-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.4px;
+    color: var(--muted); flex-shrink: 0;
+  }
+  .target-word { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+  .tletter {
+    font-size: 36px; font-weight: 900;
+    min-width: 44px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+  .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  .tletter.next {
+    background: var(--blue); color: white;
+    animation: tlpulse 1.4s ease-in-out infinite;
+  }
+  .tletter.next.fade-1 { background: #6daaff; }
+  .tletter.next.fade-2 { background: #c2dcff; color: var(--ink); animation: none; }
+  .tletter.pending { color: var(--muted); opacity: 0.4; }
+  @keyframes tlpulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .target-clear {
+    background: transparent; border: none;
+    color: var(--muted); font-size: 22px;
+    cursor: pointer; padding: 6px 12px;
+    border-radius: 8px; flex-shrink: 0;
+  }
+
+  /* Display */
+  .display {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 22px 22px 22px 30px;
+    min-height: 110px;
+    font-size: clamp(40px, 6vw, 62px);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    word-break: break-word;
+    box-shadow: var(--shadow);
+    display: flex; align-items: center;
+    gap: 16px;
+    line-height: 1.2;
+    position: relative;
+    overflow: visible;
+  }
+  .display.celebrating {
+    animation: celebrateBg 0.8s ease-out;
+  }
+  @keyframes celebrateBg {
+    0%, 100% { background: var(--surface); }
+    30% { background: #fff8d6; box-shadow: 0 0 0 6px rgba(255, 184, 0, 0.2), var(--shadow); }
+  }
+  .display-content {
+    flex: 1; min-width: 0; overflow: hidden;
+    position: relative;
+  }
+  .display .caret {
+    display: inline-block;
+    width: 4px; height: 1em;
+    background: var(--blue);
+    margin-left: 6px;
+    animation: blink 1.1s steps(2) infinite;
+    vertical-align: middle;
+    border-radius: 2px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .display-clear {
+    flex-shrink: 0;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: none;
+    font-size: 28px; font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    display: none;
+    align-items: center; justify-content: center;
+    transition: transform 0.08s ease, background 0.2s;
+    font-family: inherit; line-height: 1; padding: 0;
+  }
+  .display.has-text .display-clear { display: flex; }
+  .display-clear:active { transform: scale(0.9); background: var(--border); }
+
+  .display-content.wiping {
+    animation: wipeOut 0.3s ease-out forwards;
+  }
+  @keyframes wipeOut {
+    0% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(-30px); }
+  }
+
+  /* Confetti */
+  .confetti {
+    position: absolute;
+    font-size: 36px;
+    pointer-events: none;
+    z-index: 10;
+    left: 50%; top: 50%;
+    animation: confettiFly 1.4s cubic-bezier(0.3, 0, 0.7, 1) forwards;
+  }
+  @keyframes confettiFly {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+    15% { transform: translate(-50%, -50%) scale(1.3) rotate(20deg); opacity: 1; }
+    100% {
+      transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.5) rotate(720deg);
+      opacity: 0;
+    }
+  }
+
+  /* Flying word to word bank */
+  .flying-word {
+    position: fixed;
+    z-index: 100;
+    font-weight: 900;
+    pointer-events: none;
+    color: var(--gold);
+    text-shadow: 0 4px 12px rgba(255, 184, 0, 0.5);
+    transition: all 0.9s cubic-bezier(0.4, 0, 0.4, 1);
+  }
+
+  /* Level-up toast */
+  .level-up {
+    position: fixed;
+    top: 18%;
+    left: 50%;
+    transform: translate(-50%, -20px) scale(0.8);
+    opacity: 0;
+    z-index: 200;
+    pointer-events: none;
+    background: white;
+    border-radius: 20px;
+    padding: 18px 28px;
+    box-shadow: 0 12px 40px rgba(120, 90, 30, 0.25);
+    text-align: center;
+    transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.3, 0, 0.3, 1.5);
+  }
+  .level-up.show {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  .level-up .lu-emoji { font-size: 48px; line-height: 1; }
+  .level-up .lu-text {
+    font-size: 22px; font-weight: 900; color: var(--ink);
+    margin-top: 6px;
+  }
+  .level-up.mastered {
+    background: linear-gradient(150deg, var(--gold), #ff9d2e);
+    padding: 28px 40px;
+  }
+  .level-up.mastered .lu-emoji { font-size: 72px; }
+  .level-up.mastered .lu-text { color: white; font-size: 30px; }
+
+  .controls-row {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .ctl {
+    background: var(--surface); border: none; border-radius: 14px;
+    padding: 10px 16px;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.08s ease;
+    display: flex; flex-direction: column; align-items: flex-start;
+    min-height: 54px;
+    justify-content: center;
+  }
+  .ctl:active { transform: scale(0.96); box-shadow: var(--press-shadow); }
+  .ctl .label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+  .ctl .value { font-size: 18px; }
+  .ctl.active { background: var(--blue); color: white; }
+  .ctl.active .label { color: rgba(255,255,255,0.85); }
+  .spacer { flex: 1; }
+  .ctl.icon {
+    width: 54px; height: 54px;
+    padding: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .modes-wrap {
+    display: flex; gap: 8px;
+    overflow: hidden;
+    transition: max-width 0.3s ease, opacity 0.2s ease;
+    max-width: 0; opacity: 0;
+  }
+  .modes-wrap.expanded {
+    max-width: 1200px; opacity: 1;
+  }
+  .chevron { transition: transform 0.25s ease; display: inline-block; }
+  .chevron.open { transform: rotate(180deg); }
+
+  /* Word bank button */
+  .wordbank-btn {
+    position: relative;
+    background: var(--surface);
+    border: none;
+    border-radius: 14px;
+    padding: 10px 18px 10px 14px;
+    font-family: inherit;
+    font-size: 17px; font-weight: 800;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    height: 54px;
+    transition: transform 0.08s ease;
+  }
+  .wordbank-btn:active { transform: scale(0.96); }
+  .wordbank-btn .emoji { font-size: 26px; }
+  .wordbank-btn .count {
+    background: var(--gold);
+    color: white;
+    font-weight: 900;
+    font-size: 14px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    min-width: 24px;
+    text-align: center;
+  }
+  .wordbank-btn.bouncing { animation: wbbounce 0.9s cubic-bezier(0.4, 0, 0.4, 1.5); }
+  @keyframes wbbounce {
+    0%, 100% { transform: scale(1) rotate(0); }
+    30% { transform: scale(1.25) rotate(-6deg); }
+    60% { transform: scale(1.15) rotate(6deg); }
+    80% { transform: scale(1.08) rotate(-2deg); }
+  }
+
+  .keyboard {
+    flex: 1;
+    display: flex; flex-direction: column;
+    gap: 8px;
+  }
+  .row { flex: 1; display: flex; gap: 8px; justify-content: center; }
+  .key {
+    flex: 1;
+    background: var(--surface);
+    border-radius: 16px;
+    font-family: inherit;
+    font-size: clamp(32px, 4.2vw, 44px);
+    font-weight: 900;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 0.06s ease, background 0.2s ease;
+    position: relative;
+    min-width: 0;
+  }
+  .key:active { transform: scale(0.94); box-shadow: var(--press-shadow); }
+  .key.hidden { visibility: hidden; pointer-events: none; }
+  .key.level-3 { background: var(--l3); }
+  .key.level-2 { background: var(--l2); }
+  .key.level-1 { background: var(--l1); }
+  .key.target-next {
+    background: var(--blue); color: white;
+    animation: keypulse 1.3s ease-in-out infinite;
+  }
+  .key.target-next.fade-1 { background: #6daaff; color: white; }
+  .key.target-next.fade-2 { background: #c2dcff; color: var(--ink); animation: none; box-shadow: var(--shadow); }
+  @keyframes keypulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--blue-glow), var(--shadow); transform: scale(1); }
+    50% { box-shadow: 0 0 0 14px rgba(46, 139, 255, 0), var(--shadow); transform: scale(1.03); }
+  }
+  .key.wide { flex: 1.6; font-size: 22px; font-weight: 700; }
+  .key.space { flex: 4.5; }
+  .key.backspace { background: var(--red-tint); color: var(--red); }
+  .key.enter { background: var(--green-tint); color: var(--green); }
+  .key.enter.enter-ready {
+    background: var(--green); color: white;
+    animation: jiggle 0.7s ease-in-out infinite;
+  }
+  @keyframes jiggle {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    20% { transform: rotate(-4deg) scale(1.06); }
+    40% { transform: rotate(4deg) scale(1.06); }
+    60% { transform: rotate(-3deg) scale(1.04); }
+    80% { transform: rotate(3deg) scale(1.04); }
+  }
+  .key.space-blank { background: var(--surface); }
+
+  /* Overlay sheets */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(20, 18, 14, 0.55);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 50;
+    animation: fadeIn 0.18s ease;
+  }
+  .overlay.show { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .sheet {
+    background: var(--surface);
+    border-radius: 24px;
+    padding: 22px;
+    width: min(520px, 94vw);
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+    animation: rise 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  @keyframes rise { from { transform: translateY(20px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sheet h3 {
+    margin: 0 0 4px 0;
+    font-size: 13px; font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1.5px;
+    text-align: center;
+  }
+  .sheet .key-preview {
+    font-size: 56px; font-weight: 900;
+    text-align: center; margin: 4px 0 18px 0;
+    color: var(--ink);
+  }
+  .menu-section-label {
+    font-size: 11px; font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1.2px;
+    margin: 14px 0 8px 0;
+  }
+  .level-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .mbtn {
+    border: none; border-radius: 14px;
+    padding: 16px 6px;
+    font-family: inherit;
+    font-size: 20px; font-weight: 900;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--ink);
+    transition: transform 0.08s ease;
+  }
+  .mbtn:active { transform: scale(0.94); }
+  .mbtn.l3 { background: var(--l3); }
+  .mbtn.l2 { background: var(--l2); }
+  .mbtn.l1 { background: var(--l1); }
+  .mbtn.l0 { background: var(--bg); border: 2px dashed var(--border); }
+  .mbtn.selected { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .full-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .mbtn.action { font-size: 15px; padding: 14px; background: var(--bg); }
+  .mbtn.danger { background: var(--red-soft); color: #c0392b; }
+  .mbtn.primary { background: var(--ink); color: white; }
+
+  .word-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .word-item {
+    display: flex; align-items: center;
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+  .word-item.selected { background: var(--blue-soft); }
+  .word-item .text { flex: 1; font-size: 22px; font-weight: 900; cursor: pointer; }
+  .word-item .x { background: transparent; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 8px; }
+  .word-add { display: flex; gap: 8px; margin-top: 10px; }
+  .word-add input {
+    flex: 1; background: white;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 18px; font-weight: 700;
+    color: var(--ink);
+    text-transform: uppercase;
+  }
+  .word-add button {
+    background: var(--blue); color: white;
+    border: none; border-radius: 12px;
+    padding: 12px 18px;
+    font-family: inherit;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer;
+  }
+
+  .phoneme-edit {
+    margin-top: 10px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border-radius: 12px;
+  }
+  .phoneme-edit label {
+    font-size: 11px; font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .phoneme-edit input {
+    flex: 1; background: white;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 16px; font-weight: 700;
+  }
+  .phoneme-edit button {
+    background: var(--blue); color: white;
+    border: none; border-radius: 8px;
+    padding: 8px 14px;
+    font-family: inherit; font-weight: 700;
+    cursor: pointer; font-size: 13px;
+  }
+
+  .settings-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg);
+    border-radius: 12px;
+    font-size: 15px; font-weight: 700;
+    gap: 10px;
+  }
+  .toggle {
+    width: 50px; height: 30px; border-radius: 15px;
+    background: var(--border); position: relative;
+    transition: background 0.2s; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 24px; height: 24px; border-radius: 50%; background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: left 0.2s;
+  }
+  .toggle.on::after { left: 23px; }
+
+  .hidden-keys-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .hidden-chip {
+    background: var(--bg);
+    padding: 8px 12px; border-radius: 10px;
+    font-weight: 900; font-size: 17px;
+    cursor: pointer;
+    border: 2px solid var(--border);
+  }
+  .hidden-chip::after { content: ' ×'; color: var(--muted); font-weight: 700; }
+  .empty-note { color: var(--muted); font-size: 14px; text-align: center; padding: 12px 0; }
+
+  .phoneme-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px;
+  }
+  .phoneme-row {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg);
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+  .phoneme-row .ltr { font-size: 17px; font-weight: 900; width: 22px; text-align: center; }
+  .phoneme-row input {
+    flex: 1; min-width: 0;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: 13px; font-weight: 700;
+  }
+  .phoneme-row .play {
+    background: var(--blue); color: white;
+    border: none; border-radius: 6px;
+    padding: 6px 10px;
+    font-weight: 700; font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* Record voice sheet */
+  .record-hint {
+    font-size: 13px; color: var(--muted); line-height: 1.5;
+    margin: 8px 0 4px; padding: 12px 14px;
+    background: var(--bg); border-radius: 10px; font-weight: 600;
+  }
+  .record-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px;
+  }
+  .record-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .record-row {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg); padding: 6px 8px; border-radius: 10px;
+  }
+  .record-row.recording { background: var(--red-soft); animation: recPulse 1s ease-in-out infinite; }
+  @keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+  .record-row .rr-label { font-size: 16px; font-weight: 900; flex: 1; min-width: 18px; }
+  .record-row .rr-btn {
+    border: none; background: white; border-radius: 8px;
+    padding: 7px 10px; font-size: 15px; cursor: pointer; line-height: 1;
+  }
+  .record-row .rr-btn.done { background: var(--green-soft); }
+  .record-row .rr-btn.del { background: transparent; }
+
+  /* Word bank sheet */
+  .bank-words {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 10px;
+  }
+  .bank-chip {
+    background: var(--gold);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 20px;
+    box-shadow: 0 4px 0 rgba(180, 130, 0, 0.4);
+    animation: chipPop 0.4s cubic-bezier(0.4, 0, 0.4, 1.5);
+  }
+  @keyframes chipPop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Stats / Data */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .stats-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg);
+    padding: 8px 12px;
+    border-radius: 10px;
+  }
+  .stats-letter { font-size: 18px; font-weight: 900; width: 24px; }
+  .stats-numbers { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .stats-numbers .ind { color: var(--green); }
+  .stats-numbers .pmt { color: var(--blue); }
+  .stats-summary {
+    background: var(--bg);
+    padding: 14px 16px;
+    border-radius: 12px;
+    margin-top: 8px;
+    display: flex; justify-content: space-around;
+    text-align: center;
+  }
+  .stats-summary .stat {
+    display: flex; flex-direction: column;
+  }
+  .stats-summary .stat .num {
+    font-size: 26px; font-weight: 900;
+  }
+  .stats-summary .stat .lbl {
+    font-size: 11px; font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .stats-summary .ind .num { color: var(--green); }
+  .stats-summary .pmt .num { color: var(--blue); }
+  .word-log {
+    display: flex; flex-direction: column;
+    gap: 6px; margin-top: 8px;
+  }
+  .word-log-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px; font-weight: 700;
+  }
+  .word-log-row .w { font-size: 18px; font-weight: 900; }
+  .word-log-row .meta { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .word-log-row .ind { color: var(--green); }
+  .word-log-row .pmt { color: var(--blue); }
+</style>
+</head>
+<body>
+
+<!-- ===== SPLASH ===== -->
+<div class="view view-splash" id="viewSplash">
+  <div class="splash-stars">
+    <span class="star">✨</span><span class="star">⭐</span><span class="star">✨</span>
+    <span class="star">⭐</span><span class="star">✨</span><span class="star">⭐</span>
+  </div>
+  <div class="splash-inner">
+    <div class="spell-tiles">
+      <div class="spell-tile">S</div>
+      <div class="spell-tile">P</div>
+      <div class="spell-tile">E</div>
+      <div class="spell-tile">L</div>
+      <div class="spell-tile">L</div>
+    </div>
+    <div><div class="splash-subtitle">tap anywhere to start</div></div>
+  </div>
+</div>
+
+<!-- ===== SETUP ===== -->
+<div class="view view-setup" id="viewSetup">
+  <div class="setup-inner">
+    <div class="setup-header">
+      <h1>Ready to spell?</h1>
+      <p>Choose settings for this session</p>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label">Letter case</div>
+      <div class="pill-row" id="setupCase">
+        <button class="pill" data-case="0">ABC</button>
+        <button class="pill" data-case="1">abc</button>
+        <button class="pill" data-case="2">Abc</button>
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label">Speak letters as</div>
+      <div class="pill-row" id="setupSpeech">
+        <button class="pill" data-phon="0">Letter names</button>
+        <button class="pill" data-phon="1">Phonetic sounds</button>
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label">Target word</div>
+      <button class="word-button" id="setupWordBtn">
+        <span id="setupWordLabel">Free type</span>
+      </button>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label">Voice (English US only)</div>
+      <select class="voice-picker" id="setupVoicePicker"></select>
+      <button class="voice-preview-btn" id="setupVoicePreview">▶ Test voice — "Apple, A P P L E"</button>
+      <div class="voice-hint">
+        💡 <b>For a better voice</b>: in iPad <b>Settings → Accessibility</b>, find the <b>Voices</b> menu — depending on your iPadOS version, it lives under <b>Spoken Content</b>, <b>Live Speech</b>, or <b>VoiceOver → Speech</b>. Tap a US English voice → choose <b>Enhanced</b> or <b>Premium</b> to download (Ava, Allison, Tom, and Samantha sound clearest). It'll then appear in this dropdown.
+      </div>
+    </div>
+
+    <button class="start-button" id="startBtn">Start spelling →</button>
+  </div>
+</div>
+
+<!-- ===== KEYBOARD ===== -->
+<div class="view view-keyboard" id="viewKeyboard">
+  <div class="target-banner" id="targetBanner">
+    <div class="target-label">Target</div>
+    <div class="target-word" id="targetWord"></div>
+    <button class="target-clear" id="targetClearBtn" title="Clear target">×</button>
+  </div>
+
+  <div class="display" id="display">
+    <div class="display-content" id="displayContent"><span class="caret"></span></div>
+    <button class="display-clear" id="displayClear" aria-label="Clear text">×</button>
+  </div>
+
+  <div class="level-up" id="levelUp">
+    <div class="lu-emoji" id="luEmoji">✨</div>
+    <div class="lu-text" id="luText">Level Up!</div>
+  </div>
+
+  <div class="controls-row">
+    <button class="ctl icon" id="modesToggle" aria-label="Show modes">
+      <span class="chevron" id="modesChevron">▾</span>
+    </button>
+    <div class="modes-wrap" id="modesWrap">
+      <button class="ctl" id="caseToggle">
+        <span class="label" id="caseLabel">All Caps</span>
+        <span class="value" id="caseValue">ABC</span>
+      </button>
+      <button class="ctl" id="phonToggle">
+        <span class="label">Speech</span>
+        <span class="value" id="phonValue">Letters</span>
+      </button>
+      <button class="ctl" id="wordToggle">
+        <span class="label">Word</span>
+        <span class="value" id="wordValue">Free type</span>
+      </button>
+      <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="wordbank-btn" id="wordBankBtn" aria-label="Word bank">
+      <span class="emoji">📚</span>
+      <span class="count" id="wordBankCount">0</span>
+    </button>
+  </div>
+
+  <div class="keyboard" id="keyboard"></div>
+</div>
+
+<!-- Key menu -->
+<div class="overlay" id="keyMenu">
+  <div class="sheet">
+    <h3>Configure Key</h3>
+    <div class="key-preview" id="menuPreview">A</div>
+    <div class="menu-section-label">Highlight Level</div>
+    <div class="level-row">
+      <button class="mbtn l3" data-action="level" data-level="3">3</button>
+      <button class="mbtn l2" data-action="level" data-level="2">2</button>
+      <button class="mbtn l1" data-action="level" data-level="1">1</button>
+      <button class="mbtn l0" data-action="level" data-level="0">0</button>
+    </div>
+    <div class="phoneme-edit">
+      <label>Sound</label>
+      <input type="text" id="phonemeInput" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button id="phonemePreview">▶</button>
+    </div>
+    <div class="full-row">
+      <button class="mbtn action danger" data-action="hide">Hide Key</button>
+      <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Word picker -->
+<div class="overlay" id="wordMenu">
+  <div class="sheet">
+    <h3>Target Word</h3>
+    <div class="key-preview" style="font-size: 28px;">📝</div>
+    <div class="word-list" id="wordList"></div>
+    <div class="menu-section-label">Add Word</div>
+    <div class="word-add">
+      <input type="text" id="newWordInput" placeholder="Type word..." maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button id="addWordBtn">Add</button>
+    </div>
+    <div class="full-row" style="margin-top: 16px;">
+      <button class="mbtn action" id="freeTypeBtn">Free Type</button>
+      <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Word bank sheet -->
+<div class="overlay" id="wordBankMenu">
+  <div class="sheet">
+    <h3>Word Bank</h3>
+    <div class="key-preview" style="font-size: 40px;">📚</div>
+    <div id="wordBankEmpty" class="empty-note">No words spelled yet. Pick a target word and start!</div>
+    <div class="bank-words" id="bankWords"></div>
+    <div class="full-row" style="margin-top: 16px;">
+      <button class="mbtn action danger" id="clearBankBtn">Clear Bank</button>
+      <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Session data sheet -->
+<div class="overlay" id="dataMenu">
+  <div class="sheet">
+    <h3>Session Data</h3>
+    <div class="key-preview" style="font-size: 32px;">📊</div>
+
+    <div class="stats-summary">
+      <div class="stat ind"><div class="num" id="totalIndependent">0</div><div class="lbl">Independent</div></div>
+      <div class="stat pmt"><div class="num" id="totalPrompted">0</div><div class="lbl">Prompted</div></div>
+      <div class="stat"><div class="num" id="totalWords">0</div><div class="lbl">Words</div></div>
+    </div>
+
+    <div class="menu-section-label">Per Letter (independent / prompted)</div>
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="menu-section-label">Words Completed</div>
+    <div class="word-log" id="wordLog"></div>
+
+    <div class="full-row" style="margin-top: 16px;">
+      <button class="mbtn action danger" id="clearDataBtn">Clear All Data</button>
+      <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record Voice sheet -->
+<div class="overlay" id="recordMenu">
+  <div class="sheet">
+    <h3>Record Voice</h3>
+    <div class="key-preview" style="font-size: 40px;">🎤</div>
+    <div class="record-hint">Tap 🎤 to start, ⏹ to stop (auto-stops after 3s). Your recording plays instead of the robot voice. Anything you don't record uses the built-in voice. Recordings save on this device.</div>
+
+    <div class="menu-section-label">Letter Names</div>
+    <div class="record-grid" id="recordLetterNames"></div>
+
+    <div class="menu-section-label">Letter Sounds (phonics)</div>
+    <div class="record-grid" id="recordLetterSounds"></div>
+
+    <div class="menu-section-label">Words</div>
+    <div class="record-list" id="recordWords"></div>
+
+    <div class="full-row" style="margin-top: 18px;">
+      <button class="mbtn action danger" id="clearRecordingsBtn">Delete All</button>
+      <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="overlay" id="settingsMenu">
+  <div class="sheet">
+    <h3>Settings</h3>
+    <div class="key-preview" style="font-size: 28px;">⚙</div>
+
+    <div class="menu-section-label">Voice (English US only)</div>
+    <select class="voice-picker" id="voicePicker"></select>
+    <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">Test voice: "Apple"</button>
+    <button class="mbtn action primary" id="recordVoiceBtn" style="width: 100%; margin-top: 8px;">🎤 Record my own voice →</button>
+
+    <div class="menu-section-label">Speech</div>
+    <div class="settings-list">
+      <div class="setting-row"><span>Speak each letter</span><div class="toggle on" id="toggleLetterSpeech"></div></div>
+      <div class="setting-row"><span>Speak text on Enter</span><div class="toggle on" id="toggleEnterSpeech"></div></div>
+      <div class="setting-row"><span>Speak target word when selected</span><div class="toggle on" id="toggleTargetSpeech"></div></div>
+    </div>
+
+    <div class="menu-section-label">Practice</div>
+    <div class="settings-list">
+      <div class="setting-row"><span>Fade blue prompt across successes</span><div class="toggle on" id="toggleFade"></div></div>
+      <div class="setting-row"><span>Rotate words (vs stay on one word)</span><div class="toggle" id="toggleRotate"></div></div>
+    </div>
+
+    <div class="menu-section-label">Score & Data</div>
+    <div class="settings-list">
+      <div class="setting-row"><span>Score (track prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+    </div>
+    <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 8px;">View Session Data →</button>
+
+    <div class="menu-section-label">Behavior</div>
+    <div class="settings-list">
+      <div class="setting-row"><span>Setup mode (long-press menu)</span><div class="toggle on" id="toggleSetupMode"></div></div>
+      <div class="setting-row"><span>Haptics (Android only)</span><div class="toggle on" id="toggleHaptics"></div></div>
+    </div>
+
+    <div class="menu-section-label">Hidden Keys</div>
+    <div class="hidden-keys-list" id="hiddenList"></div>
+
+    <div class="menu-section-label">Phonetic Sounds</div>
+    <div class="phoneme-grid" id="phonemeGrid"></div>
+
+    <div class="full-row" style="margin-top: 18px;">
+      <button class="mbtn action danger" id="resetAll">Reset Colors</button>
+      <button class="mbtn action" id="endSessionBtn">End Session</button>
+    </div>
+    <div class="full-row" style="margin-top: 8px;">
+      <button class="mbtn action primary" data-action="cancel" style="grid-column: span 2;">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LAYOUT = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M']
+];
+
+const DEFAULT_PHONEMES = {
+  A: 'ah', B: 'buh', C: 'kuh', D: 'duh', E: 'eh',
+  F: 'fuh', G: 'guh', H: 'huh', I: 'ih', J: 'juh',
+  K: 'kuh', L: 'luh', M: 'muh', N: 'nuh', O: 'aw',
+  P: 'puh', Q: 'kwuh', R: 'ruh', S: 'sss', T: 'tuh',
+  U: 'uh', V: 'vuh', W: 'wuh', X: 'ks', Y: 'yuh', Z: 'zzz'
+};
+
+const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence'];
+const CASE_VALUES = ['ABC', 'abc', 'Abc'];
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+
+const state = {
+  text: '',
+  caseMode: 0,
+  keyLevels: {},
+  hiddenKeys: {},
+  phonemes: {...DEFAULT_PHONEMES},
+  letterSpeech: true,
+  enterSpeech: true,
+  setupMode: true,
+  phoneticMode: false,
+  haptics: true,
+  targetSpeech: true,
+  modesOpen: false,
+  voiceName: '',
+  words: [],
+  currentTarget: null,
+  targetIndex: 0,
+  targetProgress: [],
+  targetPromptedFlags: [], // parallel to targetProgress for correct letters, tracks if prompted
+  lastUsed: 0,
+  scoreMode: false,
+  letterStats: {}, // {A: {independent, prompted}} — committed on Enter
+  wordsSpelled: [], // [{word, ts, independent, prompted}]
+  wordBank: [], // words just for the bank display
+  pendingLetterCounts: {}, // buffered during an attempt; committed on Enter, discarded on cancel
+  fadeMode: true, // fade the blue prompt across successful trials
+  rotateMode: false, // false = stay on word, true = rotate through list
+  wordFadeLevels: {}, // {WORD: [0,0,0...]} per-letter fade level 0-3
+  wordTrialCounters: {}, // {WORD: {successes, abandons}} consecutive counts
+};
+
+let availableVoices = [];
+
+// Storage adapter: uses Claude's window.storage when running inside Claude,
+// falls back to the browser's localStorage when hosted standalone (Netlify, etc.)
+const Store = {
+  async get(key) {
+    try {
+      if (window.storage && window.storage.get) return await window.storage.get(key);
+    } catch (e) {}
+    try {
+      const v = localStorage.getItem(key);
+      return (v != null) ? { key, value: v } : null;
+    } catch (e) { return null; }
+  },
+  async set(key, value) {
+    try {
+      if (window.storage && window.storage.set) return await window.storage.set(key, value);
+    } catch (e) {}
+    try { localStorage.setItem(key, value); return { key, value }; } catch (e) { return null; }
+  }
+};
+
+async function load() {
+  try {
+    const res = await Store.get('kbd-state-v6');
+    if (res && res.value) {
+      const saved = JSON.parse(res.value);
+      Object.assign(state, {
+        caseMode: saved.caseMode ?? 0,
+        keyLevels: saved.keyLevels || {},
+        hiddenKeys: saved.hiddenKeys || {},
+        phonemes: {...DEFAULT_PHONEMES, ...(saved.phonemes || {})},
+        letterSpeech: saved.letterSpeech ?? true,
+        enterSpeech: saved.enterSpeech ?? true,
+        setupMode: saved.setupMode ?? true,
+        phoneticMode: saved.phoneticMode ?? false,
+        haptics: saved.haptics ?? true,
+        targetSpeech: saved.targetSpeech ?? true,
+        modesOpen: saved.modesOpen ?? false,
+        voiceName: saved.voiceName ?? '',
+        words: saved.words || [],
+        currentTarget: saved.currentTarget || null,
+        lastUsed: saved.lastUsed || 0,
+        scoreMode: saved.scoreMode ?? false,
+        letterStats: saved.letterStats || {},
+        wordsSpelled: saved.wordsSpelled || [],
+        wordBank: saved.wordBank || [],
+        pendingLetterCounts: saved.pendingLetterCounts || {},
+        fadeMode: saved.fadeMode ?? true,
+        rotateMode: saved.rotateMode ?? false,
+        wordFadeLevels: saved.wordFadeLevels || {},
+        wordTrialCounters: saved.wordTrialCounters || {},
+      });
+    }
+  } catch (e) {}
+  await loadRecordings();
+  showSplash();
+}
+async function save() {
+  try {
+    await Store.set('kbd-state-v6', JSON.stringify({
+      caseMode: state.caseMode,
+      keyLevels: state.keyLevels,
+      hiddenKeys: state.hiddenKeys,
+      phonemes: state.phonemes,
+      letterSpeech: state.letterSpeech,
+      enterSpeech: state.enterSpeech,
+      setupMode: state.setupMode,
+      phoneticMode: state.phoneticMode,
+      haptics: state.haptics,
+      targetSpeech: state.targetSpeech,
+      modesOpen: state.modesOpen,
+      voiceName: state.voiceName,
+      words: state.words,
+      currentTarget: state.currentTarget,
+      lastUsed: state.lastUsed,
+      scoreMode: state.scoreMode,
+      letterStats: state.letterStats,
+      wordsSpelled: state.wordsSpelled,
+      wordBank: state.wordBank,
+      pendingLetterCounts: state.pendingLetterCounts,
+      fadeMode: state.fadeMode,
+      rotateMode: state.rotateMode,
+      wordFadeLevels: state.wordFadeLevels,
+      wordTrialCounters: state.wordTrialCounters,
+    }));
+  } catch (e) {}
+}
+function touchSession() { state.lastUsed = Date.now(); save(); }
+function isSessionStale() {
+  if (!state.lastUsed) return true;
+  return (Date.now() - state.lastUsed) > SESSION_TIMEOUT_MS;
+}
+
+// ===== Custom voice recordings =====
+let recordings = { letterName: {}, letterSound: {}, word: {} };
+async function loadRecordings() {
+  try {
+    const res = await Store.get('kbd-recordings-v1');
+    if (res && res.value) {
+      const r = JSON.parse(res.value);
+      recordings.letterName = r.letterName || {};
+      recordings.letterSound = r.letterSound || {};
+      recordings.word = r.word || {};
+    }
+  } catch (e) {}
+}
+async function saveRecordings() {
+  try { await Store.set('kbd-recordings-v1', JSON.stringify(recordings)); } catch (e) {}
+}
+
+let currentAudio = null;
+function playClip(dataURL) {
+  if (!dataURL) return false;
+  try {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (currentAudio) { try { currentAudio.pause(); } catch(e){} }
+    currentAudio = new Audio(dataURL);
+    currentAudio.play().catch(() => {});
+    return true;
+  } catch (e) { return false; }
+}
+
+let mediaRecorder = null, recordChunks = [], recStream = null;
+function recordingSupported() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+}
+async function startRecording(onComplete) {
+  if (!recordingSupported()) {
+    alert('Recording is not supported here. Open the hosted (https) version in Safari and allow microphone access.');
+    return false;
+  }
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(recStream);
+    recordChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) recordChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordChunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
+      const reader = new FileReader();
+      reader.onloadend = () => onComplete(reader.result);
+      reader.readAsDataURL(blob);
+      if (recStream) recStream.getTracks().forEach(t => t.stop());
+      recStream = null;
+    };
+    mediaRecorder.start();
+    return true;
+  } catch (e) {
+    alert('Could not access the microphone. Check that mic permission is allowed for this site.');
+    return false;
+  }
+}
+function stopRecording() {
+  try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch (e) {}
+}
+
+// Speak a letter — prefers a recording, else falls back to TTS (case-aware)
+function speakLetter(letter) {
+  if (state.phoneticMode) {
+    if (recordings.letterSound[letter] && playClip(recordings.letterSound[letter])) return;
+    speak(state.phonemes[letter] || letter, 1.0);
+  } else {
+    if (recordings.letterName[letter] && playClip(recordings.letterName[letter])) return;
+    let sound;
+    if (state.caseMode === 2 && state.text.length === 1) sound = letter; // Sentence first letter
+    else sound = letter.toLowerCase();
+    speak(sound, 1.15);
+  }
+}
+// Speak a word — prefers a recording, else TTS
+function speakWord(word, rate) {
+  const key = (word || '').toUpperCase().trim();
+  if (recordings.word[key] && playClip(recordings.word[key])) return;
+  speak(word, rate);
+}
+
+function setView(name) {
+  ['splash', 'setup', 'keyboard'].forEach(v => {
+    document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1))
+      .classList.toggle('active', v === name);
+  });
+}
+function showSplash() { setView('splash'); }
+function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
+function showKeyboard() { setView('keyboard'); touchSession(); render(); }
+
+// ---- Voices (en-US only) ----
+function refreshVoiceList() {
+  if (!('speechSynthesis' in window)) return;
+  const all = window.speechSynthesis.getVoices();
+  let voices = all.filter(v => v.lang && v.lang.toLowerCase() === 'en-us');
+  if (voices.length === 0) {
+    // fallback if no en-US voices yet (e.g. before warm-up)
+    voices = all.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+  }
+  // Sort: enhanced/premium first
+  voices.sort((a, b) => {
+    const rank = v => {
+      const n = (v.name || '').toLowerCase();
+      if (n.includes('premium')) return 0;
+      if (n.includes('enhanced')) return 1;
+      return 2;
+    };
+    return rank(a) - rank(b);
+  });
+  availableVoices = voices;
+  ['voicePicker', 'setupVoicePicker'].forEach(id => {
+    const picker = document.getElementById(id);
+    if (!picker) return;
+    const current = state.voiceName;
+    picker.innerHTML = '<option value="">System default</option>';
+    availableVoices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name;
+      if (v.name === current) opt.selected = true;
+      picker.appendChild(opt);
+    });
+  });
+}
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.addEventListener('voiceschanged', refreshVoiceList);
+  refreshVoiceList();
+}
+function getVoice() {
+  if (!state.voiceName) return null;
+  return availableVoices.find(v => v.name === state.voiceName) || null;
+}
+function speak(text, rate = 1) {
+  if (!text || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = rate; u.pitch = 1; u.lang = 'en-US';
+    const v = getVoice();
+    if (v) { u.voice = v; u.lang = v.lang; }
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+let speechWarmed = false;
+function warmSpeech() {
+  if (speechWarmed) return;
+  try {
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+    speechWarmed = true;
+    setTimeout(refreshVoiceList, 100);
+  } catch (e) {}
+}
+
+function buzz(pattern = 15) {
+  if (!state.haptics) return;
+  if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch(e) {} }
+}
+
+function autoCollapseSpellingMode() {
+  // After a setting changes, collapse the modes bar — but only when a target is active.
+  if (state.currentTarget && state.modesOpen) {
+    state.modesOpen = false;
+  }
+}
+
+// ---- Fade / trial helpers ----
+function getOrInitWordData(word) {
+  if (!word) return null;
+  if (!state.wordFadeLevels[word]) state.wordFadeLevels[word] = new Array(word.length).fill(0);
+  if (!state.wordTrialCounters[word]) state.wordTrialCounters[word] = { successes: 0, abandons: 0 };
+  return state.wordTrialCounters[word];
+}
+function fadeLevelAt(index) {
+  if (!state.currentTarget) return 0;
+  const arr = state.wordFadeLevels[state.currentTarget];
+  if (!arr) return 0;
+  return arr[index] || 0;
+}
+function triggerFade(word) {
+  const fades = state.wordFadeLevels[word];
+  if (!fades) return;
+  for (let i = fades.length - 1; i >= 0; i--) {
+    if (fades[i] < 3) {
+      fades[i]++;
+      const faded = (fades[i] >= 3);
+      showLevelUp(word[i], faded);
+      return;
+    }
+  }
+  showMastered(word); // every letter already fully faded
+}
+function showLevelUp(letter, faded) {
+  const el = document.getElementById('levelUp');
+  el.classList.remove('mastered');
+  document.getElementById('luEmoji').textContent = faded ? '⭐' : '✨';
+  document.getElementById('luText').textContent = faded
+    ? displayLetter(letter) + ' is on its own!'
+    : 'Level Up!';
+  el.classList.add('show');
+  // sparkle bump the word bank
+  const bank = document.getElementById('wordBankBtn');
+  bank.classList.add('bouncing');
+  setTimeout(() => bank.classList.remove('bouncing'), 900);
+  setTimeout(() => el.classList.remove('show'), 1900);
+}
+function showMastered(word) {
+  const el = document.getElementById('levelUp');
+  el.classList.add('mastered');
+  document.getElementById('luEmoji').textContent = '🏆';
+  document.getElementById('luText').textContent =
+    (state.caseMode === 1 ? word.toLowerCase() : word) + ' mastered!';
+  el.classList.add('show');
+  if (state.targetSpeech) setTimeout(() => speak('You did it!', 1.0), 400);
+  setTimeout(() => el.classList.remove('show'), 2600);
+}
+function selectTargetWord(w, speakIt) {
+  state.currentTarget = w;
+  state.targetIndex = 0;
+  state.targetProgress = [];
+  state.targetPromptedFlags = [];
+  state.pendingLetterCounts = {};
+  state.text = '';
+  getOrInitWordData(w);
+  save(); render();
+  if (speakIt && state.targetSpeech) speakWord(w, 0.85);
+}
+function rotateToNextWord() {
+  if (state.words.length < 2 || !state.currentTarget) return;
+  const idx = state.words.indexOf(state.currentTarget);
+  if (idx === -1) return;
+  const next = state.words[(idx + 1) % state.words.length];
+  selectTargetWord(next, true);
+}
+
+function applyCase(rawText) {
+  if (!rawText) return '';
+  if (state.caseMode === 0) return rawText;
+  if (state.caseMode === 1) return rawText.toLowerCase();
+  return rawText.charAt(0).toUpperCase() + rawText.slice(1).toLowerCase();
+}
+function displayLetter(L) { return state.caseMode === 1 ? L.toLowerCase() : L; }
+
+function nextExpectedLetter() {
+  if (!state.currentTarget) return null;
+  if (state.targetIndex >= state.currentTarget.length) return null;
+  return state.currentTarget[state.targetIndex];
+}
+function isWordComplete() {
+  return state.currentTarget && state.targetIndex >= state.currentTarget.length;
+}
+function isLetterPrompted(letter) {
+  // Yellow level highlight always counts as a prompt
+  if (state.keyLevels[letter]) return true;
+  // Blue target-next counts only if it hasn't fully faded (level < 3)
+  const expected = nextExpectedLetter();
+  if (expected && expected === letter && fadeLevelAt(state.targetIndex) < 3) return true;
+  return false;
+}
+
+function render() {
+  const banner = document.getElementById('targetBanner');
+  if (state.currentTarget) {
+    banner.classList.add('active');
+    const tw = document.getElementById('targetWord');
+    tw.innerHTML = '';
+    [...state.currentTarget].forEach((ch, i) => {
+      const s = document.createElement('span');
+      s.className = 'tletter';
+      if (i < state.targetIndex) s.classList.add('done');
+      else if (i === state.targetIndex) {
+        const fl = fadeLevelAt(i);
+        if (fl < 3) {
+          s.classList.add('next');
+          if (fl > 0) s.classList.add('fade-' + fl);
+        } else {
+          s.classList.add('pending'); // fully faded — no blue cue
+        }
+      }
+      else s.classList.add('pending');
+      s.textContent = displayLetter(ch);
+      tw.appendChild(s);
+    });
+  } else {
+    banner.classList.remove('active');
+  }
+
+  const disp = document.getElementById('display');
+  const content = document.getElementById('displayContent');
+  const txt = applyCase(state.text);
+  content.innerHTML = (txt ? escapeHtml(txt) : '') + '<span class="caret"></span>';
+  disp.classList.toggle('has-text', state.text.length > 0);
+
+  const wrap = document.getElementById('modesWrap');
+  wrap.classList.toggle('expanded', state.modesOpen);
+  document.getElementById('modesChevron').classList.toggle('open', state.modesOpen);
+
+  document.getElementById('caseValue').textContent = CASE_VALUES[state.caseMode];
+  document.getElementById('caseLabel').textContent = CASE_LABELS[state.caseMode];
+  document.getElementById('phonValue').textContent = state.phoneticMode ? 'Sounds' : 'Letters';
+  document.getElementById('phonToggle').classList.toggle('active', state.phoneticMode);
+  document.getElementById('wordValue').textContent = state.currentTarget || 'Free type';
+  document.getElementById('wordToggle').classList.toggle('active', !!state.currentTarget);
+
+  document.getElementById('wordBankCount').textContent = state.wordBank.length;
+
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  const expected = nextExpectedLetter();
+  LAYOUT.forEach(row => {
+    const r = document.createElement('div');
+    r.className = 'row';
+    row.forEach(letter => r.appendChild(makeLetterKey(letter, expected)));
+    kb.appendChild(r);
+  });
+  const r = document.createElement('div');
+  r.className = 'row';
+  r.appendChild(makeSpecialKey('⌫', 'backspace', 'wide backspace'));
+  r.appendChild(makeSpecialKey('', 'space', 'space space-blank'));
+  const enterKey = makeSpecialKey('⏎', 'enter', 'wide enter');
+  if (isWordComplete()) enterKey.classList.add('enter-ready');
+  r.appendChild(enterKey);
+  kb.appendChild(r);
+}
+
+function makeLetterKey(letter, expected) {
+  const k = document.createElement('button');
+  k.className = 'key';
+  k.dataset.letter = letter;
+  const lvl = state.keyLevels[letter];
+  if (lvl) k.classList.add('level-' + lvl);
+  if (state.hiddenKeys[letter]) k.classList.add('hidden');
+  if (expected && letter === expected) {
+    const fl = fadeLevelAt(state.targetIndex);
+    if (fl < 3) {
+      k.classList.add('target-next');
+      if (fl > 0) k.classList.add('fade-' + fl);
+    }
+  }
+  k.textContent = displayLetter(letter);
+  attachKeyHandlers(k, letter);
+  return k;
+}
+function makeSpecialKey(label, action, cls) {
+  const k = document.createElement('button');
+  k.className = 'key ' + cls;
+  k.textContent = label;
+  k.addEventListener('click', () => {
+    warmSpeech();
+    touchSession();
+    if (action === 'space') {
+      buzz(10);
+      state.text += ' ';
+    } else if (action === 'backspace') {
+      buzz(10);
+      if (state.text.length > 0) {
+        state.text = state.text.slice(0, -1);
+        if (state.currentTarget && state.targetProgress.length > 0) {
+          const removed = state.targetProgress.pop();
+          if (removed) {
+            state.targetIndex = Math.max(0, state.targetIndex - 1);
+            state.targetPromptedFlags.pop();
+          }
+        }
+      }
+    } else if (action === 'enter') {
+      buzz([30, 50, 30]);
+      const trimmed = applyCase(state.text).trim();
+      const wasComplete = isWordComplete();
+      const completedWord = state.currentTarget;
+
+      if (trimmed && state.enterSpeech) speakWord(trimmed, 0.95);
+
+      // Commit buffered letter stats — these letters now count
+      if (state.scoreMode) {
+        Object.entries(state.pendingLetterCounts).forEach(([L, c]) => {
+          if (!state.letterStats[L]) state.letterStats[L] = { independent: 0, prompted: 0 };
+          state.letterStats[L].independent += c.independent;
+          state.letterStats[L].prompted += c.prompted;
+        });
+      }
+      state.pendingLetterCounts = {};
+
+      if (wasComplete && completedWord) {
+        state.wordBank.push(completedWord);
+        if (state.scoreMode) {
+          const pmt = state.targetPromptedFlags.filter(p => p).length;
+          const ind = state.targetPromptedFlags.length - pmt;
+          state.wordsSpelled.push({
+            word: completedWord, ts: Date.now(),
+            independent: ind, prompted: pmt,
+          });
+        }
+        celebrate(completedWord);
+
+        const counter = getOrInitWordData(completedWord);
+        counter.successes++;
+        counter.abandons = 0;
+
+        // Fade the blue prompt every 3 consecutive successes
+        if (state.fadeMode && counter.successes % 3 === 0) {
+          setTimeout(() => { triggerFade(completedWord); save(); render(); }, 950);
+        }
+        // Rotate to next word after 3 in a row
+        if (state.rotateMode && counter.successes >= 3 && state.words.length > 1) {
+          counter.successes = 0;
+          setTimeout(() => rotateToNextWord(), 2000);
+        }
+        save();
+      }
+
+      state.text = '';
+      state.targetIndex = 0;
+      state.targetProgress = [];
+      state.targetPromptedFlags = [];
+    }
+    render();
+  });
+  return k;
+}
+
+let pressTimer = null;
+let longPressed = false;
+function attachKeyHandlers(el, letter) {
+  el.addEventListener('pointerdown', () => {
+    warmSpeech();
+    longPressed = false;
+    if (state.setupMode) {
+      pressTimer = setTimeout(() => {
+        longPressed = true;
+        openKeyMenu(letter);
+        buzz(15);
+      }, 650);
+    }
+  });
+  el.addEventListener('pointerup', () => {
+    if (pressTimer) clearTimeout(pressTimer);
+    if (!longPressed) typeLetter(letter);
+  });
+  ['pointercancel','pointerleave'].forEach(ev => {
+    el.addEventListener(ev, () => { if (pressTimer) clearTimeout(pressTimer); });
+  });
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+function typeLetter(letter) {
+  touchSession();
+  const prompted = isLetterPrompted(letter);
+  state.text += letter;
+  if (state.letterSpeech) speakLetter(letter);
+
+  // Buffer per-letter stats; committed on Enter, discarded on cancel
+  if (state.scoreMode) {
+    if (!state.pendingLetterCounts[letter]) state.pendingLetterCounts[letter] = { independent: 0, prompted: 0 };
+    if (prompted) state.pendingLetterCounts[letter].prompted++;
+    else state.pendingLetterCounts[letter].independent++;
+  }
+
+  if (state.currentTarget) {
+    const expected = state.currentTarget[state.targetIndex];
+    if (expected && letter === expected.toUpperCase()) {
+      state.targetIndex++;
+      state.targetProgress.push(true);
+      state.targetPromptedFlags.push(prompted);
+      buzz(20);
+      if (isWordComplete()) buzz([20, 80, 40]);
+    } else {
+      state.targetProgress.push(false);
+      buzz(8);
+    }
+  } else {
+    buzz(8);
+  }
+  save();
+  render();
+}
+
+// ---- Celebration ----
+function celebrate(word) {
+  const display = document.getElementById('display');
+  display.classList.add('celebrating');
+  setTimeout(() => display.classList.remove('celebrating'), 800);
+
+  // Confetti burst
+  const emojis = ['🎉', '⭐', '✨', '🌟', '🎊', '💫'];
+  const N = 12;
+  for (let i = 0; i < N; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    const angle = (Math.PI * 2 * i) / N + (Math.random() - 0.5) * 0.4;
+    const dist = 180 + Math.random() * 120;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist - 40;
+    c.style.setProperty('--dx', dx + 'px');
+    c.style.setProperty('--dy', dy + 'px');
+    c.style.animationDelay = (Math.random() * 0.15) + 's';
+    display.appendChild(c);
+    setTimeout(() => c.remove(), 1700);
+  }
+
+  // Flying word to word bank
+  const dispRect = display.getBoundingClientRect();
+  const bankBtn = document.getElementById('wordBankBtn');
+  const bankRect = bankBtn.getBoundingClientRect();
+  const fw = document.createElement('div');
+  fw.className = 'flying-word';
+  fw.textContent = displayLetter(word.charAt(0)) === word.charAt(0).toLowerCase()
+    ? word.toLowerCase() : word;
+  fw.style.fontSize = '54px';
+  fw.style.left = (dispRect.left + dispRect.width / 2) + 'px';
+  fw.style.top = (dispRect.top + dispRect.height / 2) + 'px';
+  fw.style.transform = 'translate(-50%, -50%) scale(1)';
+  document.body.appendChild(fw);
+  requestAnimationFrame(() => {
+    fw.style.left = (bankRect.left + bankRect.width / 2) + 'px';
+    fw.style.top = (bankRect.top + bankRect.height / 2) + 'px';
+    fw.style.transform = 'translate(-50%, -50%) scale(0.25)';
+    fw.style.opacity = '0';
+  });
+  setTimeout(() => fw.remove(), 1000);
+
+  // Bounce the bank
+  setTimeout(() => {
+    bankBtn.classList.add('bouncing');
+    setTimeout(() => bankBtn.classList.remove('bouncing'), 900);
+  }, 700);
+}
+
+// ---- Key menu ----
+function openKeyMenu(letter) {
+  const menu = document.getElementById('keyMenu');
+  document.getElementById('menuPreview').textContent = displayLetter(letter);
+  menu.dataset.letter = letter;
+  menu.querySelectorAll('.mbtn[data-action="level"]').forEach(b => {
+    const lvl = parseInt(b.dataset.level);
+    b.classList.toggle('selected', lvl === (state.keyLevels[letter] || 0));
+  });
+  document.getElementById('phonemeInput').value = state.phonemes[letter] || '';
+  menu.classList.add('show');
+}
+function closeAllMenus() {
+  ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu'].forEach(id =>
+    document.getElementById(id).classList.remove('show'));
+}
+function saveCurrentPhoneme() {
+  const menu = document.getElementById('keyMenu');
+  if (!menu.classList.contains('show')) return;
+  const letter = menu.dataset.letter;
+  const val = document.getElementById('phonemeInput').value.trim();
+  state.phonemes[letter] = val || DEFAULT_PHONEMES[letter];
+  save();
+}
+document.getElementById('keyMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) {
+    if (e.target.id === 'keyMenu') { saveCurrentPhoneme(); closeAllMenus(); }
+    return;
+  }
+  const letter = document.getElementById('keyMenu').dataset.letter;
+  const a = btn.dataset.action;
+  if (a === 'level') {
+    const lvl = parseInt(btn.dataset.level);
+    if (lvl === 0) delete state.keyLevels[letter];
+    else state.keyLevels[letter] = lvl;
+    save(); render(); openKeyMenu(letter);
+  } else if (a === 'hide') {
+    saveCurrentPhoneme();
+    state.hiddenKeys[letter] = true;
+    save(); render(); closeAllMenus();
+  } else if (a === 'cancel') {
+    saveCurrentPhoneme(); closeAllMenus();
+  }
+});
+document.getElementById('phonemePreview').addEventListener('click', () => {
+  const v = document.getElementById('phonemeInput').value.trim();
+  if (v) speak(v, 1.0);
+});
+
+// Word picker
+document.getElementById('wordToggle').addEventListener('click', () => {
+  renderWordList();
+  document.getElementById('wordMenu').classList.add('show');
+});
+document.getElementById('setupWordBtn').addEventListener('click', () => {
+  renderWordList();
+  document.getElementById('wordMenu').classList.add('show');
+});
+document.getElementById('targetClearBtn').addEventListener('click', () => {
+  state.currentTarget = null;
+  state.targetIndex = 0;
+  state.targetProgress = [];
+  state.targetPromptedFlags = [];
+  save(); render();
+});
+document.getElementById('freeTypeBtn').addEventListener('click', () => {
+  state.currentTarget = null;
+  state.targetIndex = 0;
+  state.targetProgress = [];
+  state.targetPromptedFlags = [];
+  state.text = '';
+  save(); render(); renderSetup();
+  closeAllMenus();
+});
+document.getElementById('addWordBtn').addEventListener('click', addWordFromInput);
+document.getElementById('newWordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addWordFromInput();
+});
+function addWordFromInput() {
+  const inp = document.getElementById('newWordInput');
+  const raw = inp.value.trim().toUpperCase().replace(/[^A-Z]/g, '');
+  if (!raw) return;
+  if (!state.words.includes(raw)) {
+    state.words.push(raw);
+    save();
+  }
+  inp.value = '';
+  renderWordList();
+}
+function renderWordList() {
+  const list = document.getElementById('wordList');
+  list.innerHTML = '';
+  if (state.words.length === 0) {
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = 'No words yet. Add one below.';
+    list.appendChild(n);
+    return;
+  }
+  state.words.forEach((w, i) => {
+    const row = document.createElement('div');
+    row.className = 'word-item' + (state.currentTarget === w ? ' selected' : '');
+    const t = document.createElement('span');
+    t.className = 'text';
+    t.textContent = (state.caseMode === 1 ? w.toLowerCase() : w);
+    t.addEventListener('click', () => {
+      state.currentTarget = w;
+      state.targetIndex = 0;
+      state.targetProgress = [];
+      state.targetPromptedFlags = [];
+      state.pendingLetterCounts = {};
+      state.text = '';
+      state.modesOpen = false; // collapse when entering spelling mode
+      getOrInitWordData(w);
+      save(); render(); renderSetup();
+      if (state.targetSpeech) speakWord(w, 0.85);
+      closeAllMenus();
+    });
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '×';
+    x.addEventListener('click', e => {
+      e.stopPropagation();
+      state.words.splice(i, 1);
+      if (state.currentTarget === w) {
+        state.currentTarget = null;
+        state.targetIndex = 0;
+        state.targetProgress = [];
+        state.targetPromptedFlags = [];
+      }
+      save(); render(); renderWordList(); renderSetup();
+    });
+    row.appendChild(t); row.appendChild(x);
+    list.appendChild(row);
+  });
+}
+document.getElementById('wordMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (btn && btn.dataset.action === 'cancel') closeAllMenus();
+  if (e.target.id === 'wordMenu') closeAllMenus();
+});
+
+// Word bank sheet
+document.getElementById('wordBankBtn').addEventListener('click', () => {
+  renderWordBank();
+  document.getElementById('wordBankMenu').classList.add('show');
+});
+function renderWordBank() {
+  const empty = document.getElementById('wordBankEmpty');
+  const bw = document.getElementById('bankWords');
+  bw.innerHTML = '';
+  if (state.wordBank.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  state.wordBank.slice().reverse().forEach(w => {
+    const chip = document.createElement('div');
+    chip.className = 'bank-chip';
+    chip.textContent = (state.caseMode === 1 ? w.toLowerCase() : w);
+    bw.appendChild(chip);
+  });
+}
+document.getElementById('clearBankBtn').addEventListener('click', () => {
+  if (confirm('Clear the word bank? (Session data will not be affected.)')) {
+    state.wordBank = []; save(); render(); renderWordBank();
+  }
+});
+document.getElementById('wordBankMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (btn && btn.dataset.action === 'cancel') closeAllMenus();
+  if (e.target.id === 'wordBankMenu') closeAllMenus();
+});
+
+// Data sheet
+document.getElementById('viewDataBtn').addEventListener('click', () => {
+  renderData();
+  closeAllMenus();
+  document.getElementById('dataMenu').classList.add('show');
+});
+function renderData() {
+  let totalInd = 0, totalPmt = 0;
+  Object.values(state.letterStats).forEach(s => {
+    totalInd += s.independent; totalPmt += s.prompted;
+  });
+  document.getElementById('totalIndependent').textContent = totalInd;
+  document.getElementById('totalPrompted').textContent = totalPmt;
+  document.getElementById('totalWords').textContent = state.wordsSpelled.length;
+
+  const grid = document.getElementById('statsGrid');
+  grid.innerHTML = '';
+  const letters = Object.keys(state.letterStats).sort();
+  if (letters.length === 0) {
+    const n = document.createElement('div'); n.className = 'empty-note';
+    n.textContent = 'No data yet. Turn on Score and start typing.';
+    n.style.gridColumn = 'span 2';
+    grid.appendChild(n);
+  } else {
+    letters.forEach(L => {
+      const s = state.letterStats[L];
+      const row = document.createElement('div');
+      row.className = 'stats-row';
+      const l = document.createElement('span'); l.className = 'stats-letter';
+      l.textContent = displayLetter(L);
+      const n = document.createElement('span'); n.className = 'stats-numbers';
+      n.innerHTML = '<span class="ind">' + s.independent + '</span> / <span class="pmt">' + s.prompted + '</span>';
+      row.appendChild(l); row.appendChild(n);
+      grid.appendChild(row);
+    });
+  }
+
+  const log = document.getElementById('wordLog');
+  log.innerHTML = '';
+  if (state.wordsSpelled.length === 0) {
+    const n = document.createElement('div'); n.className = 'empty-note';
+    n.textContent = 'No completed words yet.';
+    log.appendChild(n);
+  } else {
+    state.wordsSpelled.slice().reverse().forEach(item => {
+      const r = document.createElement('div');
+      r.className = 'word-log-row';
+      const d = new Date(item.ts);
+      const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      r.innerHTML = '<span class="w">' + (state.caseMode === 1 ? item.word.toLowerCase() : item.word)
+        + '</span><span class="meta">' + time
+        + ' · <span class="ind">' + item.independent + ' ind</span>'
+        + ' · <span class="pmt">' + item.prompted + ' prompted</span></span>';
+      log.appendChild(r);
+    });
+  }
+}
+document.getElementById('clearDataBtn').addEventListener('click', () => {
+  if (confirm('Clear ALL session data (letter stats and word log)?')) {
+    state.letterStats = {}; state.wordsSpelled = [];
+    save(); renderData();
+  }
+});
+document.getElementById('dataMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (btn && btn.dataset.action === 'cancel') closeAllMenus();
+  if (e.target.id === 'dataMenu') closeAllMenus();
+});
+
+// Settings
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  refreshVoiceList();
+  renderSettings();
+  document.getElementById('settingsMenu').classList.add('show');
+});
+function renderSettings() {
+  document.getElementById('toggleLetterSpeech').classList.toggle('on', state.letterSpeech);
+  document.getElementById('toggleEnterSpeech').classList.toggle('on', state.enterSpeech);
+  document.getElementById('toggleSetupMode').classList.toggle('on', state.setupMode);
+  document.getElementById('toggleHaptics').classList.toggle('on', state.haptics);
+  document.getElementById('toggleTargetSpeech').classList.toggle('on', state.targetSpeech);
+  document.getElementById('toggleScore').classList.toggle('on', state.scoreMode);
+  document.getElementById('toggleFade').classList.toggle('on', state.fadeMode);
+  document.getElementById('toggleRotate').classList.toggle('on', state.rotateMode);
+
+  const list = document.getElementById('hiddenList');
+  const hidden = Object.keys(state.hiddenKeys);
+  list.innerHTML = '';
+  if (hidden.length === 0) {
+    const n = document.createElement('div'); n.className = 'empty-note';
+    n.textContent = 'No hidden keys'; list.appendChild(n);
+  } else {
+    hidden.sort().forEach(l => {
+      const chip = document.createElement('span');
+      chip.className = 'hidden-chip';
+      chip.textContent = displayLetter(l);
+      chip.addEventListener('click', () => {
+        delete state.hiddenKeys[l]; save(); render(); renderSettings();
+      });
+      list.appendChild(chip);
+    });
+  }
+
+  const grid = document.getElementById('phonemeGrid');
+  grid.innerHTML = '';
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l => {
+    const row = document.createElement('div');
+    row.className = 'phoneme-row';
+    const lab = document.createElement('span');
+    lab.className = 'ltr'; lab.textContent = displayLetter(l);
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.value = state.phonemes[l] || '';
+    inp.maxLength = 20; inp.autocapitalize = 'off'; inp.spellcheck = false;
+    inp.addEventListener('change', () => {
+      const v = inp.value.trim();
+      state.phonemes[l] = v || DEFAULT_PHONEMES[l];
+      save();
+    });
+    const play = document.createElement('button');
+    play.className = 'play'; play.textContent = '▶';
+    play.addEventListener('click', () => {
+      speak(inp.value.trim() || DEFAULT_PHONEMES[l], 1.0);
+    });
+    row.appendChild(lab); row.appendChild(inp); row.appendChild(play);
+    grid.appendChild(row);
+  });
+}
+document.getElementById('toggleLetterSpeech').addEventListener('click', () => { state.letterSpeech = !state.letterSpeech; save(); renderSettings(); });
+document.getElementById('toggleEnterSpeech').addEventListener('click', () => { state.enterSpeech = !state.enterSpeech; save(); renderSettings(); });
+document.getElementById('toggleSetupMode').addEventListener('click', () => { state.setupMode = !state.setupMode; save(); renderSettings(); });
+document.getElementById('toggleHaptics').addEventListener('click', () => { state.haptics = !state.haptics; save(); renderSettings(); });
+document.getElementById('toggleTargetSpeech').addEventListener('click', () => { state.targetSpeech = !state.targetSpeech; save(); renderSettings(); });
+document.getElementById('toggleScore').addEventListener('click', () => { state.scoreMode = !state.scoreMode; save(); renderSettings(); });
+document.getElementById('toggleFade').addEventListener('click', () => { state.fadeMode = !state.fadeMode; save(); render(); renderSettings(); });
+document.getElementById('toggleRotate').addEventListener('click', () => { state.rotateMode = !state.rotateMode; save(); renderSettings(); });
+document.getElementById('resetAll').addEventListener('click', () => {
+  if (confirm('Reset all highlight colors? Hidden keys and phonemes will not change.')) {
+    state.keyLevels = {}; save(); render(); renderSettings();
+  }
+});
+document.getElementById('endSessionBtn').addEventListener('click', () => {
+  closeAllMenus();
+  state.text = '';
+  state.targetIndex = 0;
+  state.targetProgress = [];
+  state.targetPromptedFlags = [];
+  state.wordFadeLevels = {};
+  state.wordTrialCounters = {};
+  state.lastUsed = 0;
+  save();
+  showSplash();
+});
+
+document.getElementById('voicePicker').addEventListener('change', e => {
+  state.voiceName = e.target.value; save();
+  const sp = document.getElementById('setupVoicePicker');
+  if (sp) sp.value = state.voiceName;
+});
+document.getElementById('voicePreviewBtn').addEventListener('click', () => {
+  warmSpeech();
+  speak('Apple. A. P. P. L. E.', 0.95);
+});
+document.getElementById('settingsMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (btn && btn.dataset.action === 'cancel') {
+    autoCollapseSpellingMode();
+    closeAllMenus();
+    save(); render();
+  } else if (e.target.id === 'settingsMenu') {
+    autoCollapseSpellingMode();
+    closeAllMenus();
+    save(); render();
+  }
+});
+
+// ===== Record Voice sheet =====
+let activeRecord = null;
+function makeRecordRow(category, key, label) {
+  const row = document.createElement('div');
+  row.className = 'record-row';
+  const lab = document.createElement('span');
+  lab.className = 'rr-label';
+  lab.textContent = label;
+  row.appendChild(lab);
+
+  const hasRec = !!recordings[category][key];
+  const recBtn = document.createElement('button');
+  recBtn.className = 'rr-btn rec' + (hasRec ? ' done' : '');
+  recBtn.textContent = '🎤';
+  recBtn.addEventListener('click', () => toggleRecord(category, key, recBtn, row));
+  row.appendChild(recBtn);
+
+  if (hasRec) {
+    const playBtn = document.createElement('button');
+    playBtn.className = 'rr-btn';
+    playBtn.textContent = '▶';
+    playBtn.addEventListener('click', () => playClip(recordings[category][key]));
+    row.appendChild(playBtn);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'rr-btn del';
+    delBtn.textContent = '🗑';
+    delBtn.addEventListener('click', () => {
+      delete recordings[category][key];
+      saveRecordings();
+      renderRecordSheet();
+    });
+    row.appendChild(delBtn);
+  }
+  return row;
+}
+async function toggleRecord(category, key, btn, row) {
+  if (activeRecord) { stopRecording(); return; }
+  activeRecord = { category, key };
+  row.classList.add('recording');
+  btn.textContent = '⏹';
+  const ok = await startRecording(dataURL => {
+    recordings[category][key] = dataURL;
+    activeRecord = null;
+    saveRecordings();
+    renderRecordSheet();
+  });
+  if (!ok) { activeRecord = null; renderRecordSheet(); }
+  else setTimeout(() => { if (activeRecord) stopRecording(); }, 3000);
+}
+function renderRecordGrid(containerId, category) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(L => {
+    c.appendChild(makeRecordRow(category, L, displayLetter(L)));
+  });
+}
+function renderRecordWords() {
+  const c = document.getElementById('recordWords');
+  c.innerHTML = '';
+  if (state.words.length === 0) {
+    const n = document.createElement('div'); n.className = 'empty-note';
+    n.textContent = 'No words in your list yet. Add some in the Word picker.';
+    c.appendChild(n);
+    return;
+  }
+  state.words.forEach(w => {
+    c.appendChild(makeRecordRow('word', w, (state.caseMode === 1 ? w.toLowerCase() : w)));
+  });
+}
+function renderRecordSheet() {
+  renderRecordGrid('recordLetterNames', 'letterName');
+  renderRecordGrid('recordLetterSounds', 'letterSound');
+  renderRecordWords();
+}
+document.getElementById('recordVoiceBtn').addEventListener('click', () => {
+  closeAllMenus();
+  renderRecordSheet();
+  document.getElementById('recordMenu').classList.add('show');
+});
+document.getElementById('clearRecordingsBtn').addEventListener('click', () => {
+  if (confirm('Delete ALL your recordings?')) {
+    recordings = { letterName: {}, letterSound: {}, word: {} };
+    saveRecordings();
+    renderRecordSheet();
+  }
+});
+document.getElementById('recordMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if ((btn && btn.dataset.action === 'cancel') || e.target.id === 'recordMenu') {
+    if (activeRecord) stopRecording();
+    closeAllMenus();
+  }
+});
+
+// Display clear button — cancel current attempt
+document.getElementById('displayClear').addEventListener('click', () => {
+  const content = document.getElementById('displayContent');
+  content.classList.add('wiping');
+  buzz(10);
+  let doRotate = false;
+  if (state.currentTarget && state.text.length > 0) {
+    const counter = getOrInitWordData(state.currentTarget);
+    counter.abandons++;
+    counter.successes = 0;
+    if (state.rotateMode && counter.abandons >= 2 && state.words.length > 1) {
+      counter.abandons = 0;
+      doRotate = true;
+    }
+  }
+  setTimeout(() => {
+    state.text = '';
+    state.targetIndex = 0;
+    state.targetProgress = [];
+    state.targetPromptedFlags = [];
+    state.pendingLetterCounts = {}; // abandoned attempts don't count
+    save();
+    if (doRotate) rotateToNextWord();
+    else render();
+  }, 280);
+});
+
+// Top controls
+document.getElementById('modesToggle').addEventListener('click', () => {
+  state.modesOpen = !state.modesOpen; save(); render();
+});
+document.getElementById('caseToggle').addEventListener('click', () => {
+  state.caseMode = (state.caseMode + 1) % 3;
+  autoCollapseSpellingMode();
+  save(); render();
+});
+document.getElementById('phonToggle').addEventListener('click', () => {
+  state.phoneticMode = !state.phoneticMode;
+  autoCollapseSpellingMode();
+  save(); render();
+});
+
+// Splash → next view
+document.getElementById('viewSplash').addEventListener('click', () => {
+  warmSpeech();
+  if (isSessionStale()) showSetup();
+  else showKeyboard();
+});
+
+// Setup
+function renderSetup() {
+  document.querySelectorAll('#setupCase .pill').forEach(p => {
+    p.classList.toggle('selected', parseInt(p.dataset.case) === state.caseMode);
+  });
+  document.querySelectorAll('#setupSpeech .pill').forEach(p => {
+    const isPhon = p.dataset.phon === '1';
+    p.classList.toggle('selected', isPhon === state.phoneticMode);
+  });
+  const wb = document.getElementById('setupWordBtn');
+  const wl = document.getElementById('setupWordLabel');
+  if (state.currentTarget) {
+    wl.textContent = state.currentTarget;
+    wb.classList.add('has-target');
+  } else {
+    wl.textContent = 'Free type';
+    wb.classList.remove('has-target');
+  }
+  refreshVoiceList();
+}
+document.getElementById('setupCase').addEventListener('click', e => {
+  const p = e.target.closest('.pill'); if (!p) return;
+  state.caseMode = parseInt(p.dataset.case); save(); renderSetup();
+});
+document.getElementById('setupSpeech').addEventListener('click', e => {
+  const p = e.target.closest('.pill'); if (!p) return;
+  state.phoneticMode = p.dataset.phon === '1'; save(); renderSetup();
+});
+document.getElementById('setupVoicePicker').addEventListener('change', e => {
+  state.voiceName = e.target.value; save();
+  const vp = document.getElementById('voicePicker');
+  if (vp) vp.value = state.voiceName;
+});
+document.getElementById('setupVoicePreview').addEventListener('click', () => {
+  warmSpeech();
+  speak('Apple. A. P. P. L. E.', 0.95);
+});
+document.getElementById('startBtn').addEventListener('click', () => { showKeyboard(); });
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+load();
+</script>
+</body>
+</html>
