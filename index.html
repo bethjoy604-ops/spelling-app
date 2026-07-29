@@ -34,6 +34,15 @@
     --l3: #ffd60a;
     --l2: #ffe066;
     --l1: #fff3a8;
+
+    /* Prompt colour — overwritten at runtime from PROMPT_COLORS */
+    --prompt: #2e8bff;
+    --prompt-soft: #dbe9ff;
+    --prompt-glow: rgba(46, 139, 255, 0.45);
+    --prompt-ink: #ffffff;
+    --prompt-f1: #6daaff;
+    --prompt-f2: #c2dcff;
+    --boost: 1;
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -261,12 +270,17 @@
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
   .tletter.next {
-    background: var(--blue); color: white;
+    background: var(--prompt); color: var(--prompt-ink);
     animation: tlpulse 1.4s ease-in-out infinite;
   }
-  .tletter.next.fade-1 { background: #6daaff; }
-  .tletter.next.fade-2 { background: #c2dcff; color: var(--ink); animation: none; }
+  .tletter.next.fade-1 { background: var(--prompt-f1); }
+  .tletter.next.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; }
   .tletter.pending { color: var(--muted); opacity: 0.4; }
+  /* Banner size steps */
+  .target-banner.bs-small { padding: 10px 16px; }
+  .target-banner.bs-small .tletter { font-size: 24px; min-width: 30px; padding: 4px 8px; }
+  .target-banner.bs-large { padding: 18px 26px; }
+  .target-banner.bs-large .tletter { font-size: 54px; min-width: 64px; padding: 8px 16px; }
   @keyframes tlpulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.08); }
@@ -294,6 +308,16 @@
     line-height: 1.2;
     position: relative;
     overflow: visible;
+  }
+  .display.ds-small {
+    font-size: clamp(26px, 4vw, 38px);
+    min-height: 76px;
+    padding: 14px 16px 14px 22px;
+  }
+  .display.ds-large {
+    font-size: clamp(54px, 8.5vw, 88px);
+    min-height: 150px;
+    padding: 26px 26px 26px 34px;
   }
   .display.celebrating {
     animation: celebrateBg 0.8s ease-out;
@@ -503,16 +527,32 @@
   .key.level-3 { background: var(--l3); }
   .key.level-2 { background: var(--l2); }
   .key.level-1 { background: var(--l1); }
-  .key.target-next {
-    background: var(--blue); color: white;
+  /* --- Colour prompt --- */
+  .key.prompt-color {
+    background: var(--prompt); color: var(--prompt-ink);
     animation: keypulse 1.3s ease-in-out infinite;
   }
-  .key.target-next.fade-1 { background: #6daaff; color: white; }
-  .key.target-next.fade-2 { background: #c2dcff; color: var(--ink); animation: none; box-shadow: var(--shadow); }
+  .key.prompt-color.fade-1 { background: var(--prompt-f1); color: var(--prompt-ink); }
+  .key.prompt-color.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; box-shadow: var(--shadow); }
   @keyframes keypulse {
-    0%, 100% { box-shadow: 0 0 0 0 var(--blue-glow), var(--shadow); transform: scale(1); }
-    50% { box-shadow: 0 0 0 14px rgba(46, 139, 255, 0), var(--shadow); transform: scale(1.03); }
+    0%, 100% { box-shadow: 0 0 0 0 var(--prompt-glow), var(--shadow); transform: scale(var(--boost, 1)); }
+    50% { box-shadow: 0 0 0 14px transparent, var(--shadow); transform: scale(calc(var(--boost, 1) * 1.03)); }
   }
+  /* --- Size prompt (works with or without colour) --- */
+  .key.prompt-size { transform: scale(var(--boost, 1)); z-index: 6; }
+  .key.prompt-size.boost-small { --boost: 1.10; }
+  .key.prompt-size.boost-med   { --boost: 1.22; }
+  .key.prompt-size.boost-large { --boost: 1.38; }
+  .key.prompt-size:active { transform: scale(calc(var(--boost, 1) * 0.94)); }
+
+  /* --- Other-key treatments while a prompt is showing --- */
+  .keyboard.ok-faded .key.letter:not(.prompting) { opacity: 0.28; }
+  .keyboard.ok-blank .key.letter:not(.prompting) { color: transparent; }
+  .keyboard.ok-black .key.letter:not(.prompting) { background: #1f1f1f; color: transparent; box-shadow: none; }
+
+  /* --- Keyboard letter size steps --- */
+  .keyboard.ks-small .key.letter { font-size: clamp(20px, 2.9vw, 30px); }
+  .keyboard.ks-large .key.letter { font-size: clamp(42px, 5.6vw, 62px); }
   .key.wide { flex: 1.6; font-size: 22px; font-weight: 700; }
   .key.space { flex: 4.5; }
   .key.backspace { background: var(--red-tint); color: var(--red); }
@@ -674,6 +714,74 @@
     transition: left 0.2s;
   }
   .toggle.on::after { left: 23px; }
+
+  /* ===== Settings: collapsible groups ===== */
+  .sgroup { border: 2px solid var(--border); border-radius: 16px; margin-top: 10px; overflow: hidden; background: var(--surface); }
+  .sgroup-head {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; background: var(--bg); border: none;
+    font-family: inherit; font-size: 16px; font-weight: 900; color: var(--ink);
+    cursor: pointer; text-align: left;
+  }
+  .sgroup-head .sg-emoji { font-size: 18px; }
+  .sgroup-head .sg-title { flex: 1; }
+  .sgroup-head .sg-sum { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .sgroup-head .sg-chev { transition: transform 0.22s ease; color: var(--muted); font-size: 14px; }
+  .sgroup.open .sgroup-head .sg-chev { transform: rotate(180deg); }
+  .sgroup-body { display: none; padding: 12px 14px 16px; }
+  .sgroup.open .sgroup-body { display: block; }
+  .sublabel {
+    font-size: 12px; font-weight: 800; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin: 14px 0 6px;
+  }
+  .sublabel:first-child { margin-top: 0; }
+  .help-note { font-size: 12.5px; color: var(--muted); font-weight: 600; line-height: 1.45; margin-top: 6px; }
+
+  /* Segmented pickers */
+  .seg-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg {
+    flex: 1; min-width: 74px;
+    padding: 11px 8px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg);
+    font-family: inherit; font-size: 14px; font-weight: 800; color: var(--ink);
+    cursor: pointer; transition: transform 0.08s ease;
+  }
+  .seg:active { transform: scale(0.96); }
+  .seg.selected { background: var(--ink); color: white; border-color: var(--ink); }
+  .seg[disabled] { opacity: 0.4; pointer-events: none; }
+
+  /* Colour swatches */
+  .swatch-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    width: 44px; height: 44px; border-radius: 12px;
+    border: 3px solid transparent; cursor: pointer; padding: 0;
+    box-shadow: var(--shadow);
+  }
+  .swatch.selected { border-color: var(--ink); transform: scale(1.06); }
+
+  /* Delay slider */
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--ink); height: 28px; }
+  .slider-val {
+    min-width: 64px; text-align: center;
+    font-size: 15px; font-weight: 900;
+    background: var(--bg); border-radius: 10px; padding: 8px 6px;
+  }
+
+  /* Live preview key inside settings */
+  .prompt-preview {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    background: var(--bg); border-radius: 14px; padding: 18px; margin-top: 10px;
+    min-height: 96px; overflow: hidden;
+  }
+  .prompt-preview .pkey {
+    flex: none;
+    width: 62px; height: 62px; border-radius: 14px;
+    background: var(--surface); box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; font-weight: 900;
+  }
 
   .hidden-keys-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .hidden-chip {
@@ -848,6 +956,7 @@
         <button class="pill" data-case="0">ABC</button>
         <button class="pill" data-case="1">abc</button>
         <button class="pill" data-case="2">Abc</button>
+        <button class="pill" data-case="3">aA Auto</button>
       </div>
     </div>
 
@@ -857,6 +966,13 @@
         <button class="pill" data-phon="0">Letter names</button>
         <button class="pill" data-phon="1">Phonetic sounds</button>
       </div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label">Prompts &amp; sizes</div>
+      <button class="word-button" id="setupPromptsBtn">
+        <span id="setupPromptsLabel">None</span>
+      </button>
     </div>
 
     <div class="setup-section">
@@ -1036,41 +1152,155 @@
     <h3>Settings</h3>
     <div class="key-preview" style="font-size: 28px;">⚙</div>
 
-    <div class="menu-section-label">Voice (English US only)</div>
-    <select class="voice-picker" id="voicePicker"></select>
-    <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">Test voice: "Apple"</button>
-    <button class="mbtn action primary" id="recordVoiceBtn" style="width: 100%; margin-top: 8px;">🎤 Record my own voice →</button>
+    <!-- ============ PROMPTS ============ -->
+    <div class="sgroup open" data-group="prompts">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">🎯</span>
+        <span class="sg-title">Prompts</span>
+        <span class="sg-sum" id="sumPrompts"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="help-note">Turn on as many prompts as you like — they stack. Colour, size and voice can all run together.</div>
 
-    <div class="menu-section-label">Speech</div>
-    <div class="settings-list">
-      <div class="setting-row"><span>Speak each letter</span><div class="toggle on" id="toggleLetterSpeech"></div></div>
-      <div class="setting-row"><span>Speak text on Enter</span><div class="toggle on" id="toggleEnterSpeech"></div></div>
-      <div class="setting-row"><span>Speak target word when selected</span><div class="toggle on" id="toggleTargetSpeech"></div></div>
+        <div class="sublabel" style="margin-top:12px;">Colour highlight</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Highlight the next letter</span><div class="toggle" id="togglePromptColor"></div></div>
+        </div>
+        <div class="swatch-row" id="colorSwatches" style="margin-top:10px;"></div>
+
+        <div class="sublabel">Size prompt</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Enlarge the next letter's key</span><div class="toggle" id="togglePromptSize"></div></div>
+        </div>
+        <div class="seg-row" id="segPromptSize" style="margin-top:8px;"></div>
+
+        <div class="sublabel">Verbal prompt</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Say the next letter</span><div class="toggle" id="togglePromptVerbal"></div></div>
+        </div>
+        <div class="help-note">Spoken once when the prompt appears, and again after a wrong letter. For voice-only prompting, turn the colour and size prompts off.</div>
+
+        <div class="sublabel">Other keys while prompting</div>
+        <div class="seg-row" id="segOtherKeys"></div>
+
+        <div class="sublabel">Wait before prompting</div>
+        <div class="slider-row">
+          <input type="range" id="delaySlider" min="0" max="10" step="1" value="0">
+          <span class="slider-val" id="delayValue">Off</span>
+        </div>
+        <div class="help-note">The prompt is held back this long, giving an independent try first. A correct letter typed during the wait counts as independent.</div>
+
+        <div class="sublabel">Preview</div>
+        <div class="prompt-preview" id="promptPreview"></div>
+      </div>
     </div>
 
-    <div class="menu-section-label">Practice</div>
-    <div class="settings-list">
-      <div class="setting-row"><span>Fade blue prompt across successes</span><div class="toggle on" id="toggleFade"></div></div>
-      <div class="setting-row"><span>Rotate words (vs stay on one word)</span><div class="toggle" id="toggleRotate"></div></div>
+    <!-- ============ ERROR CORRECTION ============ -->
+    <div class="sgroup" data-group="errors">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">↩️</span>
+        <span class="sg-title">Error correction</span>
+        <span class="sg-sum" id="sumErrors"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sublabel">When a wrong letter is picked</div>
+        <div class="seg-row" id="segErrorFeedback"></div>
+
+        <div class="sublabel">And the prompt should</div>
+        <div class="seg-row" id="segErrorAction"></div>
+        <div class="help-note">"Restart the wait" hides the prompt again and runs the countdown from the top.</div>
+      </div>
     </div>
 
-    <div class="menu-section-label">Score & Data</div>
-    <div class="settings-list">
-      <div class="setting-row"><span>Score (track prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+    <!-- ============ SIZE & DISPLAY ============ -->
+    <div class="sgroup" data-group="sizes">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">🔠</span>
+        <span class="sg-title">Size &amp; display</span>
+        <span class="sg-sum" id="sumSizes"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sublabel">Keyboard letters</div>
+        <div class="seg-row" id="segKeySize"></div>
+
+        <div class="sublabel">Typing bar</div>
+        <div class="seg-row" id="segDisplaySize"></div>
+
+        <div class="sublabel">Target word bar</div>
+        <div class="seg-row" id="segBannerSize"></div>
+
+        <div class="sublabel">Letter case</div>
+        <div class="seg-row" id="segCaseMode"></div>
+        <div class="help-note">Auto keeps everything lowercase and switches to a capital only where one belongs — the first letter of a word.</div>
+      </div>
     </div>
-    <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 8px;">View Session Data →</button>
 
-    <div class="menu-section-label">Behavior</div>
-    <div class="settings-list">
-      <div class="setting-row"><span>Setup mode (long-press menu)</span><div class="toggle on" id="toggleSetupMode"></div></div>
-      <div class="setting-row"><span>Haptics (Android only)</span><div class="toggle on" id="toggleHaptics"></div></div>
+    <!-- ============ VOICE ============ -->
+    <div class="sgroup" data-group="voice">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">🔊</span>
+        <span class="sg-title">Voice &amp; speech</span>
+        <span class="sg-sum" id="sumVoice"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sublabel">Voice (English US only)</div>
+        <select class="voice-picker" id="voicePicker"></select>
+        <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">Test voice: "Apple"</button>
+        <button class="mbtn action primary" id="recordVoiceBtn" style="width: 100%; margin-top: 8px;">🎤 Record my own voice →</button>
+
+        <div class="sublabel">What gets spoken</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Speak each letter as it's typed</span><div class="toggle on" id="toggleLetterSpeech"></div></div>
+          <div class="setting-row"><span>Speak text on Enter</span><div class="toggle on" id="toggleEnterSpeech"></div></div>
+          <div class="setting-row"><span>Speak target word when selected</span><div class="toggle on" id="toggleTargetSpeech"></div></div>
+        </div>
+
+        <div class="sublabel">Phonetic sounds</div>
+        <div class="phoneme-grid" id="phonemeGrid"></div>
+      </div>
     </div>
 
-    <div class="menu-section-label">Hidden Keys</div>
-    <div class="hidden-keys-list" id="hiddenList"></div>
+    <!-- ============ PRACTICE ============ -->
+    <div class="sgroup" data-group="practice">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">📈</span>
+        <span class="sg-title">Practice &amp; data</span>
+        <span class="sg-sum" id="sumPractice"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="settings-list">
+          <div class="setting-row"><span>Fade the prompt across successes</span><div class="toggle on" id="toggleFade"></div></div>
+          <div class="setting-row"><span>Rotate words (vs stay on one word)</span><div class="toggle" id="toggleRotate"></div></div>
+          <div class="setting-row"><span>Score (track prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+        </div>
+        <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
+      </div>
+    </div>
 
-    <div class="menu-section-label">Phonetic Sounds</div>
-    <div class="phoneme-grid" id="phonemeGrid"></div>
+    <!-- ============ KEYS & BEHAVIOR ============ -->
+    <div class="sgroup" data-group="keys">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">⌨️</span>
+        <span class="sg-title">Keys &amp; behaviour</span>
+        <span class="sg-sum" id="sumKeys"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="settings-list">
+          <div class="setting-row"><span>Setup mode (long-press menu)</span><div class="toggle on" id="toggleSetupMode"></div></div>
+          <div class="setting-row"><span>Haptics (Android only)</span><div class="toggle on" id="toggleHaptics"></div></div>
+        </div>
+
+        <div class="sublabel">Hidden keys</div>
+        <div class="hidden-keys-list" id="hiddenList"></div>
+        <div class="help-note">Long-press any key on the keyboard to hide it or give it a yellow level highlight.</div>
+      </div>
+    </div>
 
     <div class="full-row" style="margin-top: 18px;">
       <button class="mbtn action danger" id="resetAll">Reset Colors</button>
@@ -1097,9 +1327,39 @@ const DEFAULT_PHONEMES = {
   U: 'uh', V: 'vuh', W: 'wuh', X: 'ks', Y: 'yuh', Z: 'zzz'
 };
 
-const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence'];
-const CASE_VALUES = ['ABC', 'abc', 'Abc'];
+const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
+const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+
+// ===== Prompt appearance options =====
+const PROMPT_COLORS = {
+  blue:   { label: 'Blue',   solid: '#2e8bff', soft: '#dbe9ff', glow: 'rgba(46,139,255,0.45)', ink: '#ffffff', f1: '#6daaff', f2: '#c2dcff' },
+  green:  { label: 'Green',  solid: '#34c759', soft: '#d4f5d8', glow: 'rgba(52,199,89,0.45)',  ink: '#ffffff', f1: '#74dd90', f2: '#c5f0d0' },
+  purple: { label: 'Purple', solid: '#a259ff', soft: '#ece0ff', glow: 'rgba(162,89,255,0.45)', ink: '#ffffff', f1: '#c191ff', f2: '#e0ccff' },
+  orange: { label: 'Orange', solid: '#ff9500', soft: '#ffe8c9', glow: 'rgba(255,149,0,0.45)',  ink: '#ffffff', f1: '#ffb64d', f2: '#ffdcae' },
+  pink:   { label: 'Pink',   solid: '#ff4d8d', soft: '#ffdfe9', glow: 'rgba(255,77,141,0.45)', ink: '#ffffff', f1: '#ff85b0', f2: '#ffc7d9' },
+  teal:   { label: 'Teal',   solid: '#00bcd4', soft: '#d0f4f9', glow: 'rgba(0,188,212,0.45)',  ink: '#ffffff', f1: '#5ad4e4', f2: '#b4ecf3' },
+  yellow: { label: 'Yellow', solid: '#ffc400', soft: '#fff2c4', glow: 'rgba(255,196,0,0.45)',  ink: '#1a1a1a', f1: '#ffd84d', f2: '#ffeeb0' },
+  red:    { label: 'Red',    solid: '#ff453a', soft: '#ffe0dc', glow: 'rgba(255,69,58,0.45)',  ink: '#ffffff', f1: '#ff8079', f2: '#ffc4c0' },
+};
+const SIZE_STEPS = ['small', 'med', 'large'];
+const SIZE_LABELS = { small: 'Small', med: 'Medium', large: 'Large' };
+const OTHER_KEYS_LABELS = {
+  normal: 'Normal',
+  faded:  'Faded',
+  blank:  'Blank white',
+  black:  'Blacked out',
+};
+const ERROR_FEEDBACK_LABELS = {
+  none:    'Say nothing',
+  error:   'Say "try again"',
+  correct: 'Say the correct letter',
+};
+const ERROR_ACTION_LABELS = {
+  now:     'Show prompt now',
+  restart: 'Restart the wait',
+  none:    'No change',
+};
 
 const state = {
   text: '',
@@ -1130,7 +1390,30 @@ const state = {
   rotateMode: false, // false = stay on word, true = rotate through list
   wordFadeLevels: {}, // {WORD: [0,0,0...]} per-letter fade level 0-3
   wordTrialCounters: {}, // {WORD: {successes, abandons}} consecutive counts
+
+  // ===== Prompting =====
+  promptColorOn: true,        // highlight the next letter in colour
+  promptColor: 'blue',        // key of PROMPT_COLORS
+  promptSizeOn: false,        // enlarge the next letter's key
+  promptSize: 'med',          // small | med | large
+  promptVerbalOn: false,      // speak the next letter as a prompt
+  promptDelaySec: 0,          // 0-10s before any prompt appears
+  otherKeysMode: 'normal',    // normal | faded | blank | black
+
+  // ===== Sizes =====
+  keySize: 'med',             // keyboard letter size
+  displaySize: 'med',         // speller's typing bar
+  bannerSize: 'med',          // target/prompt bar above the typing bar
+
+  // ===== Error correction =====
+  errorFeedback: 'none',      // none | error | correct
+  errorPromptAction: 'now',   // now | restart | none
 };
+
+// Prompt visibility is runtime-only (never persisted)
+let promptVisible = true;
+let promptDelayTimer = null;
+let verbalSpokenFor = -1;
 
 let availableVoices = [];
 
@@ -1184,6 +1467,21 @@ async function load() {
         rotateMode: saved.rotateMode ?? false,
         wordFadeLevels: saved.wordFadeLevels || {},
         wordTrialCounters: saved.wordTrialCounters || {},
+
+        promptColorOn: saved.promptColorOn ?? true,
+        promptColor: PROMPT_COLORS[saved.promptColor] ? saved.promptColor : 'blue',
+        promptSizeOn: saved.promptSizeOn ?? false,
+        promptSize: SIZE_STEPS.includes(saved.promptSize) ? saved.promptSize : 'med',
+        promptVerbalOn: saved.promptVerbalOn ?? false,
+        promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
+        otherKeysMode: OTHER_KEYS_LABELS[saved.otherKeysMode] ? saved.otherKeysMode : 'normal',
+
+        keySize: SIZE_STEPS.includes(saved.keySize) ? saved.keySize : 'med',
+        displaySize: SIZE_STEPS.includes(saved.displaySize) ? saved.displaySize : 'med',
+        bannerSize: SIZE_STEPS.includes(saved.bannerSize) ? saved.bannerSize : 'med',
+
+        errorFeedback: ERROR_FEEDBACK_LABELS[saved.errorFeedback] ? saved.errorFeedback : 'none',
+        errorPromptAction: ERROR_ACTION_LABELS[saved.errorPromptAction] ? saved.errorPromptAction : 'now',
       });
     }
   } catch (e) {}
@@ -1217,6 +1515,21 @@ async function save() {
       rotateMode: state.rotateMode,
       wordFadeLevels: state.wordFadeLevels,
       wordTrialCounters: state.wordTrialCounters,
+
+      promptColorOn: state.promptColorOn,
+      promptColor: state.promptColor,
+      promptSizeOn: state.promptSizeOn,
+      promptSize: state.promptSize,
+      promptVerbalOn: state.promptVerbalOn,
+      promptDelaySec: state.promptDelaySec,
+      otherKeysMode: state.otherKeysMode,
+
+      keySize: state.keySize,
+      displaySize: state.displaySize,
+      bannerSize: state.bannerSize,
+
+      errorFeedback: state.errorFeedback,
+      errorPromptAction: state.errorPromptAction,
     }));
   } catch (e) {}
 }
@@ -1296,10 +1609,17 @@ function speakLetter(letter) {
   } else {
     if (recordings.letterName[letter] && playClip(recordings.letterName[letter])) return;
     let sound;
-    if (state.caseMode === 2 && state.text.length === 1) sound = letter; // Sentence first letter
+    if ((state.caseMode === 2 || state.caseMode === 3) && state.text.length === 1) sound = letter; // capital position
     else sound = letter.toLowerCase();
     speak(sound, 1.15);
   }
+}
+// Render a stored (uppercase) word the way the current case mode wants it
+function displayWord(w) {
+  if (!w) return '';
+  if (state.caseMode === 1) return w.toLowerCase();
+  if (state.caseMode === 2 || state.caseMode === 3) return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  return w;
 }
 // Speak a word — prefers a recording, else TTS
 function speakWord(word, rate) {
@@ -1316,7 +1636,7 @@ function setView(name) {
 }
 function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
-function showKeyboard() { setView('keyboard'); touchSession(); render(); }
+function showKeyboard() { setView('keyboard'); touchSession(); armPrompt(); render(); }
 
 // ---- Voices (en-US only) ----
 function refreshVoiceList() {
@@ -1438,7 +1758,7 @@ function showMastered(word) {
   el.classList.add('mastered');
   document.getElementById('luEmoji').textContent = '🏆';
   document.getElementById('luText').textContent =
-    (state.caseMode === 1 ? word.toLowerCase() : word) + ' mastered!';
+    displayWord(word) + ' mastered!';
   el.classList.add('show');
   if (state.targetSpeech) setTimeout(() => speak('You did it!', 1.0), 400);
   setTimeout(() => el.classList.remove('show'), 2600);
@@ -1451,6 +1771,7 @@ function selectTargetWord(w, speakIt) {
   state.pendingLetterCounts = {};
   state.text = '';
   getOrInitWordData(w);
+  armPrompt();
   save(); render();
   if (speakIt && state.targetSpeech) speakWord(w, 0.85);
 }
@@ -1462,13 +1783,35 @@ function rotateToNextWord() {
   selectTargetWord(next, true);
 }
 
+// ===== Case handling =====
+// Mode 3 (Auto): lowercase everywhere except where a capital is needed —
+// the first letter of a word — and the keyboard follows along as you type.
+function autoWantsCapital(textSoFar) {
+  const t = textSoFar || '';
+  if (t.length === 0) return true;          // start of the first word
+  return /\s$/.test(t);                     // just after a space
+}
 function applyCase(rawText) {
   if (!rawText) return '';
   if (state.caseMode === 0) return rawText;
   if (state.caseMode === 1) return rawText.toLowerCase();
+  if (state.caseMode === 3) {
+    return rawText.toLowerCase().replace(/(^|\s)([a-z])/g, (m, pre, ch) => pre + ch.toUpperCase());
+  }
   return rawText.charAt(0).toUpperCase() + rawText.slice(1).toLowerCase();
 }
-function displayLetter(L) { return state.caseMode === 1 ? L.toLowerCase() : L; }
+// How a letter should be drawn on a key right now
+function displayLetter(L) {
+  if (state.caseMode === 1) return L.toLowerCase();
+  if (state.caseMode === 3) return autoWantsCapital(state.text) ? L.toUpperCase() : L.toLowerCase();
+  return L;
+}
+// How a letter at a known position in the target word should be drawn
+function displayLetterAt(L, index) {
+  if (state.caseMode === 1) return L.toLowerCase();
+  if (state.caseMode === 3) return index === 0 ? L.toUpperCase() : L.toLowerCase();
+  return L;
+}
 
 function nextExpectedLetter() {
   if (!state.currentTarget) return null;
@@ -1478,17 +1821,86 @@ function nextExpectedLetter() {
 function isWordComplete() {
   return state.currentTarget && state.targetIndex >= state.currentTarget.length;
 }
+
+// ===== Prompt engine =====
+function applyPromptTheme() {
+  const c = PROMPT_COLORS[state.promptColor] || PROMPT_COLORS.blue;
+  const r = document.documentElement.style;
+  r.setProperty('--prompt', c.solid);
+  r.setProperty('--prompt-soft', c.soft);
+  r.setProperty('--prompt-glow', c.glow);
+  r.setProperty('--prompt-ink', c.ink);
+  r.setProperty('--prompt-f1', c.f1);
+  r.setProperty('--prompt-f2', c.f2);
+}
+// Any visual/verbal prompt at all?
+function anyPromptEnabled() {
+  return state.promptColorOn || state.promptSizeOn || state.promptVerbalOn || state.otherKeysMode !== 'normal';
+}
+// Prompts are showing right now (delay elapsed, letter not fully faded)
+function promptsShowing() {
+  if (!state.currentTarget || isWordComplete()) return false;
+  if (fadeLevelAt(state.targetIndex) >= 3) return false;
+  return promptVisible;
+}
+function clearPromptTimer() {
+  if (promptDelayTimer) { clearTimeout(promptDelayTimer); promptDelayTimer = null; }
+}
+// Called whenever the expected letter changes, or after an error that restarts the wait
+function armPrompt(force) {
+  clearPromptTimer();
+  verbalSpokenFor = -1;
+  const delay = Math.max(0, Math.min(10, state.promptDelaySec || 0));
+  if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; }
+  if (delay === 0 && !force) {
+    promptVisible = true;
+    if (state.promptVerbalOn) {
+      promptDelayTimer = setTimeout(() => { promptDelayTimer = null; speakVerbalPrompt(); },
+        state.letterSpeech ? 800 : 200);
+    }
+    return;
+  }
+  promptVisible = false;
+  promptDelayTimer = setTimeout(() => {
+    promptDelayTimer = null;
+    promptVisible = true;
+    render();
+    speakVerbalPrompt();
+  }, delay * 1000);
+}
+// Reveal immediately (used by the "show prompt now" error response)
+function revealPromptNow(speakIt) {
+  clearPromptTimer();
+  promptVisible = true;
+  if (speakIt !== false) speakVerbalPrompt(true);
+  else verbalSpokenFor = state.targetIndex; // already said aloud by the error feedback
+}
+function speakVerbalPrompt(force) {
+  if (!state.promptVerbalOn) return;
+  if (!promptsShowing()) return;
+  const L = nextExpectedLetter();
+  if (!L) return;
+  if (!force && verbalSpokenFor === state.targetIndex) return;
+  verbalSpokenFor = state.targetIndex;
+  speakLetter(L);
+}
 function isLetterPrompted(letter) {
   // Yellow level highlight always counts as a prompt
   if (state.keyLevels[letter]) return true;
-  // Blue target-next counts only if it hasn't fully faded (level < 3)
+  // The next-letter prompt only counts when it was actually being shown
+  if (!anyPromptEnabled()) return false;
   const expected = nextExpectedLetter();
-  if (expected && expected === letter && fadeLevelAt(state.targetIndex) < 3) return true;
+  if (expected && expected === letter && promptsShowing()) return true;
   return false;
 }
 
 function render() {
+  applyPromptTheme();
+  const showing = promptsShowing();
+
   const banner = document.getElementById('targetBanner');
+  banner.classList.remove('bs-small', 'bs-med', 'bs-large');
+  banner.classList.add('bs-' + state.bannerSize);
   if (state.currentTarget) {
     banner.classList.add('active');
     const tw = document.getElementById('targetWord');
@@ -1497,17 +1909,13 @@ function render() {
       const s = document.createElement('span');
       s.className = 'tletter';
       if (i < state.targetIndex) s.classList.add('done');
-      else if (i === state.targetIndex) {
+      else if (i === state.targetIndex && showing && state.promptColorOn) {
         const fl = fadeLevelAt(i);
-        if (fl < 3) {
-          s.classList.add('next');
-          if (fl > 0) s.classList.add('fade-' + fl);
-        } else {
-          s.classList.add('pending'); // fully faded — no blue cue
-        }
+        s.classList.add('next');
+        if (fl > 0) s.classList.add('fade-' + fl);
       }
       else s.classList.add('pending');
-      s.textContent = displayLetter(ch);
+      s.textContent = displayLetterAt(ch, i);
       tw.appendChild(s);
     });
   } else {
@@ -1519,6 +1927,8 @@ function render() {
   const txt = applyCase(state.text);
   content.innerHTML = (txt ? escapeHtml(txt) : '') + '<span class="caret"></span>';
   disp.classList.toggle('has-text', state.text.length > 0);
+  disp.classList.remove('ds-small', 'ds-med', 'ds-large');
+  disp.classList.add('ds-' + state.displaySize);
 
   const wrap = document.getElementById('modesWrap');
   wrap.classList.toggle('expanded', state.modesOpen);
@@ -1535,6 +1945,9 @@ function render() {
 
   const kb = document.getElementById('keyboard');
   kb.innerHTML = '';
+  kb.classList.remove('ks-small', 'ks-med', 'ks-large', 'ok-faded', 'ok-blank', 'ok-black');
+  kb.classList.add('ks-' + state.keySize);
+  if (showing && state.otherKeysMode !== 'normal') kb.classList.add('ok-' + state.otherKeysMode);
   const expected = nextExpectedLetter();
   LAYOUT.forEach(row => {
     const r = document.createElement('div');
@@ -1554,16 +1967,20 @@ function render() {
 
 function makeLetterKey(letter, expected) {
   const k = document.createElement('button');
-  k.className = 'key';
+  k.className = 'key letter';
   k.dataset.letter = letter;
   const lvl = state.keyLevels[letter];
   if (lvl) k.classList.add('level-' + lvl);
   if (state.hiddenKeys[letter]) k.classList.add('hidden');
-  if (expected && letter === expected) {
+  if (expected && letter === expected && promptsShowing()) {
     const fl = fadeLevelAt(state.targetIndex);
-    if (fl < 3) {
-      k.classList.add('target-next');
+    k.classList.add('prompting'); // exempt from the other-key treatments
+    if (state.promptColorOn) {
+      k.classList.add('prompt-color');
       if (fl > 0) k.classList.add('fade-' + fl);
+    }
+    if (state.promptSizeOn) {
+      k.classList.add('prompt-size', 'boost-' + state.promptSize);
     }
   }
   k.textContent = displayLetter(letter);
@@ -1589,6 +2006,7 @@ function makeSpecialKey(label, action, cls) {
           if (removed) {
             state.targetIndex = Math.max(0, state.targetIndex - 1);
             state.targetPromptedFlags.pop();
+            armPrompt();
           }
         }
       }
@@ -1642,6 +2060,7 @@ function makeSpecialKey(label, action, cls) {
       state.targetIndex = 0;
       state.targetProgress = [];
       state.targetPromptedFlags = [];
+      armPrompt();
     }
     render();
   });
@@ -1691,16 +2110,38 @@ function typeLetter(letter) {
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
       buzz(20);
-      if (isWordComplete()) buzz([20, 80, 40]);
+      if (isWordComplete()) { buzz([20, 80, 40]); clearPromptTimer(); promptVisible = true; }
+      else armPrompt();          // fresh wait for the next letter
     } else {
       state.targetProgress.push(false);
       buzz(8);
+      handleError(expected);
     }
   } else {
     buzz(8);
   }
   save();
   render();
+}
+
+// ---- Error correction ----
+function handleError(expectedLetter) {
+  // 1. What the app says
+  if (state.errorFeedback === 'error') {
+    setTimeout(() => speak('Try again', 1.0), state.letterSpeech ? 450 : 0);
+  } else if (state.errorFeedback === 'correct' && expectedLetter) {
+    setTimeout(() => speakLetter(expectedLetter), state.letterSpeech ? 450 : 0);
+  }
+  // 2. What the prompt does
+  // If the error feedback already said the letter, don't say it twice
+  const alreadySaid = (state.errorFeedback === 'correct');
+  if (state.errorPromptAction === 'now') {
+    revealPromptNow(!alreadySaid);
+  } else if (state.errorPromptAction === 'restart') {
+    armPrompt(true);
+  } else if (state.promptVerbalOn && promptsShowing() && !alreadySaid) {
+    speakVerbalPrompt(true); // already showing — repeat the spoken cue
+  }
 }
 
 // ---- Celebration ----
@@ -1733,8 +2174,7 @@ function celebrate(word) {
   const bankRect = bankBtn.getBoundingClientRect();
   const fw = document.createElement('div');
   fw.className = 'flying-word';
-  fw.textContent = displayLetter(word.charAt(0)) === word.charAt(0).toLowerCase()
-    ? word.toLowerCase() : word;
+  fw.textContent = displayWord(word);
   fw.style.fontSize = '54px';
   fw.style.left = (dispRect.left + dispRect.width / 2) + 'px';
   fw.style.top = (dispRect.top + dispRect.height / 2) + 'px';
@@ -1819,6 +2259,7 @@ document.getElementById('targetClearBtn').addEventListener('click', () => {
   state.targetIndex = 0;
   state.targetProgress = [];
   state.targetPromptedFlags = [];
+  clearPromptTimer(); promptVisible = true;
   save(); render();
 });
 document.getElementById('freeTypeBtn').addEventListener('click', () => {
@@ -1860,7 +2301,7 @@ function renderWordList() {
     row.className = 'word-item' + (state.currentTarget === w ? ' selected' : '');
     const t = document.createElement('span');
     t.className = 'text';
-    t.textContent = (state.caseMode === 1 ? w.toLowerCase() : w);
+    t.textContent = displayWord(w);
     t.addEventListener('click', () => {
       state.currentTarget = w;
       state.targetIndex = 0;
@@ -1870,6 +2311,7 @@ function renderWordList() {
       state.text = '';
       state.modesOpen = false; // collapse when entering spelling mode
       getOrInitWordData(w);
+      armPrompt();
       save(); render(); renderSetup();
       if (state.targetSpeech) speakWord(w, 0.85);
       closeAllMenus();
@@ -1914,7 +2356,7 @@ function renderWordBank() {
   state.wordBank.slice().reverse().forEach(w => {
     const chip = document.createElement('div');
     chip.className = 'bank-chip';
-    chip.textContent = (state.caseMode === 1 ? w.toLowerCase() : w);
+    chip.textContent = displayWord(w);
     bw.appendChild(chip);
   });
 }
@@ -1978,7 +2420,7 @@ function renderData() {
       r.className = 'word-log-row';
       const d = new Date(item.ts);
       const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      r.innerHTML = '<span class="w">' + (state.caseMode === 1 ? item.word.toLowerCase() : item.word)
+      r.innerHTML = '<span class="w">' + displayWord(item.word)
         + '</span><span class="meta">' + time
         + ' · <span class="ind">' + item.independent + ' ind</span>'
         + ' · <span class="pmt">' + item.prompted + ' prompted</span></span>';
@@ -2004,7 +2446,110 @@ document.getElementById('settingsBtn').addEventListener('click', () => {
   renderSettings();
   document.getElementById('settingsMenu').classList.add('show');
 });
+// ---- Settings building blocks ----
+function buildSeg(containerId, options, current, onPick) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
+  options.forEach(o => {
+    const b = document.createElement('button');
+    b.className = 'seg' + (o.value === current ? ' selected' : '');
+    b.textContent = o.label;
+    b.addEventListener('click', () => { onPick(o.value); });
+    c.appendChild(b);
+  });
+}
+function buildSwatches() {
+  const c = document.getElementById('colorSwatches');
+  if (!c) return;
+  c.innerHTML = '';
+  Object.entries(PROMPT_COLORS).forEach(([key, def]) => {
+    const b = document.createElement('button');
+    b.className = 'swatch' + (key === state.promptColor ? ' selected' : '');
+    b.style.background = def.solid;
+    b.title = def.label;
+    b.setAttribute('aria-label', def.label);
+    b.addEventListener('click', () => {
+      state.promptColor = key;
+      if (!state.promptColorOn) state.promptColorOn = true;
+      save(); applyPromptTheme(); render(); renderSettings();
+    });
+    c.appendChild(b);
+  });
+}
+function renderPromptPreview() {
+  const p = document.getElementById('promptPreview');
+  if (!p) return;
+  p.innerHTML = '';
+  const demo = ['C', 'A', 'T'];
+  demo.forEach((L, i) => {
+    const k = document.createElement('div');
+    k.className = 'pkey key letter';
+    if (i === 1) {
+      k.classList.add('prompting');
+      if (state.promptColorOn) k.classList.add('prompt-color');
+      if (state.promptSizeOn) k.classList.add('prompt-size', 'boost-' + state.promptSize);
+    } else {
+      if (state.otherKeysMode === 'faded') k.style.opacity = '0.28';
+      if (state.otherKeysMode === 'blank') k.style.color = 'transparent';
+      if (state.otherKeysMode === 'black') { k.style.background = '#1f1f1f'; k.style.color = 'transparent'; }
+    }
+    k.textContent = state.caseMode === 1 ? L.toLowerCase() : L;
+    p.appendChild(k);
+  });
+}
+function promptSummary() {
+  const on = [];
+  if (state.promptColorOn) on.push((PROMPT_COLORS[state.promptColor] || {}).label || 'Colour');
+  if (state.promptSizeOn) on.push(SIZE_LABELS[state.promptSize] + ' size');
+  if (state.promptVerbalOn) on.push('Voice');
+  if (state.otherKeysMode !== 'normal') on.push(OTHER_KEYS_LABELS[state.otherKeysMode]);
+  if (state.promptDelaySec > 0) on.push(state.promptDelaySec + 's wait');
+  return on.length ? on.join(' · ') : 'None';
+}
+
 function renderSettings() {
+  // ----- Prompts -----
+  document.getElementById('togglePromptColor').classList.toggle('on', state.promptColorOn);
+  document.getElementById('togglePromptSize').classList.toggle('on', state.promptSizeOn);
+  document.getElementById('togglePromptVerbal').classList.toggle('on', state.promptVerbalOn);
+  buildSwatches();
+  buildSeg('segPromptSize', SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] })), state.promptSize,
+    v => { state.promptSize = v; if (!state.promptSizeOn) state.promptSizeOn = true; save(); render(); renderSettings(); });
+  buildSeg('segOtherKeys', Object.entries(OTHER_KEYS_LABELS).map(([v, l]) => ({ value: v, label: l })), state.otherKeysMode,
+    v => { state.otherKeysMode = v; save(); render(); renderSettings(); });
+
+  const slider = document.getElementById('delaySlider');
+  slider.value = state.promptDelaySec;
+  document.getElementById('delayValue').textContent =
+    state.promptDelaySec === 0 ? 'Off' : state.promptDelaySec + ' sec';
+  renderPromptPreview();
+
+  // ----- Error correction -----
+  buildSeg('segErrorFeedback', Object.entries(ERROR_FEEDBACK_LABELS).map(([v, l]) => ({ value: v, label: l })), state.errorFeedback,
+    v => { state.errorFeedback = v; save(); renderSettings(); });
+  buildSeg('segErrorAction', Object.entries(ERROR_ACTION_LABELS).map(([v, l]) => ({ value: v, label: l })), state.errorPromptAction,
+    v => { state.errorPromptAction = v; save(); renderSettings(); });
+
+  // ----- Sizes -----
+  const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
+  buildSeg('segKeySize', sizeOpts, state.keySize, v => { state.keySize = v; save(); render(); renderSettings(); });
+  buildSeg('segDisplaySize', sizeOpts, state.displaySize, v => { state.displaySize = v; save(); render(); renderSettings(); });
+  buildSeg('segBannerSize', sizeOpts, state.bannerSize, v => { state.bannerSize = v; save(); render(); renderSettings(); });
+  buildSeg('segCaseMode', CASE_VALUES.map((v, i) => ({ value: i, label: v + ' · ' + CASE_LABELS[i] })), state.caseMode,
+    v => { state.caseMode = v; save(); render(); renderSetup(); renderSettings(); });
+
+  // ----- Summaries -----
+  document.getElementById('sumPrompts').textContent = promptSummary();
+  document.getElementById('sumErrors').textContent = ERROR_FEEDBACK_LABELS[state.errorFeedback];
+  document.getElementById('sumSizes').textContent =
+    'Keys ' + SIZE_LABELS[state.keySize] + ' · ' + CASE_VALUES[state.caseMode];
+  document.getElementById('sumVoice').textContent = state.voiceName || 'System voice';
+  document.getElementById('sumPractice').textContent =
+    (state.scoreMode ? 'Scoring on' : 'Scoring off') + (state.fadeMode ? ' · Fading' : '');
+  document.getElementById('sumKeys').textContent =
+    Object.keys(state.hiddenKeys).length ? Object.keys(state.hiddenKeys).length + ' hidden' : 'All keys on';
+
   document.getElementById('toggleLetterSpeech').classList.toggle('on', state.letterSpeech);
   document.getElementById('toggleEnterSpeech').classList.toggle('on', state.enterSpeech);
   document.getElementById('toggleSetupMode').classList.toggle('on', state.setupMode);
@@ -2056,6 +2601,33 @@ function renderSettings() {
     grid.appendChild(row);
   });
 }
+// ---- Collapsible settings groups ----
+document.querySelectorAll('#settingsMenu [data-toggle-group]').forEach(head => {
+  head.addEventListener('click', () => {
+    head.closest('.sgroup').classList.toggle('open');
+  });
+});
+
+// ---- Prompt controls ----
+document.getElementById('togglePromptColor').addEventListener('click', () => {
+  state.promptColorOn = !state.promptColorOn; save(); render(); renderSettings();
+});
+document.getElementById('togglePromptSize').addEventListener('click', () => {
+  state.promptSizeOn = !state.promptSizeOn; save(); render(); renderSettings();
+});
+document.getElementById('togglePromptVerbal').addEventListener('click', () => {
+  state.promptVerbalOn = !state.promptVerbalOn; save(); render(); renderSettings();
+});
+document.getElementById('delaySlider').addEventListener('input', e => {
+  state.promptDelaySec = parseInt(e.target.value) || 0;
+  document.getElementById('delayValue').textContent =
+    state.promptDelaySec === 0 ? 'Off' : state.promptDelaySec + ' sec';
+  document.getElementById('sumPrompts').textContent = promptSummary();
+});
+document.getElementById('delaySlider').addEventListener('change', () => {
+  save(); armPrompt(); render();
+});
+
 document.getElementById('toggleLetterSpeech').addEventListener('click', () => { state.letterSpeech = !state.letterSpeech; save(); renderSettings(); });
 document.getElementById('toggleEnterSpeech').addEventListener('click', () => { state.enterSpeech = !state.enterSpeech; save(); renderSettings(); });
 document.getElementById('toggleSetupMode').addEventListener('click', () => { state.setupMode = !state.setupMode; save(); renderSettings(); });
@@ -2093,14 +2665,10 @@ document.getElementById('voicePreviewBtn').addEventListener('click', () => {
 });
 document.getElementById('settingsMenu').addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
-  if (btn && btn.dataset.action === 'cancel') {
+  if ((btn && btn.dataset.action === 'cancel') || e.target.id === 'settingsMenu') {
     autoCollapseSpellingMode();
     closeAllMenus();
-    save(); render();
-  } else if (e.target.id === 'settingsMenu') {
-    autoCollapseSpellingMode();
-    closeAllMenus();
-    save(); render();
+    save(); render(); renderSetup();
   }
 });
 
@@ -2170,7 +2738,7 @@ function renderRecordWords() {
     return;
   }
   state.words.forEach(w => {
-    c.appendChild(makeRecordRow('word', w, (state.caseMode === 1 ? w.toLowerCase() : w)));
+    c.appendChild(makeRecordRow('word', w, displayWord(w)));
   });
 }
 function renderRecordSheet() {
@@ -2219,6 +2787,7 @@ document.getElementById('displayClear').addEventListener('click', () => {
     state.targetProgress = [];
     state.targetPromptedFlags = [];
     state.pendingLetterCounts = {}; // abandoned attempts don't count
+    armPrompt();
     save();
     if (doRotate) rotateToNextWord();
     else render();
@@ -2230,7 +2799,7 @@ document.getElementById('modesToggle').addEventListener('click', () => {
   state.modesOpen = !state.modesOpen; save(); render();
 });
 document.getElementById('caseToggle').addEventListener('click', () => {
-  state.caseMode = (state.caseMode + 1) % 3;
+  state.caseMode = (state.caseMode + 1) % 4;
   autoCollapseSpellingMode();
   save(); render();
 });
@@ -2256,6 +2825,11 @@ function renderSetup() {
     const isPhon = p.dataset.phon === '1';
     p.classList.toggle('selected', isPhon === state.phoneticMode);
   });
+  const pl = document.getElementById('setupPromptsLabel');
+  if (pl) {
+    pl.textContent = promptSummary();
+    document.getElementById('setupPromptsBtn').classList.toggle('has-target', anyPromptEnabled());
+  }
   const wb = document.getElementById('setupWordBtn');
   const wl = document.getElementById('setupWordLabel');
   if (state.currentTarget) {
@@ -2283,6 +2857,11 @@ document.getElementById('setupVoicePicker').addEventListener('change', e => {
 document.getElementById('setupVoicePreview').addEventListener('click', () => {
   warmSpeech();
   speak('Apple. A. P. P. L. E.', 0.95);
+});
+document.getElementById('setupPromptsBtn').addEventListener('click', () => {
+  refreshVoiceList();
+  renderSettings();
+  document.getElementById('settingsMenu').classList.add('show');
 });
 document.getElementById('startBtn').addEventListener('click', () => { showKeyboard(); });
 
