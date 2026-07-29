@@ -459,6 +459,12 @@
   .ctl.active { background: var(--blue); color: white; }
   .ctl.active .label { color: rgba(255,255,255,0.85); }
   .spacer { flex: 1; }
+  .ctl.help { background: var(--yellow-warm); }
+  .ctl.help:active { background: var(--gold); }
+  .word-item .meta {
+    font-size: 11px; font-weight: 800; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.6px; margin-left: 8px;
+  }
   .ctl.icon {
     width: 54px; height: 54px;
     padding: 0; display: flex; align-items: center; justify-content: center;
@@ -1062,6 +1068,8 @@
       <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     </div>
     <div class="spacer"></div>
+    <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
+    <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
     <button class="wordbank-btn" id="wordBankBtn" aria-label="Word bank">
       <span class="emoji">📚</span>
       <span class="count" id="wordBankCount">0</span>
@@ -1171,6 +1179,23 @@
     <div class="full-row" style="margin-top: 18px;">
       <button class="mbtn action danger" id="clearRecordingsBtn">Delete All</button>
       <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Word search -->
+<div class="overlay" id="searchMenu">
+  <div class="sheet">
+    <h3>Find a Word</h3>
+    <div class="key-preview" style="font-size: 30px;">&#128269;</div>
+    <div class="word-add" style="margin-top:0;">
+      <input type="text" id="searchInput" placeholder="Type a few letters..." maxlength="20"
+             autocomplete="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <div class="menu-section-label">Recent &amp; matching</div>
+    <div class="word-list" id="searchResults"></div>
+    <div class="full-row" style="margin-top: 16px;">
+      <button class="mbtn action primary" data-action="cancel" style="grid-column: span 2;">Done</button>
     </div>
   </div>
 </div>
@@ -1360,6 +1385,14 @@
           <div class="setting-row"><span>Haptics (Android only)</span><div class="toggle on" id="toggleHaptics"></div></div>
         </div>
 
+        <div class="sublabel">On-screen buttons</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Word bank number badge</span><div class="toggle on" id="toggleBankCount"></div></div>
+          <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
+          <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
+        </div>
+        <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
+
         <div class="sublabel">Hidden keys</div>
         <div class="hidden-keys-list" id="hiddenList"></div>
         <div class="help-note">Long-press any key on the keyboard to hide it or give it a yellow level highlight.</div>
@@ -1505,6 +1538,12 @@ const state = {
   promptDelaySec: 0,          // 0-10s before any prompt appears
   otherKeysMode: 'normal',    // normal | faded | blank | black
 
+  // ===== On-screen keyboard buttons =====
+  showBankCount: true,        // the number badge on the word bank
+  showSearchBtn: false,       // magnifier that searches past words
+  showHelpBtn: false,         // fires the prompts on demand
+  wordHistory: {},            // {WORD: {n: times spelled, t: last finished}}
+
   // ===== Sizes =====
   keySize: 'med',             // keyboard letter size
   displaySize: 'med',         // speller's typing bar
@@ -1593,6 +1632,11 @@ async function load() {
         promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
         otherKeysMode: OTHER_KEYS_LABELS[saved.otherKeysMode] ? saved.otherKeysMode : 'normal',
 
+        showBankCount: saved.showBankCount ?? true,
+        showSearchBtn: saved.showSearchBtn ?? false,
+        showHelpBtn: saved.showHelpBtn ?? false,
+        wordHistory: saved.wordHistory || {},
+
         keySize: SIZE_STEPS.includes(saved.keySize) ? saved.keySize : 'med',
         displaySize: SIZE_STEPS.includes(saved.displaySize) ? saved.displaySize : 'med',
         bannerSize: SIZE_STEPS.includes(saved.bannerSize) ? saved.bannerSize : 'med',
@@ -1649,6 +1693,11 @@ async function save() {
       promptVerbalOn: state.promptVerbalOn,
       promptDelaySec: state.promptDelaySec,
       otherKeysMode: state.otherKeysMode,
+
+      showBankCount: state.showBankCount,
+      showSearchBtn: state.showSearchBtn,
+      showHelpBtn: state.showHelpBtn,
+      wordHistory: state.wordHistory,
 
       keySize: state.keySize,
       displaySize: state.displaySize,
@@ -2082,6 +2131,9 @@ function render() {
   document.getElementById('wordToggle').classList.toggle('active', !!state.currentTarget);
 
   document.getElementById('wordBankCount').textContent = state.wordBank.length;
+  document.getElementById('wordBankCount').style.display = state.showBankCount ? '' : 'none';
+  document.getElementById('searchBtn').style.display = state.showSearchBtn ? '' : 'none';
+  document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
 
   const kb = document.getElementById('keyboard');
   kb.innerHTML = '';
@@ -2176,6 +2228,9 @@ function makeSpecialKey(label, action, cls) {
 
       if (wasComplete && completedWord) {
         state.wordBank.push(completedWord);
+        const h = state.wordHistory[completedWord] || { n: 0, t: 0 };
+        h.n++; h.t = Date.now();
+        state.wordHistory[completedWord] = h;
         if (state.scoreMode) {
           const pmt = state.targetPromptedFlags.filter(p => p).length;
           const ind = state.targetPromptedFlags.length - pmt;
@@ -2403,7 +2458,7 @@ function openKeyMenu(letter) {
   menu.classList.add('show');
 }
 function closeAllMenus() {
-  ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu'].forEach(id =>
+  ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu','searchMenu'].forEach(id =>
     document.getElementById(id).classList.remove('show'));
 }
 function saveCurrentPhoneme() {
@@ -2532,6 +2587,101 @@ document.getElementById('wordMenu').addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (btn && btn.dataset.action === 'cancel') closeAllMenus();
   if (e.target.id === 'wordMenu') closeAllMenus();
+});
+
+// ===== Word search =====
+// Ranks past words by how well they match, how recently they were spelled,
+// and how often they've come up.
+function searchWords(query) {
+  const now = Date.now();
+  const seen = {};
+  const rows = [];
+  Object.entries(state.wordHistory || {}).forEach(([w, d]) => {
+    seen[w] = true;
+    rows.push({ word: w, n: d.n || 0, t: d.t || 0 });
+  });
+  state.words.forEach(w => { if (!seen[w]) { seen[w] = true; rows.push({ word: w, n: 0, t: 0 }); } });
+
+  const q = (query || '').toUpperCase().replace(/[^A-Z]/g, '');
+  return rows.map(r => {
+    let rel;
+    if (!q) rel = 10;
+    else if (r.word === q) rel = 120;
+    else if (r.word.startsWith(q)) rel = 70;
+    else if (r.word.includes(q)) rel = 35;
+    else return null;
+    const days = r.t ? (now - r.t) / 86400000 : null;
+    const recency = (days === null) ? 0 : 45 / (1 + days);   // fades over days
+    const freq = Math.min(24, r.n * 4);
+    return Object.assign({}, r, { score: rel + recency + freq });
+  }).filter(Boolean)
+    .sort((a, b) => b.score - a.score || a.word.localeCompare(b.word))
+    .slice(0, 40);
+}
+function timeAgo(ts) {
+  if (!ts) return 'not spelled yet';
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+function renderSearchResults() {
+  const list = document.getElementById('searchResults');
+  const q = document.getElementById('searchInput').value;
+  const results = searchWords(q);
+  list.innerHTML = '';
+  if (results.length === 0) {
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = q ? 'No words match yet. Words appear here once they\u2019ve been spelled.'
+                      : 'No words yet. Finish a word and it will show up here.';
+    list.appendChild(n);
+    return;
+  }
+  results.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'word-item' + (state.currentTarget === r.word ? ' selected' : '');
+    const t = document.createElement('span');
+    t.className = 'text';
+    t.textContent = displayWord(r.word);
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = r.n ? (timeAgo(r.t) + ' \u00b7 ' + r.n + '\u00d7') : timeAgo(r.t);
+    t.appendChild(meta);
+    row.addEventListener('click', () => {
+      if (!state.words.includes(r.word)) state.words.push(r.word);
+      state.modesOpen = false;
+      selectTargetWord(r.word, true);
+      renderSetup();
+      closeAllMenus();
+    });
+    row.appendChild(t);
+    list.appendChild(row);
+  });
+}
+document.getElementById('searchBtn').addEventListener('click', () => {
+  document.getElementById('searchInput').value = '';
+  renderSearchResults();
+  closeAllMenus();
+  document.getElementById('searchMenu').classList.add('show');
+});
+document.getElementById('searchInput').addEventListener('input', renderSearchResults);
+document.getElementById('searchMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if ((btn && btn.dataset.action === 'cancel') || e.target.id === 'searchMenu') closeAllMenus();
+});
+
+// ===== Help button: bring the prompts in now, whatever the wait says =====
+document.getElementById('helpBtn').addEventListener('click', () => {
+  warmSpeech();
+  touchSession();
+  if (!state.currentTarget || isWordComplete()) return;
+  buzz(12);
+  revealPromptNow();
+  render();
 });
 
 // Word bank sheet
@@ -2754,6 +2904,9 @@ function renderSettings() {
   buildSeg('segEnterSpeech', Object.entries(ENTER_SPEECH_LABELS).map(([v, l]) => ({ value: v, label: l })), state.enterSpeechMode,
     v => { state.enterSpeechMode = v; save(); renderSettings(); });
   document.getElementById('toggleSpeakError').classList.toggle('on', state.speakErrorLetter);
+  document.getElementById('toggleBankCount').classList.toggle('on', state.showBankCount);
+  document.getElementById('toggleSearchBtn').classList.toggle('on', state.showSearchBtn);
+  document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -2772,8 +2925,12 @@ function renderSettings() {
   document.getElementById('sumVoice').textContent = state.voiceName || 'System voice';
   document.getElementById('sumPractice').textContent =
     (state.scoreMode ? 'Scoring on' : 'Scoring off') + (state.fadeMode ? ' · Fading' : '');
+  const btns = [];
+  if (state.showSearchBtn) btns.push('Search');
+  if (state.showHelpBtn) btns.push('Help');
+  const hiddenN = Object.keys(state.hiddenKeys).length;
   document.getElementById('sumKeys').textContent =
-    Object.keys(state.hiddenKeys).length ? Object.keys(state.hiddenKeys).length + ' hidden' : 'All keys on';
+    (hiddenN ? hiddenN + ' hidden' : 'All keys on') + (btns.length ? ' \u00b7 ' + btns.join(' + ') : '');
 
   document.getElementById('toggleLetterSpeech').classList.toggle('on', state.letterSpeech);
   document.getElementById('toggleEnterSpeech').classList.toggle('on', state.enterSpeech);
@@ -2882,6 +3039,15 @@ document.getElementById('errorPhraseRec').addEventListener('click', async () => 
   else setTimeout(() => { if (activeRecord) stopRecording(); }, 3000);
 });
 
+document.getElementById('toggleBankCount').addEventListener('click', () => {
+  state.showBankCount = !state.showBankCount; save(); render(); renderSettings();
+});
+document.getElementById('toggleSearchBtn').addEventListener('click', () => {
+  state.showSearchBtn = !state.showSearchBtn; save(); render(); renderSettings();
+});
+document.getElementById('toggleHelpBtn').addEventListener('click', () => {
+  state.showHelpBtn = !state.showHelpBtn; save(); render(); renderSettings();
+});
 document.getElementById('toggleSpeakError').addEventListener('click', () => {
   state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
 });
