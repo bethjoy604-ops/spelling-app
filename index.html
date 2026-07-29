@@ -760,6 +760,21 @@
   }
   .swatch.selected { border-color: var(--ink); transform: scale(1.06); }
 
+  /* Custom error phrase */
+  .phrase-row { display: flex; gap: 6px; align-items: center; margin-top: 10px; }
+  .phrase-row input {
+    flex: 1; min-width: 0;
+    padding: 11px 12px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg);
+    font-family: inherit; font-size: 15px; font-weight: 700; color: var(--ink);
+  }
+  .phrase-row .rr-btn {
+    flex: none; width: 44px; height: 44px; border-radius: 12px;
+    border: none; background: var(--bg); font-size: 18px; cursor: pointer;
+  }
+  .phrase-row .rr-btn.has-rec { background: var(--green-soft); }
+  .phrase-row.recording { background: var(--red-soft); border-radius: 12px; padding: 4px; }
+
   /* Delay slider */
   .slider-row { display: flex; align-items: center; gap: 12px; }
   .slider-row input[type=range] { flex: 1; accent-color: var(--ink); height: 28px; }
@@ -1211,6 +1226,17 @@
         <div class="sublabel">When a wrong letter is picked</div>
         <div class="seg-row" id="segErrorFeedback"></div>
 
+        <div id="errorPhraseWrap">
+          <div class="phrase-row">
+            <input type="text" id="errorPhraseInput" maxlength="40" placeholder="Try again"
+                   autocomplete="off" spellcheck="false">
+            <button class="rr-btn" id="errorPhrasePlay" title="Play">&#9654;</button>
+            <button class="rr-btn rec" id="errorPhraseRec" title="Record">&#127908;</button>
+            <button class="rr-btn del" id="errorPhraseDel" title="Delete recording">&#128465;</button>
+          </div>
+          <div class="help-note" id="errorPhraseNote"></div>
+        </div>
+
         <div class="sublabel">And the prompt should</div>
         <div class="seg-row" id="segErrorAction"></div>
         <div class="help-note">"Restart the wait" hides the prompt again and runs the countdown from the top.</div>
@@ -1367,9 +1393,11 @@ const OTHER_KEYS_LABELS = {
 };
 const ERROR_FEEDBACK_LABELS = {
   none:    'Say nothing',
-  error:   'Say "try again"',
+  phrase:  'Say my phrase',
+  wrong:   'Name the wrong letter',
   correct: 'Say the correct letter',
 };
+const DEFAULT_ERROR_PHRASE = 'Try again';
 const ERROR_LETTER_LABELS = {
   keep:   'Keep it',
   flash:  'Flash, then clear',
@@ -1431,7 +1459,8 @@ const state = {
   bannerSize: 'med',          // target/prompt bar above the typing bar
 
   // ===== Error correction =====
-  errorFeedback: 'none',      // none | error | correct
+  errorFeedback: 'none',      // none | phrase | wrong | correct
+  errorPhrase: DEFAULT_ERROR_PHRASE, // spoken when errorFeedback is 'phrase' (a recording wins)
   errorPromptAction: 'now',   // now | restart | none
   errorLetterMode: 'keep',    // keep | flash | remove — what happens to the wrong letter
   speakErrorLetter: true,     // say a wrong letter out loud as it's typed
@@ -1512,7 +1541,9 @@ async function load() {
         displaySize: SIZE_STEPS.includes(saved.displaySize) ? saved.displaySize : 'med',
         bannerSize: SIZE_STEPS.includes(saved.bannerSize) ? saved.bannerSize : 'med',
 
-        errorFeedback: ERROR_FEEDBACK_LABELS[saved.errorFeedback] ? saved.errorFeedback : 'none',
+        errorFeedback: (saved.errorFeedback === 'error') ? 'phrase'
+                       : (ERROR_FEEDBACK_LABELS[saved.errorFeedback] ? saved.errorFeedback : 'none'),
+        errorPhrase: saved.errorPhrase ?? DEFAULT_ERROR_PHRASE,
         errorPromptAction: ERROR_ACTION_LABELS[saved.errorPromptAction] ? saved.errorPromptAction : 'now',
         errorLetterMode: ERROR_LETTER_LABELS[saved.errorLetterMode] ? saved.errorLetterMode : 'keep',
         speakErrorLetter: saved.speakErrorLetter ?? true,
@@ -1564,6 +1595,7 @@ async function save() {
       bannerSize: state.bannerSize,
 
       errorFeedback: state.errorFeedback,
+      errorPhrase: state.errorPhrase,
       errorPromptAction: state.errorPromptAction,
       errorLetterMode: state.errorLetterMode,
       speakErrorLetter: state.speakErrorLetter,
@@ -1578,7 +1610,7 @@ function isSessionStale() {
 }
 
 // ===== Custom voice recordings =====
-let recordings = { letterName: {}, letterSound: {}, word: {} };
+let recordings = { letterName: {}, letterSound: {}, word: {}, phrase: {} };
 async function loadRecordings() {
   try {
     const res = await Store.get('kbd-recordings-v1');
@@ -1587,6 +1619,7 @@ async function loadRecordings() {
       recordings.letterName = r.letterName || {};
       recordings.letterSound = r.letterSound || {};
       recordings.word = r.word || {};
+      recordings.phrase = r.phrase || {};
     }
   } catch (e) {}
 }
@@ -2195,7 +2228,7 @@ function typeLetter(letter) {
           save(); render();
         }, ERROR_FLASH_MS);
       }
-      handleError(expected);
+      handleError(expected, letter);
     }
   } else {
     buzz(8);
@@ -2205,12 +2238,24 @@ function typeLetter(letter) {
 }
 
 // ---- Error correction ----
-function handleError(expectedLetter) {
+// The phrase spoken on a wrong letter — a recording is used when one exists
+function playErrorPhrase() {
+  if (recordings.phrase && recordings.phrase.error && playClip(recordings.phrase.error)) return;
+  const t = (state.errorPhrase || '').trim();
+  if (t) speak(t, 1.0);
+}
+function handleError(expectedLetter, typedLetter) {
   // 1. What the app says
-  if (state.errorFeedback === 'error') {
-    setTimeout(() => speak('Try again', 1.0), state.letterSpeech ? 450 : 0);
+  const gap = state.letterSpeech ? 450 : 0;
+  if (state.errorFeedback === 'phrase') {
+    setTimeout(playErrorPhrase, gap);
+  } else if (state.errorFeedback === 'wrong' && typedLetter) {
+    // Skip if the wrong letter was just voiced as it was typed
+    if (!(state.letterSpeech && state.speakErrorLetter)) {
+      setTimeout(() => speakLetter(typedLetter), gap);
+    }
   } else if (state.errorFeedback === 'correct' && expectedLetter) {
-    setTimeout(() => speakLetter(expectedLetter), state.letterSpeech ? 450 : 0);
+    setTimeout(() => speakLetter(expectedLetter), gap);
   }
   // 2. What the prompt does
   // If the error feedback already said the letter, don't say it twice
@@ -2610,6 +2655,17 @@ function renderSettings() {
     v => { state.errorFeedback = v; save(); renderSettings(); });
   buildSeg('segErrorAction', Object.entries(ERROR_ACTION_LABELS).map(([v, l]) => ({ value: v, label: l })), state.errorPromptAction,
     v => { state.errorPromptAction = v; save(); renderSettings(); });
+  const phraseWrap = document.getElementById('errorPhraseWrap');
+  phraseWrap.style.display = (state.errorFeedback === 'phrase') ? 'block' : 'none';
+  const phraseInput = document.getElementById('errorPhraseInput');
+  if (document.activeElement !== phraseInput) phraseInput.value = state.errorPhrase || '';
+  const hasRec = !!(recordings.phrase && recordings.phrase.error);
+  document.getElementById('errorPhraseRec').classList.toggle('has-rec', hasRec);
+  document.getElementById('errorPhraseDel').style.display = hasRec ? '' : 'none';
+  document.getElementById('errorPhraseNote').textContent = hasRec
+    ? 'Your recording plays instead of the text. Delete it to go back to the spoken text.'
+    : 'Type what should be said, or tap the mic to record it in your own voice (3 seconds).';
+
   buildSeg('segErrorLetter', Object.entries(ERROR_LETTER_LABELS).map(([v, l]) => ({ value: v, label: l })), state.errorLetterMode,
     v => { state.errorLetterMode = v; resolvePendingFlash(); save(); render(); renderSettings(); });
   buildSeg('segEnterSpeech', Object.entries(ENTER_SPEECH_LABELS).map(([v, l]) => ({ value: v, label: l })), state.enterSpeechMode,
@@ -2704,6 +2760,39 @@ document.getElementById('togglePromptSize').addEventListener('click', () => {
 document.getElementById('togglePromptVerbal').addEventListener('click', () => {
   state.promptVerbalOn = !state.promptVerbalOn; save(); render(); renderSettings();
 });
+// ---- Custom error phrase ----
+document.getElementById('errorPhraseInput').addEventListener('input', e => {
+  state.errorPhrase = e.target.value;
+  save();
+});
+document.getElementById('errorPhrasePlay').addEventListener('click', () => {
+  warmSpeech();
+  playErrorPhrase();
+});
+document.getElementById('errorPhraseDel').addEventListener('click', () => {
+  if (recordings.phrase) delete recordings.phrase.error;
+  saveRecordings();
+  renderSettings();
+});
+document.getElementById('errorPhraseRec').addEventListener('click', async () => {
+  const btn = document.getElementById('errorPhraseRec');
+  const row = btn.closest('.phrase-row');
+  if (activeRecord) { stopRecording(); return; }
+  activeRecord = { category: 'phrase', key: 'error' };
+  row.classList.add('recording');
+  btn.textContent = '\u23F9';
+  const done = () => { row.classList.remove('recording'); btn.textContent = '\uD83C\uDFA4'; };
+  const ok = await startRecording(dataURL => {
+    recordings.phrase = recordings.phrase || {};
+    recordings.phrase.error = dataURL;
+    activeRecord = null;
+    saveRecordings();
+    done(); renderSettings();
+  });
+  if (!ok) { activeRecord = null; done(); renderSettings(); }
+  else setTimeout(() => { if (activeRecord) stopRecording(); }, 3000);
+});
+
 document.getElementById('toggleSpeakError').addEventListener('click', () => {
   state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
 });
@@ -2842,7 +2931,7 @@ document.getElementById('recordVoiceBtn').addEventListener('click', () => {
 });
 document.getElementById('clearRecordingsBtn').addEventListener('click', () => {
   if (confirm('Delete ALL your recordings?')) {
-    recordings = { letterName: {}, letterSound: {}, word: {} };
+    recordings = { letterName: {}, letterSound: {}, word: {}, phrase: {} };
     saveRecordings();
     renderRecordSheet();
   }
