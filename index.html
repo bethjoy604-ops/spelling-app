@@ -246,6 +246,7 @@
   }
 
   .target-banner {
+    --tile: 36px;
     background: var(--surface);
     border-radius: 18px;
     padding: 14px 22px;
@@ -261,8 +262,8 @@
   }
   .target-word { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
   .tletter {
-    font-size: 36px; font-weight: 900;
-    min-width: 44px;
+    font-size: var(--tile); font-weight: 900;
+    min-width: calc(var(--tile) * 1.2);
     padding: 6px 12px;
     border-radius: 10px;
     text-align: center;
@@ -274,24 +275,21 @@
   }
   .tletter.next.pulse { animation: tlpulse 1.4s ease-in-out infinite; }
   /* Magnify the target tile */
-  .tletter.magnify { display: inline-block; transform: scale(var(--tboost, 1)); }
-  .tletter.magnify.tmag-small { --tboost: 1.15; }
-  .tletter.magnify.tmag-med   { --tboost: 1.35; }
-  .tletter.magnify.tmag-large { --tboost: 1.6; }
-  .tletter.magnify.pulse { animation: tlmagpulse 1.4s ease-in-out infinite; }
-  @keyframes tlmagpulse {
-    0%, 100% { transform: scale(var(--tboost, 1)); }
-    50% { transform: scale(calc(var(--tboost, 1) * 1.08)); }
-  }
+  .tletter.magnify { display: inline-block; line-height: 1.05; }
+  .tletter.magnify.tmag-small { font-size: calc(var(--tile) * 1.25); min-width: calc(var(--tile) * 1.5); }
+  .tletter.magnify.tmag-med   { font-size: calc(var(--tile) * 1.55); min-width: calc(var(--tile) * 1.85); }
+  .tletter.magnify.tmag-large { font-size: calc(var(--tile) * 1.95); min-width: calc(var(--tile) * 2.3); }
   .target-word { align-items: center; }
   .tletter.next.fade-1 { background: var(--prompt-f1); }
   .tletter.next.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; }
   .tletter.pending { color: var(--muted); opacity: 0.4; }
+  .tletter.tspace { min-width: 26px; padding: 6px 4px; font-size: 0.75em; }
+  .key.space-blank.prompt-color { background: var(--prompt); }
   /* Banner size steps */
-  .target-banner.bs-small { padding: 10px 16px; }
-  .target-banner.bs-small .tletter { font-size: 24px; min-width: 30px; padding: 4px 8px; }
-  .target-banner.bs-large { padding: 18px 26px; }
-  .target-banner.bs-large .tletter { font-size: 54px; min-width: 64px; padding: 8px 16px; }
+  .target-banner.bs-small { --tile: 24px; padding: 10px 16px; }
+  .target-banner.bs-small .tletter { padding: 4px 8px; }
+  .target-banner.bs-large { --tile: 54px; padding: 18px 26px; }
+  .target-banner.bs-large .tletter { padding: 8px 16px; }
   @keyframes tlpulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.08); }
@@ -818,6 +816,24 @@
   .prompt-preview .pkey.prompt-color.fade-1 { background: var(--prompt-f1); }
   .prompt-preview .pkey.prompt-color.fade-2 { background: var(--prompt-f2); color: var(--ink); }
 
+  .phrase-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .phrase-chip {
+    background: var(--prompt-soft); color: var(--ink);
+    border-radius: 10px; padding: 8px 10px;
+    font-size: 17px; font-weight: 900;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .phrase-chip button {
+    background: transparent; border: none; color: var(--muted);
+    font-size: 16px; font-weight: 900; cursor: pointer; padding: 0 2px;
+  }
+  .word-item .plus {
+    background: var(--bg); border: none; color: var(--ink);
+    font-size: 20px; font-weight: 900; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 10px; flex: none;
+  }
+  .word-item .plus:active { transform: scale(0.92); }
+
   .hidden-keys-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .hidden-chip {
     background: var(--bg);
@@ -1109,6 +1125,11 @@
     <h3>Target Word</h3>
     <div class="key-preview" style="font-size: 28px;">📝</div>
     <div class="word-list" id="wordList"></div>
+
+    <div class="menu-section-label" id="phraseLabel">Phrase</div>
+    <div class="phrase-strip" id="phraseStrip"></div>
+    <button class="mbtn action primary" id="startPhraseBtn" style="width:100%; margin-top:8px;">Start phrase &rarr;</button>
+
     <div class="menu-section-label">Add Word</div>
     <div class="word-add">
       <input type="text" id="newWordInput" placeholder="Type word..." maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false">
@@ -1387,7 +1408,7 @@
 
         <div class="sublabel">On-screen buttons</div>
         <div class="settings-list">
-          <div class="setting-row"><span>Word bank number badge</span><div class="toggle on" id="toggleBankCount"></div></div>
+          <div class="setting-row"><span>&#128218; Word bank button</span><div class="toggle on" id="toggleBankCount"></div></div>
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
           <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
         </div>
@@ -1510,7 +1531,8 @@ const state = {
   modesOpen: false,
   voiceName: '',
   words: [],
-  currentTarget: null,
+  currentTarget: null,   // a single word, or a phrase like "CAT DOG"
+  phraseWords: [],       // the words making up the current phrase (empty = single word)
   targetIndex: 0,
   targetProgress: [],
   targetPromptedFlags: [], // parallel to targetProgress for correct letters, tracks if prompted
@@ -1609,6 +1631,7 @@ async function load() {
         voiceName: saved.voiceName ?? '',
         words: saved.words || [],
         currentTarget: saved.currentTarget || null,
+        phraseWords: saved.phraseWords || [],
         lastUsed: saved.lastUsed || 0,
         scoreMode: saved.scoreMode ?? false,
         letterStats: saved.letterStats || {},
@@ -1680,6 +1703,7 @@ async function save() {
       voiceName: state.voiceName,
       words: state.words,
       currentTarget: state.currentTarget,
+      phraseWords: state.phraseWords,
       lastUsed: state.lastUsed,
       scoreMode: state.scoreMode,
       letterStats: state.letterStats,
@@ -1825,7 +1849,11 @@ function setView(name) {
 }
 function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
-function showKeyboard() { setView('keyboard'); touchSession(); armPrompt(); render(); }
+function showKeyboard() {
+  setView('keyboard');
+  state.modesOpen = false; // always arrive with the options tucked away
+  touchSession(); armPrompt(); render();
+}
 
 // ---- Voices (en-US only) ----
 function refreshVoiceList() {
@@ -1896,10 +1924,8 @@ function buzz(pattern = 15) {
 }
 
 function autoCollapseSpellingMode() {
-  // After a setting changes, collapse the modes bar — but only when a target is active.
-  if (state.currentTarget && state.modesOpen) {
-    state.modesOpen = false;
-  }
+  // Anything on screen that isn't the task is a distraction — fold the bar away again.
+  state.modesOpen = false;
 }
 
 // ---- Fade / trial helpers ----
@@ -1919,6 +1945,7 @@ function triggerFade(word) {
   const fades = state.wordFadeLevels[word];
   if (!fades) return;
   for (let i = fades.length - 1; i >= 0; i--) {
+    if (word[i] === ' ') continue;
     if (fades[i] < 3) {
       fades[i]++;
       const faded = (fades[i] >= 3);
@@ -1954,6 +1981,7 @@ function showMastered(word) {
 }
 function selectTargetWord(w, speakIt) {
   state.currentTarget = w;
+  state.phraseWords = [];
   state.targetIndex = 0;
   state.targetProgress = [];
   state.targetPromptedFlags = [];
@@ -2000,6 +2028,39 @@ function displayLetterAt(L, index) {
   if (state.caseMode === 1) return L.toLowerCase();
   if (state.caseMode === 3) return index === 0 ? L.toUpperCase() : L.toLowerCase();
   return L;
+}
+
+// ===== Phrases =====
+function isPhrase() { return (state.phraseWords || []).length > 1; }
+// The word that contains position i in the target sequence
+function wordAtIndex(i) {
+  const seq = state.currentTarget || '';
+  let start = seq.lastIndexOf(' ', Math.max(0, i - 1)) + 1;
+  let end = seq.indexOf(' ', i);
+  if (end === -1) end = seq.length;
+  return seq.slice(start, end);
+}
+// Did the character just typed finish a word?
+function justFinishedWord() {
+  const seq = state.currentTarget || '';
+  const i = state.targetIndex;
+  if (i === 0) return false;
+  if (seq[i - 1] === ' ') return false;
+  return (i >= seq.length) || seq[i] === ' ';
+}
+function selectPhrase(words) {
+  state.phraseWords = words.slice();
+  state.currentTarget = words.join(' ');
+  state.targetIndex = 0;
+  state.targetProgress = [];
+  state.targetPromptedFlags = [];
+  state.pendingLetterCounts = {};
+  state.text = '';
+  state.modesOpen = false;
+  getOrInitWordData(state.currentTarget);
+  armPrompt();
+  save(); render();
+  if (state.targetSpeech) speakWord(state.currentTarget, 0.85);
 }
 
 function nextExpectedLetter() {
@@ -2074,7 +2135,8 @@ function speakVerbalPrompt(force) {
   if (!L) return;
   if (!force && verbalSpokenFor === state.targetIndex) return;
   verbalSpokenFor = state.targetIndex;
-  speakLetter(L);
+  if (L === ' ') speak('space', 1.0);
+  else speakLetter(L);
 }
 function isLetterPrompted(letter) {
   // Yellow level highlight always counts as a prompt
@@ -2099,7 +2161,7 @@ function render() {
     tw.innerHTML = '';
     [...state.currentTarget].forEach((ch, i) => {
       const s = document.createElement('span');
-      s.className = 'tletter';
+      s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex && showing && (state.promptColorOn || state.promptTileOn)) {
         const fl = fadeLevelAt(i);
@@ -2113,7 +2175,7 @@ function render() {
         if (state.promptPulseOn && fl < 2) s.classList.add('pulse');
       }
       else s.classList.add('pending');
-      s.textContent = displayLetterAt(ch, i);
+      s.textContent = (ch === ' ') ? '\u2423' : displayLetterAt(ch, i);
       tw.appendChild(s);
     });
   } else {
@@ -2140,7 +2202,7 @@ function render() {
   document.getElementById('wordToggle').classList.toggle('active', !!state.currentTarget);
 
   document.getElementById('wordBankCount').textContent = state.wordBank.length;
-  document.getElementById('wordBankCount').style.display = state.showBankCount ? '' : 'none';
+  document.getElementById('wordBankBtn').style.display = state.showBankCount ? '' : 'none';
   document.getElementById('searchBtn').style.display = state.showSearchBtn ? '' : 'none';
   document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
 
@@ -2159,7 +2221,18 @@ function render() {
   const r = document.createElement('div');
   r.className = 'row';
   r.appendChild(makeSpecialKey('⌫', 'backspace', 'wide backspace'));
-  r.appendChild(makeSpecialKey('', 'space', 'space space-blank'));
+  const spaceKey = makeSpecialKey('', 'space', 'space space-blank');
+  if (expected === ' ' && showing) {
+    const fl = fadeLevelAt(state.targetIndex);
+    spaceKey.classList.add('prompting');
+    if (state.promptColorOn) {
+      spaceKey.classList.add('prompt-color');
+      if (fl > 0) spaceKey.classList.add('fade-' + fl);
+    }
+    if (state.promptPulseOn && fl < 2) spaceKey.classList.add('prompt-pulse');
+    if (state.promptSizeOn) spaceKey.classList.add('prompt-size', 'boost-' + state.promptSize);
+  }
+  r.appendChild(spaceKey);
   const enterKey = makeSpecialKey('⏎', 'enter', 'wide enter');
   if (isWordComplete()) enterKey.classList.add('enter-ready');
   r.appendChild(enterKey);
@@ -2197,6 +2270,7 @@ function makeSpecialKey(label, action, cls) {
     warmSpeech();
     touchSession();
     if (action === 'space') {
+      if (state.currentTarget) { typeChar(' '); return; }
       buzz(10);
       state.text += ' ';
     } else if (action === 'backspace') {
@@ -2216,6 +2290,7 @@ function makeSpecialKey(label, action, cls) {
     } else if (action === 'enter') {
       buzz([30, 50, 30]);
       resolvePendingFlash();
+      if (isPhrase() && isWordComplete()) { finishPhrase(); return; }
       const trimmed = applyCase(state.text).trim();
       const wasComplete = isWordComplete();
       const completedWord = state.currentTarget;
@@ -2323,9 +2398,11 @@ function correctTextOnly() {
   return state.currentTarget.slice(0, state.targetIndex);
 }
 
-function typeLetter(letter) {
+function typeLetter(letter) { typeChar(letter); }
+function typeChar(letter) {
   touchSession();
   resolvePendingFlash(); // a previous flashed error clears the moment the next key lands
+  const isSpace = (letter === ' ');
   const prompted = isLetterPrompted(letter);
   const expectedNow = state.currentTarget ? state.currentTarget[state.targetIndex] : null;
   const isWrong = !!state.currentTarget && (!expectedNow || letter !== expectedNow.toUpperCase());
@@ -2333,7 +2410,7 @@ function typeLetter(letter) {
   // "Clear instantly" never puts the wrong letter in the bar at all
   const keepInBar = !isWrong || state.errorLetterMode !== 'remove';
   if (keepInBar) state.text += letter;
-  if (state.letterSpeech && (!isWrong || state.speakErrorLetter)) speakLetter(letter);
+  if (!isSpace && state.letterSpeech && (!isWrong || state.speakErrorLetter)) speakLetter(letter);
 
   // Buffer per-letter stats; committed on Enter, discarded on cancel
   if (state.scoreMode) {
@@ -2349,7 +2426,18 @@ function typeLetter(letter) {
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
       buzz(20);
-      if (isWordComplete()) { buzz([20, 80, 40]); clearPromptTimer(); promptVisible = true; }
+
+      // Say each word of a phrase as it lands
+      if (isPhrase() && justFinishedWord() && state.enterSpeech) {
+        const done = wordAtIndex(state.targetIndex - 1);
+        if (done) setTimeout(() => speakWord(done, 0.95), 260);
+      }
+
+      if (isWordComplete()) {
+        buzz([20, 80, 40]); clearPromptTimer(); promptVisible = true;
+        // A finished phrase reads itself back and ends the trial on its own
+        if (isPhrase()) setTimeout(finishPhrase, 1100);
+      }
       else armPrompt();          // fresh wait for the next letter
     } else {
       state.targetProgress.push(false);
@@ -2369,6 +2457,64 @@ function typeLetter(letter) {
   }
   save();
   render();
+}
+
+// ---- Finishing a phrase: read it back, bank it, end the trial ----
+function finishPhrase() {
+  if (!state.currentTarget || !isWordComplete()) return;
+  const phrase = state.currentTarget;
+  const words = state.phraseWords.slice();
+  const now = Date.now();
+
+  if (state.enterSpeech) speakWord(phrase, 0.95);
+
+  if (state.scoreMode) {
+    Object.entries(state.pendingLetterCounts).forEach(([L, c]) => {
+      if (!state.letterStats[L]) state.letterStats[L] = { independent: 0, prompted: 0 };
+      state.letterStats[L].independent += c.independent;
+      state.letterStats[L].prompted += c.prompted;
+    });
+  }
+  state.pendingLetterCounts = {};
+
+  // Each word is banked, and so is the phrase itself
+  words.forEach(w => state.wordBank.push(w));
+  state.wordBank.push(phrase);
+  words.concat([phrase]).forEach(w => {
+    const h = state.wordHistory[w] || { n: 0, t: 0 };
+    h.n++; h.t = now;
+    state.wordHistory[w] = h;
+  });
+
+  if (state.scoreMode) {
+    const flags = state.targetPromptedFlags;
+    const pmt = flags.filter(p => p).length;
+    const ind = flags.length - pmt;
+    // Per word, using each word's slice of the run
+    let pos = 0;
+    words.forEach((w, wi) => {
+      const slice = flags.slice(pos, pos + w.length);
+      const p = slice.filter(x => x).length;
+      state.wordsSpelled.push({ word: w, ts: now, independent: slice.length - p, prompted: p });
+      pos += w.length + 1; // skip the space
+    });
+    state.wordsSpelled.push({ word: phrase, ts: now, independent: ind, prompted: pmt });
+  }
+
+  celebrate(phrase);
+  const counter = getOrInitWordData(phrase);
+  counter.successes++;
+  counter.abandons = 0;
+  if (state.fadeMode && counter.successes % 3 === 0) {
+    setTimeout(() => { triggerFade(phrase); save(); render(); }, 950);
+  }
+
+  state.text = '';
+  state.targetIndex = 0;
+  state.targetProgress = [];
+  state.targetPromptedFlags = [];
+  armPrompt();
+  save(); render();
 }
 
 // ---- Error correction ----
@@ -2515,6 +2661,7 @@ document.getElementById('setupWordBtn').addEventListener('click', () => {
 });
 document.getElementById('targetClearBtn').addEventListener('click', () => {
   state.currentTarget = null;
+  state.phraseWords = [];
   state.targetIndex = 0;
   state.targetProgress = [];
   state.targetPromptedFlags = [];
@@ -2523,6 +2670,8 @@ document.getElementById('targetClearBtn').addEventListener('click', () => {
 });
 document.getElementById('freeTypeBtn').addEventListener('click', () => {
   state.currentTarget = null;
+  state.phraseWords = [];
+  phraseDraft = [];
   state.targetIndex = 0;
   state.targetProgress = [];
   state.targetPromptedFlags = [];
@@ -2545,7 +2694,45 @@ function addWordFromInput() {
   inp.value = '';
   renderWordList();
 }
+let phraseDraft = [];
+function renderPhraseStrip() {
+  const strip = document.getElementById('phraseStrip');
+  const label = document.getElementById('phraseLabel');
+  const startBtn = document.getElementById('startPhraseBtn');
+  strip.innerHTML = '';
+  if (phraseDraft.length === 0) {
+    label.textContent = 'Phrase \u2014 tap + to add words in order';
+    startBtn.style.display = 'none';
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = 'Add two or more words to spell them as a phrase.';
+    strip.appendChild(n);
+    return;
+  }
+  label.textContent = 'Phrase';
+  startBtn.style.display = '';
+  startBtn.textContent = phraseDraft.length < 2 ? 'Add one more word\u2026' : 'Start phrase \u2192';
+  startBtn.style.opacity = phraseDraft.length < 2 ? '0.5' : '1';
+  phraseDraft.forEach((w, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'phrase-chip';
+    chip.textContent = displayWord(w);
+    const x = document.createElement('button');
+    x.textContent = '\u00d7';
+    x.addEventListener('click', () => { phraseDraft.splice(i, 1); renderPhraseStrip(); });
+    chip.appendChild(x);
+    strip.appendChild(chip);
+  });
+}
+document.getElementById('startPhraseBtn').addEventListener('click', () => {
+  if (phraseDraft.length < 2) return;
+  selectPhrase(phraseDraft);
+  renderSetup();
+  closeAllMenus();
+});
+
 function renderWordList() {
+  renderPhraseStrip();
   const list = document.getElementById('wordList');
   list.innerHTML = '';
   if (state.words.length === 0) {
@@ -2575,6 +2762,15 @@ function renderWordList() {
       if (state.targetSpeech) speakWord(w, 0.85);
       closeAllMenus();
     });
+    const plus = document.createElement('button');
+    plus.className = 'plus'; plus.textContent = '+';
+    plus.title = 'Add to phrase';
+    plus.addEventListener('click', e => {
+      e.stopPropagation();
+      phraseDraft.push(w);
+      renderPhraseStrip();
+    });
+
     const x = document.createElement('button');
     x.className = 'x'; x.textContent = '×';
     x.addEventListener('click', e => {
@@ -2588,7 +2784,7 @@ function renderWordList() {
       }
       save(); render(); renderWordList(); renderSetup();
     });
-    row.appendChild(t); row.appendChild(x);
+    row.appendChild(t); row.appendChild(plus); row.appendChild(x);
     list.appendChild(row);
   });
 }
