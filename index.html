@@ -1651,6 +1651,15 @@ async function load() {
       });
     }
   } catch (e) {}
+  // First run after the search feature arrived: seed history from the existing bank
+  if (Object.keys(state.wordHistory).length === 0 && state.wordBank.length > 0) {
+    state.wordBank.forEach(w => {
+      const h = state.wordHistory[w] || { n: 0, t: 0 };
+      h.n++;
+      state.wordHistory[w] = h;
+    });
+    save();
+  }
   await loadRecordings();
   showSplash();
 }
@@ -2618,8 +2627,8 @@ function searchWords(query) {
     .sort((a, b) => b.score - a.score || a.word.localeCompare(b.word))
     .slice(0, 40);
 }
-function timeAgo(ts) {
-  if (!ts) return 'not spelled yet';
+function timeAgo(ts, n) {
+  if (!ts) return n ? 'earlier' : 'not spelled yet';
   const mins = Math.floor((Date.now() - ts) / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return mins + 'm ago';
@@ -2649,7 +2658,7 @@ function renderSearchResults() {
     t.textContent = displayWord(r.word);
     const meta = document.createElement('span');
     meta.className = 'meta';
-    meta.textContent = r.n ? (timeAgo(r.t) + ' \u00b7 ' + r.n + '\u00d7') : timeAgo(r.t);
+    meta.textContent = r.n ? (timeAgo(r.t, r.n) + ' \u00b7 ' + r.n + '\u00d7') : timeAgo(r.t, 0);
     t.appendChild(meta);
     row.addEventListener('click', () => {
       if (!state.words.includes(r.word)) state.words.push(r.word);
