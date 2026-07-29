@@ -1214,6 +1214,18 @@
         <div class="sublabel">And the prompt should</div>
         <div class="seg-row" id="segErrorAction"></div>
         <div class="help-note">"Restart the wait" hides the prompt again and runs the countdown from the top.</div>
+
+        <div class="sublabel">The wrong letter in the typing bar</div>
+        <div class="seg-row" id="segErrorLetter"></div>
+        <div class="help-note">Keep it to review mistakes afterwards, flash it to show the slip in the moment, or clear it instantly so the bar only ever holds correct letters.</div>
+
+        <div class="settings-list" style="margin-top:12px;">
+          <div class="setting-row"><span>Speak wrong letters as they're typed</span><div class="toggle on" id="toggleSpeakError"></div></div>
+        </div>
+
+        <div class="sublabel">Enter reads back</div>
+        <div class="seg-row" id="segEnterSpeech"></div>
+        <div class="help-note">With wrong letters left in the bar, "only correct letters" keeps the word sounding right when Enter is pressed.</div>
       </div>
     </div>
 
@@ -1358,6 +1370,16 @@ const ERROR_FEEDBACK_LABELS = {
   error:   'Say "try again"',
   correct: 'Say the correct letter',
 };
+const ERROR_LETTER_LABELS = {
+  keep:   'Keep it',
+  flash:  'Flash, then clear',
+  remove: 'Clear instantly',
+};
+const ENTER_SPEECH_LABELS = {
+  typed:   "What's typed",
+  correct: 'Only correct letters',
+};
+const ERROR_FLASH_MS = 1100;
 const ERROR_ACTION_LABELS = {
   now:     'Show prompt now',
   restart: 'Restart the wait',
@@ -1411,7 +1433,14 @@ const state = {
   // ===== Error correction =====
   errorFeedback: 'none',      // none | error | correct
   errorPromptAction: 'now',   // now | restart | none
+  errorLetterMode: 'keep',    // keep | flash | remove — what happens to the wrong letter
+  speakErrorLetter: true,     // say a wrong letter out loud as it's typed
+  enterSpeechMode: 'typed',   // typed | correct — what Enter reads back
 };
+
+// Pending "flash then clear" state (runtime only)
+let flashTimer = null;
+let pendingErrorPos = null;
 
 // Prompt visibility is runtime-only (never persisted)
 let promptVisible = true;
@@ -1485,6 +1514,9 @@ async function load() {
 
         errorFeedback: ERROR_FEEDBACK_LABELS[saved.errorFeedback] ? saved.errorFeedback : 'none',
         errorPromptAction: ERROR_ACTION_LABELS[saved.errorPromptAction] ? saved.errorPromptAction : 'now',
+        errorLetterMode: ERROR_LETTER_LABELS[saved.errorLetterMode] ? saved.errorLetterMode : 'keep',
+        speakErrorLetter: saved.speakErrorLetter ?? true,
+        enterSpeechMode: ENTER_SPEECH_LABELS[saved.enterSpeechMode] ? saved.enterSpeechMode : 'typed',
       });
     }
   } catch (e) {}
@@ -1533,6 +1565,9 @@ async function save() {
 
       errorFeedback: state.errorFeedback,
       errorPromptAction: state.errorPromptAction,
+      errorLetterMode: state.errorLetterMode,
+      speakErrorLetter: state.speakErrorLetter,
+      enterSpeechMode: state.enterSpeechMode,
     }));
   } catch (e) {}
 }
@@ -2002,6 +2037,7 @@ function makeSpecialKey(label, action, cls) {
       state.text += ' ';
     } else if (action === 'backspace') {
       buzz(10);
+      resolvePendingFlash();
       if (state.text.length > 0) {
         state.text = state.text.slice(0, -1);
         if (state.currentTarget && state.targetProgress.length > 0) {
@@ -2015,11 +2051,15 @@ function makeSpecialKey(label, action, cls) {
       }
     } else if (action === 'enter') {
       buzz([30, 50, 30]);
+      resolvePendingFlash();
       const trimmed = applyCase(state.text).trim();
       const wasComplete = isWordComplete();
       const completedWord = state.currentTarget;
 
-      if (trimmed && state.enterSpeech) speakWord(trimmed, 0.95);
+      const spokenText = (state.enterSpeechMode === 'correct')
+        ? applyCase(correctTextOnly()).trim()
+        : trimmed;
+      if (spokenText && state.enterSpeech) speakWord(spokenText, 0.95);
 
       // Commit buffered letter stats — these letters now count
       if (state.scoreMode) {
@@ -2093,11 +2133,40 @@ function attachKeyHandlers(el, letter) {
   });
   el.addEventListener('contextmenu', e => e.preventDefault());
 }
+// ---- Wrong-letter clearing ----
+function clearPendingErrorChar() {
+  // Only safe to lift the letter back out if it's still the last thing typed
+  if (pendingErrorPos !== null && state.text.length === pendingErrorPos + 1) {
+    state.text = state.text.slice(0, -1);
+    if (state.targetProgress.length && state.targetProgress[state.targetProgress.length - 1] === false) {
+      state.targetProgress.pop();
+    }
+  }
+  pendingErrorPos = null;
+}
+function resolvePendingFlash() {
+  if (!flashTimer) return;
+  clearTimeout(flashTimer);
+  flashTimer = null;
+  clearPendingErrorChar();
+}
+// The letters that were actually right, for Enter to read back
+function correctTextOnly() {
+  if (!state.currentTarget) return state.text;
+  return state.currentTarget.slice(0, state.targetIndex);
+}
+
 function typeLetter(letter) {
   touchSession();
+  resolvePendingFlash(); // a previous flashed error clears the moment the next key lands
   const prompted = isLetterPrompted(letter);
-  state.text += letter;
-  if (state.letterSpeech) speakLetter(letter);
+  const expectedNow = state.currentTarget ? state.currentTarget[state.targetIndex] : null;
+  const isWrong = !!state.currentTarget && (!expectedNow || letter !== expectedNow.toUpperCase());
+
+  // "Clear instantly" never puts the wrong letter in the bar at all
+  const keepInBar = !isWrong || state.errorLetterMode !== 'remove';
+  if (keepInBar) state.text += letter;
+  if (state.letterSpeech && (!isWrong || state.speakErrorLetter)) speakLetter(letter);
 
   // Buffer per-letter stats; committed on Enter, discarded on cancel
   if (state.scoreMode) {
@@ -2118,6 +2187,14 @@ function typeLetter(letter) {
     } else {
       state.targetProgress.push(false);
       buzz(8);
+      if (isWrong && state.errorLetterMode === 'flash' && keepInBar) {
+        pendingErrorPos = state.text.length - 1;
+        flashTimer = setTimeout(() => {
+          flashTimer = null;
+          clearPendingErrorChar();
+          save(); render();
+        }, ERROR_FLASH_MS);
+      }
       handleError(expected);
     }
   } else {
@@ -2533,6 +2610,11 @@ function renderSettings() {
     v => { state.errorFeedback = v; save(); renderSettings(); });
   buildSeg('segErrorAction', Object.entries(ERROR_ACTION_LABELS).map(([v, l]) => ({ value: v, label: l })), state.errorPromptAction,
     v => { state.errorPromptAction = v; save(); renderSettings(); });
+  buildSeg('segErrorLetter', Object.entries(ERROR_LETTER_LABELS).map(([v, l]) => ({ value: v, label: l })), state.errorLetterMode,
+    v => { state.errorLetterMode = v; resolvePendingFlash(); save(); render(); renderSettings(); });
+  buildSeg('segEnterSpeech', Object.entries(ENTER_SPEECH_LABELS).map(([v, l]) => ({ value: v, label: l })), state.enterSpeechMode,
+    v => { state.enterSpeechMode = v; save(); renderSettings(); });
+  document.getElementById('toggleSpeakError').classList.toggle('on', state.speakErrorLetter);
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -2544,7 +2626,8 @@ function renderSettings() {
 
   // ----- Summaries -----
   document.getElementById('sumPrompts').textContent = promptSummary();
-  document.getElementById('sumErrors').textContent = ERROR_FEEDBACK_LABELS[state.errorFeedback];
+  document.getElementById('sumErrors').textContent =
+    ERROR_FEEDBACK_LABELS[state.errorFeedback] + ' · ' + ERROR_LETTER_LABELS[state.errorLetterMode];
   document.getElementById('sumSizes').textContent =
     'Keys ' + SIZE_LABELS[state.keySize] + ' · ' + CASE_VALUES[state.caseMode];
   document.getElementById('sumVoice').textContent = state.voiceName || 'System voice';
@@ -2620,6 +2703,9 @@ document.getElementById('togglePromptSize').addEventListener('click', () => {
 });
 document.getElementById('togglePromptVerbal').addEventListener('click', () => {
   state.promptVerbalOn = !state.promptVerbalOn; save(); render(); renderSettings();
+});
+document.getElementById('toggleSpeakError').addEventListener('click', () => {
+  state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
 });
 document.getElementById('delaySlider').addEventListener('input', e => {
   state.promptDelaySec = parseInt(e.target.value) || 0;
@@ -2774,6 +2860,7 @@ document.getElementById('displayClear').addEventListener('click', () => {
   const content = document.getElementById('displayContent');
   content.classList.add('wiping');
   buzz(10);
+  resolvePendingFlash();
   let doRotate = false;
   if (state.currentTarget && state.text.length > 0) {
     const counter = getOrInitWordData(state.currentTarget);
