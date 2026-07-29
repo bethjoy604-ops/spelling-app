@@ -239,6 +239,35 @@
     box-shadow: 0 3px 0 #000, 0 6px 12px rgba(0,0,0,0.18);
   }
 
+  /* ===== HOME ===== */
+  .view-home { flex-direction: column; padding: 14px; gap: 12px; }
+  .home-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border-radius: 18px;
+    padding: 12px 16px; box-shadow: var(--shadow); flex-shrink: 0;
+  }
+  .home-title { flex: 1; min-width: 0; }
+  .home-title .ht-main { display: block; font-size: 20px; font-weight: 900; }
+  .home-title .ht-sub { display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+  .start-button.home-go { margin: 0; padding: 14px 20px; font-size: 17px; width: auto; flex-shrink: 0; }
+  .home-grid {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    display: grid; gap: 10px; align-content: start;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    padding-bottom: 20px;
+  }
+  .home-card {
+    background: var(--surface); border-radius: 16px;
+    box-shadow: var(--shadow); border: none;
+    padding: 18px 12px 12px;
+    font-family: inherit; cursor: pointer; text-align: center;
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .home-card:active { transform: scale(0.97); }
+  .home-card .hw { font-size: 26px; font-weight: 900; color: var(--ink); word-break: break-word; }
+  .home-card .hm { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .home-card.selected { background: var(--prompt-soft); }
+
   /* ===== KEYBOARD ===== */
   .view-keyboard {
     flex-direction: column;
@@ -457,6 +486,8 @@
   .ctl.active { background: var(--blue); color: white; }
   .ctl.active .label { color: rgba(255,255,255,0.85); }
   .spacer { flex: 1; }
+  .recent-row { display: flex; gap: 8px; }
+  .ctl.recent { background: var(--bg); border: 2px solid var(--border); }
   .ctl.help { background: var(--yellow-warm); }
   .ctl.help:active { background: var(--gold); }
   .word-item .meta {
@@ -1046,6 +1077,19 @@
   </div>
 </div>
 
+<!-- ===== HOME ===== -->
+<div class="view view-home" id="viewHome">
+  <div class="home-bar">
+    <div class="home-title">
+      <span class="ht-main">Word bank</span>
+      <span class="ht-sub" id="homeCount"></span>
+    </div>
+    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
+    <button class="start-button home-go" id="homeGoBtn">Keyboard &rarr;</button>
+  </div>
+  <div class="home-grid" id="homeGrid"></div>
+</div>
+
 <!-- ===== KEYBOARD ===== -->
 <div class="view view-keyboard" id="viewKeyboard">
   <div class="target-banner" id="targetBanner">
@@ -1069,18 +1113,11 @@
       <span class="chevron" id="modesChevron">▾</span>
     </button>
     <div class="modes-wrap" id="modesWrap">
-      <button class="ctl" id="caseToggle">
-        <span class="label" id="caseLabel">All Caps</span>
-        <span class="value" id="caseValue">ABC</span>
-      </button>
-      <button class="ctl" id="phonToggle">
-        <span class="label">Speech</span>
-        <span class="value" id="phonValue">Letters</span>
-      </button>
       <button class="ctl" id="wordToggle">
         <span class="label">Word</span>
         <span class="value" id="wordValue">Free type</span>
       </button>
+      <div class="recent-row" id="recentWords"></div>
       <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     </div>
     <div class="spacer"></div>
@@ -1348,6 +1385,53 @@
       </div>
     </div>
 
+    <!-- ============ KEYS & BEHAVIOR ============ -->
+    <div class="sgroup" data-group="keys">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">⌨️</span>
+        <span class="sg-title">Keys &amp; behaviour</span>
+        <span class="sg-sum" id="sumKeys"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="settings-list">
+          <div class="setting-row"><span>Setup mode (long-press menu)</span><div class="toggle on" id="toggleSetupMode"></div></div>
+          <div class="setting-row"><span>Haptics (Android only)</span><div class="toggle on" id="toggleHaptics"></div></div>
+        </div>
+
+        <div class="sublabel">On-screen buttons</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>&#128218; Word bank button</span><div class="toggle on" id="toggleBankCount"></div></div>
+          <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
+          <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
+          <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
+        </div>
+        <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
+
+        <div class="sublabel">Hidden keys</div>
+        <div class="hidden-keys-list" id="hiddenList"></div>
+        <div class="help-note">Long-press any key on the keyboard to hide it or give it a yellow level highlight.</div>
+      </div>
+    </div>
+
+    <!-- ============ PRACTICE ============ -->
+    <div class="sgroup" data-group="practice">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">📈</span>
+        <span class="sg-title">Practice &amp; data</span>
+        <span class="sg-sum" id="sumPractice"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="settings-list">
+          <div class="setting-row"><span>Fade the prompt across successes</span><div class="toggle on" id="toggleFade"></div></div>
+          <div class="setting-row"><span>Rotate words (vs stay on one word)</span><div class="toggle" id="toggleRotate"></div></div>
+          <div class="setting-row"><span>Score (track prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+        </div>
+        <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
+      </div>
+    </div>
+
     <!-- ============ VOICE ============ -->
     <div class="sgroup" data-group="voice">
       <button class="sgroup-head" data-toggle-group>
@@ -1371,52 +1455,6 @@
 
         <div class="sublabel">Phonetic sounds</div>
         <div class="phoneme-grid" id="phonemeGrid"></div>
-      </div>
-    </div>
-
-    <!-- ============ PRACTICE ============ -->
-    <div class="sgroup" data-group="practice">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">📈</span>
-        <span class="sg-title">Practice &amp; data</span>
-        <span class="sg-sum" id="sumPractice"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="settings-list">
-          <div class="setting-row"><span>Fade the prompt across successes</span><div class="toggle on" id="toggleFade"></div></div>
-          <div class="setting-row"><span>Rotate words (vs stay on one word)</span><div class="toggle" id="toggleRotate"></div></div>
-          <div class="setting-row"><span>Score (track prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
-        </div>
-        <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
-      </div>
-    </div>
-
-    <!-- ============ KEYS & BEHAVIOR ============ -->
-    <div class="sgroup" data-group="keys">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">⌨️</span>
-        <span class="sg-title">Keys &amp; behaviour</span>
-        <span class="sg-sum" id="sumKeys"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="settings-list">
-          <div class="setting-row"><span>Setup mode (long-press menu)</span><div class="toggle on" id="toggleSetupMode"></div></div>
-          <div class="setting-row"><span>Haptics (Android only)</span><div class="toggle on" id="toggleHaptics"></div></div>
-        </div>
-
-        <div class="sublabel">On-screen buttons</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>&#128218; Word bank button</span><div class="toggle on" id="toggleBankCount"></div></div>
-          <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
-          <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
-        </div>
-        <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
-
-        <div class="sublabel">Hidden keys</div>
-        <div class="hidden-keys-list" id="hiddenList"></div>
-        <div class="help-note">Long-press any key on the keyboard to hide it or give it a yellow level highlight.</div>
       </div>
     </div>
 
@@ -1564,6 +1602,7 @@ const state = {
   showBankCount: true,        // the number badge on the word bank
   showSearchBtn: false,       // magnifier that searches past words
   showHelpBtn: false,         // fires the prompts on demand
+  homeEnabled: false,         // land on a word-bank home page
   wordHistory: {},            // {WORD: {n: times spelled, t: last finished}}
 
   // ===== Sizes =====
@@ -1658,6 +1697,7 @@ async function load() {
         showBankCount: saved.showBankCount ?? true,
         showSearchBtn: saved.showSearchBtn ?? false,
         showHelpBtn: saved.showHelpBtn ?? false,
+        homeEnabled: saved.homeEnabled ?? false,
         wordHistory: saved.wordHistory || {},
 
         keySize: SIZE_STEPS.includes(saved.keySize) ? saved.keySize : 'med',
@@ -1730,6 +1770,7 @@ async function save() {
       showBankCount: state.showBankCount,
       showSearchBtn: state.showSearchBtn,
       showHelpBtn: state.showHelpBtn,
+      homeEnabled: state.homeEnabled,
       wordHistory: state.wordHistory,
 
       keySize: state.keySize,
@@ -1842,13 +1883,14 @@ function speakWord(word, rate) {
 }
 
 function setView(name) {
-  ['splash', 'setup', 'keyboard'].forEach(v => {
+  ['splash', 'setup', 'home', 'keyboard'].forEach(v => {
     document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1))
       .classList.toggle('active', v === name);
   });
 }
 function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
+function showHome() { setView('home'); touchSession(); renderHome(true); }
 function showKeyboard() {
   setView('keyboard');
   state.modesOpen = false; // always arrive with the options tucked away
@@ -2026,7 +2068,11 @@ function displayLetter(L) {
 // How a letter at a known position in the target word should be drawn
 function displayLetterAt(L, index) {
   if (state.caseMode === 1) return L.toLowerCase();
-  if (state.caseMode === 3) return index === 0 ? L.toUpperCase() : L.toLowerCase();
+  if (state.caseMode === 3) {
+    const seq = state.currentTarget || '';
+    const startsWord = (index === 0) || (seq[index - 1] === ' ');
+    return startsWord ? L.toUpperCase() : L.toLowerCase();
+  }
   return L;
 }
 
@@ -2194,11 +2240,9 @@ function render() {
   wrap.classList.toggle('expanded', state.modesOpen);
   document.getElementById('modesChevron').classList.toggle('open', state.modesOpen);
 
-  document.getElementById('caseValue').textContent = CASE_VALUES[state.caseMode];
-  document.getElementById('caseLabel').textContent = CASE_LABELS[state.caseMode];
-  document.getElementById('phonValue').textContent = state.phoneticMode ? 'Sounds' : 'Letters';
-  document.getElementById('phonToggle').classList.toggle('active', state.phoneticMode);
-  document.getElementById('wordValue').textContent = state.currentTarget || 'Free type';
+  renderRecentPicks();
+  document.getElementById('wordValue').textContent =
+    (state.currentTarget ? displayWord(state.currentTarget) : 'Free type');
   document.getElementById('wordToggle').classList.toggle('active', !!state.currentTarget);
 
   document.getElementById('wordBankCount').textContent = state.wordBank.length;
@@ -2794,6 +2838,87 @@ document.getElementById('wordMenu').addEventListener('click', e => {
   if (e.target.id === 'wordMenu') closeAllMenus();
 });
 
+// Three most recent / most used words, as one-tap targets
+function renderRecentPicks() {
+  const box = document.getElementById('recentWords');
+  if (!box) return;
+  box.innerHTML = '';
+  const picks = searchWords('').filter(r => r.word !== state.currentTarget).slice(0, 3);
+  picks.forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'ctl recent';
+    b.innerHTML = '<span class="label">Recent</span><span class="value"></span>';
+    b.querySelector('.value').textContent = displayWord(r.word);
+    b.addEventListener('click', () => {
+      if (!state.words.includes(r.word)) state.words.push(r.word);
+      const parts = r.word.split(' ').filter(Boolean);
+      if (parts.length > 1) selectPhrase(parts);
+      else selectTargetWord(r.word, true);
+      autoCollapseSpellingMode();
+      renderSetup(); render();
+    });
+    box.appendChild(b);
+  });
+}
+
+// ===== Home screen =====
+const HOME_PAGE = 60;
+let homeShown = 0;
+let homeRows = [];
+function renderHome(reset) {
+  const grid = document.getElementById('homeGrid');
+  if (reset) {
+    homeRows = searchWords('');
+    homeShown = 0;
+    grid.innerHTML = '';
+    grid.scrollTop = 0;
+    document.getElementById('homeCount').textContent =
+      homeRows.length ? homeRows.length + ' words \u00b7 most recent first' : 'Nothing here yet';
+    if (homeRows.length === 0) {
+      const n = document.createElement('div');
+      n.className = 'empty-note';
+      n.style.gridColumn = '1 / -1';
+      n.textContent = 'Spell a word and it will appear here.';
+      grid.appendChild(n);
+      return;
+    }
+  }
+  const slice = homeRows.slice(homeShown, homeShown + HOME_PAGE);
+  slice.forEach(r => {
+    const card = document.createElement('button');
+    card.className = 'home-card' + (state.currentTarget === r.word ? ' selected' : '');
+    const w = document.createElement('span');
+    w.className = 'hw';
+    w.textContent = displayWord(r.word);
+    const m = document.createElement('span');
+    m.className = 'hm';
+    m.textContent = r.n ? (timeAgo(r.t, r.n) + ' \u00b7 ' + r.n + '\u00d7') : timeAgo(r.t, 0);
+    card.appendChild(w); card.appendChild(m);
+    card.addEventListener('click', () => {
+      if (!state.words.includes(r.word)) state.words.push(r.word);
+      const parts = r.word.split(' ').filter(Boolean);
+      if (parts.length > 1) selectPhrase(parts);
+      else selectTargetWord(r.word, true);
+      renderSetup();
+      showKeyboard();
+    });
+    grid.appendChild(card);
+  });
+  homeShown += slice.length;
+}
+document.getElementById('homeGrid').addEventListener('scroll', e => {
+  const g = e.target;
+  if (homeShown < homeRows.length && g.scrollTop + g.clientHeight > g.scrollHeight - 300) {
+    renderHome(false);
+  }
+});
+document.getElementById('homeGoBtn').addEventListener('click', () => showKeyboard());
+document.getElementById('homeSettingsBtn').addEventListener('click', () => {
+  refreshVoiceList();
+  renderSettings();
+  document.getElementById('settingsMenu').classList.add('show');
+});
+
 // ===== Word search =====
 // Ranks past words by how well they match, how recently they were spelled,
 // and how often they've come up.
@@ -3112,6 +3237,7 @@ function renderSettings() {
   document.getElementById('toggleBankCount').classList.toggle('on', state.showBankCount);
   document.getElementById('toggleSearchBtn').classList.toggle('on', state.showSearchBtn);
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
+  document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -3253,6 +3379,9 @@ document.getElementById('toggleSearchBtn').addEventListener('click', () => {
 document.getElementById('toggleHelpBtn').addEventListener('click', () => {
   state.showHelpBtn = !state.showHelpBtn; save(); render(); renderSettings();
 });
+document.getElementById('toggleHome').addEventListener('click', () => {
+  state.homeEnabled = !state.homeEnabled; save(); renderSettings();
+});
 document.getElementById('toggleSpeakError').addEventListener('click', () => {
   state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
 });
@@ -3307,6 +3436,7 @@ document.getElementById('settingsMenu').addEventListener('click', e => {
     autoCollapseSpellingMode();
     closeAllMenus();
     save(); render(); renderSetup();
+    if (state.homeEnabled) showHome();
   }
 });
 
@@ -3437,21 +3567,13 @@ document.getElementById('displayClear').addEventListener('click', () => {
 document.getElementById('modesToggle').addEventListener('click', () => {
   state.modesOpen = !state.modesOpen; save(); render();
 });
-document.getElementById('caseToggle').addEventListener('click', () => {
-  state.caseMode = (state.caseMode + 1) % 4;
-  autoCollapseSpellingMode();
-  save(); render();
-});
-document.getElementById('phonToggle').addEventListener('click', () => {
-  state.phoneticMode = !state.phoneticMode;
-  autoCollapseSpellingMode();
-  save(); render();
-});
+
 
 // Splash → next view
 document.getElementById('viewSplash').addEventListener('click', () => {
   warmSpeech();
-  if (isSessionStale()) showSetup();
+  if (state.homeEnabled) showHome();
+  else if (isSessionStale()) showSetup();
   else showKeyboard();
 });
 
@@ -3502,7 +3624,10 @@ document.getElementById('setupPromptsBtn').addEventListener('click', () => {
   renderSettings();
   document.getElementById('settingsMenu').classList.add('show');
 });
-document.getElementById('startBtn').addEventListener('click', () => { showKeyboard(); });
+document.getElementById('startBtn').addEventListener('click', () => {
+  if (state.homeEnabled && !state.currentTarget) showHome();
+  else showKeyboard();
+});
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
