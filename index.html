@@ -158,6 +158,27 @@
     text-transform: uppercase; letter-spacing: 1.4px;
     margin-bottom: 10px;
   }
+  .setup-label .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--ink); color: white;
+    font-size: 11px; font-weight: 900; margin-right: 6px;
+    vertical-align: middle;
+  }
+  .setup-hint { font-size: 12.5px; color: var(--muted); font-weight: 600; margin-top: 8px; line-height: 1.45; }
+  .setup-steps { display: flex; flex-direction: column; gap: 8px; }
+  .setup-step {
+    width: 100%; background: var(--bg); border: none; border-radius: 12px;
+    padding: 13px 14px; font-family: inherit; cursor: pointer; text-align: left;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .setup-step:active { transform: scale(0.98); }
+  .setup-step .ss-emoji { font-size: 18px; flex: none; }
+  .setup-step .ss-body { flex: 1; min-width: 0; }
+  .setup-step .ss-title { display: block; font-size: 16px; font-weight: 900; color: var(--ink); }
+  .setup-step .ss-sum { display: block; font-size: 12px; font-weight: 800; color: var(--muted); margin-top: 2px; }
+  .setup-step::after { content: '›'; font-size: 22px; color: var(--muted); flex: none; }
+
   .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .pill {
     flex: 1; min-width: 0;
@@ -1029,21 +1050,30 @@
   <div class="setup-inner">
     <div class="setup-header">
       <h1>Ready to spell?</h1>
-      <p>Choose settings for this session</p>
+      <p>Set things up once — everything is saved for next time</p>
     </div>
 
     <div class="setup-section">
-      <div class="setup-label">Letter case</div>
+      <div class="setup-label"><span class="step-num">1</span> What to spell</div>
+      <button class="word-button" id="setupWordBtn">
+        <span id="setupWordLabel">Free type</span>
+      </button>
+      <div class="setup-hint">Add words, or tap + on two or more to build a phrase.</div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label"><span class="step-num">2</span> Letter case</div>
       <div class="pill-row" id="setupCase">
         <button class="pill" data-case="0">ABC</button>
         <button class="pill" data-case="1">abc</button>
         <button class="pill" data-case="2">Abc</button>
         <button class="pill" data-case="3">aA Auto</button>
       </div>
+      <div class="setup-hint">Auto uses a capital only where one belongs, and the keyboard follows along.</div>
     </div>
 
     <div class="setup-section">
-      <div class="setup-label">Speak letters as</div>
+      <div class="setup-label"><span class="step-num">3</span> Speak letters as</div>
       <div class="pill-row" id="setupSpeech">
         <button class="pill" data-phon="0">Letter names</button>
         <button class="pill" data-phon="1">Phonetic sounds</button>
@@ -1051,17 +1081,8 @@
     </div>
 
     <div class="setup-section">
-      <div class="setup-label">Prompts &amp; sizes</div>
-      <button class="word-button" id="setupPromptsBtn">
-        <span id="setupPromptsLabel">None</span>
-      </button>
-    </div>
-
-    <div class="setup-section">
-      <div class="setup-label">Target word</div>
-      <button class="word-button" id="setupWordBtn">
-        <span id="setupWordLabel">Free type</span>
-      </button>
+      <div class="setup-label"><span class="step-num">4</span> Fine-tune</div>
+      <div class="setup-steps" id="setupSteps"></div>
     </div>
 
     <div class="setup-section">
@@ -3174,6 +3195,42 @@ function renderPromptPreview() {
     p.appendChild(k);
   });
 }
+// Every group's summary line, used by both the settings sheet and the setup page
+function groupSummaries() {
+  const btns = [];
+  if (state.showSearchBtn) btns.push('Search');
+  if (state.showHelpBtn) btns.push('Help');
+  if (state.homeEnabled) btns.push('Home');
+  const hiddenN = Object.keys(state.hiddenKeys).length;
+  return {
+    prompts: promptSummary(),
+    errors: ERROR_FEEDBACK_LABELS[state.errorFeedback] + ' \u00b7 ' + ERROR_LETTER_LABELS[state.errorLetterMode],
+    sizes: 'Keys ' + SIZE_LABELS[state.keySize] + ' \u00b7 ' + CASE_VALUES[state.caseMode],
+    voice: state.voiceName || 'System voice',
+    practice: (state.scoreMode ? 'Scoring on' : 'Scoring off') + (state.fadeMode ? ' \u00b7 Fading' : ''),
+    keys: (hiddenN ? hiddenN + ' hidden' : 'All keys on') + (btns.length ? ' \u00b7 ' + btns.join(' + ') : ''),
+  };
+}
+const SETUP_STEPS = [
+  { key: 'prompts',  emoji: '\uD83C\uDFAF', title: 'Prompts' },
+  { key: 'errors',   emoji: '\u21A9\uFE0F', title: 'Error correction' },
+  { key: 'sizes',    emoji: '\uD83D\uDD20', title: 'Size & display' },
+  { key: 'keys',     emoji: '\u2328\uFE0F', title: 'Keys & buttons' },
+  { key: 'practice', emoji: '\uD83D\uDCC8', title: 'Practice & data' },
+  { key: 'voice',    emoji: '\uD83D\uDD0A', title: 'Voice & speech' },
+];
+// Open the settings sheet with one group expanded and scrolled to
+function openSettingsAt(groupKey) {
+  refreshVoiceList();
+  renderSettings();
+  document.querySelectorAll('#settingsMenu .sgroup').forEach(g => {
+    g.classList.toggle('open', g.dataset.group === groupKey);
+  });
+  document.getElementById('settingsMenu').classList.add('show');
+  const target = document.querySelector('#settingsMenu .sgroup[data-group="' + groupKey + '"]');
+  if (target) setTimeout(() => target.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
+}
+
 function promptSummary() {
   const on = [];
   if (state.promptColorOn) {
@@ -3248,20 +3305,11 @@ function renderSettings() {
     v => { state.caseMode = v; save(); render(); renderSetup(); renderSettings(); });
 
   // ----- Summaries -----
-  document.getElementById('sumPrompts').textContent = promptSummary();
-  document.getElementById('sumErrors').textContent =
-    ERROR_FEEDBACK_LABELS[state.errorFeedback] + ' · ' + ERROR_LETTER_LABELS[state.errorLetterMode];
-  document.getElementById('sumSizes').textContent =
-    'Keys ' + SIZE_LABELS[state.keySize] + ' · ' + CASE_VALUES[state.caseMode];
-  document.getElementById('sumVoice').textContent = state.voiceName || 'System voice';
-  document.getElementById('sumPractice').textContent =
-    (state.scoreMode ? 'Scoring on' : 'Scoring off') + (state.fadeMode ? ' · Fading' : '');
-  const btns = [];
-  if (state.showSearchBtn) btns.push('Search');
-  if (state.showHelpBtn) btns.push('Help');
-  const hiddenN = Object.keys(state.hiddenKeys).length;
-  document.getElementById('sumKeys').textContent =
-    (hiddenN ? hiddenN + ' hidden' : 'All keys on') + (btns.length ? ' \u00b7 ' + btns.join(' + ') : '');
+  const sums = groupSummaries();
+  Object.entries(sums).forEach(([k, v]) => {
+    const el = document.getElementById('sum' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (el) el.textContent = v;
+  });
 
   document.getElementById('toggleLetterSpeech').classList.toggle('on', state.letterSpeech);
   document.getElementById('toggleEnterSpeech').classList.toggle('on', state.enterSpeech);
@@ -3436,7 +3484,8 @@ document.getElementById('settingsMenu').addEventListener('click', e => {
     autoCollapseSpellingMode();
     closeAllMenus();
     save(); render(); renderSetup();
-    if (state.homeEnabled) showHome();
+    const onSetup = document.getElementById('viewSetup').classList.contains('active');
+    if (state.homeEnabled && !onSetup) showHome();
   }
 });
 
@@ -3586,15 +3635,27 @@ function renderSetup() {
     const isPhon = p.dataset.phon === '1';
     p.classList.toggle('selected', isPhon === state.phoneticMode);
   });
-  const pl = document.getElementById('setupPromptsLabel');
-  if (pl) {
-    pl.textContent = promptSummary();
-    document.getElementById('setupPromptsBtn').classList.toggle('has-target', anyPromptEnabled());
+  const steps = document.getElementById('setupSteps');
+  if (steps) {
+    const sums = groupSummaries();
+    steps.innerHTML = '';
+    SETUP_STEPS.forEach(st => {
+      const b = document.createElement('button');
+      b.className = 'setup-step';
+      b.innerHTML = '<span class="ss-emoji"></span><span class="ss-body">' +
+                    '<span class="ss-title"></span><span class="ss-sum"></span></span>';
+      b.querySelector('.ss-emoji').textContent = st.emoji;
+      b.querySelector('.ss-title').textContent = st.title;
+      b.querySelector('.ss-sum').textContent = sums[st.key];
+      b.addEventListener('click', () => openSettingsAt(st.key));
+      steps.appendChild(b);
+    });
   }
   const wb = document.getElementById('setupWordBtn');
   const wl = document.getElementById('setupWordLabel');
   if (state.currentTarget) {
-    wl.textContent = state.currentTarget;
+    wl.textContent = displayWord(state.currentTarget) +
+      (isPhrase() ? '  (' + state.phraseWords.length + '-word phrase)' : '');
     wb.classList.add('has-target');
   } else {
     wl.textContent = 'Free type';
@@ -3618,11 +3679,6 @@ document.getElementById('setupVoicePicker').addEventListener('change', e => {
 document.getElementById('setupVoicePreview').addEventListener('click', () => {
   warmSpeech();
   speak('Apple. A. P. P. L. E.', 0.95);
-});
-document.getElementById('setupPromptsBtn').addEventListener('click', () => {
-  refreshVoiceList();
-  renderSettings();
-  document.getElementById('settingsMenu').classList.add('show');
 });
 document.getElementById('startBtn').addEventListener('click', () => {
   if (state.homeEnabled && !state.currentTarget) showHome();
