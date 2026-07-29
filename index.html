@@ -271,8 +271,19 @@
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
   .tletter.next {
     background: var(--prompt); color: var(--prompt-ink);
-    animation: tlpulse 1.4s ease-in-out infinite;
   }
+  .tletter.next.pulse { animation: tlpulse 1.4s ease-in-out infinite; }
+  /* Magnify the target tile */
+  .tletter.magnify { display: inline-block; transform: scale(var(--tboost, 1)); }
+  .tletter.magnify.tmag-small { --tboost: 1.15; }
+  .tletter.magnify.tmag-med   { --tboost: 1.35; }
+  .tletter.magnify.tmag-large { --tboost: 1.6; }
+  .tletter.magnify.pulse { animation: tlmagpulse 1.4s ease-in-out infinite; }
+  @keyframes tlmagpulse {
+    0%, 100% { transform: scale(var(--tboost, 1)); }
+    50% { transform: scale(calc(var(--tboost, 1) * 1.08)); }
+  }
+  .target-word { align-items: center; }
   .tletter.next.fade-1 { background: var(--prompt-f1); }
   .tletter.next.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; }
   .tletter.pending { color: var(--muted); opacity: 0.4; }
@@ -530,8 +541,8 @@
   /* --- Colour prompt --- */
   .key.prompt-color {
     background: var(--prompt); color: var(--prompt-ink);
-    animation: keypulse 1.3s ease-in-out infinite;
   }
+  .key.prompt-pulse { animation: keypulse 1.3s ease-in-out infinite; }
   .key.prompt-color.fade-1 { background: var(--prompt-f1); color: var(--prompt-ink); }
   .key.prompt-color.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; box-shadow: var(--shadow); }
   @keyframes keypulse {
@@ -1186,12 +1197,24 @@
           <div class="setting-row"><span>Highlight the next letter</span><div class="toggle" id="togglePromptColor"></div></div>
         </div>
         <div class="swatch-row" id="colorSwatches" style="margin-top:10px;"></div>
+        <div class="seg-row" id="segIntensity" style="margin-top:8px;"></div>
+
+        <div class="sublabel">Movement</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Pulse the prompted letter</span><div class="toggle on" id="togglePromptPulse"></div></div>
+        </div>
 
         <div class="sublabel">Size prompt</div>
         <div class="settings-list">
           <div class="setting-row"><span>Enlarge the next letter's key</span><div class="toggle" id="togglePromptSize"></div></div>
         </div>
         <div class="seg-row" id="segPromptSize" style="margin-top:8px;"></div>
+
+        <div class="sublabel">Magnify the target word tile</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Grow the next letter in the Target bar</span><div class="toggle" id="togglePromptTile"></div></div>
+        </div>
+        <div class="seg-row" id="segTileSize" style="margin-top:8px;"></div>
 
         <div class="sublabel">Verbal prompt</div>
         <div class="settings-list">
@@ -1374,15 +1397,40 @@ const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
-  blue:   { label: 'Blue',   solid: '#2e8bff', soft: '#dbe9ff', glow: 'rgba(46,139,255,0.45)', ink: '#ffffff', f1: '#6daaff', f2: '#c2dcff' },
-  green:  { label: 'Green',  solid: '#34c759', soft: '#d4f5d8', glow: 'rgba(52,199,89,0.45)',  ink: '#ffffff', f1: '#74dd90', f2: '#c5f0d0' },
-  purple: { label: 'Purple', solid: '#a259ff', soft: '#ece0ff', glow: 'rgba(162,89,255,0.45)', ink: '#ffffff', f1: '#c191ff', f2: '#e0ccff' },
-  orange: { label: 'Orange', solid: '#ff9500', soft: '#ffe8c9', glow: 'rgba(255,149,0,0.45)',  ink: '#ffffff', f1: '#ffb64d', f2: '#ffdcae' },
-  pink:   { label: 'Pink',   solid: '#ff4d8d', soft: '#ffdfe9', glow: 'rgba(255,77,141,0.45)', ink: '#ffffff', f1: '#ff85b0', f2: '#ffc7d9' },
-  teal:   { label: 'Teal',   solid: '#00bcd4', soft: '#d0f4f9', glow: 'rgba(0,188,212,0.45)',  ink: '#ffffff', f1: '#5ad4e4', f2: '#b4ecf3' },
-  yellow: { label: 'Yellow', solid: '#ffc400', soft: '#fff2c4', glow: 'rgba(255,196,0,0.45)',  ink: '#1a1a1a', f1: '#ffd84d', f2: '#ffeeb0' },
-  red:    { label: 'Red',    solid: '#ff453a', soft: '#ffe0dc', glow: 'rgba(255,69,58,0.45)',  ink: '#ffffff', f1: '#ff8079', f2: '#ffc4c0' },
+  blue:   { label: 'Blue',   solid: '#2e8bff' },
+  green:  { label: 'Green',  solid: '#34c759' },
+  purple: { label: 'Purple', solid: '#a259ff' },
+  orange: { label: 'Orange', solid: '#ff9500' },
+  pink:   { label: 'Pink',   solid: '#ff4d8d' },
+  teal:   { label: 'Teal',   solid: '#00bcd4' },
+  yellow: { label: 'Yellow', solid: '#ffc400' },
+  red:    { label: 'Red',    solid: '#ff453a' },
 };
+const INTENSITY_LABELS = { light: 'Light', medium: 'Medium', dark: 'Dark' };
+
+// --- colour helpers: every shade is derived from the base swatch ---
+function hexToRgb(h) {
+  const m = h.replace('#', '');
+  return [parseInt(m.slice(0,2),16), parseInt(m.slice(2,4),16), parseInt(m.slice(4,6),16)];
+}
+function rgbToHex(c) {
+  return '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+function mixHex(hex, towardHex, amt) {
+  const a = hexToRgb(hex), b = hexToRgb(towardHex);
+  return rgbToHex(a.map((v, i) => v + (b[i] - v) * amt));
+}
+// Dark text on pale colours, white text on strong ones
+function inkFor(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.62 ? '#1a1a1a' : '#ffffff';
+}
+function shadeFor(solid, intensity) {
+  if (intensity === 'light') return mixHex(solid, '#ffffff', 0.58);
+  if (intensity === 'dark')  return mixHex(solid, '#000000', 0.34);
+  return solid;
+}
 const SIZE_STEPS = ['small', 'med', 'large'];
 const SIZE_LABELS = { small: 'Small', med: 'Medium', large: 'Large' };
 const OTHER_KEYS_LABELS = {
@@ -1447,7 +1495,11 @@ const state = {
   // ===== Prompting =====
   promptColorOn: true,        // highlight the next letter in colour
   promptColor: 'blue',        // key of PROMPT_COLORS
+  promptIntensity: 'medium',  // light | medium | dark
+  promptPulseOn: true,        // gentle pulsing motion on the prompted letter
   promptSizeOn: false,        // enlarge the next letter's key
+  promptTileOn: false,        // magnify the letter in the Target bar
+  promptTileSize: 'med',      // small | med | large
   promptSize: 'med',          // small | med | large
   promptVerbalOn: false,      // speak the next letter as a prompt
   promptDelaySec: 0,          // 0-10s before any prompt appears
@@ -1531,7 +1583,11 @@ async function load() {
 
         promptColorOn: saved.promptColorOn ?? true,
         promptColor: PROMPT_COLORS[saved.promptColor] ? saved.promptColor : 'blue',
+        promptIntensity: INTENSITY_LABELS[saved.promptIntensity] ? saved.promptIntensity : 'medium',
+        promptPulseOn: saved.promptPulseOn ?? true,
         promptSizeOn: saved.promptSizeOn ?? false,
+        promptTileOn: saved.promptTileOn ?? false,
+        promptTileSize: SIZE_STEPS.includes(saved.promptTileSize) ? saved.promptTileSize : 'med',
         promptSize: SIZE_STEPS.includes(saved.promptSize) ? saved.promptSize : 'med',
         promptVerbalOn: saved.promptVerbalOn ?? false,
         promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
@@ -1584,7 +1640,11 @@ async function save() {
 
       promptColorOn: state.promptColorOn,
       promptColor: state.promptColor,
+      promptIntensity: state.promptIntensity,
+      promptPulseOn: state.promptPulseOn,
       promptSizeOn: state.promptSizeOn,
+      promptTileOn: state.promptTileOn,
+      promptTileSize: state.promptTileSize,
       promptSize: state.promptSize,
       promptVerbalOn: state.promptVerbalOn,
       promptDelaySec: state.promptDelaySec,
@@ -1896,17 +1956,20 @@ function isWordComplete() {
 // ===== Prompt engine =====
 function applyPromptTheme() {
   const c = PROMPT_COLORS[state.promptColor] || PROMPT_COLORS.blue;
+  const base = shadeFor(c.solid, state.promptIntensity);
+  const [r0, g0, b0] = hexToRgb(base);
   const r = document.documentElement.style;
-  r.setProperty('--prompt', c.solid);
-  r.setProperty('--prompt-soft', c.soft);
-  r.setProperty('--prompt-glow', c.glow);
-  r.setProperty('--prompt-ink', c.ink);
-  r.setProperty('--prompt-f1', c.f1);
-  r.setProperty('--prompt-f2', c.f2);
+  r.setProperty('--prompt', base);
+  r.setProperty('--prompt-soft', mixHex(base, '#ffffff', 0.78));
+  r.setProperty('--prompt-glow', 'rgba(' + r0 + ',' + g0 + ',' + b0 + ',0.45)');
+  r.setProperty('--prompt-ink', inkFor(base));
+  r.setProperty('--prompt-f1', mixHex(base, '#ffffff', 0.35));
+  r.setProperty('--prompt-f2', mixHex(base, '#ffffff', 0.72));
 }
 // Any visual/verbal prompt at all?
 function anyPromptEnabled() {
-  return state.promptColorOn || state.promptSizeOn || state.promptVerbalOn || state.otherKeysMode !== 'normal';
+  return state.promptColorOn || state.promptSizeOn || state.promptVerbalOn ||
+         state.promptPulseOn || state.promptTileOn || state.otherKeysMode !== 'normal';
 }
 // Prompts are showing right now (delay elapsed, letter not fully faded)
 function promptsShowing() {
@@ -1980,10 +2043,16 @@ function render() {
       const s = document.createElement('span');
       s.className = 'tletter';
       if (i < state.targetIndex) s.classList.add('done');
-      else if (i === state.targetIndex && showing && state.promptColorOn) {
+      else if (i === state.targetIndex && showing && (state.promptColorOn || state.promptTileOn)) {
         const fl = fadeLevelAt(i);
-        s.classList.add('next');
-        if (fl > 0) s.classList.add('fade-' + fl);
+        if (state.promptColorOn) {
+          s.classList.add('next');
+          if (fl > 0) s.classList.add('fade-' + fl);
+        } else {
+          s.classList.add('pending');
+        }
+        if (state.promptTileOn) s.classList.add('magnify', 'tmag-' + state.promptTileSize);
+        if (state.promptPulseOn && fl < 2) s.classList.add('pulse');
       }
       else s.classList.add('pending');
       s.textContent = displayLetterAt(ch, i);
@@ -2050,6 +2119,7 @@ function makeLetterKey(letter, expected) {
       k.classList.add('prompt-color');
       if (fl > 0) k.classList.add('fade-' + fl);
     }
+    if (state.promptPulseOn && fl < 2) k.classList.add('prompt-pulse');
     if (state.promptSizeOn) {
       k.classList.add('prompt-size', 'boost-' + state.promptSize);
     }
@@ -2591,7 +2661,7 @@ function buildSwatches() {
   Object.entries(PROMPT_COLORS).forEach(([key, def]) => {
     const b = document.createElement('button');
     b.className = 'swatch' + (key === state.promptColor ? ' selected' : '');
-    b.style.background = def.solid;
+    b.style.background = shadeFor(def.solid, state.promptIntensity);
     b.title = def.label;
     b.setAttribute('aria-label', def.label);
     b.addEventListener('click', () => {
@@ -2613,6 +2683,7 @@ function renderPromptPreview() {
     if (i === 1) {
       k.classList.add('prompting');
       if (state.promptColorOn) k.classList.add('prompt-color');
+      if (state.promptPulseOn) k.classList.add('prompt-pulse');
       if (state.promptSizeOn) k.classList.add('prompt-size', 'boost-' + state.promptSize);
     } else {
       if (state.otherKeysMode === 'faded') k.style.opacity = '0.28';
@@ -2625,8 +2696,13 @@ function renderPromptPreview() {
 }
 function promptSummary() {
   const on = [];
-  if (state.promptColorOn) on.push((PROMPT_COLORS[state.promptColor] || {}).label || 'Colour');
+  if (state.promptColorOn) {
+    on.push(INTENSITY_LABELS[state.promptIntensity] + ' ' +
+            ((PROMPT_COLORS[state.promptColor] || {}).label || 'colour').toLowerCase());
+  }
+  if (state.promptPulseOn) on.push('Pulse');
   if (state.promptSizeOn) on.push(SIZE_LABELS[state.promptSize] + ' size');
+  if (state.promptTileOn) on.push(SIZE_LABELS[state.promptTileSize] + ' tile');
   if (state.promptVerbalOn) on.push('Voice');
   if (state.otherKeysMode !== 'normal') on.push(OTHER_KEYS_LABELS[state.otherKeysMode]);
   if (state.promptDelaySec > 0) on.push(state.promptDelaySec + 's wait');
@@ -2637,10 +2713,17 @@ function renderSettings() {
   // ----- Prompts -----
   document.getElementById('togglePromptColor').classList.toggle('on', state.promptColorOn);
   document.getElementById('togglePromptSize').classList.toggle('on', state.promptSizeOn);
+  document.getElementById('togglePromptPulse').classList.toggle('on', state.promptPulseOn);
+  document.getElementById('togglePromptTile').classList.toggle('on', state.promptTileOn);
   document.getElementById('togglePromptVerbal').classList.toggle('on', state.promptVerbalOn);
   buildSwatches();
+  buildSeg('segIntensity', Object.entries(INTENSITY_LABELS).map(([v, l]) => ({ value: v, label: l })), state.promptIntensity,
+    v => { state.promptIntensity = v; if (!state.promptColorOn) state.promptColorOn = true;
+           save(); applyPromptTheme(); render(); renderSettings(); });
   buildSeg('segPromptSize', SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] })), state.promptSize,
     v => { state.promptSize = v; if (!state.promptSizeOn) state.promptSizeOn = true; save(); render(); renderSettings(); });
+  buildSeg('segTileSize', SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] })), state.promptTileSize,
+    v => { state.promptTileSize = v; if (!state.promptTileOn) state.promptTileOn = true; save(); render(); renderSettings(); });
   buildSeg('segOtherKeys', Object.entries(OTHER_KEYS_LABELS).map(([v, l]) => ({ value: v, label: l })), state.otherKeysMode,
     v => { state.otherKeysMode = v; save(); render(); renderSettings(); });
 
@@ -2753,6 +2836,12 @@ document.querySelectorAll('#settingsMenu [data-toggle-group]').forEach(head => {
 // ---- Prompt controls ----
 document.getElementById('togglePromptColor').addEventListener('click', () => {
   state.promptColorOn = !state.promptColorOn; save(); render(); renderSettings();
+});
+document.getElementById('togglePromptPulse').addEventListener('click', () => {
+  state.promptPulseOn = !state.promptPulseOn; save(); render(); renderSettings();
+});
+document.getElementById('togglePromptTile').addEventListener('click', () => {
+  state.promptTileOn = !state.promptTileOn; save(); render(); renderSettings();
 });
 document.getElementById('togglePromptSize').addEventListener('click', () => {
   state.promptSizeOn = !state.promptSizeOn; save(); render(); renderSettings();
