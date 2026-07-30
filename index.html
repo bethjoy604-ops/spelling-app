@@ -328,6 +328,8 @@
   }
   .magic-chip:active { transform: scale(0.97); }
   .magic-chip .mc-spark { font-size: 14px; }
+  .magic-chip.word { background: var(--surface); box-shadow: var(--shadow); }
+  .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
   /* Category tiles — their own line, above the bank */
   .cat-tiles {
@@ -347,7 +349,7 @@
   /* exactly three rows: 3 cards tall + the 2 gaps between them */
   .home-grid.three-lines {
     flex: none; overflow: hidden;
-    max-height: calc(76px * 3 + 10px * 2);
+    max-height: calc(76px * 5 + 10px * 4);
   }
 
   /* ===== KEYBOARD ===== */
@@ -1594,6 +1596,18 @@
           <div class="setting-row"><span>Score (track prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
         </div>
         <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
+
+        <div class="sublabel">Word bank</div>
+        <div class="word-add" style="margin-top:0;">
+          <input type="text" id="setWordInput" placeholder="Add a word or phrase..." maxlength="40"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button id="setWordAdd">Add</button>
+        </div>
+        <div class="help-note" id="setWordCount"></div>
+        <div class="full-row" style="margin-top:8px;">
+          <button class="mbtn action" id="setGroupsBtn">Groups →</button>
+          <button class="mbtn action" id="setImportBtn">Import / export</button>
+        </div>
       </div>
     </div>
 
@@ -3099,6 +3113,33 @@ let homePhrase = [];        // the phrase being built
 
 function currentCat() { return homePath.length ? catById(homePath[homePath.length - 1]) : null; }
 
+// The bank always reads in lower case, whatever the spelling case mode is
+function bankLabel(w) { return (w || '').toLowerCase(); }
+// Which groups a word belongs to — drives the tint behind its card
+function categoriesOf(word) {
+  return state.categories.filter(c => (c.words || []).includes(word));
+}
+function wordTint(word) {
+  const cats = categoriesOf(word);
+  if (cats.length === 0) return null;
+  if (cats.length === 1) return tintFor(cats[0], 0.8);
+  const stops = cats.slice(0, 4).map(c => tintFor(c, 0.78));
+  return 'linear-gradient(120deg, ' + stops.map((c, i) =>
+    c + ' ' + Math.round(i * 100 / stops.length) + '%, ' +
+    c + ' ' + Math.round((i + 1) * 100 / stops.length) + '%').join(', ') + ')';
+}
+// Words that have actually appeared alongside this one in modelled phrases
+function relatedWords(word) {
+  const counts = {};
+  Object.entries(state.wordHistory || {}).forEach(([entry, d]) => {
+    if (!d || !d.n || isLexicalUnit(entry)) return;
+    const parts = entry.split(' ').filter(Boolean);
+    if (!parts.includes(word)) return;
+    parts.forEach(p => { if (p !== word && !homePhrase.includes(p)) counts[p] = (counts[p] || 0) + d.n; });
+  });
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(e => e[0]).slice(0, 3);
+}
+
 // ---- Magic type: whole phrases suggested for a word ----
 // Frames are learned from phrases already spelled, so nothing is hard-coded English.
 // A multi-word entry that lives in a group is a name, not a sentence — never split it
@@ -3138,19 +3179,42 @@ function magicPhrasesFor(word) {
   Object.entries(state.wordHistory || {}).forEach(([entry, d]) => {
     if (entry !== word && d && d.n && !isLexicalUnit(entry) && entry.split(' ').includes(word)) push(entry);
   });
-  learnedFrames().forEach(f => { if (out.length < 3) push(f.replace('\u2022', word)); });
+  learnedFrames().forEach(f => {
+    if (out.length >= 3) return;
+    if (f.split(' ').includes(word)) return;   // never "park park"
+    push(f.replace('\u2022', word));
+  });
   return out.slice(0, 3);
 }
 function renderMagic(word) {
   const row = document.getElementById('magicRow');
   row.innerHTML = '';
   if (!state.magicType || !word) return;
+
+  // Single words that have gone with this one before — tap to keep building
+  relatedWords(word).forEach(next => {
+    const b = document.createElement('button');
+    b.className = 'magic-chip word';
+    const t = document.createElement('span');
+    t.textContent = bankLabel(next);
+    b.appendChild(t);
+    b.addEventListener('click', () => {
+      homePhrase.push(next);
+      warmSpeech();
+      speakWord(next, 0.95);
+      renderPhraseBar();
+      renderMagic(next);
+    });
+    row.appendChild(b);
+  });
+
+  // Whole phrases already modelled — tap to spell the lot
   magicPhrasesFor(word).forEach(phrase => {
     const b = document.createElement('button');
     b.className = 'magic-chip';
     b.innerHTML = '<span class="mc-spark">\u2728</span>';
     const t = document.createElement('span');
-    t.textContent = displayWord(phrase);
+    t.textContent = bankLabel(phrase) + ' \u2192';
     b.appendChild(t);
     b.addEventListener('click', () => {
       homePhrase = phrase.split(' ').filter(Boolean);
@@ -3173,7 +3237,7 @@ function renderPhraseBar() {
     homePhrase.forEach(w => {
       const c = document.createElement('span');
       c.className = 'pb-chip';
-      c.textContent = displayWord(w);
+      c.textContent = bankLabel(w);
       box.appendChild(c);
     });
   }
@@ -3308,14 +3372,11 @@ function renderHome(reset) {
   slice.forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
-    if (cat) {
-      card.style.background = tintFor(cat, 0.78);
-      card.style.color = inkFor(tintFor(cat, 0.78));
-    }
+    const tint = cat ? tintFor(cat, 0.8) : wordTint(r.word);
+    if (tint) card.style.background = tint;
     const w = document.createElement('span');
     w.className = 'hw';
-    w.textContent = displayWord(r.word);
-    if (cat) w.style.color = 'inherit';
+    w.textContent = bankLabel(r.word);
     card.appendChild(w);
     card.addEventListener('click', () => {
       homePhrase.push(r.word);
@@ -3914,6 +3975,10 @@ function renderSettings() {
     v => { state.enterSpeechMode = v; save(); renderSettings(); });
   document.getElementById('toggleSpeakError').classList.toggle('on', state.speakErrorLetter);
   document.getElementById('toggleBankCount').classList.toggle('on', state.showBankCount);
+  const bankN = searchWords('').length;
+  document.getElementById('setWordCount').textContent =
+    bankN ? bankN + ' words in the bank \u00b7 ' + state.categories.length + ' groups'
+          : 'The bank is empty \u2014 add words here or import a list.';
   document.getElementById('toggleSearchBtn').classList.toggle('on', state.showSearchBtn);
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
@@ -4040,6 +4105,29 @@ document.getElementById('errorPhraseRec').addEventListener('click', async () => 
   });
   if (!ok) { activeRecord = null; done(); renderSettings(); }
   else setTimeout(() => { if (activeRecord) stopRecording(); }, 3000);
+});
+
+// ---- Word bank, from settings ----
+function addWordFromSettings() {
+  const inp = document.getElementById('setWordInput');
+  const w = normaliseWord(inp.value);
+  if (!w) return;
+  if (!state.words.includes(w)) state.words.push(w);
+  if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+  inp.value = '';
+  save(); renderSettings();
+}
+document.getElementById('setWordAdd').addEventListener('click', addWordFromSettings);
+document.getElementById('setWordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addWordFromSettings();
+});
+document.getElementById('setGroupsBtn').addEventListener('click', () => {
+  renderCatList();
+  document.getElementById('manageMenu').classList.add('show');
+});
+document.getElementById('setImportBtn').addEventListener('click', () => {
+  document.getElementById('importBox').value = '';
+  document.getElementById('importMenu').classList.add('show');
 });
 
 document.getElementById('toggleBankCount').addEventListener('click', () => {
