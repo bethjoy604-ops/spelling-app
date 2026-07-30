@@ -1186,6 +1186,10 @@
   <div class="home-bar">
     <button class="ctl icon" id="homeBackBtn" aria-label="Back">&#8249;</button>
     <select class="home-nav" id="homeNav" aria-label="Go to a group"></select>
+    <button class="ctl" id="bankSortBtn" aria-label="Change order">
+      <span class="label">Order</span>
+      <span class="value" id="bankSortValue">Recent</span>
+    </button>
     <div class="spacer"></div>
     <button class="ctl icon" id="homeManageBtn" aria-label="Manage groups">&#9776;</button>
     <button class="ctl icon dark" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
@@ -1702,6 +1706,7 @@ function shadeFor(solid, intensity) {
   if (intensity === 'dark')  return mixHex(solid, '#000000', 0.34);
   return solid;
 }
+const BANK_SORTS = { recent: 'Recent', groups: 'Groups', stale: 'Needs practice' };
 const SIZE_STEPS = ['small', 'med', 'large'];
 const SIZE_LABELS = { small: 'Small', med: 'Medium', large: 'Large' };
 const OTHER_KEYS_LABELS = {
@@ -1783,6 +1788,7 @@ const state = {
   showHelpBtn: false,         // fires the prompts on demand
   homeEnabled: false,         // land on a word-bank home page
   homeMode: 'tiles',          // tiles | words — how home presents the bank
+  bankSort: 'recent',         // recent | groups | stale
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
   catSeq: 1,                  // next category id
@@ -1882,6 +1888,7 @@ async function load() {
         showHelpBtn: saved.showHelpBtn ?? false,
         homeEnabled: saved.homeEnabled ?? false,
         homeMode: (saved.homeMode === 'words') ? 'words' : 'tiles',
+        bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -1959,6 +1966,7 @@ async function save() {
       showHelpBtn: state.showHelpBtn,
       homeEnabled: state.homeEnabled,
       homeMode: state.homeMode,
+      bankSort: state.bankSort,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -3344,6 +3352,34 @@ function renderCatTiles() {
   row.appendChild(add);
 }
 
+// The bank in whichever order is chosen
+function bankRows() {
+  const all = searchWords('');
+  if (state.bankSort === 'stale') {
+    // Longest since it was last spelled first; never-spelled words come first of all
+    return all.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
+  }
+  if (state.bankSort === 'groups') {
+    const out = [];
+    const placed = {};
+    const walk = (parent) => {
+      childrenOf(parent).forEach(c => {
+        // Within a group, whatever hasn't been practised in longest comes first
+        rankWords(c.words || []).sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(r => {
+          if (placed[r.word]) return;
+          placed[r.word] = true;
+          out.push(r);
+        });
+        walk(c.id);
+      });
+    };
+    walk(null);
+    all.forEach(r => { if (!placed[r.word]) out.push(r); });   // ungrouped last
+    return out;
+  }
+  return all.slice().sort((a, b) => b.t - a.t || b.n - a.n);
+}
+
 function renderHome(reset) {
   const grid = document.getElementById('homeGrid');
   const cat = currentCat();
@@ -3353,8 +3389,10 @@ function renderHome(reset) {
     document.getElementById('homeBackBtn').style.display = homePath.length ? '' : 'none';
     renderHomeNav();
     // Top level shows the words used most recently; a group shows all of its words
-    homeRows = cat ? categoryRows(cat) : searchWords('').slice().sort((a, b) => b.t - a.t || b.n - a.n);
-    grid.classList.toggle('three-lines', !cat);
+    homeRows = cat ? categoryRows(cat) : bankRows();
+    // Only the plain recent view is capped — the other orders are meant to be scrolled
+    grid.classList.toggle('three-lines', !cat && state.bankSort === 'recent');
+    document.getElementById('bankSortValue').textContent = BANK_SORTS[state.bankSort];
     homeShown = 0;
     grid.innerHTML = '';
     grid.scrollTop = 0;
@@ -3394,6 +3432,11 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
   if (homeShown < homeRows.length && g.scrollTop + g.clientHeight > g.scrollHeight - 300) {
     renderHome(false);
   }
+});
+document.getElementById('bankSortBtn').addEventListener('click', () => {
+  const keys = Object.keys(BANK_SORTS);
+  state.bankSort = keys[(keys.indexOf(state.bankSort) + 1) % keys.length];
+  save(); renderHome(true);
 });
 document.getElementById('homeBackBtn').addEventListener('click', () => {
   homePath.pop();
