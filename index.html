@@ -332,7 +332,11 @@
   .cat-tile.plain { background: var(--surface); box-shadow: var(--shadow); color: var(--ink); }
 
   /* At the top level the bank shows just the last few words used */
-  .home-grid.three-lines { flex: none; max-height: 282px; overflow: hidden; }
+  /* exactly three rows: 3 cards tall + the 2 gaps between them */
+  .home-grid.three-lines {
+    flex: none; overflow: hidden;
+    max-height: calc(76px * 3 + 10px * 2);
+  }
 
   /* ===== KEYBOARD ===== */
   .view-keyboard {
