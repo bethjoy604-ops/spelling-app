@@ -273,19 +273,20 @@
   .start-button.home-go { margin: 0; padding: 14px 20px; font-size: 17px; width: auto; flex-shrink: 0; }
   .home-grid {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    display: grid; gap: 10px; align-content: start;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start;
     padding-bottom: 20px;
   }
   .home-card {
+    flex: 0 0 auto; max-width: 100%;
     background: var(--surface); border-radius: 16px;
     box-shadow: var(--shadow); border: none;
-    padding: 18px 12px 12px;
+    padding: 18px 22px;
+    min-height: 76px; justify-content: center;
     font-family: inherit; cursor: pointer; text-align: center;
-    display: flex; flex-direction: column; gap: 6px; align-items: center;
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
   }
   .home-card:active { transform: scale(0.97); }
-  .home-card .hw { font-size: 26px; font-weight: 900; color: var(--ink); word-break: break-word; }
+  .home-card .hw { font-size: 26px; font-weight: 900; color: var(--ink); line-height: 1.15; }
   .home-card .hm { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
   .home-card.selected { background: var(--prompt-soft); }
 
@@ -329,7 +330,7 @@
   .home-card.cat-card { align-items: flex-start; text-align: left; }
   .home-card.cat-card .hw { font-size: 22px; }
   .home-card.cat-card .hm { text-transform: none; letter-spacing: 0; font-size: 12px; }
-  .home-card.size-large { grid-column: span 2; }
+  .home-card.size-large .hw { font-size: 32px; }
 
   /* ===== KEYBOARD ===== */
   .view-keyboard {
@@ -3109,16 +3110,6 @@ function learnedFrames() {
     .sort((a, b) => b[1].n - a[1].n || (b[1].slot === b[1].last) - (a[1].slot === a[1].last))
     .map(e => e[0]);
 }
-// Before any phrase history exists, borrow from the first group — the one
-// listed first is the everyday-communication set in practice.
-function starterWords(exclude) {
-  const first = childrenOf(null)[0];
-  const pool = first ? rankWords(first.words || []) : [];
-  const rest = searchWords('');
-  return pool.concat(rest)
-    .map(r => r.word)
-    .filter(w => w !== exclude && !w.includes(' ') && w.length <= 6);
-}
 function magicPhrasesFor(word) {
   const out = [];
   const seen = {};
@@ -3126,21 +3117,12 @@ function magicPhrasesFor(word) {
     const t = (p || '').trim();
     if (t && t !== word && !seen[t]) { seen[t] = true; out.push(t); }
   };
-  // 1. Phrases already spelled that contain this word
+  // Only ever phrases that have actually been modelled in the app.
+  // Nothing modelled yet means no suggestions — never invented combinations.
   Object.entries(state.wordHistory || {}).forEach(([entry, d]) => {
     if (entry !== word && d && d.n && !isLexicalUnit(entry) && entry.split(' ').includes(word)) push(entry);
   });
-  // 2. Frames learned from past phrases, with this word dropped in
-  learnedFrames().forEach(f => { if (out.length < 6) push(f.replace('\u2022', word)); });
-  // 3. Cold start — pair it with the words used most
-  if (out.length < 3) {
-    const seenW = {};
-    starterWords(word).forEach(w => {
-      if (out.length >= 3 || seenW[w]) return;
-      seenW[w] = true;
-      push(w + ' ' + word);
-    });
-  }
+  learnedFrames().forEach(f => { if (out.length < 3) push(f.replace('\u2022', word)); });
   return out.slice(0, 3);
 }
 function renderMagic(word) {
@@ -3247,21 +3229,18 @@ function renderHome(reset) {
         w.className = 'hw'; w.textContent = c.name;
         const m = document.createElement('span');
         m.className = 'hm';
-        m.textContent = rows.length + (rows.length === 1 ? ' word' : ' words') +
-          (rows.length ? ' \u00b7 ' + rows.slice(0, 3).map(r => displayWord(r.word)).join(', ') : '');
+        m.textContent = rows.length + (rows.length === 1 ? ' word' : ' words');
         card.appendChild(w); card.appendChild(m);
         card.addEventListener('click', () => { homePath.push(c.id); renderHome(true); });
         grid.appendChild(card);
       });
     }
 
-    document.getElementById('homeCount').textContent =
-      homeRows.length ? homeRows.length + ' words \u00b7 most used first'
-                      : (subs.length ? subs.length + ' groups' : 'Nothing here yet');
+    document.getElementById('homeCount').textContent = '';
     if (homeRows.length === 0 && subs.length === 0) {
       const n = document.createElement('div');
       n.className = 'empty-note';
-      n.style.gridColumn = '1 / -1';
+      n.style.flexBasis = '100%';
       n.textContent = 'Spell a word, or use \u2630 to add words to this group.';
       grid.appendChild(n);
       return;
@@ -3274,10 +3253,7 @@ function renderHome(reset) {
     const w = document.createElement('span');
     w.className = 'hw';
     w.textContent = displayWord(r.word);
-    const m = document.createElement('span');
-    m.className = 'hm';
-    m.textContent = r.n ? (timeAgo(r.t, r.n) + ' \u00b7 ' + r.n + '\u00d7') : timeAgo(r.t, 0);
-    card.appendChild(w); card.appendChild(m);
+    card.appendChild(w);
     card.addEventListener('click', () => {
       homePhrase.push(r.word);
       warmSpeech();
