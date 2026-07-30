@@ -289,6 +289,48 @@
   .home-card .hm { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
   .home-card.selected { background: var(--prompt-soft); }
 
+  .home-bar .ctl.icon { flex: none; }
+  #homeBackBtn { display: none; }
+  .phrase-bar {
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    background: var(--surface); border-radius: 18px;
+    padding: 10px 12px; box-shadow: var(--shadow);
+  }
+  .pb-words { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pb-empty { color: var(--muted); font-size: 14px; font-weight: 700; }
+  .pb-chip {
+    background: var(--prompt-soft); color: var(--ink);
+    border-radius: 10px; padding: 8px 12px;
+    font-size: 20px; font-weight: 900;
+  }
+  .start-button.pb-go { margin: 0; padding: 12px 16px; font-size: 16px; width: auto; flex-shrink: 0; }
+  .start-button.pb-go[disabled] { opacity: 0.35; pointer-events: none; }
+
+  .magic-row { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+  .magic-chip {
+    background: var(--yellow-warm); border: none; border-radius: 14px;
+    padding: 12px 14px; font-family: inherit;
+    font-size: 17px; font-weight: 900; color: var(--ink); cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .magic-chip:active { transform: scale(0.97); }
+  .magic-chip .mc-spark { font-size: 14px; }
+
+  .chip-row { display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0; padding-bottom: 2px; }
+  .cat-chip {
+    flex: none; border: none; border-radius: 20px;
+    padding: 10px 16px; font-family: inherit;
+    font-size: 15px; font-weight: 900; cursor: pointer;
+    background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  }
+  .cat-chip.selected { background: var(--ink); color: white; }
+  .cat-chip:active { transform: scale(0.96); }
+
+  .home-card.cat-card { align-items: flex-start; text-align: left; }
+  .home-card.cat-card .hw { font-size: 22px; }
+  .home-card.cat-card .hm { text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .home-card.size-large { grid-column: span 2; }
+
   /* ===== KEYBOARD ===== */
   .view-keyboard {
     flex-direction: column;
@@ -886,6 +928,26 @@
   }
   .word-item .plus:active { transform: scale(0.92); }
 
+  .cat-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .cat-row {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg); border-radius: 12px; padding: 8px 10px;
+  }
+  .cat-row .cc-dot { width: 18px; height: 18px; border-radius: 50%; flex: none; border: none; cursor: pointer; }
+  .cat-row .cc-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 900; text-align: left;
+    background: transparent; border: none; font-family: inherit; color: var(--ink); cursor: pointer; }
+  .cat-row .cc-btn {
+    background: transparent; border: none; font-size: 15px; cursor: pointer;
+    padding: 4px 6px; border-radius: 8px; color: var(--muted); font-family: inherit;
+  }
+  .cat-row.is-hidden { opacity: 0.45; }
+  .import-box {
+    width: 100%; min-height: 180px; margin-top: 10px;
+    border-radius: 12px; border: 2px solid var(--border); background: var(--bg);
+    padding: 12px; font-family: inherit; font-size: 14px; font-weight: 600;
+    color: var(--ink); resize: vertical;
+  }
+
   .hidden-keys-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .hidden-chip {
     background: var(--bg);
@@ -1101,13 +1163,24 @@
 <!-- ===== HOME ===== -->
 <div class="view view-home" id="viewHome">
   <div class="home-bar">
+    <button class="ctl icon" id="homeBackBtn" aria-label="Back">&#8249;</button>
     <div class="home-title">
-      <span class="ht-main">Word bank</span>
+      <span class="ht-main" id="homeTitle">Word bank</span>
       <span class="ht-sub" id="homeCount"></span>
     </div>
+    <button class="ctl icon" id="homeManageBtn" aria-label="Manage groups">&#9776;</button>
     <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <button class="start-button home-go" id="homeGoBtn">Keyboard &rarr;</button>
   </div>
+
+  <div class="phrase-bar" id="phraseBar">
+    <div class="pb-words" id="pbWords"><span class="pb-empty">Tap words to build a phrase</span></div>
+    <button class="ctl icon" id="pbClear" aria-label="Clear phrase">&times;</button>
+    <button class="start-button pb-go" id="pbGo">Spell it &rarr;</button>
+  </div>
+
+  <div class="magic-row" id="magicRow"></div>
+  <div class="chip-row" id="homeChips"></div>
   <div class="home-grid" id="homeGrid"></div>
 </div>
 
@@ -1258,6 +1331,57 @@
     <div class="full-row" style="margin-top: 18px;">
       <button class="mbtn action danger" id="clearRecordingsBtn">Delete All</button>
       <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage groups -->
+<div class="overlay" id="manageMenu">
+  <div class="sheet">
+    <h3>Groups</h3>
+    <div class="key-preview" style="font-size: 30px;">&#128193;</div>
+    <div class="cat-list" id="catList"></div>
+    <div class="word-add" style="margin-top:10px;">
+      <input type="text" id="newCatInput" placeholder="New group name..." maxlength="24" autocomplete="off" spellcheck="false">
+      <button id="addCatBtn">Add</button>
+    </div>
+    <div class="full-row" style="margin-top: 14px;">
+      <button class="mbtn action" id="openImportBtn">Import / export</button>
+      <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Words in a group -->
+<div class="overlay" id="catWordsMenu">
+  <div class="sheet">
+    <h3 id="catWordsTitle">Group words</h3>
+    <div class="word-add" style="margin-top:0;">
+      <input type="text" id="catWordInput" placeholder="Add a word or phrase..." maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button id="catWordAdd">Add</button>
+    </div>
+    <div class="menu-section-label">In this group</div>
+    <div class="word-list" id="catWordsIn"></div>
+    <div class="menu-section-label">From your word bank</div>
+    <div class="word-list" id="catWordsBank"></div>
+    <div class="full-row" style="margin-top: 16px;">
+      <button class="mbtn action primary" data-action="cancel" style="grid-column: span 2;">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import / export -->
+<div class="overlay" id="importMenu">
+  <div class="sheet">
+    <h3>Import / export</h3>
+    <div class="record-hint">One group per line as <b>Group: word, word</b>. Indent with two spaces to nest a group inside the one above.</div>
+    <textarea id="importBox" class="import-box" spellcheck="false" autocapitalize="off"></textarea>
+    <div class="full-row" style="margin-top: 10px;">
+      <button class="mbtn action" id="exportBtn">Fill with mine</button>
+      <button class="mbtn action primary" id="runImportBtn">Import</button>
+    </div>
+    <div class="full-row" style="margin-top: 8px;">
+      <button class="mbtn action" data-action="cancel" style="grid-column: span 2;">Close</button>
     </div>
   </div>
 </div>
@@ -1426,6 +1550,8 @@
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
           <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
+          <div class="setting-row"><span>&#128193; Group tiles on home</span><div class="toggle on" id="toggleTiles"></div></div>
+          <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
         </div>
         <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
 
@@ -1624,6 +1750,10 @@ const state = {
   showSearchBtn: false,       // magnifier that searches past words
   showHelpBtn: false,         // fires the prompts on demand
   homeEnabled: false,         // land on a word-bank home page
+  homeMode: 'tiles',          // tiles | words — how home presents the bank
+  magicType: true,            // offer whole-phrase suggestions on tap
+  categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
+  catSeq: 1,                  // next category id
   wordHistory: {},            // {WORD: {n: times spelled, t: last finished}}
 
   // ===== Sizes =====
@@ -1719,6 +1849,10 @@ async function load() {
         showSearchBtn: saved.showSearchBtn ?? false,
         showHelpBtn: saved.showHelpBtn ?? false,
         homeEnabled: saved.homeEnabled ?? false,
+        homeMode: (saved.homeMode === 'words') ? 'words' : 'tiles',
+        magicType: saved.magicType ?? true,
+        categories: saved.categories || [],
+        catSeq: saved.catSeq || 1,
         wordHistory: saved.wordHistory || {},
 
         keySize: SIZE_STEPS.includes(saved.keySize) ? saved.keySize : 'med',
@@ -1792,6 +1926,10 @@ async function save() {
       showSearchBtn: state.showSearchBtn,
       showHelpBtn: state.showHelpBtn,
       homeEnabled: state.homeEnabled,
+      homeMode: state.homeMode,
+      magicType: state.magicType,
+      categories: state.categories,
+      catSeq: state.catSeq,
       wordHistory: state.wordHistory,
 
       keySize: state.keySize,
@@ -2678,7 +2816,7 @@ function openKeyMenu(letter) {
   menu.classList.add('show');
 }
 function closeAllMenus() {
-  ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu','searchMenu'].forEach(id =>
+  ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu','searchMenu','manageMenu','catWordsMenu','importMenu'].forEach(id =>
     document.getElementById(id).classList.remove('show'));
 }
 function saveCurrentPhoneme() {
@@ -2750,7 +2888,7 @@ document.getElementById('newWordInput').addEventListener('keydown', e => {
 });
 function addWordFromInput() {
   const inp = document.getElementById('newWordInput');
-  const raw = inp.value.trim().toUpperCase().replace(/[^A-Z]/g, '');
+  const raw = normaliseWord(inp.value);
   if (!raw) return;
   if (!state.words.includes(raw)) {
     state.words.push(raw);
@@ -2882,24 +3020,247 @@ function renderRecentPicks() {
   });
 }
 
+// ===== Categories =====
+function normaliseWord(v) {
+  return (v || '').toUpperCase().replace(/[^A-Z' ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function catById(id) { return state.categories.find(c => c.id === id) || null; }
+function childrenOf(parentId, includeHidden) {
+  return state.categories
+    .filter(c => (c.parent || null) === (parentId || null) && (includeHidden || !c.hidden))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+function addCategory(name, parent) {
+  const colors = Object.keys(PROMPT_COLORS);
+  const cat = {
+    id: state.catSeq++,
+    name: name || 'New group',
+    color: colors[(state.categories.length) % colors.length],
+    parent: parent || null,
+    words: [],
+    rule: null,
+    hidden: false,
+    order: state.categories.filter(c => (c.parent || null) === (parent || null)).length,
+  };
+  state.categories.push(cat);
+  return cat;
+}
+function deleteCategory(id) {
+  childrenOf(id, true).forEach(c => deleteCategory(c.id));
+  state.categories = state.categories.filter(c => c.id !== id);
+}
+function catDepth(cat) {
+  let d = 0, c = cat;
+  while (c && c.parent) { d++; c = catById(c.parent); }
+  return d;
+}
+// Words in a category, ordered by how much they're actually used
+function rankWords(list) {
+  const now = Date.now();
+  return list.slice().map(w => {
+    const d = state.wordHistory[w] || { n: 0, t: 0 };
+    const days = d.t ? (now - d.t) / 86400000 : null;
+    return { word: w, n: d.n || 0, t: d.t || 0,
+             score: (days === null ? 0 : 45 / (1 + days)) + Math.min(24, (d.n || 0) * 4) };
+  }).sort((a, b) => b.score - a.score || a.word.localeCompare(b.word));
+}
+function categoryRows(cat) {
+  if (!cat) return searchWords('');
+  if (cat.rule === 'used') return searchWords('').slice().sort((a, b) => b.n - a.n || b.t - a.t);
+  if (cat.rule === 'recent') return searchWords('').slice().sort((a, b) => b.t - a.t);
+  return rankWords(cat.words || []);
+}
+
 // ===== Home screen =====
 const HOME_PAGE = 60;
 let homeShown = 0;
 let homeRows = [];
+let homePath = [];          // category ids — where we are in the tree
+let homePhrase = [];        // the phrase being built
+
+function currentCat() { return homePath.length ? catById(homePath[homePath.length - 1]) : null; }
+
+// ---- Magic type: whole phrases suggested for a word ----
+// Frames are learned from phrases already spelled, so nothing is hard-coded English.
+// A multi-word entry that lives in a group is a name, not a sentence — never split it
+function isLexicalUnit(entry) {
+  if (!entry.includes(' ')) return false;
+  return state.categories.some(c => (c.words || []).includes(entry));
+}
+function learnedFrames() {
+  const frames = {};
+  Object.entries(state.wordHistory || {}).forEach(([entry, d]) => {
+    if (!d || !d.n) return;                 // only phrases actually spelled
+    if (isLexicalUnit(entry)) return;       // "swedish fish" is one thing
+    const parts = entry.split(' ').filter(Boolean);
+    if (parts.length < 2) return;
+    parts.forEach((_, i) => {
+      const f = parts.slice(); f[i] = '\u2022';
+      const key = f.join(' ');
+      if (!frames[key]) frames[key] = { n: 0, slot: i, last: parts.length - 1 };
+      frames[key].n += d.n;
+    });
+  });
+  // Most used first, and patterns that put the new word at the end win ties —
+  // "more •" reads better than "• swing".
+  return Object.entries(frames)
+    .sort((a, b) => b[1].n - a[1].n || (b[1].slot === b[1].last) - (a[1].slot === a[1].last))
+    .map(e => e[0]);
+}
+// Before any phrase history exists, borrow from the first group — the one
+// listed first is the everyday-communication set in practice.
+function starterWords(exclude) {
+  const first = childrenOf(null)[0];
+  const pool = first ? rankWords(first.words || []) : [];
+  const rest = searchWords('');
+  return pool.concat(rest)
+    .map(r => r.word)
+    .filter(w => w !== exclude && !w.includes(' ') && w.length <= 6);
+}
+function magicPhrasesFor(word) {
+  const out = [];
+  const seen = {};
+  const push = (p) => {
+    const t = (p || '').trim();
+    if (t && t !== word && !seen[t]) { seen[t] = true; out.push(t); }
+  };
+  // 1. Phrases already spelled that contain this word
+  Object.entries(state.wordHistory || {}).forEach(([entry, d]) => {
+    if (entry !== word && d && d.n && !isLexicalUnit(entry) && entry.split(' ').includes(word)) push(entry);
+  });
+  // 2. Frames learned from past phrases, with this word dropped in
+  learnedFrames().forEach(f => { if (out.length < 6) push(f.replace('\u2022', word)); });
+  // 3. Cold start — pair it with the words used most
+  if (out.length < 3) {
+    const seenW = {};
+    starterWords(word).forEach(w => {
+      if (out.length >= 3 || seenW[w]) return;
+      seenW[w] = true;
+      push(w + ' ' + word);
+    });
+  }
+  return out.slice(0, 3);
+}
+function renderMagic(word) {
+  const row = document.getElementById('magicRow');
+  row.innerHTML = '';
+  if (!state.magicType || !word) return;
+  magicPhrasesFor(word).forEach(phrase => {
+    const b = document.createElement('button');
+    b.className = 'magic-chip';
+    b.innerHTML = '<span class="mc-spark">\u2728</span>';
+    const t = document.createElement('span');
+    t.textContent = displayWord(phrase);
+    b.appendChild(t);
+    b.addEventListener('click', () => {
+      homePhrase = phrase.split(' ').filter(Boolean);
+      startPhraseFromHome();
+    });
+    row.appendChild(b);
+  });
+}
+
+// ---- Phrase bar ----
+function renderPhraseBar() {
+  const box = document.getElementById('pbWords');
+  box.innerHTML = '';
+  if (homePhrase.length === 0) {
+    const e = document.createElement('span');
+    e.className = 'pb-empty';
+    e.textContent = 'Tap words to build a phrase';
+    box.appendChild(e);
+  } else {
+    homePhrase.forEach(w => {
+      const c = document.createElement('span');
+      c.className = 'pb-chip';
+      c.textContent = displayWord(w);
+      box.appendChild(c);
+    });
+  }
+  document.getElementById('pbGo').disabled = homePhrase.length === 0;
+}
+function startPhraseFromHome() {
+  const parts = homePhrase.join(' ').split(' ').filter(Boolean);
+  if (parts.length === 0) return;
+  parts.forEach(w => { if (!state.words.includes(w)) state.words.push(w); });
+  if (parts.length > 1) selectPhrase(parts);
+  else selectTargetWord(parts[0], true);
+  homePhrase = [];
+  renderSetup();
+  showKeyboard();
+}
+document.getElementById('pbGo').addEventListener('click', startPhraseFromHome);
+document.getElementById('pbClear').addEventListener('click', () => {
+  homePhrase = [];
+  renderPhraseBar();
+  document.getElementById('magicRow').innerHTML = '';
+});
+
+// ---- Chips: jump between groups without losing the phrase ----
+function renderChips() {
+  const row = document.getElementById('homeChips');
+  row.innerHTML = '';
+  const cat = currentCat();
+  const siblings = childrenOf(cat ? cat.parent : null);
+  const mk = (label, onClick, selected) => {
+    const b = document.createElement('button');
+    b.className = 'cat-chip' + (selected ? ' selected' : '');
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    row.appendChild(b);
+  };
+  mk('All words', () => { homePath = []; renderHome(true); }, !cat);
+  siblings.forEach(c => {
+    mk(c.name, () => {
+      homePath = homePath.slice(0, Math.max(0, homePath.length - 1));
+      homePath.push(c.id);
+      renderHome(true);
+    }, cat && c.id === cat.id);
+  });
+}
+
 function renderHome(reset) {
   const grid = document.getElementById('homeGrid');
+  const cat = currentCat();
   if (reset) {
-    homeRows = searchWords('');
+    renderPhraseBar();
+    renderChips();
+    document.getElementById('homeBackBtn').style.display = homePath.length ? '' : 'none';
+    document.getElementById('homeTitle').textContent = cat ? cat.name : 'Word bank';
+    homeRows = categoryRows(cat);
     homeShown = 0;
     grid.innerHTML = '';
     grid.scrollTop = 0;
+
+    // Sub-groups first, so nesting is walkable
+    const subs = childrenOf(cat ? cat.id : null);
+    if (state.homeMode === 'tiles') {
+      subs.forEach(c => {
+        const rows = categoryRows(c);
+        const card = document.createElement('button');
+        card.className = 'home-card cat-card' + (c.size === 'large' ? ' size-large' : '');
+        const def = PROMPT_COLORS[c.color] || PROMPT_COLORS.blue;
+        card.style.background = mixHex(def.solid, '#ffffff', 0.72);
+        const w = document.createElement('span');
+        w.className = 'hw'; w.textContent = c.name;
+        const m = document.createElement('span');
+        m.className = 'hm';
+        m.textContent = rows.length + (rows.length === 1 ? ' word' : ' words') +
+          (rows.length ? ' \u00b7 ' + rows.slice(0, 3).map(r => displayWord(r.word)).join(', ') : '');
+        card.appendChild(w); card.appendChild(m);
+        card.addEventListener('click', () => { homePath.push(c.id); renderHome(true); });
+        grid.appendChild(card);
+      });
+    }
+
     document.getElementById('homeCount').textContent =
-      homeRows.length ? homeRows.length + ' words \u00b7 most recent first' : 'Nothing here yet';
-    if (homeRows.length === 0) {
+      homeRows.length ? homeRows.length + ' words \u00b7 most used first'
+                      : (subs.length ? subs.length + ' groups' : 'Nothing here yet');
+    if (homeRows.length === 0 && subs.length === 0) {
       const n = document.createElement('div');
       n.className = 'empty-note';
       n.style.gridColumn = '1 / -1';
-      n.textContent = 'Spell a word and it will appear here.';
+      n.textContent = 'Spell a word, or use \u2630 to add words to this group.';
       grid.appendChild(n);
       return;
     }
@@ -2907,7 +3268,7 @@ function renderHome(reset) {
   const slice = homeRows.slice(homeShown, homeShown + HOME_PAGE);
   slice.forEach(r => {
     const card = document.createElement('button');
-    card.className = 'home-card' + (state.currentTarget === r.word ? ' selected' : '');
+    card.className = 'home-card';
     const w = document.createElement('span');
     w.className = 'hw';
     w.textContent = displayWord(r.word);
@@ -2916,12 +3277,11 @@ function renderHome(reset) {
     m.textContent = r.n ? (timeAgo(r.t, r.n) + ' \u00b7 ' + r.n + '\u00d7') : timeAgo(r.t, 0);
     card.appendChild(w); card.appendChild(m);
     card.addEventListener('click', () => {
-      if (!state.words.includes(r.word)) state.words.push(r.word);
-      const parts = r.word.split(' ').filter(Boolean);
-      if (parts.length > 1) selectPhrase(parts);
-      else selectTargetWord(r.word, true);
-      renderSetup();
-      showKeyboard();
+      homePhrase.push(r.word);
+      warmSpeech();
+      speakWord(r.word, 0.95);
+      renderPhraseBar();
+      renderMagic(r.word);
     });
     grid.appendChild(card);
   });
@@ -2933,12 +3293,231 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
     renderHome(false);
   }
 });
+document.getElementById('homeBackBtn').addEventListener('click', () => {
+  homePath.pop();
+  renderHome(true);
+});
 document.getElementById('homeGoBtn').addEventListener('click', () => showKeyboard());
 document.getElementById('homeSettingsBtn').addEventListener('click', () => {
   refreshVoiceList();
   renderSettings();
   document.getElementById('settingsMenu').classList.add('show');
 });
+
+// ===== Manage groups =====
+let editingCat = null;
+function renderCatList() {
+  const list = document.getElementById('catList');
+  list.innerHTML = '';
+  if (state.categories.length === 0) {
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = 'No groups yet. Add one below, or import a list.';
+    list.appendChild(n);
+    return;
+  }
+  const walk = (parent) => {
+    childrenOf(parent, true).forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'cat-row' + (c.hidden ? ' is-hidden' : '');
+      row.style.marginLeft = (catDepth(c) * 16) + 'px';
+
+      const dot = document.createElement('button');
+      dot.className = 'cc-dot';
+      dot.style.background = (PROMPT_COLORS[c.color] || PROMPT_COLORS.blue).solid;
+      dot.title = 'Change colour';
+      dot.addEventListener('click', () => {
+        const keys = Object.keys(PROMPT_COLORS);
+        c.color = keys[(keys.indexOf(c.color) + 1) % keys.length];
+        save(); renderCatList();
+      });
+
+      const name = document.createElement('button');
+      name.className = 'cc-name';
+      name.textContent = c.name + (c.rule ? '  \u2699' : '');
+      name.addEventListener('click', () => {
+        const v = prompt('Group name', c.name);
+        if (v && v.trim()) { c.name = v.trim(); save(); renderCatList(); }
+      });
+
+      const mk = (label, title, fn) => {
+        const b = document.createElement('button');
+        b.className = 'cc-btn'; b.textContent = label; b.title = title;
+        b.addEventListener('click', fn);
+        return b;
+      };
+      row.appendChild(dot);
+      row.appendChild(name);
+      row.appendChild(mk('\u270E', 'Words in this group', () => openCatWords(c)));
+      row.appendChild(mk('+', 'Add a group inside', () => {
+        const v = prompt('Name of the group inside ' + c.name);
+        if (v && v.trim()) { addCategory(v.trim(), c.id); save(); renderCatList(); }
+      }));
+      row.appendChild(mk('\u2191', 'Move up', () => {
+        const sibs = childrenOf(c.parent, true);
+        const i = sibs.indexOf(c);
+        if (i > 0) { const o = sibs[i - 1].order; sibs[i - 1].order = c.order; c.order = o; save(); renderCatList(); }
+      }));
+      row.appendChild(mk(c.hidden ? '\u2715' : '\u25C9', 'Show or hide on home', () => {
+        c.hidden = !c.hidden; save(); renderCatList();
+      }));
+      row.appendChild(mk('\uD83D\uDDD1', 'Delete group', () => {
+        if (confirm('Delete "' + c.name + '" and any groups inside it? Words stay in your bank.')) {
+          deleteCategory(c.id); save(); renderCatList();
+        }
+      }));
+      list.appendChild(row);
+      walk(c.id);
+    });
+  };
+  walk(null);
+}
+function openCatWords(cat) {
+  editingCat = cat;
+  document.getElementById('catWordsTitle').textContent = cat.name;
+  renderCatWords();
+  document.getElementById('catWordsMenu').classList.add('show');
+}
+function renderCatWords() {
+  const c = editingCat;
+  if (!c) return;
+  const inBox = document.getElementById('catWordsIn');
+  const bankBox = document.getElementById('catWordsBank');
+  inBox.innerHTML = ''; bankBox.innerHTML = '';
+
+  if ((c.words || []).length === 0) {
+    const n = document.createElement('div');
+    n.className = 'empty-note'; n.textContent = 'No words yet.';
+    inBox.appendChild(n);
+  }
+  rankWords(c.words || []).forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'word-item';
+    const t = document.createElement('span');
+    t.className = 'text'; t.textContent = displayWord(r.word);
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '\u00d7';
+    x.addEventListener('click', () => {
+      c.words = c.words.filter(w => w !== r.word);
+      save(); renderCatWords();
+    });
+    row.appendChild(t); row.appendChild(x);
+    inBox.appendChild(row);
+  });
+
+  const pool = searchWords('').filter(r => !(c.words || []).includes(r.word));
+  if (pool.length === 0) {
+    const n = document.createElement('div');
+    n.className = 'empty-note'; n.textContent = 'Every word is already in this group.';
+    bankBox.appendChild(n);
+  }
+  pool.slice(0, 80).forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'word-item';
+    const t = document.createElement('span');
+    t.className = 'text'; t.textContent = displayWord(r.word);
+    const add = document.createElement('button');
+    add.className = 'plus'; add.textContent = '+';
+    add.addEventListener('click', () => {
+      c.words.push(r.word); save(); renderCatWords();
+    });
+    row.appendChild(t); row.appendChild(add);
+    bankBox.appendChild(row);
+  });
+}
+function addWordToCat() {
+  const inp = document.getElementById('catWordInput');
+  const w = normaliseWord(inp.value);
+  if (!w || !editingCat) return;
+  if (!editingCat.words.includes(w)) editingCat.words.push(w);
+  if (!state.words.includes(w)) state.words.push(w);
+  if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+  inp.value = '';
+  save(); renderCatWords();
+}
+document.getElementById('catWordAdd').addEventListener('click', addWordToCat);
+document.getElementById('catWordInput').addEventListener('keydown', e => { if (e.key === 'Enter') addWordToCat(); });
+document.getElementById('addCatBtn').addEventListener('click', () => {
+  const inp = document.getElementById('newCatInput');
+  const v = inp.value.trim();
+  if (!v) return;
+  addCategory(v, null);
+  inp.value = '';
+  save(); renderCatList();
+});
+document.getElementById('homeManageBtn').addEventListener('click', () => {
+  renderCatList();
+  document.getElementById('manageMenu').classList.add('show');
+});
+['manageMenu','catWordsMenu','importMenu'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if ((btn && btn.dataset.action === 'cancel') || e.target.id === id) {
+      document.getElementById(id).classList.remove('show');
+      save();
+      if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+    }
+  });
+});
+
+// ===== Import / export =====
+document.getElementById('openImportBtn').addEventListener('click', () => {
+  document.getElementById('importBox').value = '';
+  document.getElementById('importMenu').classList.add('show');
+});
+function exportText() {
+  const lines = [];
+  const walk = (parent, depth) => {
+    childrenOf(parent, true).forEach(c => {
+      const words = (c.words || []).map(w => w.toLowerCase()).join(', ');
+      lines.push('  '.repeat(depth) + c.name + (words ? ': ' + words : ''));
+      walk(c.id, depth + 1);
+    });
+  };
+  walk(null, 0);
+  const loose = searchWords('').map(r => r.word.toLowerCase())
+    .filter(w => !state.categories.some(c => (c.words || []).map(x => x.toLowerCase()).includes(w)));
+  if (loose.length) lines.push('Ungrouped: ' + loose.join(', '));
+  return lines.join('\n');
+}
+document.getElementById('exportBtn').addEventListener('click', () => {
+  document.getElementById('importBox').value = exportText();
+});
+document.getElementById('runImportBtn').addEventListener('click', () => {
+  const text = document.getElementById('importBox').value;
+  const res = importText(text);
+  alert(res.groups + ' groups and ' + res.words + ' words imported.');
+  save(); renderCatList();
+  document.getElementById('importMenu').classList.remove('show');
+});
+// "Group: a, b" — two spaces of indent nests it inside the line above
+function importText(text) {
+  const lines = (text || '').split('\n').filter(l => l.trim());
+  const stack = [];          // [{depth, id}]
+  let groups = 0, words = 0;
+  lines.forEach(line => {
+    const indent = (line.match(/^ */) || [''])[0].length;
+    const depth = Math.floor(indent / 2);
+    const body = line.trim();
+    const ci = body.indexOf(':');
+    const name = (ci === -1 ? body : body.slice(0, ci)).trim();
+    const rest = ci === -1 ? '' : body.slice(ci + 1);
+    if (!name) return;
+    while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop();
+    const parent = stack.length ? stack[stack.length - 1].id : null;
+    let cat = state.categories.find(c => c.name.toLowerCase() === name.toLowerCase() && (c.parent || null) === parent);
+    if (!cat) { cat = addCategory(name, parent); groups++; }
+    stack.push({ depth, id: cat.id });
+    rest.split(',').forEach(raw => {
+      const w = normaliseWord(raw);
+      if (!w) return;
+      if (!cat.words.includes(w)) { cat.words.push(w); words++; }
+      if (!state.words.includes(w)) state.words.push(w);
+      if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+    });
+  });
+  return { groups, words };
+}
 
 // ===== Word search =====
 // Ranks past words by how well they match, how recently they were spelled,
@@ -3201,6 +3780,7 @@ function groupSummaries() {
   if (state.showSearchBtn) btns.push('Search');
   if (state.showHelpBtn) btns.push('Help');
   if (state.homeEnabled) btns.push('Home');
+  if (state.homeEnabled && state.homeMode === 'tiles') btns.push('Tiles');
   const hiddenN = Object.keys(state.hiddenKeys).length;
   return {
     prompts: promptSummary(),
@@ -3295,6 +3875,8 @@ function renderSettings() {
   document.getElementById('toggleSearchBtn').classList.toggle('on', state.showSearchBtn);
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
+  document.getElementById('toggleTiles').classList.toggle('on', state.homeMode === 'tiles');
+  document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -3429,6 +4011,13 @@ document.getElementById('toggleHelpBtn').addEventListener('click', () => {
 });
 document.getElementById('toggleHome').addEventListener('click', () => {
   state.homeEnabled = !state.homeEnabled; save(); renderSettings();
+});
+document.getElementById('toggleTiles').addEventListener('click', () => {
+  state.homeMode = (state.homeMode === 'tiles') ? 'words' : 'tiles';
+  save(); renderSettings();
+});
+document.getElementById('toggleMagic').addEventListener('click', () => {
+  state.magicType = !state.magicType; save(); renderSettings();
 });
 document.getElementById('toggleSpeakError').addEventListener('click', () => {
   state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
