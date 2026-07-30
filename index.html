@@ -264,13 +264,25 @@
   .view-home { flex-direction: column; padding: 14px; gap: 12px; }
   .home-bar {
     display: flex; align-items: center; gap: 10px;
-    background: var(--surface); border-radius: 18px;
-    padding: 12px 16px; box-shadow: var(--shadow); flex-shrink: 0;
+    background: var(--bg); border: 2px solid var(--border); border-radius: 18px;
+    padding: 10px 12px; flex-shrink: 0;
   }
-  .home-title { flex: 1; min-width: 0; }
-  .home-title .ht-main { display: block; font-size: 20px; font-weight: 900; }
-  .home-title .ht-sub { display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
-  .start-button.home-go { margin: 0; padding: 14px 20px; font-size: 17px; width: auto; flex-shrink: 0; }
+  .home-nav {
+    flex: 0 1 auto; max-width: 60%;
+    background: var(--surface);
+    border: 2px solid var(--border-strong, var(--border)); border-radius: 12px;
+    padding: 12px 40px 12px 14px;
+    font-family: inherit; font-size: 19px; font-weight: 900; color: var(--ink);
+    cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'><path d='M2 5l5 5 5-5' fill='none' stroke='%238a8580' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat; background-position: right 14px center;
+  }
+  .ctl.icon.dark { background: #e2ddd3; color: #4a463f; }
+  .ctl.icon.dark:active { background: #d3cdc1; }
+  .start-button.pb-kb {
+    margin: 0; padding: 12px 16px; font-size: 16px; width: auto; flex-shrink: 0;
+    background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  }
   .home-grid {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
     display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start;
@@ -1171,19 +1183,17 @@
 <div class="view view-home" id="viewHome">
   <div class="home-bar">
     <button class="ctl icon" id="homeBackBtn" aria-label="Back">&#8249;</button>
-    <div class="home-title">
-      <span class="ht-main" id="homeTitle">Word bank</span>
-      <span class="ht-sub" id="homeCount"></span>
-    </div>
+    <select class="home-nav" id="homeNav" aria-label="Go to a group"></select>
+    <div class="spacer"></div>
     <button class="ctl icon" id="homeManageBtn" aria-label="Manage groups">&#9776;</button>
-    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
-    <button class="start-button home-go" id="homeGoBtn">Keyboard &rarr;</button>
+    <button class="ctl icon dark" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
   </div>
 
   <div class="phrase-bar" id="phraseBar">
     <div class="pb-words" id="pbWords"><span class="pb-empty">Tap words to build a phrase</span></div>
     <button class="ctl icon" id="pbClear" aria-label="Clear phrase">&times;</button>
     <button class="start-button pb-go" id="pbGo">Spell it &rarr;</button>
+    <button class="start-button pb-kb" id="homeGoBtn">Keyboard &rarr;</button>
   </div>
 
   <div class="magic-row" id="magicRow"></div>
@@ -3192,6 +3202,38 @@ function tintFor(cat, amount) {
   const def = PROMPT_COLORS[(cat && cat.color) || 'blue'] || PROMPT_COLORS.blue;
   return mixHex(def.solid, '#ffffff', amount);
 }
+// The title is a jump-anywhere menu, nesting shown by indent
+function pathTo(id) {
+  const out = [];
+  let c = catById(id);
+  while (c) { out.unshift(c.id); c = c.parent ? catById(c.parent) : null; }
+  return out;
+}
+function renderHomeNav() {
+  const sel = document.getElementById('homeNav');
+  const cur = currentCat();
+  sel.innerHTML = '';
+  const opt = (label, value, selected) => {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    if (selected) o.selected = true;
+    sel.appendChild(o);
+  };
+  opt('Word bank', '', !cur);
+  const walk = (parent, depth) => {
+    childrenOf(parent).forEach(c => {
+      opt('\u00a0\u00a0'.repeat(depth) + (depth ? '\u2514 ' : '') + c.name, String(c.id), cur && c.id === cur.id);
+      walk(c.id, depth + 1);
+    });
+  };
+  walk(null, 0);
+}
+document.getElementById('homeNav').addEventListener('change', e => {
+  const v = e.target.value;
+  homePath = v ? pathTo(parseInt(v)) : [];
+  renderHome(true);
+});
+
 function renderCatTiles() {
   const row = document.getElementById('catTiles');
   row.innerHTML = '';
@@ -3245,8 +3287,7 @@ function renderHome(reset) {
     renderPhraseBar();
     renderCatTiles();
     document.getElementById('homeBackBtn').style.display = homePath.length ? '' : 'none';
-    document.getElementById('homeTitle').textContent = cat ? cat.name : 'Word bank';
-    document.getElementById('homeCount').textContent = '';
+    renderHomeNav();
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = cat ? categoryRows(cat) : searchWords('').slice().sort((a, b) => b.t - a.t || b.n - a.n);
     grid.classList.toggle('three-lines', !cat);
