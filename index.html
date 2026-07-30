@@ -317,20 +317,22 @@
   .magic-chip:active { transform: scale(0.97); }
   .magic-chip .mc-spark { font-size: 14px; }
 
-  .chip-row { display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0; padding-bottom: 2px; }
-  .cat-chip {
-    flex: none; border: none; border-radius: 20px;
-    padding: 10px 16px; font-family: inherit;
-    font-size: 15px; font-weight: 900; cursor: pointer;
-    background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  /* Category tiles — their own line, above the bank */
+  .cat-tiles {
+    display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
+    padding-bottom: 12px; border-bottom: 2px solid var(--border);
   }
-  .cat-chip.selected { background: var(--ink); color: white; }
-  .cat-chip:active { transform: scale(0.96); }
+  .cat-tile {
+    flex: 0 0 auto; border: none; border-radius: 14px;
+    padding: 14px 20px; font-family: inherit;
+    font-size: 20px; font-weight: 900; cursor: pointer;
+  }
+  .cat-tile:active { transform: scale(0.97); }
+  .cat-tile.selected { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .cat-tile.plain { background: var(--surface); box-shadow: var(--shadow); color: var(--ink); }
 
-  .home-card.cat-card { align-items: flex-start; text-align: left; }
-  .home-card.cat-card .hw { font-size: 22px; }
-  .home-card.cat-card .hm { text-transform: none; letter-spacing: 0; font-size: 12px; }
-  .home-card.size-large .hw { font-size: 32px; }
+  /* At the top level the bank shows just the last few words used */
+  .home-grid.three-lines { flex: none; max-height: 282px; overflow: hidden; }
 
   /* ===== KEYBOARD ===== */
   .view-keyboard {
@@ -1181,7 +1183,7 @@
   </div>
 
   <div class="magic-row" id="magicRow"></div>
-  <div class="chip-row" id="homeChips"></div>
+  <div class="cat-tiles" id="catTiles"></div>
   <div class="home-grid" id="homeGrid"></div>
 </div>
 
@@ -3180,27 +3182,56 @@ document.getElementById('pbClear').addEventListener('click', () => {
   document.getElementById('magicRow').innerHTML = '';
 });
 
-// ---- Chips: jump between groups without losing the phrase ----
-function renderChips() {
-  const row = document.getElementById('homeChips');
+// ---- Category tiles: one line above the bank ----
+let tileTimer = null, tileLongPressed = false;
+function tintFor(cat, amount) {
+  const def = PROMPT_COLORS[(cat && cat.color) || 'blue'] || PROMPT_COLORS.blue;
+  return mixHex(def.solid, '#ffffff', amount);
+}
+function renderCatTiles() {
+  const row = document.getElementById('catTiles');
   row.innerHTML = '';
   const cat = currentCat();
-  const siblings = childrenOf(cat ? cat.parent : null);
-  const mk = (label, onClick, selected) => {
+  const tiles = childrenOf(cat ? cat.id : null);
+
+  tiles.forEach(c => {
     const b = document.createElement('button');
-    b.className = 'cat-chip' + (selected ? ' selected' : '');
-    b.textContent = label;
-    b.addEventListener('click', onClick);
+    b.className = 'cat-tile';
+    b.textContent = c.name;
+    b.style.background = tintFor(c, 0.65);
+    b.style.color = inkFor(tintFor(c, 0.65));
+    // Hold to rename, tap to open
+    b.addEventListener('pointerdown', () => {
+      tileLongPressed = false;
+      tileTimer = setTimeout(() => {
+        tileLongPressed = true;
+        buzz(15);
+        const v = prompt('Rename this group', c.name);
+        if (v && v.trim()) { c.name = v.trim(); save(); renderHome(true); }
+      }, 650);
+    });
+    b.addEventListener('pointerup', () => {
+      if (tileTimer) clearTimeout(tileTimer);
+      if (!tileLongPressed) { homePath.push(c.id); renderHome(true); }
+    });
+    ['pointercancel','pointerleave'].forEach(ev =>
+      b.addEventListener(ev, () => { if (tileTimer) clearTimeout(tileTimer); }));
+    b.addEventListener('contextmenu', e => e.preventDefault());
     row.appendChild(b);
-  };
-  mk('All words', () => { homePath = []; renderHome(true); }, !cat);
-  siblings.forEach(c => {
-    mk(c.name, () => {
-      homePath = homePath.slice(0, Math.max(0, homePath.length - 1));
-      homePath.push(c.id);
-      renderHome(true);
-    }, cat && c.id === cat.id);
   });
+
+  const add = document.createElement('button');
+  add.className = 'cat-tile plain';
+  add.textContent = '+';
+  add.title = 'New group';
+  add.addEventListener('click', () => {
+    const v = prompt(cat ? 'New group inside ' + cat.name : 'New group name');
+    if (v && v.trim()) {
+      addCategory(v.trim(), cat ? cat.id : null);
+      save(); renderHome(true);
+    }
+  });
+  row.appendChild(add);
 }
 
 function renderHome(reset) {
@@ -3208,40 +3239,22 @@ function renderHome(reset) {
   const cat = currentCat();
   if (reset) {
     renderPhraseBar();
-    renderChips();
+    renderCatTiles();
     document.getElementById('homeBackBtn').style.display = homePath.length ? '' : 'none';
     document.getElementById('homeTitle').textContent = cat ? cat.name : 'Word bank';
-    homeRows = categoryRows(cat);
+    document.getElementById('homeCount').textContent = '';
+    // Top level shows the words used most recently; a group shows all of its words
+    homeRows = cat ? categoryRows(cat) : searchWords('').slice().sort((a, b) => b.t - a.t || b.n - a.n);
+    grid.classList.toggle('three-lines', !cat);
     homeShown = 0;
     grid.innerHTML = '';
     grid.scrollTop = 0;
-
-    // Sub-groups first, so nesting is walkable
-    const subs = childrenOf(cat ? cat.id : null);
-    if (state.homeMode === 'tiles') {
-      subs.forEach(c => {
-        const rows = categoryRows(c);
-        const card = document.createElement('button');
-        card.className = 'home-card cat-card' + (c.size === 'large' ? ' size-large' : '');
-        const def = PROMPT_COLORS[c.color] || PROMPT_COLORS.blue;
-        card.style.background = mixHex(def.solid, '#ffffff', 0.72);
-        const w = document.createElement('span');
-        w.className = 'hw'; w.textContent = c.name;
-        const m = document.createElement('span');
-        m.className = 'hm';
-        m.textContent = rows.length + (rows.length === 1 ? ' word' : ' words');
-        card.appendChild(w); card.appendChild(m);
-        card.addEventListener('click', () => { homePath.push(c.id); renderHome(true); });
-        grid.appendChild(card);
-      });
-    }
-
-    document.getElementById('homeCount').textContent = '';
-    if (homeRows.length === 0 && subs.length === 0) {
+    if (homeRows.length === 0) {
       const n = document.createElement('div');
       n.className = 'empty-note';
       n.style.flexBasis = '100%';
-      n.textContent = 'Spell a word, or use \u2630 to add words to this group.';
+      n.textContent = cat ? 'No words in this group yet \u2014 hold \u2630 to add some.'
+                          : 'Spell a word and it will appear here.';
       grid.appendChild(n);
       return;
     }
@@ -3250,9 +3263,14 @@ function renderHome(reset) {
   slice.forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
+    if (cat) {
+      card.style.background = tintFor(cat, 0.78);
+      card.style.color = inkFor(tintFor(cat, 0.78));
+    }
     const w = document.createElement('span');
     w.className = 'hw';
     w.textContent = displayWord(r.word);
+    if (cat) w.style.color = 'inherit';
     card.appendChild(w);
     card.addEventListener('click', () => {
       homePhrase.push(r.word);
