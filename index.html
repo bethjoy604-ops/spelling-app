@@ -1215,6 +1215,7 @@
       <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     </div>
     <div class="spacer"></div>
+    <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
     <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
     <button class="wordbank-btn" id="wordBankBtn" aria-label="Word bank">
@@ -2406,6 +2407,7 @@ function render() {
 
   document.getElementById('wordBankCount').textContent = state.wordBank.length;
   document.getElementById('wordBankBtn').style.display = state.showBankCount ? '' : 'none';
+  document.getElementById('homeBtn').style.display = state.homeEnabled ? '' : 'none';
   document.getElementById('searchBtn').style.display = state.showSearchBtn ? '' : 'none';
   document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
 
@@ -3298,6 +3300,7 @@ document.getElementById('homeBackBtn').addEventListener('click', () => {
   renderHome(true);
 });
 document.getElementById('homeGoBtn').addEventListener('click', () => showKeyboard());
+document.getElementById('homeBtn').addEventListener('click', () => { touchSession(); showHome(); });
 document.getElementById('homeSettingsBtn').addEventListener('click', () => {
   refreshVoiceList();
   renderSettings();
