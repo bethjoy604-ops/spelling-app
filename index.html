@@ -319,7 +319,14 @@
   .start-button.pb-go { margin: 0; padding: 12px 16px; font-size: 16px; width: auto; flex-shrink: 0; }
   .start-button.pb-go[disabled] { opacity: 0.35; pointer-events: none; }
 
-  .magic-row { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+  .magic-box {
+    display: none; align-items: center; gap: 10px; flex-shrink: 0;
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 16px; padding: 12px;
+  }
+  .magic-box.show { display: flex; }
+  .magic-box .mbtn.action { flex: none; padding: 12px 18px; margin: 0; }
+  .magic-row { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
   .magic-chip {
     background: var(--yellow-warm); border: none; border-radius: 14px;
     padding: 12px 14px; font-family: inherit;
@@ -1202,7 +1209,10 @@
     <button class="start-button pb-kb" id="homeGoBtn">Keyboard &rarr;</button>
   </div>
 
-  <div class="magic-row" id="magicRow"></div>
+  <div class="magic-box" id="magicBox">
+    <div class="magic-row" id="magicRow"></div>
+    <button class="mbtn action" id="magicSkip">Skip</button>
+  </div>
   <div class="cat-tiles" id="catTiles"></div>
   <div class="home-grid" id="homeGrid"></div>
 </div>
@@ -3194,9 +3204,15 @@ function magicPhrasesFor(word) {
   });
   return out.slice(0, 3);
 }
+function hideMagic() {
+  document.getElementById('magicBox').classList.remove('show');
+  document.getElementById('magicRow').innerHTML = '';
+}
 function renderMagic(word) {
   const row = document.getElementById('magicRow');
+  const box = document.getElementById('magicBox');
   row.innerHTML = '';
+  box.classList.remove('show');
   if (!state.magicType || !word) return;
 
   // Single words that have gone with this one before — tap to keep building
@@ -3230,7 +3246,10 @@ function renderMagic(word) {
     });
     row.appendChild(b);
   });
+
+  if (row.children.length) box.classList.add('show');
 }
+document.getElementById('magicSkip').addEventListener('click', hideMagic);
 
 // ---- Phrase bar ----
 function renderPhraseBar() {
@@ -3265,7 +3284,7 @@ document.getElementById('pbGo').addEventListener('click', startPhraseFromHome);
 document.getElementById('pbClear').addEventListener('click', () => {
   homePhrase = [];
   renderPhraseBar();
-  document.getElementById('magicRow').innerHTML = '';
+  hideMagic();
 });
 
 // ---- Category tiles: one line above the bank ----
@@ -3411,7 +3430,12 @@ function renderHome(reset) {
     const card = document.createElement('button');
     card.className = 'home-card';
     const tint = cat ? tintFor(cat, 0.8) : wordTint(r.word);
-    if (tint) card.style.background = tint;
+    // Stacked orders wear their colour; the plain recent list only shows it on touch
+    const alwaysOn = !!cat || state.bankSort !== 'recent';
+    if (tint) {
+      if (alwaysOn) card.style.background = tint;
+      else { card.classList.add('tintable'); card.style.setProperty('--tint', tint); }
+    }
     const w = document.createElement('span');
     w.className = 'hw';
     w.textContent = bankLabel(r.word);
