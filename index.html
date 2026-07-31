@@ -1915,8 +1915,10 @@ async function load() {
   } catch (e) {}
   // A fresh install starts with the everyday set of groups, all empty
   if (state.categories.length === 0) {
-    ['Social', 'Food', 'Activities', 'People', 'Places', 'Things']
+    ['Chat', 'Food', 'Activities', 'Places', 'Things']
       .forEach(n => addCategory(n, null));
+    const things = state.categories.find(c => c.name === 'Things');
+    if (things) addCategory('People', things.id);
     save();
   }
   // First run after the search feature arrived: seed history from the existing bank
