@@ -1370,6 +1370,7 @@
       <input type="text" id="newCatInput" placeholder="New group name..." maxlength="24" autocomplete="off" spellcheck="false">
       <button id="addCatBtn">Add</button>
     </div>
+    <button class="mbtn action" id="defaultGroupsBtn" style="width:100%; margin-top:10px;">Use default groups</button>
     <div class="full-row" style="margin-top: 14px;">
       <button class="mbtn action" id="openImportBtn">Import / export</button>
       <button class="mbtn action primary" data-action="cancel">Done</button>
@@ -1914,13 +1915,7 @@ async function load() {
     }
   } catch (e) {}
   // A fresh install starts with the everyday set of groups, all empty
-  if (state.categories.length === 0) {
-    ['Chat', 'Food', 'Activities', 'Places', 'Things']
-      .forEach(n => addCategory(n, null));
-    const things = state.categories.find(c => c.name === 'Things');
-    if (things) addCategory('People', things.id);
-    save();
-  }
+  if (state.categories.length === 0) applyDefaultGroups();
   // First run after the search feature arrived: seed history from the existing bank
   if (Object.keys(state.wordHistory).length === 0 && state.wordBank.length > 0) {
     state.wordBank.forEach(w => {
@@ -3104,6 +3099,36 @@ function deleteCategory(id) {
   childrenOf(id, true).forEach(c => deleteCategory(c.id));
   state.categories = state.categories.filter(c => c.id !== id);
 }
+// The standard starting set. Safe to run on a bank that already has groups:
+// nothing is deleted, words are kept, Conversation becomes Chat.
+const DEFAULT_GROUPS = ['Chat', 'Food', 'Activities', 'Places', 'Things'];
+function applyDefaultGroups() {
+  const byName = n => state.categories.find(c => c.name.toLowerCase() === n.toLowerCase());
+  const conv = byName('Conversation');
+  if (conv && !byName('Chat')) conv.name = 'Chat';
+  DEFAULT_GROUPS.forEach(n => { if (!byName(n)) addCategory(n, null); });
+  // People belongs inside Things — fold any stray top-level one in, merging words
+  const things = byName('Things');
+  if (things) {
+    const inside = state.categories.find(c => c.parent === things.id && c.name.toLowerCase() === 'people');
+    const strays = state.categories.filter(c =>
+      c.name.toLowerCase() === 'people' && !c.parent && c.id !== things.id);
+    if (strays.length === 0 && !inside) addCategory('People', things.id);
+    strays.forEach(p => {
+      if (inside) {
+        (p.words || []).forEach(w => { if (!inside.words.includes(w)) inside.words.push(w); });
+        childrenOf(p.id, true).forEach(ch => { ch.parent = inside.id; });
+        state.categories = state.categories.filter(c => c.id !== p.id);
+      } else {
+        p.parent = things.id;
+      }
+    });
+  }
+  // put the standard ones in order at the top level
+  DEFAULT_GROUPS.forEach((n, i) => { const c = byName(n); if (c && !c.parent) c.order = i; });
+  save();
+}
+
 function catDepth(cat) {
   let d = 0, c = cat;
   while (c && c.parent) { d++; c = catById(c.parent); }
@@ -3611,6 +3636,12 @@ document.getElementById('addCatBtn').addEventListener('click', () => {
   addCategory(v, null);
   inp.value = '';
   save(); renderCatList();
+});
+document.getElementById('defaultGroupsBtn').addEventListener('click', () => {
+  if (!confirm('Add the standard groups (Chat, Food, Activities, Places, Things with People inside)?\n\nNothing is deleted and your words stay where they are. A group called Conversation is renamed to Chat.')) return;
+  applyDefaultGroups();
+  renderCatList();
+  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
 });
 document.getElementById('homeManageBtn').addEventListener('click', () => {
   renderCatList();
