@@ -262,26 +262,16 @@
 
   /* ===== HOME ===== */
   .view-home { flex-direction: column; padding: 14px; gap: 12px; }
-  .home-bar {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--bg); border: 2px solid var(--border); border-radius: 18px;
-    padding: 10px 12px; flex-shrink: 0;
+  /* The phrase bar is the keyboard's typing bar, so sizes match exactly */
+  .phrase-bar .pb-empty { color: var(--muted); font-size: 0.4em; font-weight: 700; }
+  .phrase-bar .pb-chip {
+    background: var(--prompt-soft); color: var(--ink);
+    border-radius: 12px; padding: 4px 14px; margin-right: 10px;
+    display: inline-block;
   }
-  .home-nav {
-    flex: 0 1 auto; max-width: 60%;
-    background: var(--surface);
-    border: 2px solid var(--border-strong, var(--border)); border-radius: 12px;
-    padding: 12px 40px 12px 14px;
-    font-family: inherit; font-size: 19px; font-weight: 900; color: var(--ink);
-    cursor: pointer; appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'><path d='M2 5l5 5 5-5' fill='none' stroke='%238a8580' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-    background-repeat: no-repeat; background-position: right 14px center;
-  }
-  .ctl.icon.dark { background: #e2ddd3; color: #4a463f; }
-  .ctl.icon.dark:active { background: #d3cdc1; }
-  .start-button.pb-kb {
-    margin: 0; padding: 12px 16px; font-size: 16px; width: auto; flex-shrink: 0;
-    background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  .key.home-enter {
+    flex: none; width: 96px; min-height: 56px; height: auto;
+    align-self: center; font-size: 26px;
   }
   .home-grid {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
@@ -303,21 +293,14 @@
   .home-card.selected { background: var(--prompt-soft); }
 
   .home-bar .ctl.icon { flex: none; }
-  #homeBackBtn { display: none; }
-  .phrase-bar {
-    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-    background: var(--surface); border-radius: 18px;
-    padding: 10px 12px; box-shadow: var(--shadow);
-  }
-  .pb-words { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pb-words { flex: 1; min-width: 0; }
   .pb-empty { color: var(--muted); font-size: 14px; font-weight: 700; }
   .pb-chip {
     background: var(--prompt-soft); color: var(--ink);
     border-radius: 10px; padding: 8px 12px;
     font-size: 20px; font-weight: 900;
   }
-  .start-button.pb-go { margin: 0; padding: 12px 16px; font-size: 16px; width: auto; flex-shrink: 0; }
-  .start-button.pb-go[disabled] { opacity: 0.35; pointer-events: none; }
+
 
   .magic-box {
     display: none; align-items: center; gap: 10px; flex-shrink: 0;
@@ -1190,30 +1173,38 @@
 
 <!-- ===== HOME ===== -->
 <div class="view view-home" id="viewHome">
-  <div class="home-bar">
-    <button class="ctl icon" id="homeBackBtn" aria-label="Back">&#8249;</button>
-    <select class="home-nav" id="homeNav" aria-label="Go to a group"></select>
-    <button class="ctl" id="bankSortBtn" aria-label="Change order">
-      <span class="label">Order</span>
-      <span class="value" id="bankSortValue">Recent</span>
-    </button>
-    <div class="spacer"></div>
-    <button class="ctl icon" id="homeManageBtn" aria-label="Manage groups">&#9776;</button>
-    <button class="ctl icon dark" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
+  <div class="cat-tiles" id="catTiles"></div>
+
+  <div class="display phrase-bar" id="phraseBar">
+    <div class="display-content pb-words" id="pbWords"><span class="pb-empty">Tap words to build a phrase</span></div>
+    <button class="display-clear" id="pbClear" aria-label="Clear phrase">&times;</button>
+    <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
 
-  <div class="phrase-bar" id="phraseBar">
-    <div class="pb-words" id="pbWords"><span class="pb-empty">Tap words to build a phrase</span></div>
-    <button class="ctl icon" id="pbClear" aria-label="Clear phrase">&times;</button>
-    <button class="start-button pb-go" id="pbGo">Spell it &rarr;</button>
-    <button class="start-button pb-kb" id="homeGoBtn">Keyboard &rarr;</button>
+  <div class="controls-row">
+    <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
+      <span class="chevron" id="homeChevron">&#9662;</span>
+    </button>
+    <div class="modes-wrap" id="homeModesWrap">
+      <button class="ctl" id="bankSortBtn">
+        <span class="label">Order</span>
+        <span class="value" id="bankSortValue">Recent</span>
+      </button>
+      <button class="ctl" id="homeManageBtn">
+        <span class="label">Groups</span>
+        <span class="value">Edit</span>
+      </button>
+      <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
   <div class="magic-box" id="magicBox">
     <div class="magic-row" id="magicRow"></div>
     <button class="mbtn action" id="magicSkip">Skip</button>
   </div>
-  <div class="cat-tiles" id="catTiles"></div>
+
   <div class="home-grid" id="homeGrid"></div>
 </div>
 
@@ -1586,6 +1577,7 @@
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#128193; Group tiles on home</span><div class="toggle on" id="toggleTiles"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
+          <div class="setting-row"><span>&#127912; Colour code words by group</span><div class="toggle on" id="toggleColor"></div></div>
         </div>
         <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
 
@@ -1799,6 +1791,8 @@ const state = {
   homeEnabled: false,         // land on a word-bank home page
   homeMode: 'tiles',          // tiles | words — how home presents the bank
   bankSort: 'recent',         // recent | groups | stale
+  colorCoding: true,          // tint words by the group they belong to
+  homeModesOpen: false,       // the fold-down options row on home
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
   catSeq: 1,                  // next category id
@@ -1899,6 +1893,7 @@ async function load() {
         homeEnabled: saved.homeEnabled ?? false,
         homeMode: (saved.homeMode === 'words') ? 'words' : 'tiles',
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
+        colorCoding: saved.colorCoding ?? true,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -1918,6 +1913,12 @@ async function load() {
       });
     }
   } catch (e) {}
+  // A fresh install starts with the everyday set of groups, all empty
+  if (state.categories.length === 0) {
+    ['Social', 'Food', 'Activities', 'People', 'Places', 'Things']
+      .forEach(n => addCategory(n, null));
+    save();
+  }
   // First run after the search feature arrived: seed history from the existing bank
   if (Object.keys(state.wordHistory).length === 0 && state.wordBank.length > 0) {
     state.wordBank.forEach(w => {
@@ -1977,6 +1978,7 @@ async function save() {
       homeEnabled: state.homeEnabled,
       homeMode: state.homeMode,
       bankSort: state.bankSort,
+      colorCoding: state.colorCoding,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -3253,7 +3255,11 @@ document.getElementById('magicSkip').addEventListener('click', hideMagic);
 
 // ---- Phrase bar ----
 function renderPhraseBar() {
+  const bar = document.getElementById('phraseBar');
   const box = document.getElementById('pbWords');
+  // Same size settings as the keyboard's typing bar
+  bar.className = 'display phrase-bar ds-' + state.displaySize;
+  bar.classList.toggle('has-text', homePhrase.length > 0);
   box.innerHTML = '';
   if (homePhrase.length === 0) {
     const e = document.createElement('span');
@@ -3268,15 +3274,17 @@ function renderPhraseBar() {
       box.appendChild(c);
     });
   }
-  document.getElementById('pbGo').disabled = homePhrase.length === 0;
+  // Green enter: ready when there's something to spell
+  document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0);
 }
 function startPhraseFromHome() {
   const parts = homePhrase.join(' ').split(' ').filter(Boolean);
-  if (parts.length === 0) return;
+  if (parts.length === 0) { showKeyboard(); return; }   // empty simply opens the keyboard
   parts.forEach(w => { if (!state.words.includes(w)) state.words.push(w); });
   if (parts.length > 1) selectPhrase(parts);
   else selectTargetWord(parts[0], true);
   homePhrase = [];
+  hideMagic();
   renderSetup();
   showKeyboard();
 }
@@ -3293,43 +3301,19 @@ function tintFor(cat, amount) {
   const def = PROMPT_COLORS[(cat && cat.color) || 'blue'] || PROMPT_COLORS.blue;
   return mixHex(def.solid, '#ffffff', amount);
 }
-// The title is a jump-anywhere menu, nesting shown by indent
-function pathTo(id) {
-  const out = [];
-  let c = catById(id);
-  while (c) { out.unshift(c.id); c = c.parent ? catById(c.parent) : null; }
-  return out;
-}
-function renderHomeNav() {
-  const sel = document.getElementById('homeNav');
-  const cur = currentCat();
-  sel.innerHTML = '';
-  const opt = (label, value, selected) => {
-    const o = document.createElement('option');
-    o.value = value; o.textContent = label;
-    if (selected) o.selected = true;
-    sel.appendChild(o);
-  };
-  opt('Word bank', '', !cur);
-  const walk = (parent, depth) => {
-    childrenOf(parent).forEach(c => {
-      opt('\u00a0\u00a0'.repeat(depth) + (depth ? '\u2514 ' : '') + c.name, String(c.id), cur && c.id === cur.id);
-      walk(c.id, depth + 1);
-    });
-  };
-  walk(null, 0);
-}
-document.getElementById('homeNav').addEventListener('change', e => {
-  const v = e.target.value;
-  homePath = v ? pathTo(parseInt(v)) : [];
-  renderHome(true);
-});
-
 function renderCatTiles() {
   const row = document.getElementById('catTiles');
   row.innerHTML = '';
   const cat = currentCat();
   const tiles = childrenOf(cat ? cat.id : null);
+
+  if (homePath.length) {
+    const back = document.createElement('button');
+    back.className = 'cat-tile plain';
+    back.textContent = '\u2039 ' + (homePath.length > 1 ? catById(homePath[homePath.length - 2]).name : 'All');
+    back.addEventListener('click', () => { homePath.pop(); renderHome(true); });
+    row.appendChild(back);
+  }
 
   tiles.forEach(c => {
     const b = document.createElement('button');
@@ -3405,8 +3389,14 @@ function renderHome(reset) {
   if (reset) {
     renderPhraseBar();
     renderCatTiles();
-    document.getElementById('homeBackBtn').style.display = homePath.length ? '' : 'none';
-    renderHomeNav();
+    // the fold-down options row behaves like the keyboard's
+    const wrap = document.getElementById('homeModesWrap');
+    wrap.classList.toggle('expanded', state.homeModesOpen);
+    document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
+    document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
+    // group tiles follow the target-bar size setting
+    const tilesRow = document.getElementById('catTiles');
+    tilesRow.className = 'cat-tiles bs-' + state.bannerSize;
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = cat ? categoryRows(cat) : bankRows();
     // Only the plain recent view is capped — the other orders are meant to be scrolled
@@ -3429,7 +3419,7 @@ function renderHome(reset) {
   slice.forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
-    const tint = cat ? tintFor(cat, 0.8) : wordTint(r.word);
+    const tint = state.colorCoding ? (cat ? tintFor(cat, 0.8) : wordTint(r.word)) : null;
     // Stacked orders wear their colour; the plain recent list only shows it on touch
     const alwaysOn = !!cat || state.bankSort !== 'recent';
     if (tint) {
@@ -3457,16 +3447,21 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
     renderHome(false);
   }
 });
+document.getElementById('homeModesToggle').addEventListener('click', () => {
+  state.homeModesOpen = !state.homeModesOpen;
+  save(); renderHome(true);
+});
+document.getElementById('homeSearchBtn').addEventListener('click', () => {
+  document.getElementById('searchInput').value = '';
+  renderSearchResults();
+  closeAllMenus();
+  document.getElementById('searchMenu').classList.add('show');
+});
 document.getElementById('bankSortBtn').addEventListener('click', () => {
   const keys = Object.keys(BANK_SORTS);
   state.bankSort = keys[(keys.indexOf(state.bankSort) + 1) % keys.length];
   save(); renderHome(true);
 });
-document.getElementById('homeBackBtn').addEventListener('click', () => {
-  homePath.pop();
-  renderHome(true);
-});
-document.getElementById('homeGoBtn').addEventListener('click', () => showKeyboard());
 document.getElementById('homeBtn').addEventListener('click', () => { touchSession(); showHome(); });
 document.getElementById('homeSettingsBtn').addEventListener('click', () => {
   refreshVoiceList();
@@ -4051,6 +4046,7 @@ function renderSettings() {
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleTiles').classList.toggle('on', state.homeMode === 'tiles');
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
+  document.getElementById('toggleColor').classList.toggle('on', state.colorCoding);
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -4215,6 +4211,11 @@ document.getElementById('toggleTiles').addEventListener('click', () => {
 });
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
+});
+document.getElementById('toggleColor').addEventListener('click', () => {
+  state.colorCoding = !state.colorCoding;
+  save(); renderSettings();
+  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
 });
 document.getElementById('toggleSpeakError').addEventListener('click', () => {
   state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
