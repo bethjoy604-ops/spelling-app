@@ -263,7 +263,6 @@
   /* ===== HOME ===== */
   .view-home { flex-direction: column; padding: 14px; gap: 12px; }
   /* The phrase bar is the keyboard's typing bar, so sizes match exactly */
-  .phrase-bar .pb-empty { color: var(--muted); font-size: 0.4em; font-weight: 700; }
   .phrase-bar .pb-chip {
     background: var(--prompt-soft); color: var(--ink);
     border-radius: 12px; padding: 4px 14px; margin-right: 10px;
@@ -324,7 +323,8 @@
   /* Category tiles — their own line, above the bank */
   .cat-tiles {
     display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
-    padding-bottom: 12px; border-bottom: 2px solid var(--border);
+    margin-top: 6px; padding-bottom: 14px;
+    border-bottom: 2px solid var(--border);
   }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
@@ -1173,10 +1173,8 @@
 
 <!-- ===== HOME ===== -->
 <div class="view view-home" id="viewHome">
-  <div class="cat-tiles" id="catTiles"></div>
-
   <div class="display phrase-bar" id="phraseBar">
-    <div class="display-content pb-words" id="pbWords"><span class="pb-empty">Tap words to build a phrase</span></div>
+    <div class="display-content pb-words" id="pbWords"><span class="caret"></span></div>
     <button class="display-clear" id="pbClear" aria-label="Clear phrase">&times;</button>
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
@@ -1205,6 +1203,7 @@
     <button class="mbtn action" id="magicSkip">Skip</button>
   </div>
 
+  <div class="cat-tiles" id="catTiles"></div>
   <div class="home-grid" id="homeGrid"></div>
 </div>
 
@@ -3080,12 +3079,17 @@ function childrenOf(parentId, includeHidden) {
     .filter(c => (c.parent || null) === (parentId || null) && (includeHidden || !c.hidden))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
-function addCategory(name, parent) {
-  const colors = Object.keys(PROMPT_COLORS);
+function leastUsedColor() {
+  const keys = Object.keys(PROMPT_COLORS);
+  const used = {};
+  state.categories.forEach(c => { used[c.color] = (used[c.color] || 0) + 1; });
+  return keys.sort((a, b) => (used[a] || 0) - (used[b] || 0))[0];
+}
+function addCategory(name, parent, color) {
   const cat = {
     id: state.catSeq++,
     name: name || 'New group',
-    color: colors[(state.categories.length) % colors.length],
+    color: color || leastUsedColor(),
     parent: parent || null,
     words: [],
     rule: null,
@@ -3101,31 +3105,21 @@ function deleteCategory(id) {
 }
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
-const DEFAULT_GROUPS = ['Chat', 'Food', 'Activities', 'Places', 'Things'];
+const DEFAULT_GROUPS = ['Chat', 'Food', 'Activities', 'People', 'Places', 'Things'];
+const DEFAULT_COLORS = {
+  Chat: 'blue', Food: 'green', Activities: 'purple',
+  People: 'pink', Places: 'teal', Things: 'orange',
+};
 function applyDefaultGroups() {
   const byName = n => state.categories.find(c => c.name.toLowerCase() === n.toLowerCase());
   const conv = byName('Conversation');
   if (conv && !byName('Chat')) conv.name = 'Chat';
-  DEFAULT_GROUPS.forEach(n => { if (!byName(n)) addCategory(n, null); });
-  // People belongs inside Things — fold any stray top-level one in, merging words
-  const things = byName('Things');
-  if (things) {
-    const inside = state.categories.find(c => c.parent === things.id && c.name.toLowerCase() === 'people');
-    const strays = state.categories.filter(c =>
-      c.name.toLowerCase() === 'people' && !c.parent && c.id !== things.id);
-    if (strays.length === 0 && !inside) addCategory('People', things.id);
-    strays.forEach(p => {
-      if (inside) {
-        (p.words || []).forEach(w => { if (!inside.words.includes(w)) inside.words.push(w); });
-        childrenOf(p.id, true).forEach(ch => { ch.parent = inside.id; });
-        state.categories = state.categories.filter(c => c.id !== p.id);
-      } else {
-        p.parent = things.id;
-      }
-    });
-  }
-  // put the standard ones in order at the top level
-  DEFAULT_GROUPS.forEach((n, i) => { const c = byName(n); if (c && !c.parent) c.order = i; });
+  DEFAULT_GROUPS.forEach(n => {
+    const c = byName(n);
+    if (!c) addCategory(n, null, DEFAULT_COLORS[n]);
+    else { c.color = DEFAULT_COLORS[n]; c.parent = null; }   // standard groups sit at the top level
+  });
+  DEFAULT_GROUPS.forEach((n, i) => { const c = byName(n); if (c) c.order = i; });
   save();
 }
 
@@ -3292,19 +3286,16 @@ function renderPhraseBar() {
   bar.className = 'display phrase-bar ds-' + state.displaySize;
   bar.classList.toggle('has-text', homePhrase.length > 0);
   box.innerHTML = '';
-  if (homePhrase.length === 0) {
-    const e = document.createElement('span');
-    e.className = 'pb-empty';
-    e.textContent = 'Tap words to build a phrase';
-    box.appendChild(e);
-  } else {
-    homePhrase.forEach(w => {
-      const c = document.createElement('span');
-      c.className = 'pb-chip';
-      c.textContent = bankLabel(w);
-      box.appendChild(c);
-    });
-  }
+  homePhrase.forEach(w => {
+    const c = document.createElement('span');
+    c.className = 'pb-chip';
+    c.textContent = bankLabel(w);
+    box.appendChild(c);
+  });
+  // same blinking cursor the keyboard's typing bar uses
+  const caret = document.createElement('span');
+  caret.className = 'caret';
+  box.appendChild(caret);
   // Green enter: ready when there's something to spell
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0);
 }
