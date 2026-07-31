@@ -3148,7 +3148,11 @@ function categoryRows(cat) {
   if (!cat) return searchWords('');
   if (cat.rule === 'used') return searchWords('').slice().sort((a, b) => b.n - a.n || b.t - a.t);
   if (cat.rule === 'recent') return searchWords('').slice().sort((a, b) => b.t - a.t);
-  return rankWords(cat.words || []);
+  const rows = rankWords(cat.words || []);
+  // The order control applies inside a group too
+  if (state.bankSort === 'recent') return rows.sort((a, b) => b.t - a.t || b.n - a.n);
+  if (state.bankSort === 'stale') return rows.sort((a, b) => (a.t || 0) - (b.t || 0));
+  return rows;
 }
 
 // ===== Home screen =====
