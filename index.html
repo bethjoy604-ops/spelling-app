@@ -407,7 +407,7 @@
   .view-keyboard .controls-row { flex: none; }
 
   .target-banner {
-    --tile: 36px;
+    --tile: clamp(22px, 3.6vh, 40px);
     background: var(--surface);
     border-radius: 18px;
     padding: 14px 22px;
@@ -448,9 +448,9 @@
   .tletter.draft-word { min-width: 0; padding: 6px 16px; }
   .key.space-blank.prompt-color { background: var(--prompt); }
   /* Banner size steps */
-  .target-banner.bs-small { --tile: 24px; padding: 10px 16px; }
+  .target-banner.bs-small { --tile: clamp(16px, 2.6vh, 28px); padding: 8px 14px; }
   .target-banner.bs-small .tletter { padding: 4px 8px; }
-  .target-banner.bs-large { --tile: 54px; padding: 18px 26px; }
+  .target-banner.bs-large { --tile: clamp(30px, 5.2vh, 58px); padding: 14px 22px; }
   .target-banner.bs-large .tletter { padding: 8px 16px; }
   @keyframes tlpulse {
     0%, 100% { transform: scale(1); }
@@ -492,11 +492,13 @@
   }
   /* On the keyboard page the bar shares the height with the keys instead of
      staying a fixed size while they stretch */
-  .view-keyboard .display { flex: 1 1 0; }
-  .view-keyboard .display.ds-small { flex: 0.55 1 0; font-size: clamp(26px, 5vh, 44px); }
-  .view-keyboard .display.ds-med   { flex: 1 1 0;    font-size: clamp(34px, 7.5vh, 68px); }
-  .view-keyboard .display.ds-large { flex: 1.7 1 0;  font-size: clamp(44px, 11vh, 96px); }
-  .view-keyboard .keyboard { flex: 3 1 0; }
+  .view-keyboard .display { flex: 0.9 1 0; }
+  .view-keyboard .display.ds-small { flex: 0.5 1 0; font-size: clamp(24px, 4vh, 40px); }
+  .view-keyboard .display.ds-med   { flex: 0.9 1 0; font-size: clamp(30px, 5.5vh, 60px); }
+  .view-keyboard .display.ds-large { flex: 1.4 1 0; font-size: clamp(38px, 8vh, 84px); }
+  /* the keyboard is the point of the page, so it takes what's left */
+  .view-keyboard .keyboard { flex: 4 1 0; }
+  .view-keyboard .display { min-height: 0; }
   .display.celebrating {
     animation: celebrateBg 0.8s ease-out;
   }
