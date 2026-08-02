@@ -295,12 +295,13 @@
   .home-card.add-tile { border: 2px dashed var(--border); background: var(--bg); box-shadow: none; }
 
   /* ===== HOME ===== */
-  .view-home { flex-direction: column; padding: 14px; gap: 12px; }
+  .view-home { flex-direction: column; padding: 14px; gap: 12px; height: 100%; min-height: 0; overflow: hidden; }
   /* The phrase bar is the keyboard's typing bar, so sizes match exactly */
   .phrase-bar .pb-chip {
     background: var(--prompt-soft); color: var(--ink);
-    border-radius: 12px; padding: 4px 14px; margin-right: 10px;
+    border-radius: 12px; padding: 2px 14px; margin-right: 10px;
     display: inline-block;
+    font-size: 1em; font-weight: 900; line-height: 1.15;
   }
   .key.home-enter {
     flex: none; width: clamp(86px, 13vmin, 150px);
@@ -346,20 +347,38 @@
   .magic-box .mbtn.action { flex: none; padding: 12px 18px; margin: 0; }
   .magic-row { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
   .magic-chip {
-    background: var(--yellow-warm); border: none; border-radius: 14px;
-    padding: 12px 14px; font-family: inherit;
-    font-size: 17px; font-weight: 900; color: var(--ink); cursor: pointer;
+    background: var(--surface); border: 2px solid var(--border); border-radius: 14px;
+    padding: 12px 16px; font-family: inherit;
+    font-size: clamp(18px, 3.2vmin, 30px); font-weight: 900; color: var(--ink); cursor: pointer;
     display: flex; align-items: center; gap: 8px;
   }
   .magic-chip:active { transform: scale(0.97); }
   .magic-chip .mc-spark { font-size: 14px; }
-  .magic-chip.word { background: var(--surface); box-shadow: var(--shadow); }
+  .magic-chip.word { background: var(--bg); }
   .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
   /* Category tiles — their own line, above the bank */
   .cat-tiles { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
   .home-row { flex-wrap: wrap; row-gap: 10px; }
-  .home-row .cat-tiles { flex: 1 1 auto; }
+
+  /* Groups sit down the left like binder tabs, tucked away until wanted */
+  .bank-area { flex: 1; min-height: 0; display: flex; gap: 10px; align-items: stretch; }
+  .rail-toggle {
+    flex: none; align-self: flex-start;
+    background: var(--surface); border: none; border-radius: 14px;
+    box-shadow: var(--shadow); cursor: pointer;
+    width: 46px; padding: 14px 0; font-size: 20px; color: var(--ink);
+  }
+  .rail-toggle:active { transform: scale(0.96); }
+  .cat-rail {
+    display: none; flex-direction: column; gap: 8px; flex: none;
+    width: clamp(120px, 18vw, 200px); overflow-y: auto; min-height: 0;
+  }
+  .cat-rail.open { display: flex; }
+  .cat-rail .cat-tile {
+    width: 100%; text-align: left; border-radius: 14px;
+    padding: 12px 14px; font-size: clamp(15px, 2.4vmin, 22px);
+  }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
     padding: 14px 20px; font-family: inherit;
@@ -376,7 +395,10 @@
   .view-keyboard {
     flex-direction: column;
     padding: 14px; gap: 12px;
+    height: 100%; min-height: 0; overflow: hidden;
   }
+  .view-keyboard .target-banner { flex: none; }
+  .view-keyboard .controls-row { flex: none; }
 
   .target-banner {
     --tile: 36px;
@@ -417,6 +439,7 @@
   .tletter.next.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; }
   .tletter.pending { color: var(--muted); opacity: 0.4; }
   .tletter.tspace { min-width: 26px; padding: 6px 4px; font-size: 0.75em; }
+  .tletter.draft-word { min-width: 0; padding: 6px 16px; }
   .key.space-blank.prompt-color { background: var(--prompt); }
   /* Banner size steps */
   .target-banner.bs-small { --tile: 24px; padding: 10px 16px; }
@@ -599,8 +622,8 @@
   .spacer { flex: 1; }
   .recent-row { display: flex; gap: 8px; }
   .ctl.recent { background: var(--bg); border: 2px solid var(--border); }
-  .ctl.help { background: var(--yellow-warm); }
-  .ctl.help:active { background: var(--gold); }
+  .ctl.help { background: var(--surface); }
+  .ctl.help:active { background: var(--border); }
   .word-item .meta {
     font-size: 11px; font-weight: 800; color: var(--muted);
     text-transform: uppercase; letter-spacing: 0.6px; margin-left: 8px;
@@ -886,6 +909,12 @@
   .sgroup-head .sg-title { flex: 1; }
   .sgroup-head .sg-sum { font-size: 12px; font-weight: 800; color: var(--muted); }
   .sgroup-head .sg-chev { transition: transform 0.22s ease; color: var(--muted); font-size: 14px; }
+  .sg-move {
+    background: var(--surface); border: 2px solid var(--border); border-radius: 8px;
+    color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 900;
+    width: 28px; height: 28px; cursor: pointer; padding: 0; flex: none;
+  }
+  .sg-move:active { transform: scale(0.9); }
   .sgroup.open .sgroup-head .sg-chev { transform: rotate(180deg); }
   .sgroup-body { display: none; padding: 12px 14px 16px; }
   .sgroup.open .sgroup-body { display: block; }
@@ -1233,27 +1262,23 @@
       <span class="chevron" id="homeChevron">&#9662;</span>
     </button>
     <div class="modes-wrap" id="homeModesWrap">
-      <button class="ctl" id="bankSortBtn">
-        <span class="label">Order</span>
-        <span class="value" id="bankSortValue">Recent</span>
-      </button>
-      <button class="ctl" id="homeManageBtn">
-        <span class="label">Groups</span>
-        <span class="value">Edit</span>
-      </button>
       <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     </div>
-    <div class="cat-tiles" id="catTiles"></div>
     <div class="spacer"></div>
-    <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#128161;</button>
+    <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
   <div class="magic-box" id="magicBox">
     <div class="magic-row" id="magicRow"></div>
     <button class="mbtn action" id="magicSkip">Skip</button>
   </div>
-  <div class="home-grid" id="homeGrid"></div>
+
+  <div class="bank-area">
+    <button class="rail-toggle" id="railToggle" aria-label="Groups">&#9776;</button>
+    <div class="cat-rail" id="catTiles"></div>
+    <div class="home-grid" id="homeGrid"></div>
+  </div>
 </div>
 
 <!-- ===== KEYBOARD ===== -->
@@ -1278,6 +1303,7 @@
     <button class="ctl icon" id="modesToggle" aria-label="Show modes">
       <span class="chevron" id="modesChevron">▾</span>
     </button>
+    <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
     <div class="modes-wrap" id="modesWrap">
       <button class="ctl" id="wordToggle">
         <span class="label">Word</span>
@@ -1287,17 +1313,16 @@
       <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     </div>
     <div class="spacer"></div>
-    <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
     <button class="ctl icon" id="kbBankBtn" aria-label="Word bank">&#128218;</button>
     <button class="ctl icon" id="kbGroupsBtn" aria-label="Groups" style="display:none">&#128193;</button>
     <button class="ctl icon" id="kbEditBtn" aria-label="Edit tiles" style="display:none">&#9998;</button>
     <button class="key enter kb-commit" id="kbCommit" aria-label="Use this phrase" style="display:none">&#9166;</button>
-    <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
     <button class="wordbank-btn" id="wordBankBtn" aria-label="Word bank">
       <span class="emoji">📚</span>
       <span class="count" id="wordBankCount">0</span>
     </button>
+    <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
   <div class="search-strip" id="searchStrip">
@@ -1667,7 +1692,7 @@
         <div class="word-list" id="bankEditList"></div>
 
         <div class="full-row" style="margin-top:14px;">
-          <button class="mbtn action" id="setGroupsBtn">Groups &rarr;</button>
+          <button class="mbtn action primary" id="setGroupsBtn">Edit groups &rarr;</button>
           <button class="mbtn action" id="setImportBtn">Import / export</button>
         </div>
       </div>
@@ -1697,6 +1722,13 @@
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
           <div class="setting-row"><span>&#127912; Colour code words by group</span><div class="toggle on" id="toggleColor"></div></div>
         </div>
+
+        <div class="sublabel">Order words by</div>
+        <div class="seg-row" id="segBankSort"></div>
+
+        <div class="sublabel">What goes on a tile</div>
+        <div class="seg-row" id="segTileMode"></div>
+        <div class="help-note">Words keeps one word per tile and splits anything longer as it's added. Sentences shows only saved phrases. Both mixes them.</div>
 
         <div class="sublabel">Word tiles shown</div>
         <div class="seg-row" id="segBankLimit"></div>
@@ -1820,6 +1852,7 @@ function shadeFor(solid, intensity) {
   return solid;
 }
 const BANK_SORTS = { recent: 'Recent', groups: 'Groups', stale: 'Needs practice' };
+const TILE_MODES = { word: 'Words', sentence: 'Sentences', mixed: 'Both' };
 const SIZE_STEPS = ['small', 'med', 'large'];
 const SIZE_LABELS = { small: 'Small', med: 'Medium', large: 'Large' };
 const OTHER_KEYS_LABELS = {
@@ -1905,8 +1938,11 @@ const state = {
   bankSort: 'recent',         // recent | groups | stale
   colorCoding: true,          // tint words by the group they belong to
   bankLimit: 24,              // how many word tiles show at once (0 = all)
+  tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
   homeModesOpen: false,       // the fold-down options row on home
+  railOpen: false,            // the group rail down the left
+  settingsOrder: [],          // the order the settings sections sit in
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
   catSeq: 1,                  // next category id
@@ -2008,9 +2044,12 @@ async function load() {
         showHelpBtn: saved.showHelpBtn ?? false,
         homeEnabled: saved.homeEnabled ?? false,
         homeMode: (saved.homeMode === 'words') ? 'words' : 'tiles',
+        railOpen: saved.railOpen ?? false,
+        settingsOrder: saved.settingsOrder || [],
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
         colorCoding: saved.colorCoding ?? true,
         bankLimit: saved.bankLimit ?? 24,
+        tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
@@ -2092,9 +2131,12 @@ async function save() {
       showHelpBtn: state.showHelpBtn,
       homeEnabled: state.homeEnabled,
       homeMode: state.homeMode,
+      railOpen: state.railOpen,
+      settingsOrder: state.settingsOrder,
       bankSort: state.bankSort,
       colorCoding: state.colorCoding,
       bankLimit: state.bankLimit,
+      tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
       magicType: state.magicType,
       categories: state.categories,
@@ -2551,7 +2593,7 @@ function render() {
     tw.innerHTML = '';
     homePhrase.forEach(w => {
       const c = document.createElement('span');
-      c.className = 'tletter done';
+      c.className = 'tletter done draft-word';
       c.textContent = bankLabel(w);
       tw.appendChild(c);
     });
@@ -3241,6 +3283,13 @@ function renderRecentPicks() {
 function normaliseWord(v) {
   return (v || '').toUpperCase().replace(/[^A-Z' ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
+// In word mode a multi-word entry is filed as its separate words
+function splitForMode(entry) {
+  const w = normaliseWord(entry);
+  if (!w) return [];
+  if (state.tileMode === 'word' && w.includes(' ')) return w.split(' ').filter(Boolean);
+  return [w];
+}
 function catById(id) { return state.categories.find(c => c.id === id) || null; }
 function childrenOf(parentId, includeHidden) {
   return state.categories
@@ -3273,11 +3322,11 @@ function deleteCategory(id) {
 }
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
-const DEFAULT_GROUPS = ['Chat', 'Food', 'Activities', 'People', 'Places', 'Things'];
+const DEFAULT_GROUPS = ['Chat', 'Eat', 'Action', 'Places', 'My Stuff'];
 const DEFAULT_COLORS = {
-  Chat: 'blue', Food: 'green', Activities: 'purple',
-  People: 'pink', Places: 'teal', Things: 'orange',
+  Chat: 'blue', Eat: 'green', Action: 'purple', Places: 'teal', 'My Stuff': 'orange',
 };
+const MY_STUFF_SUBS = ['Songs', 'Videos', 'TV Shows', 'Movies', 'Characters'];
 function applyDefaultGroups() {
   const byName = n => state.categories.find(c => c.name.toLowerCase() === n.toLowerCase());
   const conv = byName('Conversation');
@@ -3287,6 +3336,15 @@ function applyDefaultGroups() {
     if (!c) addCategory(n, null, DEFAULT_COLORS[n]);
     else { c.color = DEFAULT_COLORS[n]; c.parent = null; }   // standard groups sit at the top level
   });
+  // My Stuff holds the media sub-groups
+  const mine = byName('My Stuff');
+  if (mine) {
+    MY_STUFF_SUBS.forEach((n, i) => {
+      const existing = byName(n);
+      if (!existing) { const c = addCategory(n, mine.id); c.order = i; }
+      else { existing.parent = mine.id; existing.order = i; }
+    });
+  }
   DEFAULT_GROUPS.forEach((n, i) => { const c = byName(n); if (c) c.order = i; });
   save();
 }
@@ -3310,7 +3368,7 @@ function categoryRows(cat) {
   if (!cat) return searchWords('');
   if (cat.rule === 'used') return searchWords('').slice().sort((a, b) => b.n - a.n || b.t - a.t);
   if (cat.rule === 'recent') return searchWords('').slice().sort((a, b) => b.t - a.t);
-  const rows = rankWords(cat.words || []);
+  const rows = tileModeFilter(rankWords(cat.words || []));
   // The order control applies inside a group too
   if (state.bankSort === 'recent') return rows.sort((a, b) => b.t - a.t || b.n - a.n);
   if (state.bankSort === 'stale') return rows.sort((a, b) => (a.t || 0) - (b.t || 0));
@@ -3326,6 +3384,20 @@ function fitGrid(grid) {
   const W = grid.clientWidth, H = grid.clientHeight;
   if (!W || !H) return;
   const gap = 10;
+  // 9 tiles are laid out as a deliberate 3 x 3 for the largest, calmest text
+  if (state.bankLimit === 9 && n <= 9) {
+    const c = Math.min(3, n), r = Math.ceil(n / c);
+    grid.classList.remove('scrolling');
+    grid.style.gridTemplateColumns = 'repeat(' + c + ', 1fr)';
+    grid.style.gridTemplateRows = 'repeat(' + r + ', 1fr)';
+    const cw = (W - gap * (c - 1)) / c, ch = (H - gap * (r - 1)) / r;
+    cards.forEach(card => {
+      const t = card.querySelector('.hw');
+      const len = Math.max(2, (t.textContent || '').length);
+      t.style.fontSize = Math.max(18, Math.min(ch * 0.5, (cw * 1.6) / len, 96)) + 'px';
+    });
+    return;
+  }
   let best = null;
   for (let c = 1; c <= n; c++) {
     const r = Math.ceil(n / c);
@@ -3481,7 +3553,7 @@ function renderMagic(word) {
   magicPhrasesFor(word).forEach(phrase => {
     const b = document.createElement('button');
     b.className = 'magic-chip';
-    b.innerHTML = '<span class="mc-spark">\u2728</span>';
+
     const t = document.createElement('span');
     t.textContent = bankLabel(phrase) + ' \u2192';
     b.appendChild(t);
@@ -3597,8 +3669,14 @@ function renderCatTiles(containerId, rerender) {
 }
 
 // The bank in whichever order is chosen
+// A tile holds a single word unless sentence or mixed mode says otherwise
+function tileModeFilter(rows) {
+  if (state.tileMode === 'sentence') return rows.filter(r => r.word.includes(' '));
+  if (state.tileMode === 'mixed') return rows;
+  return rows.filter(r => !r.word.includes(' '));
+}
 function bankRows() {
-  const all = searchWords('');
+  const all = tileModeFilter(searchWords(''));
   if (state.bankSort === 'stale') {
     // Longest since it was last spelled first; never-spelled words come first of all
     return all.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
@@ -3634,8 +3712,8 @@ function renderHome(reset) {
     const wrap = document.getElementById('homeModesWrap');
     wrap.classList.toggle('expanded', state.homeModesOpen);
     document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
-    // options and tiles share the row — only one at a time
-    document.getElementById('catTiles').style.display = state.homeModesOpen ? 'none' : '';
+    const rail = document.getElementById('catTiles');
+    rail.className = 'cat-rail' + (state.railOpen ? ' open' : '');
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
     // group tiles follow the target-bar size setting
@@ -3645,7 +3723,6 @@ function renderHome(reset) {
     homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
     if (state.bankLimit > 0) homeRows = homeRows.slice(0, state.bankLimit);
     // Only the plain recent view is capped — the other orders are meant to be scrolled
-    document.getElementById('bankSortValue').textContent = BANK_SORTS[state.bankSort];
     homeShown = 0;
     grid.innerHTML = '';
     grid.scrollTop = 0;
@@ -3692,6 +3769,10 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
     renderHome(false);
   }
 });
+document.getElementById('railToggle').addEventListener('click', () => {
+  state.railOpen = !state.railOpen;
+  save(); renderHome(true);
+});
 document.getElementById('homeModesToggle').addEventListener('click', () => {
   state.homeModesOpen = !state.homeModesOpen;
   save(); renderHome(true);
@@ -3705,11 +3786,6 @@ document.getElementById('homeHelpBtn').addEventListener('click', () => {
     revealPromptNow();
     render();
   }
-});
-document.getElementById('bankSortBtn').addEventListener('click', () => {
-  const keys = Object.keys(BANK_SORTS);
-  state.bankSort = keys[(keys.indexOf(state.bankSort) + 1) % keys.length];
-  save(); renderHome(true);
 });
 document.getElementById('homeBtn').addEventListener('click', () => { touchSession(); showHome(); });
 document.getElementById('homeSettingsBtn').addEventListener('click', openSettingsSheet);
@@ -3786,7 +3862,8 @@ function renderKbBank() {
   bankVisibleRows().forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
-    const tint = state.colorCoding ? (cat ? tintFor(cat, 0.8) : wordTint(r.word)) : null;
+    const tint = (state.colorCoding && state.bankSort !== 'stale')
+      ? (cat ? tintFor(cat, 0.8) : wordTint(r.word)) : null;
     if (tint) card.style.background = tint;
     const w = document.createElement('span');
     w.className = 'hw';
@@ -4039,10 +4116,6 @@ document.getElementById('defaultGroupsBtn').addEventListener('click', () => {
   renderCatList();
   if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
 });
-document.getElementById('homeManageBtn').addEventListener('click', () => {
-  renderCatList();
-  document.getElementById('manageMenu').classList.add('show');
-});
 ['manageMenu','catWordsMenu','importMenu'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     const btn = e.target.closest('[data-action]');
@@ -4103,11 +4176,11 @@ function importText(text) {
     if (!cat) { cat = addCategory(name, parent); groups++; }
     stack.push({ depth, id: cat.id });
     rest.split(',').forEach(raw => {
-      const w = normaliseWord(raw);
-      if (!w) return;
-      if (!cat.words.includes(w)) { cat.words.push(w); words++; }
-      if (!state.words.includes(w)) state.words.push(w);
-      if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+      splitForMode(raw).forEach(w => {
+        if (!cat.words.includes(w)) { cat.words.push(w); words++; }
+        if (!state.words.includes(w)) state.words.push(w);
+        if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+      });
     });
   });
   return { groups, words };
@@ -4414,10 +4487,58 @@ function promptSummary() {
   return on.length ? on.join(' · ') : 'None';
 }
 
+// ---- Sections can be reordered ----
+function settingsSections() {
+  return Array.from(document.querySelectorAll('#settingsMenu .sgroup'));
+}
+function applySettingsOrder() {
+  const order = state.settingsOrder || [];
+  if (!order.length) return;
+  const parent = document.querySelector('#settingsMenu .sheet');
+  const byKey = {};
+  settingsSections().forEach(g => { byKey[g.dataset.group] = g; });
+  // must be a direct child of the sheet to insert against
+  const anchorEl = Array.from(parent.children).find(el => el.classList.contains('full-row')) || null;
+  order.forEach(k => { if (byKey[k]) parent.insertBefore(byKey[k], anchorEl); });
+  Object.keys(byKey).forEach(k => {
+    if (!order.includes(k)) parent.insertBefore(byKey[k], anchorEl);
+  });
+}
+function saveSettingsOrder() {
+  state.settingsOrder = settingsSections().map(g => g.dataset.group);
+  save();
+}
+function addSectionMovers() {
+  settingsSections().forEach(g => {
+    const head = g.querySelector('.sgroup-head');
+    if (head.querySelector('.sg-move')) return;
+    const chev = head.querySelector('.sg-chev');
+    const mk = (label, dir) => {
+      const b = document.createElement('button');
+      b.className = 'sg-move';
+      b.textContent = label;
+      b.title = dir < 0 ? 'Move up' : 'Move down';
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        const sib = dir < 0 ? g.previousElementSibling : g.nextElementSibling;
+        if (!sib || !sib.classList.contains('sgroup')) return;
+        if (dir < 0) g.parentNode.insertBefore(g, sib);
+        else g.parentNode.insertBefore(sib, g);
+        saveSettingsOrder();
+      });
+      return b;
+    };
+    head.insertBefore(mk('\u2191', -1), chev);
+    head.insertBefore(mk('\u2193', 1), chev);
+  });
+}
+
 // Every group folded away, so the sheet opens calm
 function openSettingsSheet() {
   refreshVoiceList();
   renderSettings();
+  applySettingsOrder();
+  addSectionMovers();
   document.querySelectorAll('#settingsMenu .sgroup').forEach(g => g.classList.remove('open'));
   document.getElementById('settingsMenu').classList.add('show');
   document.querySelector('#settingsMenu .sheet').scrollTop = 0;
@@ -4437,8 +4558,16 @@ function renderSettings() {
            save(); applyPromptTheme(); render(); renderSettings(); });
   buildSeg('segPromptSize', SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] })), state.promptSize,
     v => { state.promptSize = v; if (!state.promptSizeOn) state.promptSizeOn = true; save(); render(); renderSettings(); });
-  const limits = [{ value: 6, label: '6' }, { value: 12, label: '12' }, { value: 24, label: '24' },
-                  { value: 40, label: '40' }, { value: 0, label: 'All' }];
+  buildSeg('segBankSort', Object.entries(BANK_SORTS).map(([v, l]) => ({ value: v, label: l })), state.bankSort,
+    v => { state.bankSort = v; save(); renderSettings();
+           if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+           if (kbBankOpen) renderKbBank(); });
+  buildSeg('segTileMode', Object.entries(TILE_MODES).map(([v, l]) => ({ value: v, label: l })), state.tileMode,
+    v => { state.tileMode = v; save(); renderSettings();
+           if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+           if (kbBankOpen) renderKbBank(); });
+  const limits = [{ value: 9, label: '3 \u00d7 3' }, { value: 6, label: '6' }, { value: 12, label: '12' },
+                  { value: 24, label: '24' }, { value: 40, label: '40' }, { value: 0, label: 'All' }];
   buildSeg('segBankLimit', limits, state.bankLimit,
     v => { state.bankLimit = v; save(); renderSettings();
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
@@ -4705,11 +4834,11 @@ document.getElementById('bulkAddBtn').addEventListener('click', () => {
   if (!cat) { alert('Make a group first.'); return; }
   let added = 0;
   (box.value || '').split(/[,\n]/).forEach(raw => {
-    const w = normaliseWord(raw);
-    if (!w) return;
-    if (!cat.words.includes(w)) { cat.words.push(w); added++; }
-    if (!state.words.includes(w)) state.words.push(w);
-    if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+    splitForMode(raw).forEach(w => {
+      if (!cat.words.includes(w)) { cat.words.push(w); added++; }
+      if (!state.words.includes(w)) state.words.push(w);
+      if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+    });
   });
   box.value = '';
   save(); renderSettings();
@@ -4719,13 +4848,15 @@ document.getElementById('bulkAddBtn').addEventListener('click', () => {
 // ---- Word bank, from settings ----
 function addWordFromSettings() {
   const inp = document.getElementById('setWordInput');
-  const w = normaliseWord(inp.value);
-  if (!w) return;
-  if (!state.words.includes(w)) state.words.push(w);
-  if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+  const parts = splitForMode(inp.value);
+  if (!parts.length) return;
+  parts.forEach(w => {
+    if (!state.words.includes(w)) state.words.push(w);
+    if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+  });
   inp.value = '';
   save(); renderSettings();
-  askCategoryFor(w, () => renderSettings());
+  askCategoryFor(parts[0], () => renderSettings());
 }
 document.getElementById('setWordAdd').addEventListener('click', addWordFromSettings);
 document.getElementById('setWordInput').addEventListener('keydown', e => {
@@ -4979,7 +5110,12 @@ function renderSetup() {
   if (steps) {
     const sums = groupSummaries();
     steps.innerHTML = '';
-    SETUP_STEPS.forEach(st => {
+    const ord = state.settingsOrder || [];
+    const ordered = ord.length
+      ? ord.map(k => SETUP_STEPS.find(x => x.key === k)).filter(Boolean)
+          .concat(SETUP_STEPS.filter(x => !ord.includes(x.key)))
+      : SETUP_STEPS;
+    ordered.forEach(st => {
       const b = document.createElement('button');
       b.className = 'setup-step';
       b.innerHTML = '<span class="ss-emoji"></span><span class="ss-body">' +
