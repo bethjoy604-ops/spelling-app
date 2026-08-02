@@ -303,25 +303,27 @@
     display: inline-block;
   }
   .key.home-enter {
-    flex: none; width: 96px; min-height: 56px; height: auto;
-    align-self: center; font-size: 26px;
+    flex: none; width: clamp(86px, 13vmin, 150px);
+    min-height: clamp(52px, 9vmin, 96px); height: auto;
+    align-self: center; font-size: clamp(24px, 4.5vmin, 44px);
   }
   .home-grid {
-    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start;
-    padding-bottom: 20px;
+    flex: 1; min-height: 0; overflow: hidden;
+    display: grid; gap: 10px;
+    grid-auto-rows: 1fr;
   }
+  .home-grid.scrolling { overflow-y: auto; grid-auto-rows: minmax(76px, 1fr); }
   .home-card {
-    flex: 0 0 auto; max-width: 100%;
+    min-width: 0; min-height: 0;
     background: var(--surface); border-radius: 16px;
     box-shadow: var(--shadow); border: none;
-    padding: 18px 22px;
-    min-height: 76px; justify-content: center;
+    padding: 6px 10px; justify-content: center;
     font-family: inherit; cursor: pointer; text-align: center;
     display: flex; flex-direction: column; gap: 4px; align-items: center;
+    overflow: hidden;
   }
   .home-card:active { transform: scale(0.97); }
-  .home-card .hw { font-size: 26px; font-weight: 900; color: var(--ink); line-height: 1.15; }
+  .home-card .hw { font-weight: 900; color: var(--ink); line-height: 1.1; word-break: break-word; }
   .home-card .hm { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
   .home-card.selected { background: var(--prompt-soft); }
 
@@ -368,11 +370,7 @@
   .cat-tile.plain { background: var(--surface); box-shadow: var(--shadow); color: var(--ink); }
 
   /* At the top level the bank shows just the last few words used */
-  /* exactly three rows: 3 cards tall + the 2 gaps between them */
-  .home-grid.three-lines {
-    flex: none; overflow: hidden;
-    max-height: calc(76px * 5 + 10px * 4);
-  }
+
 
   /* ===== KEYBOARD ===== */
   .view-keyboard {
@@ -494,11 +492,11 @@
 
   .display-clear {
     flex-shrink: 0;
-    width: 52px; height: 52px;
+    width: clamp(44px, 7vmin, 72px); height: clamp(44px, 7vmin, 72px);
     border-radius: 50%;
     background: var(--bg);
     border: none;
-    font-size: 28px; font-weight: 700;
+    font-size: clamp(24px, 4vmin, 38px); font-weight: 700;
     color: var(--muted);
     cursor: pointer;
     display: none;
@@ -665,13 +663,15 @@
     display: flex; flex-direction: column;
     gap: 8px;
   }
-  .row { flex: 1; display: flex; gap: 8px; justify-content: center; }
+  .row { flex: 1; min-height: 0; display: flex; gap: 8px; justify-content: center; }
   .key {
     flex: 1;
     background: var(--surface);
+    border: none;
+    min-height: 0;
     border-radius: 16px;
     font-family: inherit;
-    font-size: clamp(32px, 4.2vw, 44px);
+    font-size: clamp(24px, 5vmin, 46px);
     font-weight: 900;
     color: var(--ink);
     box-shadow: var(--shadow);
@@ -710,9 +710,9 @@
   .keyboard.ok-black .key.letter:not(.prompting) { background: #1f1f1f; color: transparent; box-shadow: none; }
 
   /* --- Keyboard letter size steps --- */
-  .keyboard.ks-small .key.letter { font-size: clamp(20px, 2.9vw, 30px); }
-  .keyboard.ks-large .key.letter { font-size: clamp(42px, 5.6vw, 62px); }
-  .key.wide { flex: 1.6; font-size: 22px; font-weight: 700; }
+  .keyboard.ks-small .key.letter { font-size: clamp(18px, 3.4vmin, 32px); }
+  .keyboard.ks-large .key.letter { font-size: clamp(30px, 6.6vmin, 60px); }
+  .key.wide { flex: 1.6; font-size: clamp(20px, 4vmin, 40px); font-weight: 700; }
   .key.space { flex: 4.5; }
   .key.backspace { background: var(--red-tint); color: var(--red); }
   .key.enter { background: var(--green-tint); color: var(--green); }
@@ -896,6 +896,16 @@
   }
   .sublabel:first-child { margin-top: 0; }
   .help-note { font-size: 12.5px; color: var(--muted); font-weight: 600; line-height: 1.45; margin-top: 6px; }
+
+  .hero-setting {
+    background: var(--yellow-warm);
+    border-radius: 16px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .hero-row { display: flex; align-items: center; gap: 12px; }
+  .hero-title { flex: 1; font-size: 20px; font-weight: 900; color: var(--ink); }
+  .hero-note { font-size: 13px; font-weight: 700; color: #6b5a2a; line-height: 1.5; margin-top: 8px; }
+  .hero-setting .toggle { background: rgba(0,0,0,0.22); }
+  .hero-setting .toggle.on { background: var(--green); }
 
   /* Segmented pickers */
   .seg-row { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -1236,6 +1246,7 @@
     <div class="cat-tiles" id="catTiles"></div>
     <div class="spacer"></div>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
+    <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#128161;</button>
   </div>
 
   <div class="magic-box" id="magicBox">
@@ -1508,6 +1519,14 @@
         <span class="sg-chev">▾</span>
       </button>
       <div class="sgroup-body">
+        <div class="hero-setting">
+          <div class="hero-row">
+            <span class="hero-title">&#128161; Help mode</span>
+            <div class="toggle" id="toggleHelpMode"></div>
+          </div>
+          <div class="hero-note">On: nothing prompts by itself. The lightbulb appears on every page and the speller taps it when they want help.<br>Off: the prompts below happen automatically, and the lightbulb is hidden.</div>
+        </div>
+
         <div class="help-note">Turn on as many prompts as you like — they stack. Colour, size and voice can all run together.</div>
 
         <div class="sublabel" style="margin-top:12px;">Colour highlight</div>
@@ -1542,11 +1561,6 @@
 
         <div class="sublabel">Other keys while prompting</div>
         <div class="seg-row" id="segOtherKeys"></div>
-
-        <div class="settings-list" style="margin-top:12px;">
-          <div class="setting-row"><span>&#128161; Help mode &mdash; prompts only when asked</span><div class="toggle" id="toggleHelpMode"></div></div>
-        </div>
-        <div class="help-note">With this on, nothing prompts on its own \u2014 the speller taps the lightbulb when they want help, and it shows whatever prompts are switched on above. Turn it off and those prompts happen automatically.</div>
 
         <div class="sublabel">Wait before prompting</div>
         <div class="slider-row">
@@ -2599,7 +2613,7 @@ function render() {
   document.getElementById('wordBankBtn').style.display = state.showBankCount ? '' : 'none';
   document.getElementById('homeBtn').style.display = state.homeEnabled ? '' : 'none';
   document.getElementById('searchBtn').style.display = state.showSearchBtn ? '' : 'none';
-  document.getElementById('helpBtn').style.display = (state.showHelpBtn || state.helpMode) ? '' : 'none';
+  document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
 
   const kb = document.getElementById('keyboard');
   kb.innerHTML = '';
@@ -3303,6 +3317,56 @@ function categoryRows(cat) {
   return rows;
 }
 
+// Lay tiles out so they fill the space: fewer words means bigger tiles
+function fitGrid(grid) {
+  if (!grid) return;
+  const cards = Array.from(grid.querySelectorAll('.home-card'));
+  const n = cards.length;
+  if (!n) return;
+  const W = grid.clientWidth, H = grid.clientHeight;
+  if (!W || !H) return;
+  const gap = 10;
+  let best = null;
+  for (let c = 1; c <= n; c++) {
+    const r = Math.ceil(n / c);
+    const cw = (W - gap * (c - 1)) / c;
+    const ch = (H - gap * (r - 1)) / r;
+    if (cw < 60 || ch < 44) continue;
+    const score = Math.min(cw / 2.2, ch);      // favour tiles that aren't slivers
+    if (!best || score > best.score) best = { c, r, cw, ch, score };
+  }
+  if (!best) {
+    // too many to fit — fall back to a scrolling grid of a sensible size
+    grid.classList.add('scrolling');
+    const c = Math.max(2, Math.floor(W / 190));
+    grid.style.gridTemplateColumns = 'repeat(' + c + ', 1fr)';
+    grid.style.gridTemplateRows = '';
+    cards.forEach(card => {
+      const t = card.querySelector('.hw');
+      t.style.fontSize = Math.max(15, Math.min(26, (W / c) * 1.5 / Math.max(3, t.textContent.length))) + 'px';
+    });
+    return;
+  }
+  grid.classList.remove('scrolling');
+  grid.style.gridTemplateColumns = 'repeat(' + best.c + ', 1fr)';
+  grid.style.gridTemplateRows = 'repeat(' + best.r + ', 1fr)';
+  cards.forEach(card => {
+    const t = card.querySelector('.hw');
+    const len = Math.max(2, (t.textContent || '').length);
+    const byHeight = best.ch * 0.44;
+    const byWidth = (best.cw * 1.55) / len;
+    t.style.fontSize = Math.max(14, Math.min(byHeight, byWidth, 72)) + 'px';
+  });
+}
+let fitTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => {
+    fitGrid(document.getElementById('homeGrid'));
+    fitGrid(document.getElementById('kbGrid'));
+  }, 120);
+});
+
 // ===== Home screen =====
 const HOME_PAGE = 60;
 let homeShown = 0;
@@ -3573,6 +3637,7 @@ function renderHome(reset) {
     // options and tiles share the row — only one at a time
     document.getElementById('catTiles').style.display = state.homeModesOpen ? 'none' : '';
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
+    document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
     // group tiles follow the target-bar size setting
     const tilesRow = document.getElementById('catTiles');
     tilesRow.className = 'cat-tiles bs-' + state.bannerSize;
@@ -3580,7 +3645,6 @@ function renderHome(reset) {
     homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
     if (state.bankLimit > 0) homeRows = homeRows.slice(0, state.bankLimit);
     // Only the plain recent view is capped — the other orders are meant to be scrolled
-    grid.classList.toggle('three-lines', !cat && state.bankSort === 'recent');
     document.getElementById('bankSortValue').textContent = BANK_SORTS[state.bankSort];
     homeShown = 0;
     grid.innerHTML = '';
@@ -3620,6 +3684,7 @@ function renderHome(reset) {
     grid.appendChild(card);
   });
   homeShown += slice.length;
+  requestAnimationFrame(() => fitGrid(grid));
 }
 document.getElementById('homeGrid').addEventListener('scroll', e => {
   const g = e.target;
@@ -3632,6 +3697,15 @@ document.getElementById('homeModesToggle').addEventListener('click', () => {
   save(); renderHome(true);
 });
 document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
+document.getElementById('homeHelpBtn').addEventListener('click', () => {
+  // On home the bulb takes you to the keys with help already granted
+  showKeyboard();
+  if (state.currentTarget && !isWordComplete()) {
+    helpRequested = true;
+    revealPromptNow();
+    render();
+  }
+});
 document.getElementById('bankSortBtn').addEventListener('click', () => {
   const keys = Object.keys(BANK_SORTS);
   state.bankSort = keys[(keys.indexOf(state.bankSort) + 1) % keys.length];
@@ -3758,6 +3832,7 @@ function renderKbBank() {
     });
     grid.appendChild(add);
   }
+  requestAnimationFrame(() => fitGrid(grid));
 }
 function setKbBank(open) {
   kbBankOpen = open;
@@ -4509,8 +4584,11 @@ document.getElementById('togglePromptVerbal').addEventListener('click', () => {
 });
 document.getElementById('toggleHelpMode').addEventListener('click', () => {
   state.helpMode = !state.helpMode;
+  // the lightbulb setting follows help mode, so the two can't disagree
+  state.showHelpBtn = state.helpMode;
   helpRequested = false;
   save(); render(); renderSettings();
+  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
 });
 // ---- Custom error phrase ----
 document.getElementById('errorPhraseInput').addEventListener('input', e => {
