@@ -260,6 +260,40 @@
     box-shadow: 0 3px 0 #000, 0 6px 12px rgba(0,0,0,0.18);
   }
 
+  /* Letter-driven word search */
+  .search-strip {
+    display: none; align-items: center; gap: 10px; flex-shrink: 0;
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 16px; padding: 10px 12px;
+  }
+  .search-strip.open { display: flex; }
+  .ss-prefix {
+    font-size: 24px; font-weight: 900; color: var(--prompt);
+    min-width: 40px; letter-spacing: 1px;
+  }
+  .ss-results { flex: 1; display: flex; gap: 8px; overflow-x: auto; min-width: 0; }
+  .ss-word {
+    flex: none; border: none; border-radius: 12px;
+    background: var(--bg); box-shadow: var(--shadow);
+    padding: 10px 16px; font-family: inherit;
+    font-size: 20px; font-weight: 900; color: var(--ink); cursor: pointer;
+  }
+  .ss-none { color: var(--muted); font-size: 15px; font-weight: 700; }
+
+  /* Word bank inside the keyboard page */
+  .kb-bank { flex: 1; display: none; flex-direction: column; gap: 10px; min-height: 0; }
+  .kb-bank.open { display: flex; }
+  .kb-bank-grid { flex: 1; }
+  .key.kb-commit { flex: none; width: 74px; min-height: 48px; height: auto; font-size: 22px; align-self: center; }
+  .home-card .hide-x {
+    position: absolute; top: -8px; right: -8px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--red); color: white; border: none;
+    font-size: 15px; font-weight: 900; cursor: pointer; line-height: 1;
+  }
+  .home-card { position: relative; }
+  .home-card.add-tile { border: 2px dashed var(--border); background: var(--bg); box-shadow: none; }
+
   /* ===== HOME ===== */
   .view-home { flex-direction: column; padding: 14px; gap: 12px; }
   /* The phrase bar is the keyboard's typing bar, so sizes match exactly */
@@ -321,11 +355,9 @@
   .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
   /* Category tiles — their own line, above the bank */
-  .cat-tiles {
-    display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
-    margin-top: 6px; padding-bottom: 14px;
-    border-bottom: 2px solid var(--border);
-  }
+  .cat-tiles { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+  .home-row { flex-wrap: wrap; row-gap: 10px; }
+  .home-row .cat-tiles { flex: 1 1 auto; }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
     padding: 14px 20px; font-family: inherit;
@@ -1179,7 +1211,7 @@
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
 
-  <div class="controls-row">
+  <div class="controls-row home-row">
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9662;</span>
     </button>
@@ -1194,6 +1226,7 @@
       </button>
       <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     </div>
+    <div class="cat-tiles" id="catTiles"></div>
     <div class="spacer"></div>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
@@ -1202,8 +1235,6 @@
     <div class="magic-row" id="magicRow"></div>
     <button class="mbtn action" id="magicSkip">Skip</button>
   </div>
-
-  <div class="cat-tiles" id="catTiles"></div>
   <div class="home-grid" id="homeGrid"></div>
 </div>
 
@@ -1239,6 +1270,10 @@
     </div>
     <div class="spacer"></div>
     <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
+    <button class="ctl icon" id="kbBankBtn" aria-label="Word bank">&#128218;</button>
+    <button class="ctl icon" id="kbGroupsBtn" aria-label="Groups" style="display:none">&#128193;</button>
+    <button class="ctl icon" id="kbEditBtn" aria-label="Edit tiles" style="display:none">&#9998;</button>
+    <button class="key enter kb-commit" id="kbCommit" aria-label="Use this phrase" style="display:none">&#9166;</button>
     <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
     <button class="wordbank-btn" id="wordBankBtn" aria-label="Word bank">
@@ -1247,7 +1282,18 @@
     </button>
   </div>
 
+  <div class="search-strip" id="searchStrip">
+    <span class="ss-prefix" id="ssPrefix"></span>
+    <div class="ss-results" id="ssResults"></div>
+    <button class="ctl icon" id="ssClose" aria-label="Close search">&times;</button>
+  </div>
+
   <div class="keyboard" id="keyboard"></div>
+
+  <div class="kb-bank" id="kbBank">
+    <div class="cat-tiles" id="kbTiles" style="display:none"></div>
+    <div class="home-grid kb-bank-grid" id="kbGrid"></div>
+  </div>
 </div>
 
 <!-- Key menu -->
@@ -1359,6 +1405,18 @@
   </div>
 </div>
 
+<!-- Where does this word go? -->
+<div class="overlay" id="catAskMenu">
+  <div class="sheet">
+    <h3>Where does this go?</h3>
+    <div class="key-preview" id="catAskWord" style="font-size: 30px;"></div>
+    <div class="cat-tiles" id="catAskTiles" style="border:none; padding:0; margin-top:10px;"></div>
+    <div class="full-row" style="margin-top: 16px;">
+      <button class="mbtn action" data-action="cancel" style="grid-column: span 2;">Skip for now</button>
+    </div>
+  </div>
+</div>
+
 <!-- Manage groups -->
 <div class="overlay" id="manageMenu">
   <div class="sheet">
@@ -1435,7 +1493,7 @@
     <div class="key-preview" style="font-size: 28px;">⚙</div>
 
     <!-- ============ PROMPTS ============ -->
-    <div class="sgroup open" data-group="prompts">
+    <div class="sgroup" data-group="prompts">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">🎯</span>
         <span class="sg-title">Prompts</span>
@@ -1579,6 +1637,10 @@
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
           <div class="setting-row"><span>&#127912; Colour code words by group</span><div class="toggle on" id="toggleColor"></div></div>
         </div>
+
+        <div class="sublabel">Word tiles shown</div>
+        <div class="seg-row" id="segBankLimit"></div>
+        <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
         <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
 
         <div class="sublabel">Hidden keys</div>
@@ -1792,6 +1854,8 @@ const state = {
   homeMode: 'tiles',          // tiles | words — how home presents the bank
   bankSort: 'recent',         // recent | groups | stale
   colorCoding: true,          // tint words by the group they belong to
+  bankLimit: 24,              // how many word tiles show at once (0 = all)
+  hiddenWords: {},            // words kept out of the bank grid
   homeModesOpen: false,       // the fold-down options row on home
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -1894,6 +1958,8 @@ async function load() {
         homeMode: (saved.homeMode === 'words') ? 'words' : 'tiles',
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
         colorCoding: saved.colorCoding ?? true,
+        bankLimit: saved.bankLimit ?? 24,
+        hiddenWords: saved.hiddenWords || {},
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -1975,6 +2041,8 @@ async function save() {
       homeMode: state.homeMode,
       bankSort: state.bankSort,
       colorCoding: state.colorCoding,
+      bankLimit: state.bankLimit,
+      hiddenWords: state.hiddenWords,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -2405,6 +2473,39 @@ function render() {
   applyPromptTheme();
   const showing = promptsShowing();
 
+  // Merged-page prototype: the bank can take over the keyboard's space
+  const bank = document.getElementById('kbBank');
+  const keys = document.getElementById('keyboard');
+  bank.classList.toggle('open', kbBankOpen);
+  keys.style.display = kbBankOpen ? 'none' : '';
+  document.getElementById('kbBankBtn').classList.toggle('active', kbBankOpen);
+  ['kbGroupsBtn', 'kbEditBtn', 'kbCommit'].forEach(id => {
+    document.getElementById(id).style.display = kbBankOpen ? '' : 'none';
+  });
+  document.getElementById('kbEditBtn').classList.toggle('active', kbEdit);
+  document.getElementById('kbCommit').classList.toggle('enter-ready', homePhrase.length > 0);
+  if (kbBankOpen) renderKbBank();
+
+  // While drafting from the bank, the target bar previews the phrase
+  if (kbBankOpen && homePhrase.length) {
+    const b = document.getElementById('targetBanner');
+    b.classList.add('active');
+    b.className = 'target-banner active bs-' + state.bannerSize;
+    const tw = document.getElementById('targetWord');
+    tw.innerHTML = '';
+    homePhrase.forEach(w => {
+      const c = document.createElement('span');
+      c.className = 'tletter done';
+      c.textContent = bankLabel(w);
+      tw.appendChild(c);
+    });
+    const disp = document.getElementById('display');
+    disp.classList.remove('ds-small', 'ds-med', 'ds-large');
+    disp.classList.add('ds-' + state.displaySize);
+    document.getElementById('displayContent').innerHTML = '<span class="caret"></span>';
+    return;
+  }
+
   const banner = document.getElementById('targetBanner');
   banner.classList.remove('bs-small', 'bs-med', 'bs-large');
   banner.classList.add('bs-' + state.bannerSize);
@@ -2527,6 +2628,7 @@ function makeSpecialKey(label, action, cls) {
       state.text += ' ';
     } else if (action === 'backspace') {
       buzz(10);
+      if (kbSearch) { searchPrefix = searchPrefix.slice(0, -1); renderSearchStrip(); return; }
       resolvePendingFlash();
       if (state.text.length > 0) {
         state.text = state.text.slice(0, -1);
@@ -2650,7 +2752,15 @@ function correctTextOnly() {
   return state.currentTarget.slice(0, state.targetIndex);
 }
 
-function typeLetter(letter) { typeChar(letter); }
+function typeLetter(letter) {
+  if (kbSearch) {
+    searchPrefix += letter;
+    buzz(8);
+    renderSearchStrip();
+    return;
+  }
+  typeChar(letter);
+}
 function typeChar(letter) {
   touchSession();
   resolvePendingFlash(); // a previous flashed error clears the moment the next key lands
@@ -2941,7 +3051,9 @@ function addWordFromInput() {
   if (!raw) return;
   if (!state.words.includes(raw)) {
     state.words.push(raw);
+    if (!state.wordHistory[raw]) state.wordHistory[raw] = { n: 0, t: 0 };
     save();
+    askCategoryFor(raw, () => renderWordList());
   }
   inp.value = '';
   renderWordList();
@@ -3323,8 +3435,9 @@ function tintFor(cat, amount) {
   const def = PROMPT_COLORS[(cat && cat.color) || 'blue'] || PROMPT_COLORS.blue;
   return mixHex(def.solid, '#ffffff', amount);
 }
-function renderCatTiles() {
-  const row = document.getElementById('catTiles');
+function renderCatTiles(containerId, rerender) {
+  const row = document.getElementById(containerId || 'catTiles');
+  const again = rerender || (() => again());
   row.innerHTML = '';
   const cat = currentCat();
   const tiles = childrenOf(cat ? cat.id : null);
@@ -3333,7 +3446,7 @@ function renderCatTiles() {
     const back = document.createElement('button');
     back.className = 'cat-tile plain';
     back.textContent = '\u2039 ' + (homePath.length > 1 ? catById(homePath[homePath.length - 2]).name : 'All');
-    back.addEventListener('click', () => { homePath.pop(); renderHome(true); });
+    back.addEventListener('click', () => { homePath.pop(); again(); });
     row.appendChild(back);
   }
 
@@ -3350,12 +3463,12 @@ function renderCatTiles() {
         tileLongPressed = true;
         buzz(15);
         const v = prompt('Rename this group', c.name);
-        if (v && v.trim()) { c.name = v.trim(); save(); renderHome(true); }
+        if (v && v.trim()) { c.name = v.trim(); save(); again(); }
       }, 650);
     });
     b.addEventListener('pointerup', () => {
       if (tileTimer) clearTimeout(tileTimer);
-      if (!tileLongPressed) { homePath.push(c.id); renderHome(true); }
+      if (!tileLongPressed) { homePath.push(c.id); again(); }
     });
     ['pointercancel','pointerleave'].forEach(ev =>
       b.addEventListener(ev, () => { if (tileTimer) clearTimeout(tileTimer); }));
@@ -3371,7 +3484,7 @@ function renderCatTiles() {
     const v = prompt(cat ? 'New group inside ' + cat.name : 'New group name');
     if (v && v.trim()) {
       addCategory(v.trim(), cat ? cat.id : null);
-      save(); renderHome(true);
+      save(); again();
     }
   });
   row.appendChild(add);
@@ -3410,17 +3523,20 @@ function renderHome(reset) {
   const cat = currentCat();
   if (reset) {
     renderPhraseBar();
-    renderCatTiles();
+    renderCatTiles('catTiles', () => renderHome(true));
     // the fold-down options row behaves like the keyboard's
     const wrap = document.getElementById('homeModesWrap');
     wrap.classList.toggle('expanded', state.homeModesOpen);
     document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
+    // options and tiles share the row — only one at a time
+    document.getElementById('catTiles').style.display = state.homeModesOpen ? 'none' : '';
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     // group tiles follow the target-bar size setting
     const tilesRow = document.getElementById('catTiles');
     tilesRow.className = 'cat-tiles bs-' + state.bannerSize;
     // Top level shows the words used most recently; a group shows all of its words
-    homeRows = cat ? categoryRows(cat) : bankRows();
+    homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
+    if (state.bankLimit > 0) homeRows = homeRows.slice(0, state.bankLimit);
     // Only the plain recent view is capped — the other orders are meant to be scrolled
     grid.classList.toggle('three-lines', !cat && state.bankSort === 'recent');
     document.getElementById('bankSortValue').textContent = BANK_SORTS[state.bankSort];
@@ -3473,22 +3589,190 @@ document.getElementById('homeModesToggle').addEventListener('click', () => {
   state.homeModesOpen = !state.homeModesOpen;
   save(); renderHome(true);
 });
-document.getElementById('homeSearchBtn').addEventListener('click', () => {
-  document.getElementById('searchInput').value = '';
-  renderSearchResults();
-  closeAllMenus();
-  document.getElementById('searchMenu').classList.add('show');
-});
+document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
 document.getElementById('bankSortBtn').addEventListener('click', () => {
   const keys = Object.keys(BANK_SORTS);
   state.bankSort = keys[(keys.indexOf(state.bankSort) + 1) % keys.length];
   save(); renderHome(true);
 });
 document.getElementById('homeBtn').addEventListener('click', () => { touchSession(); showHome(); });
-document.getElementById('homeSettingsBtn').addEventListener('click', () => {
-  refreshVoiceList();
-  renderSettings();
-  document.getElementById('settingsMenu').classList.add('show');
+document.getElementById('homeSettingsBtn').addEventListener('click', openSettingsSheet);
+
+// ===== Search by tapping letters =====
+let kbSearch = false, searchPrefix = '';
+function openLetterSearch() {
+  kbSearch = true;
+  searchPrefix = '';
+  kbBankOpen = false;          // the keys must be visible to search with
+  setView('keyboard');
+  render();
+  renderSearchStrip();
+}
+function closeLetterSearch() {
+  kbSearch = false;
+  searchPrefix = '';
+  document.getElementById('searchStrip').classList.remove('open');
+  render();
+}
+function renderSearchStrip() {
+  const strip = document.getElementById('searchStrip');
+  strip.classList.toggle('open', kbSearch);
+  if (!kbSearch) return;
+  document.getElementById('ssPrefix').textContent = bankLabel(searchPrefix) || '\u2026';
+  const box = document.getElementById('ssResults');
+  box.innerHTML = '';
+  const q = searchPrefix.toUpperCase();
+  const hits = q ? searchWords(q).filter(r => r.word.startsWith(q)) : [];
+  if (!hits.length) {
+    const n = document.createElement('span');
+    n.className = 'ss-none';
+    n.textContent = searchPrefix ? 'nothing starts with that' : 'tap letters to find a word';
+    box.appendChild(n);
+    return;
+  }
+  hits.slice(0, 20).forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'ss-word';
+    b.textContent = bankLabel(r.word);
+    const tint = state.colorCoding ? wordTint(r.word) : null;
+    if (tint) b.style.background = tint;
+    b.addEventListener('click', () => {
+      const parts = r.word.split(' ').filter(Boolean);
+      if (!state.words.includes(r.word)) state.words.push(r.word);
+      closeLetterSearch();
+      if (parts.length > 1) selectPhrase(parts);
+      else selectTargetWord(r.word, true);
+      renderSetup();
+    });
+    box.appendChild(b);
+  });
+}
+document.getElementById('ssClose').addEventListener('click', closeLetterSearch);
+
+// ===== Word bank inside the keyboard page (merged-page prototype) =====
+let kbBankOpen = false, kbTilesOpen = false, kbEdit = false;
+
+function bankVisibleRows() {
+  const cat = currentCat();
+  let rows = cat ? categoryRows(cat) : bankRows();
+  rows = rows.filter(r => !state.hiddenWords[r.word]);
+  if (state.bankLimit > 0) rows = rows.slice(0, state.bankLimit);
+  return rows;
+}
+function renderKbBank() {
+  const tiles = document.getElementById('kbTiles');
+  tiles.style.display = kbTilesOpen ? '' : 'none';
+  if (kbTilesOpen) renderCatTiles('kbTiles', () => renderKbBank());
+
+  const grid = document.getElementById('kbGrid');
+  grid.innerHTML = '';
+  const cat = currentCat();
+  bankVisibleRows().forEach(r => {
+    const card = document.createElement('button');
+    card.className = 'home-card';
+    const tint = state.colorCoding ? (cat ? tintFor(cat, 0.8) : wordTint(r.word)) : null;
+    if (tint) card.style.background = tint;
+    const w = document.createElement('span');
+    w.className = 'hw';
+    w.textContent = bankLabel(r.word);
+    card.appendChild(w);
+    card.addEventListener('click', () => {
+      if (kbEdit) return;
+      homePhrase.push(r.word);
+      warmSpeech();
+      speakWord(r.word, 0.95);
+      render();
+    });
+    if (kbEdit) {
+      const x = document.createElement('button');
+      x.className = 'hide-x';
+      x.textContent = '\u00d7';
+      x.title = 'Hide this word';
+      x.addEventListener('click', e => {
+        e.stopPropagation();
+        state.hiddenWords[r.word] = true;
+        save(); renderKbBank();
+      });
+      card.appendChild(x);
+    }
+    grid.appendChild(card);
+  });
+
+  if (kbEdit) {
+    const add = document.createElement('button');
+    add.className = 'home-card add-tile';
+    const w = document.createElement('span');
+    w.className = 'hw'; w.textContent = '+';
+    add.appendChild(w);
+    add.addEventListener('click', () => {
+      const v = prompt('New word or phrase');
+      const word = normaliseWord(v || '');
+      if (!word) return;
+      if (!state.words.includes(word)) state.words.push(word);
+      if (!state.wordHistory[word]) state.wordHistory[word] = { n: 0, t: 0 };
+      delete state.hiddenWords[word];
+      save(); renderKbBank();
+      askCategoryFor(word, () => renderKbBank());
+    });
+    grid.appendChild(add);
+  }
+}
+function setKbBank(open) {
+  kbBankOpen = open;
+  if (!open) { kbEdit = false; kbTilesOpen = false; }
+  render();
+}
+document.getElementById('kbBankBtn').addEventListener('click', () => setKbBank(!kbBankOpen));
+document.getElementById('kbGroupsBtn').addEventListener('click', () => { kbTilesOpen = !kbTilesOpen; renderKbBank(); });
+document.getElementById('kbEditBtn').addEventListener('click', () => { kbEdit = !kbEdit; render(); });
+document.getElementById('kbCommit').addEventListener('click', () => {
+  const parts = homePhrase.join(' ').split(' ').filter(Boolean);
+  homePhrase = [];
+  kbBankOpen = false; kbEdit = false; kbTilesOpen = false;
+  if (parts.length === 0) { render(); return; }
+  parts.forEach(w => { if (!state.words.includes(w)) state.words.push(w); });
+  if (parts.length > 1) selectPhrase(parts);
+  else selectTargetWord(parts[0], true);
+  renderSetup();
+});
+
+// ===== "Where does this go?" when a new word appears =====
+let catAskAfter = null;
+function askCategoryFor(word, after) {
+  if (!state.categories.length) { if (after) after(); return; }
+  catAskAfter = after || null;
+  document.getElementById('catAskWord').textContent = bankLabel(word);
+  const box = document.getElementById('catAskTiles');
+  box.innerHTML = '';
+  const walk = (parent, depth) => {
+    childrenOf(parent, true).forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'cat-tile';
+      b.textContent = (depth ? '\u2514 ' : '') + c.name;
+      b.style.background = tintFor(c, 0.65);
+      b.style.color = inkFor(tintFor(c, 0.65));
+      b.style.marginLeft = (depth * 12) + 'px';
+      b.addEventListener('click', () => {
+        if (!c.words.includes(word)) c.words.push(word);
+        save();
+        document.getElementById('catAskMenu').classList.remove('show');
+        if (catAskAfter) catAskAfter();
+        catAskAfter = null;
+      });
+      box.appendChild(b);
+      walk(c.id, depth + 1);
+    });
+  };
+  walk(null, 0);
+  document.getElementById('catAskMenu').classList.add('show');
+}
+document.getElementById('catAskMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if ((btn && btn.dataset.action === 'cancel') || e.target.id === 'catAskMenu') {
+    document.getElementById('catAskMenu').classList.remove('show');
+    if (catAskAfter) catAskAfter();
+    catAskAfter = null;
+  }
 });
 
 // ===== Manage groups =====
@@ -3785,12 +4069,7 @@ function renderSearchResults() {
     list.appendChild(row);
   });
 }
-document.getElementById('searchBtn').addEventListener('click', () => {
-  document.getElementById('searchInput').value = '';
-  renderSearchResults();
-  closeAllMenus();
-  document.getElementById('searchMenu').classList.add('show');
-});
+document.getElementById('searchBtn').addEventListener('click', openLetterSearch);
 document.getElementById('searchInput').addEventListener('input', renderSearchResults);
 document.getElementById('searchMenu').addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
@@ -3909,11 +4188,7 @@ document.getElementById('dataMenu').addEventListener('click', e => {
 });
 
 // Settings
-document.getElementById('settingsBtn').addEventListener('click', () => {
-  refreshVoiceList();
-  renderSettings();
-  document.getElementById('settingsMenu').classList.add('show');
-});
+document.getElementById('settingsBtn').addEventListener('click', openSettingsSheet);
 // ---- Settings building blocks ----
 function buildSeg(containerId, options, current, onPick) {
   const c = document.getElementById(containerId);
@@ -4019,6 +4294,15 @@ function promptSummary() {
   return on.length ? on.join(' · ') : 'None';
 }
 
+// Every group folded away, so the sheet opens calm
+function openSettingsSheet() {
+  refreshVoiceList();
+  renderSettings();
+  document.querySelectorAll('#settingsMenu .sgroup').forEach(g => g.classList.remove('open'));
+  document.getElementById('settingsMenu').classList.add('show');
+  document.querySelector('#settingsMenu .sheet').scrollTop = 0;
+}
+
 function renderSettings() {
   // ----- Prompts -----
   document.getElementById('togglePromptColor').classList.toggle('on', state.promptColorOn);
@@ -4032,6 +4316,17 @@ function renderSettings() {
            save(); applyPromptTheme(); render(); renderSettings(); });
   buildSeg('segPromptSize', SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] })), state.promptSize,
     v => { state.promptSize = v; if (!state.promptSizeOn) state.promptSizeOn = true; save(); render(); renderSettings(); });
+  const limits = [{ value: 12, label: '12' }, { value: 24, label: '24' },
+                  { value: 40, label: '40' }, { value: 0, label: 'All' }];
+  buildSeg('segBankLimit', limits, state.bankLimit,
+    v => { state.bankLimit = v; save(); renderSettings();
+           if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+           if (kbBankOpen) renderKbBank(); });
+  const hiddenN = Object.keys(state.hiddenWords || {}).length;
+  const ub = document.getElementById('unhideWordsBtn');
+  ub.textContent = hiddenN ? ('Show ' + hiddenN + ' hidden word' + (hiddenN === 1 ? '' : 's')) : 'No hidden words';
+  ub.style.opacity = hiddenN ? '1' : '0.5';
+
   buildSeg('segTileSize', SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] })), state.promptTileSize,
     v => { state.promptTileSize = v; if (!state.promptTileOn) state.promptTileOn = true; save(); render(); renderSettings(); });
   buildSeg('segOtherKeys', Object.entries(OTHER_KEYS_LABELS).map(([v, l]) => ({ value: v, label: l })), state.otherKeysMode,
@@ -4207,6 +4502,7 @@ function addWordFromSettings() {
   if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
   inp.value = '';
   save(); renderSettings();
+  askCategoryFor(w, () => renderSettings());
 }
 document.getElementById('setWordAdd').addEventListener('click', addWordFromSettings);
 document.getElementById('setWordInput').addEventListener('keydown', e => {
@@ -4239,6 +4535,12 @@ document.getElementById('toggleTiles').addEventListener('click', () => {
 });
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
+});
+document.getElementById('unhideWordsBtn').addEventListener('click', () => {
+  state.hiddenWords = {};
+  save(); renderSettings();
+  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+  if (kbBankOpen) renderKbBank();
 });
 document.getElementById('toggleColor').addEventListener('click', () => {
   state.colorCoding = !state.colorCoding;
