@@ -1055,6 +1055,11 @@
   }
   .hidden-chip::after { content: ' ×'; color: var(--muted); font-weight: 700; }
   .empty-note { color: var(--muted); font-size: 14px; text-align: center; padding: 12px 0; }
+  .build-stamp {
+    text-align: center; color: var(--muted);
+    font-size: 12px; font-weight: 800; letter-spacing: 0.6px;
+    margin-top: 14px;
+  }
 
   .phoneme-grid {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px;
@@ -1801,6 +1806,7 @@
     <div class="full-row" style="margin-top: 8px;">
       <button class="mbtn action primary" data-action="cancel" style="grid-column: span 2;">Done</button>
     </div>
+    <div class="build-stamp" id="buildStamp"></div>
   </div>
 </div>
 
@@ -1822,6 +1828,7 @@ const DEFAULT_PHONEMES = {
 const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
 const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+const BUILD = 'build 24 \u00b7 2 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4552,6 +4559,7 @@ function openSettingsSheet() {
 }
 
 function renderSettings() {
+  document.getElementById('buildStamp').textContent = BUILD;
   // ----- Prompts -----
   document.getElementById('togglePromptColor').classList.toggle('on', state.promptColorOn);
   document.getElementById('togglePromptSize').classList.toggle('on', state.promptSizeOn);
