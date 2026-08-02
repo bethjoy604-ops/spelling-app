@@ -365,19 +365,25 @@
   .bank-area { flex: 1; min-height: 0; display: flex; gap: 10px; align-items: stretch; }
   .rail-toggle {
     flex: none; align-self: flex-start;
-    background: var(--surface); border: none; border-radius: 14px;
+    background: var(--surface); border: none; border-radius: 12px;
     box-shadow: var(--shadow); cursor: pointer;
-    width: 46px; padding: 14px 0; font-size: 20px; color: var(--ink);
+    width: 38px; padding: 10px 0; font-size: 17px; color: var(--muted);
   }
+  .rail-toggle.open { background: var(--ink); color: white; }
   .rail-toggle:active { transform: scale(0.96); }
   .cat-rail {
-    display: none; flex-direction: column; gap: 8px; flex: none;
-    width: clamp(120px, 18vw, 200px); overflow-y: auto; min-height: 0;
+    display: none; flex: none;
+    flex-direction: column; align-items: stretch;
+    justify-content: flex-start; align-content: flex-start;
+    gap: 4px; width: clamp(96px, 14vw, 150px);
+    overflow-y: auto; min-height: 0;
   }
   .cat-rail.open { display: flex; }
   .cat-rail .cat-tile {
-    width: 100%; text-align: left; border-radius: 14px;
-    padding: 12px 14px; font-size: clamp(15px, 2.4vmin, 22px);
+    flex: 0 0 auto; height: auto; width: 100%;
+    text-align: left; border-radius: 0 12px 12px 0;
+    padding: 8px 10px; font-size: clamp(13px, 1.9vmin, 17px);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
@@ -3615,7 +3621,7 @@ function tintFor(cat, amount) {
 }
 function renderCatTiles(containerId, rerender) {
   const row = document.getElementById(containerId || 'catTiles');
-  const again = rerender || (() => again());
+  const again = rerender || (() => renderHome(true));
   row.innerHTML = '';
   const cat = currentCat();
   const tiles = childrenOf(cat ? cat.id : null);
@@ -3714,11 +3720,10 @@ function renderHome(reset) {
     document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
     const rail = document.getElementById('catTiles');
     rail.className = 'cat-rail' + (state.railOpen ? ' open' : '');
+    document.getElementById('railToggle').classList.toggle('open', state.railOpen);
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
-    // group tiles follow the target-bar size setting
-    const tilesRow = document.getElementById('catTiles');
-    tilesRow.className = 'cat-tiles bs-' + state.bannerSize;
+
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
     if (state.bankLimit > 0) homeRows = homeRows.slice(0, state.bankLimit);
