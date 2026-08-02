@@ -1536,6 +1536,11 @@
         <div class="sublabel">Other keys while prompting</div>
         <div class="seg-row" id="segOtherKeys"></div>
 
+        <div class="settings-list" style="margin-top:12px;">
+          <div class="setting-row"><span>&#128161; Help mode &mdash; prompts only when asked</span><div class="toggle" id="toggleHelpMode"></div></div>
+        </div>
+        <div class="help-note">With this on, nothing prompts on its own \u2014 the speller taps the lightbulb when they want help, and it shows whatever prompts are switched on above. Turn it off and those prompts happen automatically.</div>
+
         <div class="sublabel">Wait before prompting</div>
         <div class="slider-row">
           <input type="range" id="delaySlider" min="0" max="10" step="1" value="0">
@@ -1844,6 +1849,7 @@ const state = {
   promptSize: 'med',          // small | med | large
   promptVerbalOn: false,      // speak the next letter as a prompt
   promptDelaySec: 0,          // 0-10s before any prompt appears
+  helpMode: false,            // prompts wait until the lightbulb is pressed
   otherKeysMode: 'normal',    // normal | faded | blank | black
 
   // ===== On-screen keyboard buttons =====
@@ -1882,6 +1888,7 @@ let pendingErrorPos = null;
 
 // Prompt visibility is runtime-only (never persisted)
 let promptVisible = true;
+let helpRequested = false;   // set by the lightbulb, cleared on the next letter
 let promptDelayTimer = null;
 let verbalSpokenFor = -1;
 
@@ -1949,6 +1956,7 @@ async function load() {
         promptSize: SIZE_STEPS.includes(saved.promptSize) ? saved.promptSize : 'med',
         promptVerbalOn: saved.promptVerbalOn ?? false,
         promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
+        helpMode: saved.helpMode ?? false,
         otherKeysMode: OTHER_KEYS_LABELS[saved.otherKeysMode] ? saved.otherKeysMode : 'normal',
 
         showBankCount: saved.showBankCount ?? true,
@@ -2032,6 +2040,7 @@ async function save() {
       promptSize: state.promptSize,
       promptVerbalOn: state.promptVerbalOn,
       promptDelaySec: state.promptDelaySec,
+      helpMode: state.helpMode,
       otherKeysMode: state.otherKeysMode,
 
       showBankCount: state.showBankCount,
@@ -2415,6 +2424,8 @@ function anyPromptEnabled() {
 function promptsShowing() {
   if (!state.currentTarget || isWordComplete()) return false;
   if (fadeLevelAt(state.targetIndex) >= 3) return false;
+  // In help mode nothing appears until it's asked for
+  if (state.helpMode && !helpRequested) return false;
   return promptVisible;
 }
 function clearPromptTimer() {
@@ -2424,6 +2435,7 @@ function clearPromptTimer() {
 function armPrompt(force) {
   clearPromptTimer();
   verbalSpokenFor = -1;
+  helpRequested = false;
   const delay = Math.max(0, Math.min(10, state.promptDelaySec || 0));
   if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; }
   if (delay === 0 && !force) {
@@ -2557,7 +2569,7 @@ function render() {
   document.getElementById('wordBankBtn').style.display = state.showBankCount ? '' : 'none';
   document.getElementById('homeBtn').style.display = state.homeEnabled ? '' : 'none';
   document.getElementById('searchBtn').style.display = state.showSearchBtn ? '' : 'none';
-  document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
+  document.getElementById('helpBtn').style.display = (state.showHelpBtn || state.helpMode) ? '' : 'none';
 
   const kb = document.getElementById('keyboard');
   kb.innerHTML = '';
@@ -4082,6 +4094,7 @@ document.getElementById('helpBtn').addEventListener('click', () => {
   touchSession();
   if (!state.currentTarget || isWordComplete()) return;
   buzz(12);
+  helpRequested = true;
   revealPromptNow();
   render();
 });
@@ -4291,6 +4304,7 @@ function promptSummary() {
   if (state.promptVerbalOn) on.push('Voice');
   if (state.otherKeysMode !== 'normal') on.push(OTHER_KEYS_LABELS[state.otherKeysMode]);
   if (state.promptDelaySec > 0) on.push(state.promptDelaySec + 's wait');
+  if (state.helpMode) on.push('On request');
   return on.length ? on.join(' · ') : 'None';
 }
 
@@ -4310,6 +4324,7 @@ function renderSettings() {
   document.getElementById('togglePromptPulse').classList.toggle('on', state.promptPulseOn);
   document.getElementById('togglePromptTile').classList.toggle('on', state.promptTileOn);
   document.getElementById('togglePromptVerbal').classList.toggle('on', state.promptVerbalOn);
+  document.getElementById('toggleHelpMode').classList.toggle('on', state.helpMode);
   buildSwatches();
   buildSeg('segIntensity', Object.entries(INTENSITY_LABELS).map(([v, l]) => ({ value: v, label: l })), state.promptIntensity,
     v => { state.promptIntensity = v; if (!state.promptColorOn) state.promptColorOn = true;
@@ -4459,6 +4474,11 @@ document.getElementById('togglePromptSize').addEventListener('click', () => {
 });
 document.getElementById('togglePromptVerbal').addEventListener('click', () => {
   state.promptVerbalOn = !state.promptVerbalOn; save(); render(); renderSettings();
+});
+document.getElementById('toggleHelpMode').addEventListener('click', () => {
+  state.helpMode = !state.helpMode;
+  helpRequested = false;
+  save(); render(); renderSettings();
 });
 // ---- Custom error phrase ----
 document.getElementById('errorPhraseInput').addEventListener('input', e => {
