@@ -1828,7 +1828,7 @@ const DEFAULT_PHONEMES = {
 const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
 const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
-const BUILD = 'build 24 \u00b7 2 Aug';
+const BUILD = 'build 25 \u00b7 2 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3342,18 +3342,39 @@ const DEFAULT_COLORS = {
   Chat: 'blue', Eat: 'green', Action: 'purple', Places: 'teal', 'My Stuff': 'orange',
 };
 const MY_STUFF_SUBS = ['Songs', 'Videos', 'TV Shows', 'Movies', 'Characters'];
+// Older names map onto the current set so nobody ends up with both
+const GROUP_ALIASES = {
+  'conversation': 'Chat', 'social': 'Chat',
+  'food': 'Eat',
+  'activities': 'Action', 'activity': 'Action',
+  'things': 'My Stuff', 'labels': 'My Stuff', 'stuff': 'My Stuff',
+};
+function mergeGroups(fromCat, toCat) {
+  if (!fromCat || !toCat || fromCat.id === toCat.id) return;
+  (fromCat.words || []).forEach(w => { if (!toCat.words.includes(w)) toCat.words.push(w); });
+  childrenOf(fromCat.id, true).forEach(ch => { ch.parent = toCat.id; });
+  state.categories = state.categories.filter(c => c.id !== fromCat.id);
+}
 function applyDefaultGroups() {
   const byName = n => state.categories.find(c => c.name.toLowerCase() === n.toLowerCase());
-  const conv = byName('Conversation');
-  if (conv && !byName('Chat')) conv.name = 'Chat';
+  // fold any old naming into the current one, keeping every word
+  Object.entries(GROUP_ALIASES).forEach(([oldName, newName]) => {
+    const from = byName(oldName);
+    if (!from) return;
+    const to = byName(newName);
+    if (to) mergeGroups(from, to);
+    else from.name = newName;
+  });
   DEFAULT_GROUPS.forEach(n => {
     const c = byName(n);
     if (!c) addCategory(n, null, DEFAULT_COLORS[n]);
     else { c.color = DEFAULT_COLORS[n]; c.parent = null; }   // standard groups sit at the top level
   });
-  // My Stuff holds the media sub-groups
+  // My Stuff holds the media sub-groups, and People belongs in there too
   const mine = byName('My Stuff');
   if (mine) {
+    const people = state.categories.find(c => c.name.toLowerCase() === 'people' && !c.parent);
+    if (people) people.parent = mine.id;
     MY_STUFF_SUBS.forEach((n, i) => {
       const existing = byName(n);
       if (!existing) { const c = addCategory(n, mine.id); c.order = i; }
