@@ -1828,7 +1828,7 @@ const DEFAULT_PHONEMES = {
 const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
 const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
-const BUILD = 'build 39 \u00b7 3 Aug';
+const BUILD = 'build 40 \u00b7 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2091,10 +2091,12 @@ async function load() {
       });
     }
   } catch (e) {}
-  // A fresh install starts with the everyday set of groups and the starter words
-  if (state.categories.length === 0) {
+  // An empty bank starts with the everyday groups and the starter words, whether
+  // this is a brand new install or a browser that has never had words in it
+  if (state.words.length === 0) {
     applyDefaultGroups();
-    if (state.words.length === 0) { importText(STARTER_WORDS); save(); }
+    importText(STARTER_WORDS);
+    save();
   }
   // First run after the search feature arrived: seed history from the existing bank
   if (Object.keys(state.wordHistory).length === 0 && state.wordBank.length > 0) {
@@ -3361,6 +3363,7 @@ const GROUP_ALIASES = {
   'food': 'Eat',
   'activities': 'Action', 'activity': 'Action',
   'things': 'My Stuff', 'labels': 'My Stuff', 'stuff': 'My Stuff',
+  'shows': 'TV Shows', 'tv': 'TV Shows', 'music': 'Songs', 'youtube': 'Videos',
 };
 function mergeGroups(fromCat, toCat) {
   if (!fromCat || !toCat || fromCat.id === toCat.id) return;
