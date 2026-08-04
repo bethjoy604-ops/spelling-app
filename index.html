@@ -1482,6 +1482,7 @@
       <button id="addCatBtn">Add</button>
     </div>
     <button class="mbtn action" id="defaultGroupsBtn" style="width:100%; margin-top:10px;">Use default groups</button>
+    <button class="mbtn action" id="starterWordsBtn" style="width:100%; margin-top:8px;">Load the starter words</button>
     <div class="full-row" style="margin-top: 14px;">
       <button class="mbtn action" id="openImportBtn">Import / export</button>
       <button class="mbtn action primary" data-action="cancel">Done</button>
@@ -1827,7 +1828,7 @@ const DEFAULT_PHONEMES = {
 const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
 const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
-const BUILD = 'build 38 \u00b7 3 Aug';
+const BUILD = 'build 39 \u00b7 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2090,8 +2091,11 @@ async function load() {
       });
     }
   } catch (e) {}
-  // A fresh install starts with the everyday set of groups, all empty
-  if (state.categories.length === 0) applyDefaultGroups();
+  // A fresh install starts with the everyday set of groups and the starter words
+  if (state.categories.length === 0) {
+    applyDefaultGroups();
+    if (state.words.length === 0) { importText(STARTER_WORDS); save(); }
+  }
   // First run after the search feature arrived: seed history from the existing bank
   if (Object.keys(state.wordHistory).length === 0 && state.wordBank.length > 0) {
     state.wordBank.forEach(w => {
@@ -3349,6 +3353,8 @@ const DEFAULT_COLORS = {
   Chat: 'blue', Eat: 'green', Action: 'purple', People: 'pink', Places: 'teal', 'My Stuff': 'orange',
 };
 const MY_STUFF_SUBS = ['Songs', 'Videos', 'TV Shows', 'Movies', 'Characters'];
+// The starter vocabulary, so a fresh device opens with the words already in place
+const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nEat: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\nAction: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\nPeople:\nPlaces:\nMy Stuff: truck, bear\n  Songs:\n  Videos:\n  TV Shows: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Characters: peppa, george\n';
 // Older names map onto the current set so nobody ends up with both
 const GROUP_ALIASES = {
   'conversation': 'Chat', 'social': 'Chat',
@@ -4225,6 +4231,15 @@ document.getElementById('defaultGroupsBtn').addEventListener('click', () => {
   applyDefaultGroups();
   renderCatList();
   if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+});
+document.getElementById('starterWordsBtn').addEventListener('click', () => {
+  if (!confirm('Add the starter word list to your groups?\n\nNothing is removed \u2014 words you already have stay exactly where they are.')) return;
+  applyDefaultGroups();
+  const r = importText(STARTER_WORDS);
+  save();
+  renderCatList();
+  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+  alert(r.words + ' word' + (r.words === 1 ? '' : 's') + ' added.');
 });
 ['manageMenu','catWordsMenu','importMenu'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
