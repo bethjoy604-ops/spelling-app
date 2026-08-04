@@ -260,25 +260,21 @@
     box-shadow: 0 3px 0 #000, 0 6px 12px rgba(0,0,0,0.18);
   }
 
-  /* Letter-driven word search */
-  .search-strip {
-    display: none; align-items: center; gap: 10px; flex-shrink: 0;
-    background: var(--surface); border: 2px solid var(--border);
-    border-radius: 16px; padding: 10px 12px;
-  }
-  .search-strip.open { display: flex; }
+  /* Letter search lives inside the typing bar itself */
+  .display.searching { align-items: center; gap: 12px; }
+  .display.searching .display-content { display: flex; align-items: center; gap: 10px; overflow-x: auto; }
   .ss-prefix {
-    font-size: 24px; font-weight: 900; color: var(--prompt);
-    min-width: 40px; letter-spacing: 1px;
+    flex: none; font-weight: 900; color: var(--prompt);
+    letter-spacing: 1px; min-width: 1.2em;
   }
-  .ss-results { flex: 1; display: flex; gap: 8px; overflow-x: auto; min-width: 0; }
   .ss-word {
-    flex: none; border: none; border-radius: 12px;
-    background: var(--bg); box-shadow: var(--shadow);
-    padding: 10px 16px; font-family: inherit;
-    font-size: 20px; font-weight: 900; color: var(--ink); cursor: pointer;
+    flex: none; border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg); cursor: pointer;
+    padding: 2px 14px; font-family: inherit;
+    font-size: 0.62em; font-weight: 900; color: var(--ink);
   }
-  .ss-none { color: var(--muted); font-size: 15px; font-weight: 700; }
+  .ss-word:active { transform: scale(0.96); }
+  .ss-none { color: var(--muted); font-size: 0.4em; font-weight: 700; }
 
   /* Word bank inside the keyboard page */
   .kb-bank { flex: 1; display: none; flex-direction: column; gap: 10px; min-height: 0; }
@@ -309,24 +305,35 @@
     align-self: center; font-size: clamp(24px, 4.5vmin, 44px);
   }
   .home-grid {
-    flex: 1; min-height: 0; overflow: hidden;
-    display: grid; gap: 10px;
-    grid-auto-rows: 1fr;
+    flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column; gap: 16px;
+    align-content: flex-start;
   }
-  .home-grid.scrolling { overflow-y: auto; grid-auto-rows: minmax(76px, 1fr); }
+  .grid-row { display: flex; gap: 16px; flex: 0 0 auto; }
   .home-card {
     min-width: 0; min-height: 0;
     background: var(--surface); border-radius: 16px;
     box-shadow: var(--shadow); border: none;
-    padding: 6px 10px; justify-content: center;
+    padding: 8px 18px; justify-content: center;
     font-family: inherit; cursor: pointer; text-align: center;
     display: flex; flex-direction: column; gap: 4px; align-items: center;
     overflow: hidden;
   }
   .home-card:active { transform: scale(0.97); }
-  .home-card .hw { font-weight: 900; color: var(--ink); line-height: 1.1; word-break: break-word; }
+  .home-card .hw { font-weight: 900; color: var(--ink); line-height: 1.1; white-space: nowrap; }
   .home-card .hm { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
   .home-card.selected { background: var(--prompt-soft); }
+  /* a folder tile: the same as a word tile, marked by an outline and a corner cue */
+  .home-card.folder-card {
+    background: var(--bg);
+    box-shadow: 0 0 0 3px var(--border) inset;
+  }
+  .home-card.folder-card .hw { color: var(--ink); }
+  .home-card.folder-card::after {
+    content: '\u203A'; position: absolute; top: 4px; right: 12px;
+    font-size: 0.9em; font-weight: 900; color: var(--muted); line-height: 1;
+  }
+  .cc-btn.on { background: var(--ink); color: #fff; }
 
   .home-bar .ctl.icon { flex: none; }
   .pb-words { flex: 1; min-width: 0; }
@@ -361,30 +368,33 @@
   .cat-tiles { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
   .home-row { flex-wrap: wrap; row-gap: 10px; }
 
-  /* Groups sit down the left like binder tabs, tucked away until wanted */
-  .bank-area { flex: 1; min-height: 0; display: flex; gap: 10px; align-items: stretch; }
-  .rail-toggle {
-    flex: none; align-self: flex-start;
-    background: var(--surface); border: none; border-radius: 12px;
-    box-shadow: var(--shadow); cursor: pointer;
-    width: 38px; padding: 10px 0; font-size: 17px; color: var(--muted);
+  /* Folders: uniform squares in a strip you can scroll sideways */
+  .bank-area { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .folder-strip {
+    display: none; flex: 1 1 auto; min-width: 0;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+    margin-left: 4px;
   }
-  .rail-toggle.open { background: var(--ink); color: white; }
-  .rail-toggle:active { transform: scale(0.96); }
-  .cat-rail {
-    display: none; flex: none;
-    flex-direction: column; align-items: stretch;
-    justify-content: flex-start; align-content: flex-start;
-    gap: 4px; width: clamp(96px, 14vw, 150px);
-    overflow-y: auto; min-height: 0;
+  .folder-strip::-webkit-scrollbar { display: none; }
+  .folder-strip.open { display: flex; }
+  .folder-strip-row { display: flex; gap: 8px; flex: 0 0 auto; align-items: center; }
+  .folder-strip-row .cat-tile {
+    flex: 0 0 auto;
+    /* a slim tab: height fixed, width follows the name */
+    min-width: 0; width: auto;
+    height: clamp(34px, 4.6vh, 46px);
+    border-radius: 10px; padding: 0 14px;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1; white-space: nowrap;
+    font-size: clamp(12px, 1.7vmin, 16px);
+    opacity: 0.72;
   }
-  .cat-rail.open { display: flex; }
-  .cat-rail .cat-tile {
-    flex: 0 0 auto; height: auto; width: 100%;
-    text-align: left; border-radius: 0 12px 12px 0;
-    padding: 8px 10px; font-size: clamp(13px, 1.9vmin, 17px);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .folder-strip-row .cat-tile.selected {
+    opacity: 1; outline: none;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.28);
   }
+  .folder-strip-row .cat-tile.plain { box-shadow: none; background: transparent; color: var(--muted); }
+  .folder-strip-row .cat-tile.plain.selected { color: var(--ink); box-shadow: inset 0 -3px 0 var(--border); }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
     padding: 14px 20px; font-family: inherit;
@@ -407,7 +417,7 @@
   .view-keyboard .controls-row { flex: none; }
 
   .target-banner {
-    --tile: clamp(22px, 3.6vh, 40px);
+    --tile: clamp(28px, 4.8vh, 54px);
     background: var(--surface);
     border-radius: 18px;
     padding: 14px 22px;
@@ -448,9 +458,9 @@
   .tletter.draft-word { min-width: 0; padding: 6px 16px; }
   .key.space-blank.prompt-color { background: var(--prompt); }
   /* Banner size steps */
-  .target-banner.bs-small { --tile: clamp(16px, 2.6vh, 28px); padding: 8px 14px; }
+  .target-banner.bs-small { --tile: clamp(20px, 3.4vh, 38px); padding: 8px 14px; }
   .target-banner.bs-small .tletter { padding: 4px 8px; }
-  .target-banner.bs-large { --tile: clamp(30px, 5.2vh, 58px); padding: 14px 22px; }
+  .target-banner.bs-large { --tile: clamp(36px, 6.4vh, 72px); padding: 14px 22px; }
   .target-banner.bs-large .tletter { padding: 8px 16px; }
   @keyframes tlpulse {
     0%, 100% { transform: scale(1); }
@@ -469,7 +479,7 @@
     border-radius: 20px;
     padding: 22px 22px 22px 30px;
     min-height: 110px;
-    font-size: clamp(40px, 6vw, 62px);
+    font-size: clamp(46px, 7vw, 76px);
     font-weight: 700;
     letter-spacing: 0.5px;
     word-break: break-word;
@@ -481,21 +491,21 @@
     overflow: visible;
   }
   .display.ds-small {
-    font-size: clamp(26px, 4vw, 38px);
-    min-height: 76px;
+    font-size: clamp(30px, 5vw, 46px);
+    min-height: 92px;
     padding: 14px 16px 14px 22px;
   }
   .display.ds-large {
-    font-size: clamp(54px, 8.5vw, 88px);
-    min-height: 150px;
+    font-size: clamp(62px, 10vw, 104px);
+    min-height: 168px;
     padding: 26px 26px 26px 34px;
   }
   /* On the keyboard page the bar shares the height with the keys instead of
      staying a fixed size while they stretch */
-  .view-keyboard .display { flex: 0.9 1 0; }
-  .view-keyboard .display.ds-small { flex: 0.5 1 0; font-size: clamp(24px, 4vh, 40px); }
-  .view-keyboard .display.ds-med   { flex: 0.9 1 0; font-size: clamp(30px, 5.5vh, 60px); }
-  .view-keyboard .display.ds-large { flex: 1.4 1 0; font-size: clamp(38px, 8vh, 84px); }
+  .view-keyboard .display { flex: 1.1 1 0; }
+  .view-keyboard .display.ds-small { flex: 0.7 1 0; font-size: clamp(28px, 5vh, 50px); }
+  .view-keyboard .display.ds-med   { flex: 1.1 1 0; font-size: clamp(36px, 7vh, 74px); }
+  .view-keyboard .display.ds-large { flex: 1.6 1 0; font-size: clamp(46px, 9.5vh, 98px); }
   /* the keyboard is the point of the page, so it takes what's left */
   .view-keyboard .keyboard { flex: 4 1 0; }
   .view-keyboard .display { min-height: 0; }
@@ -1274,6 +1284,8 @@
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9662;</span>
     </button>
+    <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
+    <div class="folder-strip" id="catTiles"></div>
     <div class="modes-wrap" id="homeModesWrap">
       <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     </div>
@@ -1288,8 +1300,6 @@
   </div>
 
   <div class="bank-area">
-    <button class="rail-toggle" id="railToggle" aria-label="Groups">&#9776;</button>
-    <div class="cat-rail" id="catTiles"></div>
     <div class="home-grid" id="homeGrid"></div>
   </div>
 </div>
@@ -1316,40 +1326,28 @@
     <button class="ctl icon" id="modesToggle" aria-label="Show modes">
       <span class="chevron" id="modesChevron">▾</span>
     </button>
-    <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
-    <div class="modes-wrap" id="modesWrap">
+    <button class="ctl icon" id="kbRailToggle" aria-label="Folders">&#9776;</button>
+      <div class="modes-wrap" id="modesWrap">
       <button class="ctl" id="wordToggle">
         <span class="label">Word</span>
         <span class="value" id="wordValue">Free type</span>
       </button>
-      <div class="recent-row" id="recentWords"></div>
       <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     </div>
     <div class="spacer"></div>
-    <button class="ctl icon" id="kbBankBtn" aria-label="Word bank">&#128218;</button>
-    <button class="ctl icon" id="kbGroupsBtn" aria-label="Groups" style="display:none">&#128193;</button>
-    <button class="ctl icon" id="kbEditBtn" aria-label="Edit tiles" style="display:none">&#9998;</button>
-    <button class="key enter kb-commit" id="kbCommit" aria-label="Use this phrase" style="display:none">&#9166;</button>
     <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
     <button class="wordbank-btn" id="wordBankBtn" aria-label="Word bank">
       <span class="emoji">📚</span>
       <span class="count" id="wordBankCount">0</span>
     </button>
+    <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
     <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
-  <div class="search-strip" id="searchStrip">
-    <span class="ss-prefix" id="ssPrefix"></span>
-    <div class="ss-results" id="ssResults"></div>
-    <button class="ctl icon" id="ssClose" aria-label="Close search">&times;</button>
-  </div>
+  <div class="folder-strip" id="kbFolders"></div>
 
   <div class="keyboard" id="keyboard"></div>
 
-  <div class="kb-bank" id="kbBank">
-    <div class="cat-tiles" id="kbTiles" style="display:none"></div>
-    <div class="home-grid kb-bank-grid" id="kbGrid"></div>
-  </div>
 </div>
 
 <!-- Key menu -->
@@ -1741,10 +1739,11 @@
 
         <div class="sublabel">What goes on a tile</div>
         <div class="seg-row" id="segTileMode"></div>
-        <div class="help-note">Words keeps one word per tile and splits anything longer as it's added. Sentences shows only saved phrases. Both mixes them.</div>
+        <div class="help-note">Words keeps one word per tile and splits anything longer as it's added. Sentences shows only saved phrases. Both mixes them. Any folder switched to phrases in Edit groups ignores this and keeps full names like "Doc Hudson Best Moments" on one tile.</div>
 
-        <div class="sublabel">Word tiles shown</div>
-        <div class="seg-row" id="segBankLimit"></div>
+        <div class="sublabel">Tiles on a screenful</div>
+        <div class="seg-row" id="segGridFill"></div>
+        <div class="help-note">Every tile uses the same size of type; each one is only as wide as its word, and the rows fill the width neatly. This number sets how big that type is \u2014 pick 6 for big tiles, 12 for smaller ones. More words than that simply carry on below, so nothing is ever hidden.</div>
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
         <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
 
@@ -1828,7 +1827,7 @@ const DEFAULT_PHONEMES = {
 const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
 const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
-const BUILD = 'build 25 \u00b7 2 Aug';
+const BUILD = 'build 38 \u00b7 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -1868,6 +1867,7 @@ function shadeFor(solid, intensity) {
 }
 const BANK_SORTS = { recent: 'Recent', groups: 'Groups', stale: 'Needs practice' };
 const TILE_MODES = { word: 'Words', sentence: 'Sentences', mixed: 'Both' };
+const GRID_FILLS = { 6: '6', 9: '9', 12: '12', 0: 'Scroll' };
 const SIZE_STEPS = ['small', 'med', 'large'];
 const SIZE_LABELS = { small: 'Small', med: 'Medium', large: 'Large' };
 const OTHER_KEYS_LABELS = {
@@ -1952,11 +1952,13 @@ const state = {
   homeMode: 'tiles',          // tiles | words — how home presents the bank
   bankSort: 'recent',         // recent | groups | stale
   colorCoding: true,          // tint words by the group they belong to
-  bankLimit: 24,              // how many word tiles show at once (0 = all)
+  gridFill: 9,                // tiles a screenful holds: 6 | 9 | 12 | 0 for scroll
+  bankLimit: 0,               // no cap: the layout grows instead of hiding words
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
   homeModesOpen: false,       // the fold-down options row on home
-  railOpen: false,            // the group rail down the left
+  railOpen: true,             // the folder strip on home, open by default
+  kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -2059,11 +2061,14 @@ async function load() {
         showHelpBtn: saved.showHelpBtn ?? false,
         homeEnabled: saved.homeEnabled ?? false,
         homeMode: (saved.homeMode === 'words') ? 'words' : 'tiles',
-        railOpen: saved.railOpen ?? false,
+        railOpen: saved.railOpen ?? true,
+        kbRailOpen: saved.kbRailOpen ?? false,
         settingsOrder: saved.settingsOrder || [],
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
         colorCoding: saved.colorCoding ?? true,
-        bankLimit: saved.bankLimit ?? 24,
+        gridFill: (saved.gridFill !== undefined ? +saved.gridFill
+                   : { '3x3': 9, '6x6': 12, fit: 0 }[saved.gridShape] ?? 9),
+        bankLimit: 0,
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
         magicType: saved.magicType ?? true,
@@ -2147,9 +2152,11 @@ async function save() {
       homeEnabled: state.homeEnabled,
       homeMode: state.homeMode,
       railOpen: state.railOpen,
+      kbRailOpen: state.kbRailOpen,
       settingsOrder: state.settingsOrder,
       bankSort: state.bankSort,
       colorCoding: state.colorCoding,
+      gridFill: state.gridFill,
       bankLimit: state.bankLimit,
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
@@ -2267,6 +2274,7 @@ function speakWord(word, rate) {
   speak(word, rate);
 }
 
+let kbSearch = false, searchPrefix = '';
 function setView(name) {
   ['splash', 'setup', 'home', 'keyboard'].forEach(v => {
     document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1))
@@ -2275,8 +2283,9 @@ function setView(name) {
 }
 function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
-function showHome() { setView('home'); touchSession(); renderHome(true); }
+function showHome() { if (kbSearch) closeLetterSearch(); setView('home'); touchSession(); renderHome(true); }
 function showKeyboard() {
+  if (kbSearch) closeLetterSearch();     // arrive ready to type, never mid-search
   setView('keyboard');
   state.modesOpen = false; // always arrive with the options tucked away
   touchSession(); armPrompt(); render();
@@ -2407,6 +2416,7 @@ function showMastered(word) {
   setTimeout(() => el.classList.remove('show'), 2600);
 }
 function selectTargetWord(w, speakIt) {
+  if (kbSearch) closeLetterSearch();     // a target means the bar is for typing
   state.currentTarget = w;
   state.phraseWords = [];
   state.targetIndex = 0;
@@ -2431,16 +2441,16 @@ function rotateToNextWord() {
 // Mode 3 (Auto): lowercase everywhere except where a capital is needed —
 // the first letter of a word — and the keyboard follows along as you type.
 function autoWantsCapital(textSoFar) {
-  const t = textSoFar || '';
-  if (t.length === 0) return true;          // start of the first word
-  return /\s$/.test(t);                     // just after a space
+  // only the very start of the phrase — later words stay lower case
+  return (textSoFar || '').length === 0;
 }
 function applyCase(rawText) {
   if (!rawText) return '';
   if (state.caseMode === 0) return rawText;
   if (state.caseMode === 1) return rawText.toLowerCase();
   if (state.caseMode === 3) {
-    return rawText.toLowerCase().replace(/(^|\s)([a-z])/g, (m, pre, ch) => pre + ch.toUpperCase());
+    const lower = rawText.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
   }
   return rawText.charAt(0).toUpperCase() + rawText.slice(1).toLowerCase();
 }
@@ -2454,9 +2464,7 @@ function displayLetter(L) {
 function displayLetterAt(L, index) {
   if (state.caseMode === 1) return L.toLowerCase();
   if (state.caseMode === 3) {
-    const seq = state.currentTarget || '';
-    const startsWord = (index === 0) || (seq[index - 1] === ' ');
-    return startsWord ? L.toUpperCase() : L.toLowerCase();
+    return index === 0 ? L.toUpperCase() : L.toLowerCase();
   }
   return L;
 }
@@ -2480,6 +2488,7 @@ function justFinishedWord() {
   return (i >= seq.length) || seq[i] === ' ';
 }
 function selectPhrase(words) {
+  if (kbSearch) closeLetterSearch();
   state.phraseWords = words.slice();
   state.currentTarget = words.join(' ');
   state.targetIndex = 0;
@@ -2586,18 +2595,6 @@ function render() {
   applyPromptTheme();
   const showing = promptsShowing();
 
-  // Merged-page prototype: the bank can take over the keyboard's space
-  const bank = document.getElementById('kbBank');
-  const keys = document.getElementById('keyboard');
-  bank.classList.toggle('open', kbBankOpen);
-  keys.style.display = kbBankOpen ? 'none' : '';
-  document.getElementById('kbBankBtn').classList.toggle('active', kbBankOpen);
-  ['kbGroupsBtn', 'kbEditBtn', 'kbCommit'].forEach(id => {
-    document.getElementById(id).style.display = kbBankOpen ? '' : 'none';
-  });
-  document.getElementById('kbEditBtn').classList.toggle('active', kbEdit);
-  document.getElementById('kbCommit').classList.toggle('enter-ready', homePhrase.length > 0);
-  if (kbBankOpen) renderKbBank();
 
   // While drafting from the bank, the target bar previews the phrase
   if (kbBankOpen && homePhrase.length) {
@@ -2618,6 +2615,15 @@ function render() {
     document.getElementById('displayContent').innerHTML = '<span class="caret"></span>';
     return;
   }
+
+  if (kbSearch) { renderSearchStrip(); }
+
+  // folder strip on the keyboard page — tapping one opens it on the home page
+  const kbf = document.getElementById('kbFolders');
+  kbf.className = 'folder-strip' + (state.kbRailOpen ? ' open' : '');
+  document.getElementById('kbRailToggle').classList.toggle('open', state.kbRailOpen);
+  document.getElementById('kbRailToggle').style.display = state.modesOpen ? 'none' : '';
+  if (state.kbRailOpen) renderCatTiles('kbFolders', () => showHome());
 
   const banner = document.getElementById('targetBanner');
   banner.classList.remove('bs-small', 'bs-med', 'bs-large');
@@ -2661,7 +2667,6 @@ function render() {
   wrap.classList.toggle('expanded', state.modesOpen);
   document.getElementById('modesChevron').classList.toggle('open', state.modesOpen);
 
-  renderRecentPicks();
   document.getElementById('wordValue').textContent =
     (state.currentTarget ? displayWord(state.currentTarget) : 'Free type');
   document.getElementById('wordToggle').classList.toggle('active', !!state.currentTarget);
@@ -3298,10 +3303,12 @@ function renderRecentPicks() {
 function normaliseWord(v) {
   return (v || '').toUpperCase().replace(/[^A-Z' ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
-// In word mode a multi-word entry is filed as its separate words
-function splitForMode(entry) {
+// In word mode a multi-word entry is filed as its separate words — unless it is
+// going into a folder marked for phrases, where the whole name is the point.
+function splitForMode(entry, cat) {
   const w = normaliseWord(entry);
   if (!w) return [];
+  if (cat && catAllowsPhrases(cat)) return [w];
   if (state.tileMode === 'word' && w.includes(' ')) return w.split(' ').filter(Boolean);
   return [w];
 }
@@ -3337,9 +3344,9 @@ function deleteCategory(id) {
 }
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
-const DEFAULT_GROUPS = ['Chat', 'Eat', 'Action', 'Places', 'My Stuff'];
+const DEFAULT_GROUPS = ['Chat', 'Eat', 'Action', 'People', 'Places', 'My Stuff'];
 const DEFAULT_COLORS = {
-  Chat: 'blue', Eat: 'green', Action: 'purple', Places: 'teal', 'My Stuff': 'orange',
+  Chat: 'blue', Eat: 'green', Action: 'purple', People: 'pink', Places: 'teal', 'My Stuff': 'orange',
 };
 const MY_STUFF_SUBS = ['Songs', 'Videos', 'TV Shows', 'Movies', 'Characters'];
 // Older names map onto the current set so nobody ends up with both
@@ -3373,8 +3380,7 @@ function applyDefaultGroups() {
   // My Stuff holds the media sub-groups, and People belongs in there too
   const mine = byName('My Stuff');
   if (mine) {
-    const people = state.categories.find(c => c.name.toLowerCase() === 'people' && !c.parent);
-    if (people) people.parent = mine.id;
+    if (mine.phrases === undefined) mine.phrases = true;   // full titles live in here
     MY_STUFF_SUBS.forEach((n, i) => {
       const existing = byName(n);
       if (!existing) { const c = addCategory(n, mine.id); c.order = i; }
@@ -3404,14 +3410,16 @@ function categoryRows(cat) {
   if (!cat) return searchWords('');
   if (cat.rule === 'used') return searchWords('').slice().sort((a, b) => b.n - a.n || b.t - a.t);
   if (cat.rule === 'recent') return searchWords('').slice().sort((a, b) => b.t - a.t);
-  const rows = tileModeFilter(rankWords(cat.words || []));
+  const rows = catAllowsPhrases(cat) ? rankWords(cat.words || []) : tileModeFilter(rankWords(cat.words || []));
   // The order control applies inside a group too
   if (state.bankSort === 'recent') return rows.sort((a, b) => b.t - a.t || b.n - a.n);
   if (state.bankSort === 'stale') return rows.sort((a, b) => (a.t || 0) - (b.t || 0));
   return rows;
 }
 
-// Lay tiles out so they fill the space: fewer words means bigger tiles
+// Lay the tiles out in clean rows: one font size for the lot, each tile only
+// as wide as its word needs, and the rows sized so a screenful holds the
+// number you picked. Extra words carry on below rather than being dropped.
 function fitGrid(grid) {
   if (!grid) return;
   const cards = Array.from(grid.querySelectorAll('.home-card'));
@@ -3419,51 +3427,65 @@ function fitGrid(grid) {
   if (!n) return;
   const W = grid.clientWidth, H = grid.clientHeight;
   if (!W || !H) return;
-  const gap = 10;
-  // 9 tiles are laid out as a deliberate 3 x 3 for the largest, calmest text
-  if (state.bankLimit === 9 && n <= 9) {
-    const c = Math.min(3, n), r = Math.ceil(n / c);
-    grid.classList.remove('scrolling');
-    grid.style.gridTemplateColumns = 'repeat(' + c + ', 1fr)';
-    grid.style.gridTemplateRows = 'repeat(' + r + ', 1fr)';
-    const cw = (W - gap * (c - 1)) / c, ch = (H - gap * (r - 1)) / r;
-    cards.forEach(card => {
+  const gap = 16, padX = 30;
+  const labels = cards.map(c => ((c.querySelector('.hw') || {}).textContent || '').trim());
+  const widthAt = (t, f) => Math.min(W, t.length * f * 0.6 + padX * 2);
+
+  // Pack tiles into rows, never letting a row run past the edge
+  const packRows = (count, f, src) => {
+    const list = src || labels;
+    const rows = [];
+    let cur = [], curW = 0;
+    for (let i = 0; i < count; i++) {
+      const w = widthAt(list[i], f);
+      if (cur.length && curW + gap + w > W) { rows.push(cur); cur = []; curW = 0; }
+      curW += (cur.length ? gap : 0) + w;
+      cur.push(i);
+    }
+    if (cur.length) rows.push(cur);
+    return rows;
+  };
+
+  // Type is sized for a full screen of tiles, so a folder holding only three
+  // words looks the same as one holding thirty.
+  const target = state.gridFill > 0 ? state.gridFill : n;
+  const floor = state.gridFill > 0 ? 16 : 18;
+  // Sized against a notional word of average length, so the type is identical
+  // in every folder whatever happens to be in it.
+  const sizing = new Array(target).fill('xxxxxxx');
+
+  // Biggest type where a full screenful still fits the box
+  let lo = floor, hi = 132, best = floor;
+  for (let i = 0; i < 20; i++) {
+    const f = (lo + hi) / 2;
+    const rows = packRows(target, f, sizing);
+    const need = rows.length * (f * 2.1 + 14) + gap * (rows.length - 1);
+    if (need <= H) { best = f; lo = f; } else { hi = f; }
+  }
+  const f = best;
+  const visRows = packRows(target, f, sizing).length;
+  const rowH = Math.max(44, (H - gap * (visRows - 1)) / visRows);
+
+  // Rebuild the rows around the cards that are already here
+  const rows = packRows(n, f);
+  grid.innerHTML = '';
+  rows.forEach(idxs => {
+    const row = document.createElement('div');
+    row.className = 'grid-row';
+    row.style.height = rowH + 'px';
+    idxs.forEach(i => {
+      const card = cards[i];
+      const w = widthAt(labels[i], f);
+      card.style.flex = w + ' 1 0px';
       const t = card.querySelector('.hw');
-      const len = Math.max(2, (t.textContent || '').length);
-      t.style.fontSize = Math.max(18, Math.min(ch * 0.5, (cw * 1.6) / len, 96)) + 'px';
+      if (t) {
+        // a word too long for the row gets just enough of a trim to sit inside it
+        const fits = (W - padX * 2) / Math.max(1, labels[i].length * 0.6);
+        t.style.fontSize = Math.min(f, fits, rowH * 0.62) + 'px';
+      }
+      row.appendChild(card);
     });
-    return;
-  }
-  let best = null;
-  for (let c = 1; c <= n; c++) {
-    const r = Math.ceil(n / c);
-    const cw = (W - gap * (c - 1)) / c;
-    const ch = (H - gap * (r - 1)) / r;
-    if (cw < 60 || ch < 44) continue;
-    const score = Math.min(cw / 2.2, ch);      // favour tiles that aren't slivers
-    if (!best || score > best.score) best = { c, r, cw, ch, score };
-  }
-  if (!best) {
-    // too many to fit — fall back to a scrolling grid of a sensible size
-    grid.classList.add('scrolling');
-    const c = Math.max(2, Math.floor(W / 190));
-    grid.style.gridTemplateColumns = 'repeat(' + c + ', 1fr)';
-    grid.style.gridTemplateRows = '';
-    cards.forEach(card => {
-      const t = card.querySelector('.hw');
-      t.style.fontSize = Math.max(15, Math.min(26, (W / c) * 1.5 / Math.max(3, t.textContent.length))) + 'px';
-    });
-    return;
-  }
-  grid.classList.remove('scrolling');
-  grid.style.gridTemplateColumns = 'repeat(' + best.c + ', 1fr)';
-  grid.style.gridTemplateRows = 'repeat(' + best.r + ', 1fr)';
-  cards.forEach(card => {
-    const t = card.querySelector('.hw');
-    const len = Math.max(2, (t.textContent || '').length);
-    const byHeight = best.ch * 0.44;
-    const byWidth = (best.cw * 1.55) / len;
-    t.style.fontSize = Math.max(14, Math.min(byHeight, byWidth, 72)) + 'px';
+    grid.appendChild(row);
   });
 }
 let fitTimer = null;
@@ -3483,6 +3505,35 @@ let homePath = [];          // category ids — where we are in the tree
 let homePhrase = [];        // the phrase being built
 
 function currentCat() { return homePath.length ? catById(homePath[homePath.length - 1]) : null; }
+// The trail of ids that leads down to a folder
+function pathTo(id) {
+  const out = []; let c = catById(id); let guard = 0;
+  while (c && guard++ < 20) { out.unshift(c.id); c = c.parent ? catById(c.parent) : null; }
+  return out;
+}
+// The folders inside the open one, shown as tiles in the grid. Step into one
+// and they give way to its words; the bar above takes you back out.
+function gridFolders() {
+  const cat = currentCat();
+  return cat ? childrenOf(cat.id) : [];
+}
+// A folder can be marked as holding phrases, and anything inside it follows suit
+function catAllowsPhrases(cat) {
+  let c = cat, guard = 0;
+  while (c && guard++ < 20) { if (c.phrases) return true; c = c.parent ? catById(c.parent) : null; }
+  return false;
+}
+// Build one of the coloured folder tiles for the grid
+function makeFolderCard(c, rerender) {
+  const card = document.createElement('button');
+  card.className = 'home-card folder-card';
+  const w = document.createElement('span');
+  w.className = 'hw';
+  w.textContent = c.name;
+  card.appendChild(w);
+  card.addEventListener('click', () => { homePath = pathTo(c.id); rerender(); });
+  return card;
+}
 
 // The bank always reads in lower case, whatever the spelling case mode is
 function bankLabel(w) { return (w || '').toLowerCase(); }
@@ -3650,71 +3701,73 @@ function tintFor(cat, amount) {
   return mixHex(def.solid, '#ffffff', amount);
 }
 function renderCatTiles(containerId, rerender) {
-  const row = document.getElementById(containerId || 'catTiles');
+  const host = document.getElementById(containerId || 'catTiles');
+  if (!host) return;
   const again = rerender || (() => renderHome(true));
-  row.innerHTML = '';
-  const cat = currentCat();
-  const tiles = childrenOf(cat ? cat.id : null);
+  host.innerHTML = '';
 
-  if (homePath.length) {
-    const back = document.createElement('button');
-    back.className = 'cat-tile plain';
-    back.textContent = '\u2039 ' + (homePath.length > 1 ? catById(homePath[homePath.length - 2]).name : 'All');
-    back.addEventListener('click', () => { homePath.pop(); again(); });
-    row.appendChild(back);
-  }
-
-  tiles.forEach(c => {
+  let tileTimer = null, longPressed = false;
+  const makeTile = (c, level) => {
     const b = document.createElement('button');
-    b.className = 'cat-tile';
+    b.className = 'cat-tile' + (homePath[level] === c.id ? ' selected' : '');
     b.textContent = c.name;
     b.style.background = tintFor(c, 0.65);
     b.style.color = inkFor(tintFor(c, 0.65));
-    // Hold to rename, tap to open
     b.addEventListener('pointerdown', () => {
-      tileLongPressed = false;
+      longPressed = false;
       tileTimer = setTimeout(() => {
-        tileLongPressed = true;
+        longPressed = true;
         buzz(15);
-        const v = prompt('Rename this group', c.name);
+        const v = prompt('Rename this folder', c.name);
         if (v && v.trim()) { c.name = v.trim(); save(); again(); }
       }, 650);
     });
     b.addEventListener('pointerup', () => {
       if (tileTimer) clearTimeout(tileTimer);
-      if (!tileLongPressed) { homePath.push(c.id); again(); }
+      if (longPressed) return;
+      // stay on the bar: pick at this level, drop anything deeper
+      homePath = homePath.slice(0, level);
+      homePath.push(c.id);
+      again();
     });
-    ['pointercancel','pointerleave'].forEach(ev =>
+    ['pointercancel', 'pointerleave'].forEach(ev =>
       b.addEventListener(ev, () => { if (tileTimer) clearTimeout(tileTimer); }));
     b.addEventListener('contextmenu', e => e.preventDefault());
-    row.appendChild(b);
-  });
+    return b;
+  };
 
-  const add = document.createElement('button');
-  add.className = 'cat-tile plain';
-  add.textContent = '+';
-  add.title = 'New group';
-  add.addEventListener('click', () => {
-    const v = prompt(cat ? 'New group inside ' + cat.name : 'New group name');
-    if (v && v.trim()) {
-      addCategory(v.trim(), cat ? cat.id : null);
-      save(); again();
+  // just the top level here — sub-folders live in the grid as coloured tiles
+  const levels = [null];
+  levels.forEach((parentId, level) => {
+    const kids = childrenOf(parentId);
+    if (level > 0 && kids.length === 0) return;      // nothing to show for a leaf
+    const row = document.createElement('div');
+    row.className = 'folder-strip-row';
+
+    if (level === 0) {
+      const all = document.createElement('button');
+      all.className = 'cat-tile plain' + (homePath.length === 0 ? ' selected' : '');
+      all.textContent = 'All';
+      all.addEventListener('click', () => { homePath = []; again(); });
+      row.appendChild(all);
     }
+    kids.forEach(c => row.appendChild(makeTile(c, level)));
+
+    host.appendChild(row);
   });
-  row.appendChild(add);
 }
 
-// The bank in whichever order is chosen
 // A tile holds a single word unless sentence or mixed mode says otherwise
 function tileModeFilter(rows) {
   if (state.tileMode === 'sentence') return rows.filter(r => r.word.includes(' '));
   if (state.tileMode === 'mixed') return rows;
-  return rows.filter(r => !r.word.includes(' '));
+  return rows.filter(r => !r.word.includes(' ')
+    || categoriesOf(r.word).some(catAllowsPhrases));
 }
+// The bank in whichever order is chosen
 function bankRows() {
   const all = tileModeFilter(searchWords(''));
   if (state.bankSort === 'stale') {
-    // Longest since it was last spelled first; never-spelled words come first of all
     return all.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
   }
   if (state.bankSort === 'groups') {
@@ -3722,8 +3775,7 @@ function bankRows() {
     const placed = {};
     const walk = (parent) => {
       childrenOf(parent).forEach(c => {
-        // Within a group, whatever hasn't been practised in longest comes first
-        rankWords(c.words || []).sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(r => {
+        tileModeFilter(rankWords(c.words || [])).sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(r => {
           if (placed[r.word]) return;
           placed[r.word] = true;
           out.push(r);
@@ -3732,7 +3784,7 @@ function bankRows() {
       });
     };
     walk(null);
-    all.forEach(r => { if (!placed[r.word]) out.push(r); });   // ungrouped last
+    all.forEach(r => { if (!placed[r.word]) out.push(r); });
     return out;
   }
   return all.slice().sort((a, b) => b.t - a.t || b.n - a.n);
@@ -3749,19 +3801,23 @@ function renderHome(reset) {
     wrap.classList.toggle('expanded', state.homeModesOpen);
     document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
     const rail = document.getElementById('catTiles');
-    rail.className = 'cat-rail' + (state.railOpen ? ' open' : '');
+    rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     document.getElementById('railToggle').classList.toggle('open', state.railOpen);
+    // with the options open, only the gear is on show
+    document.getElementById('railToggle').style.display = state.homeModesOpen ? 'none' : '';
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
 
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
-    if (state.bankLimit > 0) homeRows = homeRows.slice(0, state.bankLimit);
-    // Only the plain recent view is capped — the other orders are meant to be scrolled
+    const folders = gridFolders();
+    // Nothing is dropped any more: the tile size follows the number you asked
+    // for on screen, and anything beyond that carries on below the fold.
     homeShown = 0;
     grid.innerHTML = '';
     grid.scrollTop = 0;
-    if (homeRows.length === 0) {
+    folders.forEach(c => grid.appendChild(makeFolderCard(c, () => renderHome(true))));
+    if (homeRows.length === 0 && folders.length === 0) {
       const n = document.createElement('div');
       n.className = 'empty-note';
       n.style.flexBasis = '100%';
@@ -3772,6 +3828,10 @@ function renderHome(reset) {
     }
   }
   const slice = homeRows.slice(homeShown, homeShown + HOME_PAGE);
+  Array.from(grid.querySelectorAll('.grid-row')).forEach(row => {
+    while (row.firstChild) grid.insertBefore(row.firstChild, row);
+    row.remove();
+  });
   slice.forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
@@ -3808,6 +3868,10 @@ document.getElementById('railToggle').addEventListener('click', () => {
   state.railOpen = !state.railOpen;
   save(); renderHome(true);
 });
+document.getElementById('kbRailToggle').addEventListener('click', () => {
+  state.kbRailOpen = !state.kbRailOpen;
+  save(); render();
+});
 document.getElementById('homeModesToggle').addEventListener('click', () => {
   state.homeModesOpen = !state.homeModesOpen;
   save(); renderHome(true);
@@ -3826,34 +3890,40 @@ document.getElementById('homeBtn').addEventListener('click', () => { touchSessio
 document.getElementById('homeSettingsBtn').addEventListener('click', openSettingsSheet);
 
 // ===== Search by tapping letters =====
-let kbSearch = false, searchPrefix = '';
 function openLetterSearch() {
+  if (kbSearch) { closeLetterSearch(); return; }   // tapping again closes it
   kbSearch = true;
   searchPrefix = '';
-  kbBankOpen = false;          // the keys must be visible to search with
+  kbBankOpen = false;          // the keys have to be visible to search with
   setView('keyboard');
+  touchSession();
   render();
   renderSearchStrip();
 }
 function closeLetterSearch() {
   kbSearch = false;
   searchPrefix = '';
-  document.getElementById('searchStrip').classList.remove('open');
+  document.getElementById('display').classList.remove('searching');
   render();
 }
 function renderSearchStrip() {
-  const strip = document.getElementById('searchStrip');
-  strip.classList.toggle('open', kbSearch);
+  const disp = document.getElementById('display');
+  const box = document.getElementById('displayContent');
+  disp.classList.toggle('searching', kbSearch);
   if (!kbSearch) return;
-  document.getElementById('ssPrefix').textContent = bankLabel(searchPrefix) || '\u2026';
-  const box = document.getElementById('ssResults');
   box.innerHTML = '';
+
+  const pre = document.createElement('span');
+  pre.className = 'ss-prefix';
+  pre.textContent = bankLabel(searchPrefix) || '\u2026';
+  box.appendChild(pre);
+
   const q = searchPrefix.toUpperCase();
   const hits = q ? searchWords(q).filter(r => r.word.startsWith(q)) : [];
   if (!hits.length) {
     const n = document.createElement('span');
     n.className = 'ss-none';
-    n.textContent = searchPrefix ? 'nothing starts with that' : 'tap letters to find a word';
+    n.textContent = q ? 'nothing starts with that' : 'tap letters to find a word';
     box.appendChild(n);
     return;
   }
@@ -3874,7 +3944,6 @@ function renderSearchStrip() {
     box.appendChild(b);
   });
 }
-document.getElementById('ssClose').addEventListener('click', closeLetterSearch);
 
 // ===== Word bank inside the keyboard page (merged-page prototype) =====
 let kbBankOpen = false, kbTilesOpen = false, kbEdit = false;
@@ -3883,17 +3952,18 @@ function bankVisibleRows() {
   const cat = currentCat();
   let rows = cat ? categoryRows(cat) : bankRows();
   rows = rows.filter(r => !state.hiddenWords[r.word]);
-  if (state.bankLimit > 0) rows = rows.slice(0, state.bankLimit);
   return rows;
 }
 function renderKbBank() {
   const tiles = document.getElementById('kbTiles');
+  if (!tiles) return;
   tiles.style.display = kbTilesOpen ? '' : 'none';
   if (kbTilesOpen) renderCatTiles('kbTiles', () => renderKbBank());
 
   const grid = document.getElementById('kbGrid');
   grid.innerHTML = '';
   const cat = currentCat();
+  gridFolders().forEach(c => grid.appendChild(makeFolderCard(c, () => renderKbBank())));
   bankVisibleRows().forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
@@ -3951,20 +4021,6 @@ function setKbBank(open) {
   if (!open) { kbEdit = false; kbTilesOpen = false; }
   render();
 }
-document.getElementById('kbBankBtn').addEventListener('click', () => setKbBank(!kbBankOpen));
-document.getElementById('kbGroupsBtn').addEventListener('click', () => { kbTilesOpen = !kbTilesOpen; renderKbBank(); });
-document.getElementById('kbEditBtn').addEventListener('click', () => { kbEdit = !kbEdit; render(); });
-document.getElementById('kbCommit').addEventListener('click', () => {
-  const parts = homePhrase.join(' ').split(' ').filter(Boolean);
-  homePhrase = [];
-  kbBankOpen = false; kbEdit = false; kbTilesOpen = false;
-  if (parts.length === 0) { render(); return; }
-  parts.forEach(w => { if (!state.words.includes(w)) state.words.push(w); });
-  if (parts.length > 1) selectPhrase(parts);
-  else selectTargetWord(parts[0], true);
-  renderSetup();
-});
-
 // ===== "Where does this go?" when a new word appears =====
 let catAskAfter = null;
 function askCategoryFor(word, after) {
@@ -3982,7 +4038,19 @@ function askCategoryFor(word, after) {
       b.style.color = inkFor(tintFor(c, 0.65));
       b.style.marginLeft = (depth * 12) + 'px';
       b.addEventListener('click', () => {
-        if (!c.words.includes(word)) c.words.push(word);
+        // a phrase folder keeps "Doc Hudson Best Moments" whole; others split it
+        const parts = splitForMode(word, c);
+        const whole = normaliseWord(word);
+        if (parts.length > 1) {
+          // it was filed whole a moment ago — undo that before splitting
+          state.words = state.words.filter(x => x !== whole);
+          state.categories.forEach(cc => { cc.words = (cc.words || []).filter(x => x !== whole); });
+        }
+        parts.forEach(w => {
+          if (!c.words.includes(w)) c.words.push(w);
+          if (!state.words.includes(w)) state.words.push(w);
+          if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+        });
         save();
         document.getElementById('catAskMenu').classList.remove('show');
         if (catAskAfter) catAskAfter();
@@ -4053,6 +4121,13 @@ function renderCatList() {
         const v = prompt('Name of the group inside ' + c.name);
         if (v && v.trim()) { addCategory(v.trim(), c.id); save(); renderCatList(); }
       }));
+      const ph = mk(c.phrases ? '\u201C \u201D' : '\u2423',
+        c.phrases ? 'Phrases allowed on tiles \u2014 tap to turn off'
+                  : 'One word per tile \u2014 tap to allow phrases', () => {
+        c.phrases = !c.phrases; save(); renderCatList();
+      });
+      ph.classList.toggle('on', !!c.phrases);
+      row.appendChild(ph);
       row.appendChild(mk('\u2191', 'Move up', () => {
         const sibs = childrenOf(c.parent, true);
         const i = sibs.indexOf(c);
@@ -4211,7 +4286,7 @@ function importText(text) {
     if (!cat) { cat = addCategory(name, parent); groups++; }
     stack.push({ depth, id: cat.id });
     rest.split(',').forEach(raw => {
-      splitForMode(raw).forEach(w => {
+      splitForMode(raw, cat).forEach(w => {
         if (!cat.words.includes(w)) { cat.words.push(w); words++; }
         if (!state.words.includes(w)) state.words.push(w);
         if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
@@ -4598,14 +4673,12 @@ function renderSettings() {
     v => { state.bankSort = v; save(); renderSettings();
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
-  buildSeg('segTileMode', Object.entries(TILE_MODES).map(([v, l]) => ({ value: v, label: l })), state.tileMode,
-    v => { state.tileMode = v; save(); renderSettings();
+  buildSeg('segGridFill', [6, 9, 12, 0].map(v => ({ value: v, label: GRID_FILLS[v] })), state.gridFill,
+    v => { state.gridFill = +v; save(); renderSettings();
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
-  const limits = [{ value: 9, label: '3 \u00d7 3' }, { value: 6, label: '6' }, { value: 12, label: '12' },
-                  { value: 24, label: '24' }, { value: 40, label: '40' }, { value: 0, label: 'All' }];
-  buildSeg('segBankLimit', limits, state.bankLimit,
-    v => { state.bankLimit = v; save(); renderSettings();
+  buildSeg('segTileMode', Object.entries(TILE_MODES).map(([v, l]) => ({ value: v, label: l })), state.tileMode,
+    v => { state.tileMode = v; save(); renderSettings();
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
   const hiddenN = Object.keys(state.hiddenWords || {}).length;
@@ -4870,7 +4943,7 @@ document.getElementById('bulkAddBtn').addEventListener('click', () => {
   if (!cat) { alert('Make a group first.'); return; }
   let added = 0;
   (box.value || '').split(/[,\n]/).forEach(raw => {
-    splitForMode(raw).forEach(w => {
+    splitForMode(raw, cat).forEach(w => {
       if (!cat.words.includes(w)) { cat.words.push(w); added++; }
       if (!state.words.includes(w)) state.words.push(w);
       if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
@@ -4884,15 +4957,13 @@ document.getElementById('bulkAddBtn').addEventListener('click', () => {
 // ---- Word bank, from settings ----
 function addWordFromSettings() {
   const inp = document.getElementById('setWordInput');
-  const parts = splitForMode(inp.value);
-  if (!parts.length) return;
-  parts.forEach(w => {
-    if (!state.words.includes(w)) state.words.push(w);
-    if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
-  });
+  const raw = normaliseWord(inp.value);
+  if (!raw) return;
+  if (!state.words.includes(raw)) state.words.push(raw);
+  if (!state.wordHistory[raw]) state.wordHistory[raw] = { n: 0, t: 0 };
   inp.value = '';
   save(); renderSettings();
-  askCategoryFor(parts[0], () => renderSettings());
+  askCategoryFor(raw, () => renderSettings());
 }
 document.getElementById('setWordAdd').addEventListener('click', addWordFromSettings);
 document.getElementById('setWordInput').addEventListener('keydown', e => {
