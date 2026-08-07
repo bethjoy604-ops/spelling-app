@@ -304,6 +304,38 @@
     min-height: clamp(52px, 9vmin, 96px); height: auto;
     align-self: center; font-size: clamp(24px, 4.5vmin, 44px);
   }
+  .update-bar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%) translateY(120%);
+    display: flex; align-items: center; gap: 12px; z-index: 60;
+    background: var(--ink); color: #fff; border-radius: 999px;
+    padding: 10px 12px 10px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    font-size: 14px; font-weight: 800; transition: transform 0.25s ease;
+  }
+  .update-bar.show { transform: translateX(-50%) translateY(0); }
+  .update-bar .ub-btn {
+    border: none; border-radius: 999px; padding: 7px 16px;
+    background: #fff; color: var(--ink); font-family: inherit; font-weight: 900;
+    font-size: 14px; cursor: pointer;
+  }
+  .sync-status {
+    background: var(--bg); border-radius: 12px; padding: 10px 12px;
+    font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.4;
+  }
+  .sync-status.good { color: var(--ink); }
+  .sync-status.bad { color: #c0392b; }
+  .sync-key {
+    background: var(--bg); border-radius: 12px; padding: 12px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 15px; font-weight: 700;
+    letter-spacing: 1px; word-break: break-all; color: var(--ink);
+  }
+  .sync-hist { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .sync-hist .sh-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg); border-radius: 12px; padding: 10px 12px;
+    border: none; font-family: inherit; width: 100%; cursor: pointer; text-align: left;
+  }
+  .sync-hist .sh-when { flex: 1; font-size: 13px; font-weight: 800; color: var(--ink); }
+  .sync-hist .sh-who { font-size: 12px; font-weight: 700; color: var(--muted); }
   .home-grid {
     flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
     display: flex; flex-direction: column; gap: 16px;
@@ -1460,6 +1492,20 @@
 </div>
 
 <!-- Where does this word go? -->
+<div class="update-bar" id="updateBar">
+  <span class="ub-text"></span>
+  <button class="ub-btn" id="updateReload">Reload</button>
+</div>
+<div class="overlay" id="syncHistMenu">
+  <div class="sheet">
+    <h3>Earlier versions</h3>
+    <div class="help-note">Every save is kept. Choose one to put this device, and everything syncing with it, back to how it was then.</div>
+    <div class="sync-hist" id="syncHistList"></div>
+    <div class="full-row" style="margin-top: 16px;">
+      <button class="mbtn action" data-action="cancel" style="grid-column: span 2;">Close</button>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="catAskMenu">
   <div class="sheet">
     <h3>Where does this go?</h3>
@@ -1774,6 +1820,53 @@
     </div>
 
     <!-- ============ VOICE ============ -->
+    <div class="sgroup" data-group="sync">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#9729;</span>
+        <span class="sg-title">Sync &amp; backup</span>
+        <span class="sg-sum" id="sumSync"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sync-status" id="syncStatus">Not set up yet.</div>
+
+        <div class="sublabel">Server address</div>
+        <input type="text" id="syncUrlInput" placeholder="https://youspell-sync.....workers.dev"
+               autocomplete="off" spellcheck="false" style="width:100%;">
+        <div class="help-note">The address of your own Cloudflare Worker. Everything is encrypted on this device before it is sent, so the server only ever holds bytes it cannot read.</div>
+
+        <div id="syncOffBox">
+          <button class="mbtn action primary" id="syncStartBtn" style="width:100%; margin-top:8px;">Turn on sync on this device</button>
+          <button class="mbtn action" id="syncJoinBtn" style="width:100%; margin-top:8px;">I already have a sync key</button>
+        </div>
+
+        <div id="syncOnBox" style="display:none;">
+          <div class="sublabel">Your sync key</div>
+          <div class="sync-key" id="syncKeyShow"></div>
+          <div class="full-row" style="margin-top:8px;">
+            <button class="mbtn action" id="syncCopyBtn">Copy key</button>
+            <button class="mbtn action" id="syncFileBtn">Save recovery file</button>
+          </div>
+          <div class="help-note">Type this key into the same screen on another device and the two stay in step. It is also the only thing that can unlock your backups, so keep the recovery file somewhere safe.</div>
+
+          <div class="sublabel">This device is called</div>
+          <input type="text" id="syncDeviceInput" placeholder="iPad" maxlength="24"
+                 autocomplete="off" spellcheck="false" style="width:100%;">
+
+          <div class="settings-list" style="margin-top:10px;">
+            <div class="setting-row"><span>Include voice recordings</span><div class="toggle on" id="toggleSyncAudio"></div></div>
+          </div>
+
+          <div class="full-row" style="margin-top:10px;">
+            <button class="mbtn action" id="syncNowBtn">Sync now</button>
+            <button class="mbtn action" id="syncHistoryBtn">Earlier versions</button>
+          </div>
+          <button class="mbtn action" id="syncStopBtn" style="width:100%; margin-top:8px;">Stop syncing this device</button>
+          <div class="help-note">Stopping leaves everything on this device and everything in the backups untouched. It only stops the two talking.</div>
+        </div>
+      </div>
+    </div>
+
     <div class="sgroup" data-group="voice">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">🔊</span>
@@ -1828,7 +1921,7 @@ const DEFAULT_PHONEMES = {
 const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
 const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
-const BUILD = 'build 40 \u00b7 3 Aug';
+const BUILD = 'build 43 \u00b7 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -1954,6 +2047,16 @@ const state = {
   bankSort: 'recent',         // recent | groups | stale
   colorCoding: true,          // tint words by the group they belong to
   gridFill: 9,                // tiles a screenful holds: 6 | 9 | 12 | 0 for scroll
+  syncOn: false,              // sync to your own Cloudflare bucket
+  syncUrl: '',                // the Worker address
+  syncKey: '',                // the secret that names and unlocks your backups
+  syncDevice: '',             // a friendly name so history shows where a save came from
+  syncAudio: true,            // include voice recordings in the snapshot
+  syncLastAt: 0, syncLastStamp: '', syncError: '',
+  settingsAt: 0,              // when this device last changed something
+  syncRestoredAt: 0,          // when a rollback was last made, so devices follow it
+  tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
+  revives: { word: {}, cat: {}, catWord: {} }, // and deliberate re-adds, which undo them
   bankLimit: 0,               // no cap: the layout grows instead of hiding words
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
@@ -2067,6 +2170,17 @@ async function load() {
         settingsOrder: saved.settingsOrder || [],
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
         colorCoding: saved.colorCoding ?? true,
+        syncOn: saved.syncOn ?? false,
+        syncUrl: saved.syncUrl || '',
+        syncKey: saved.syncKey || '',
+        syncDevice: saved.syncDevice || '',
+        syncAudio: saved.syncAudio ?? true,
+        syncLastAt: saved.syncLastAt || 0,
+        syncLastStamp: saved.syncLastStamp || '',
+        settingsAt: saved.settingsAt || 0,
+        syncRestoredAt: saved.syncRestoredAt || 0,
+        tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
+        revives: saved.revives || { word: {}, cat: {}, catWord: {} },
         gridFill: (saved.gridFill !== undefined ? +saved.gridFill
                    : { '3x3': 9, '6x6': 12, fit: 0 }[saved.gridShape] ?? 9),
         bankLimit: 0,
@@ -2164,6 +2278,17 @@ async function save() {
       colorCoding: state.colorCoding,
       gridFill: state.gridFill,
       bankLimit: state.bankLimit,
+      syncOn: state.syncOn,
+      syncUrl: state.syncUrl,
+      syncKey: state.syncKey,
+      syncDevice: state.syncDevice,
+      syncAudio: state.syncAudio,
+      syncLastAt: state.syncLastAt,
+      syncLastStamp: state.syncLastStamp,
+      settingsAt: state.settingsAt,
+      syncRestoredAt: state.syncRestoredAt,
+      tombs: state.tombs,
+      revives: state.revives,
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
       magicType: state.magicType,
@@ -2183,6 +2308,7 @@ async function save() {
       enterSpeechMode: state.enterSpeechMode,
     }));
   } catch (e) {}
+  if (typeof syncTouch === 'function') syncTouch();
 }
 function touchSession() { state.lastUsed = Date.now(); save(); }
 function isSessionStale() {
@@ -2207,6 +2333,642 @@ async function loadRecordings() {
 async function saveRecordings() {
   try { await Store.set('kbd-recordings-v1', JSON.stringify(recordings)); } catch (e) {}
 }
+
+// ===== Sync =====
+// Snapshots of the bank go to your own Cloudflare bucket, encrypted here in the
+// browser first. The server is handed an id derived from your sync key but never
+// the key itself, so it stores bytes it has no way to read.
+
+const SYNC_ALPHABET = 'abcdefghijkmnpqrstuvwxyz23456789';   // no l, o, 0 or 1 to misread
+const SYNC_MAGIC = [0x59, 0x53, 0x01];                      // 'YS' and a format number
+const SYNC_DEBOUNCE_MS = 4000;
+const SYNC_PULL_GAP_MS = 60000;
+
+let syncTimer = null, syncBusy = false, syncPending = false, syncLastPull = 0;
+let syncCryptoKey = null, syncCryptoFor = '';
+
+function syncMakeKey() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => SYNC_ALPHABET[b % SYNC_ALPHABET.length]).join('');
+}
+function syncCleanKey(v) {
+  return String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+function syncValidKey(v) { return /^[a-z0-9]{20,64}$/.test(syncCleanKey(v)); }
+
+// The id the server sees. A one-way hash, so holding it tells you nothing.
+async function syncBucketId(key) {
+  const data = new TextEncoder().encode(key + '|id|youspell');
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+// The key the data is locked with. Derived separately, never leaves this device.
+async function syncEncKey(key) {
+  if (syncCryptoKey && syncCryptoFor === key) return syncCryptoKey;
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(key), 'PBKDF2', false, ['deriveKey']);
+  syncCryptoKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode('youspell|enc|v1'), iterations: 150000, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  syncCryptoFor = key;
+  return syncCryptoKey;
+}
+
+async function syncSeal(obj, key) {
+  const ck = await syncEncKey(key);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plain = new TextEncoder().encode(JSON.stringify(obj));
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, ck, plain));
+  const out = new Uint8Array(SYNC_MAGIC.length + 12 + cipher.length);
+  out.set(SYNC_MAGIC, 0);
+  out.set(iv, SYNC_MAGIC.length);
+  out.set(cipher, SYNC_MAGIC.length + 12);
+  return out;
+}
+async function syncOpen(bytes, key) {
+  const b = new Uint8Array(bytes);
+  if (b.length < 16 || b[0] !== SYNC_MAGIC[0] || b[1] !== SYNC_MAGIC[1]) throw new Error('not a youspell snapshot');
+  const ck = await syncEncKey(key);
+  const iv = b.slice(SYNC_MAGIC.length, SYNC_MAGIC.length + 12);
+  const cipher = b.slice(SYNC_MAGIC.length + 12);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, ck, cipher);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+/* ---- what a snapshot holds ---- */
+
+const SYNC_SETTING_KEYS = [
+  'caseMode', 'keyLevels', 'hiddenKeys', 'phonemes', 'letterSpeech', 'enterSpeech',
+  'phoneticMode', 'haptics', 'targetSpeech', 'voiceName', 'voiceRate', 'voicePitch',
+  'promptColor', 'promptShade', 'promptHighlightOn', 'promptPulseOn', 'promptSizeOn',
+  'promptTileOn', 'promptTileSize', 'promptSize', 'promptVerbalOn', 'promptDelaySec',
+  'helpMode', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn',
+  'homeEnabled', 'homeMode', 'settingsOrder', 'bankSort', 'colorCoding', 'gridFill',
+  'tileMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback',
+  'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode',
+];
+
+function syncSnapshot(withAudio) {
+  const settings = {};
+  SYNC_SETTING_KEYS.forEach(k => { if (state[k] !== undefined) settings[k] = state[k]; });
+  return {
+    v: 1,
+    at: Date.now(),
+    device: state.syncDevice || 'this device',
+    build: BUILD,
+    settingsAt: state.settingsAt || 0,
+    settings,
+    words: (state.words || []).slice(),
+    wordHistory: state.wordHistory || {},
+    hiddenWords: state.hiddenWords || {},
+    categories: (state.categories || []).map(c => Object.assign({}, c)),
+    catSeq: state.catSeq || 0,
+    tombs: state.tombs || { word: {}, cat: {}, catWord: {} },
+    revives: state.revives || { word: {}, cat: {}, catWord: {} },
+    restoredAt: state.syncRestoredAt || 0,
+    recordings: withAudio === false ? null : recordings,
+  };
+}
+
+/* ---- merging two snapshots ---- */
+
+function syncTombs(t) {
+  t = t || {};
+  return { word: t.word || {}, cat: t.cat || {}, catWord: t.catWord || {} };
+}
+function syncRevives(r) {
+  r = r || {};
+  return { word: r.word || {}, cat: r.cat || {}, catWord: r.catWord || {} };
+}
+function syncMergeRevives(a, b) {
+  const A = syncRevives(a), B = syncRevives(b), out = { word: {}, cat: {}, catWord: {} };
+  ['word', 'cat', 'catWord'].forEach(kind => {
+    Object.keys(A[kind]).forEach(k => { out[kind][k] = A[kind][k]; });
+    Object.keys(B[kind]).forEach(k => { out[kind][k] = Math.max(out[kind][k] || 0, B[kind][k]); });
+  });
+  return out;
+}
+function syncMergeTombs(a, b) {
+  const A = syncTombs(a), B = syncTombs(b), out = { word: {}, cat: {}, catWord: {} };
+  ['word', 'cat', 'catWord'].forEach(kind => {
+    Object.keys(A[kind]).forEach(k => { out[kind][k] = A[kind][k]; });
+    Object.keys(B[kind]).forEach(k => { out[kind][k] = Math.max(out[kind][k] || 0, B[kind][k]); });
+  });
+  return out;
+}
+// A deletion holds until someone deliberately adds the entry back, which is
+// recorded as its own moment. Whichever of the two happened later wins, so a
+// device that simply has not caught up cannot resurrect anything.
+function syncAlive(tomb, revive) { return !(tomb && tomb > (revive || 0)); }
+
+// Anything that has reappeared since the last save was deliberately added, so
+// its deletion mark goes. Done by comparison, which saves threading a call
+// through every one of the twenty places a word can be added.
+let syncSeenWords = null, syncSeenCats = null, syncSeenCatWords = null;
+function syncReconcileTombs() {
+  state.tombs = syncTombs(state.tombs);
+  const words = state.words || [];
+  const cats = state.categories || [];
+  state.revives = syncRevives(state.revives);
+  if (syncSeenWords) {
+    const now = Date.now();
+    words.forEach(w => {
+      if (state.tombs.word[w] && !syncSeenWords.has(w)) {
+        state.revives.word[w] = now; delete state.tombs.word[w];
+      }
+    });
+    cats.forEach(c => {
+      if (state.tombs.cat[c.id] && !syncSeenCats.has(c.id)) {
+        state.revives.cat[c.id] = now; delete state.tombs.cat[c.id];
+      }
+      (c.words || []).forEach(w => {
+        const k = c.id + '|' + w;
+        if (state.tombs.catWord[k] && !syncSeenCatWords.has(k)) {
+          state.revives.catWord[k] = now; delete state.tombs.catWord[k];
+        }
+      });
+    });
+  }
+  syncSeenWords = new Set(words);
+  syncSeenCats = new Set(cats.map(c => c.id));
+  syncSeenCatWords = new Set();
+  cats.forEach(c => (c.words || []).forEach(w => syncSeenCatWords.add(c.id + '|' + w)));
+}
+
+function syncMerge(mine, theirs) {
+  if (!theirs) return mine;
+  if (!mine) return theirs;
+  const tombs = syncMergeTombs(mine.tombs, theirs.tombs);
+  const revives = syncMergeRevives(mine.revives, theirs.revives);
+  const newer = (theirs.settingsAt || 0) > (mine.settingsAt || 0) ? theirs : mine;
+
+  // words: everything either side knows, minus anything deleted since
+  const words = [];
+  const seen = {};
+  [mine, theirs].forEach(snap => {
+    (snap.words || []).forEach(w => {
+      if (seen[w] || !syncAlive(tombs.word[w], revives.word[w])) return;
+      seen[w] = true; words.push(w);
+    });
+  });
+
+  // history: the fuller count and the later use win
+  const wordHistory = {};
+  [mine.wordHistory || {}, theirs.wordHistory || {}].forEach(h => {
+    Object.keys(h).forEach(w => {
+      const cur = wordHistory[w] || { n: 0, t: 0 };
+      wordHistory[w] = { n: Math.max(cur.n || 0, h[w].n || 0), t: Math.max(cur.t || 0, h[w].t || 0) };
+    });
+  });
+
+  const hiddenWords = Object.assign({}, mine.hiddenWords || {}, theirs.hiddenWords || {});
+
+  // groups: matched on id, the newer side describes them, both sides' words are kept
+  const byId = {};
+  const order = [];
+  [[mine, mine === newer], [theirs, theirs === newer]].forEach(([snap, isNewer]) => {
+    (snap.categories || []).forEach(c => {
+      if (!syncAlive(tombs.cat[c.id], revives.cat[c.id])) return;
+      if (!byId[c.id]) { byId[c.id] = Object.assign({}, c, { words: [] }); order.push(c.id); }
+      else if (isNewer) {
+        const kept = byId[c.id].words;
+        byId[c.id] = Object.assign({}, c, { words: kept });
+      }
+      (c.words || []).forEach(w => {
+        const ck = c.id + '|' + w;
+        if (!syncAlive(tombs.catWord[ck], revives.catWord[ck])) return;
+        if (!syncAlive(tombs.word[w], revives.word[w])) return;
+        if (byId[c.id].words.indexOf(w) === -1) byId[c.id].words.push(w);
+      });
+    });
+  });
+
+  const recordings = Object.assign({}, mine.recordings || {});
+  if (theirs.recordings) {
+    ['letterName', 'letterSound', 'word', 'phrase'].forEach(kind => {
+      recordings[kind] = Object.assign({}, recordings[kind] || {}, theirs.recordings[kind] || {});
+    });
+  }
+
+  return {
+    v: 1,
+    at: Math.max(mine.at || 0, theirs.at || 0),
+    device: state.syncDevice || 'this device',
+    build: BUILD,
+    settingsAt: Math.max(mine.settingsAt || 0, theirs.settingsAt || 0),
+    restoredAt: Math.max(mine.restoredAt || 0, theirs.restoredAt || 0),
+    settings: newer.settings || {},
+    words,
+    wordHistory,
+    hiddenWords,
+    categories: order.map(id => byId[id]),
+    catSeq: Math.max(mine.catSeq || 0, theirs.catSeq || 0),
+    tombs,
+    revives,
+    recordings,
+  };
+}
+
+function syncApply(snap) {
+  if (!snap) return;
+  Object.keys(snap.settings || {}).forEach(k => { state[k] = snap.settings[k]; });
+  state.settingsAt = snap.settingsAt || state.settingsAt || 0;
+  state.words = snap.words || [];
+  state.wordHistory = snap.wordHistory || {};
+  state.hiddenWords = snap.hiddenWords || {};
+  state.categories = snap.categories || [];
+  state.catSeq = Math.max(state.catSeq || 0, snap.catSeq || 0);
+  state.tombs = syncTombs(snap.tombs);
+  state.revives = syncRevives(snap.revives);
+  state.syncRestoredAt = Math.max(state.syncRestoredAt || 0, snap.restoredAt || 0);
+  if (snap.recordings) {
+    ['letterName', 'letterSound', 'word', 'phrase'].forEach(kind => {
+      recordings[kind] = Object.assign({}, recordings[kind] || {}, snap.recordings[kind] || {});
+    });
+    saveRecordings();
+  }
+}
+
+/* ---- deletions leave a mark, so they do not come back on the next sync ---- */
+
+function syncTombWord(w) {
+  state.tombs = syncTombs(state.tombs);
+  state.tombs.word[w] = Date.now();
+}
+function syncTombCat(id) {
+  state.tombs = syncTombs(state.tombs);
+  state.tombs.cat[id] = Date.now();
+}
+function syncTombCatWord(id, w) {
+  state.tombs = syncTombs(state.tombs);
+  state.tombs.catWord[id + '|' + w] = Date.now();
+}
+
+/* ---- talking to the Worker ---- */
+
+function syncBase() { return String(state.syncUrl || '').replace(/\/+$/, ''); }
+function syncReady() { return !!(state.syncOn && syncBase() && syncValidKey(state.syncKey)); }
+
+async function syncPush(force) {
+  if (!syncReady() || syncBusy) { syncPending = true; return; }
+  syncBusy = true;
+  try {
+    const id = await syncBucketId(state.syncKey);
+    let snap = syncSnapshot(state.syncAudio !== false);
+    // fold in whatever is on the server so a second device is never overwritten
+    if (!force) {
+      const remote = await syncFetch(id);
+      if (remote) { snap = syncMerge(snap, remote); syncApply(snap); }
+    }
+    const body = await syncSeal(snap, state.syncKey);
+    const res = await fetch(syncBase() + '/v1/' + id, {
+      method: 'PUT',
+      body,
+      headers: { 'Content-Type': 'application/octet-stream', 'X-Device': snap.device, 'X-Build': BUILD },
+    });
+    if (!res.ok) throw new Error('server said ' + res.status);
+    const info = await res.json();
+    state.syncLastAt = Date.now();
+    state.syncLastStamp = info.stamp || '';
+    state.syncError = '';
+    await save();
+    renderSyncStatus();
+  } catch (err) {
+    state.syncError = String((err && err.message) || err);
+    syncPending = true;
+    renderSyncStatus();
+  } finally {
+    syncBusy = false;
+  }
+}
+
+async function syncFetch(id, stamp) {
+  const url = syncBase() + '/v1/' + id + (stamp ? '/at/' + stamp : '');
+  const res = await fetch(url, { cache: 'no-store' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('server said ' + res.status);
+  return await syncOpen(await res.arrayBuffer(), state.syncKey);
+}
+
+async function syncPull(quiet, adopt) {
+  if (!syncReady() || syncBusy) return false;
+  syncBusy = true;
+  try {
+    const id = await syncBucketId(state.syncKey);
+    const remote = await syncFetch(id);
+    syncLastPull = Date.now();
+    if (!remote) { state.syncError = ''; return false; }
+    // Joining a key, or catching a rollback someone else made, means taking
+    // their version whole. Anything else is a merge, so no edit is ever lost.
+    const rolledBack = (remote.restoredAt || 0) > (state.syncRestoredAt || 0);
+    if (adopt || rolledBack) syncApply(remote);
+    else syncApply(syncMerge(syncSnapshot(state.syncAudio !== false), remote));
+    state.syncLastAt = Date.now();
+    state.syncError = '';
+    await save();
+    if (!quiet) {
+      if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+      render();
+    }
+    renderSyncStatus();
+    return true;
+  } catch (err) {
+    state.syncError = String((err && err.message) || err);
+    renderSyncStatus();
+    return false;
+  } finally {
+    syncBusy = false;
+  }
+}
+
+async function syncHistory() {
+  const id = await syncBucketId(state.syncKey);
+  const res = await fetch(syncBase() + '/v1/' + id + '/history', { cache: 'no-store' });
+  if (!res.ok) throw new Error('server said ' + res.status);
+  return (await res.json()).snapshots || [];
+}
+
+async function syncRestore(stamp) {
+  const id = await syncBucketId(state.syncKey);
+  const snap = await syncFetch(id, stamp);
+  if (!snap) throw new Error('that snapshot is gone');
+  syncApply(snap);
+  state.syncRestoredAt = Date.now();     // tells the other devices to follow, not merge
+  await save();
+  await syncPush(true);            // the restored state becomes the current one
+  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+  render();
+}
+
+// Every save nudges the clock and books a push a few seconds out
+function syncTouch() {
+  syncReconcileTombs();
+  state.settingsAt = Date.now();
+  if (!syncReady()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncPush(false), SYNC_DEBOUNCE_MS);
+}
+
+async function syncCheckHealth(url) {
+  const res = await fetch(String(url).replace(/\/+$/, '') + '/health', { cache: 'no-store' });
+  if (!res.ok) throw new Error('server said ' + res.status);
+  const body = await res.json();
+  if (!body.ok) throw new Error('that address answered, but it is not the sync worker');
+  return true;
+}
+
+function syncRecoveryFile() {
+  const lines = [
+    'youspell sync — recovery details',
+    '',
+    'Keep this somewhere safe. The sync key below is what unlocks your backups;',
+    'anyone holding it can read them, and without it they cannot be recovered.',
+    '',
+    'Sync key:    ' + state.syncKey,
+    'Server:      ' + syncBase(),
+    'Saved:       ' + new Date().toLocaleString(),
+    '',
+    'To use it on another device: open the app, Settings, Sync, paste the server',
+    'address, choose "I have a key" and paste the key.',
+    '',
+  ].join('\n');
+  const url = URL.createObjectURL(new Blob([lines], { type: 'text/plain' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'youspell-recovery.txt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ---- the Sync screen ---- */
+
+function syncWhen(ms) {
+  if (!ms) return 'never';
+  const gap = Date.now() - ms;
+  if (gap < 60000) return 'just now';
+  if (gap < 3600000) return Math.round(gap / 60000) + ' min ago';
+  if (gap < 86400000) return Math.round(gap / 3600000) + ' hr ago';
+  return new Date(ms).toLocaleDateString();
+}
+
+function renderSyncStatus() {
+  const box = document.getElementById('syncStatus');
+  if (!box) return;
+  const sum = document.getElementById('sumSync');
+  box.classList.remove('good', 'bad');
+  if (!state.syncOn) {
+    box.textContent = 'Off. This device keeps everything to itself, and nothing is backed up.';
+    if (sum) sum.textContent = 'Off';
+  } else if (state.syncError) {
+    box.classList.add('bad');
+    box.textContent = 'Trouble reaching the server: ' + state.syncError +
+      '. Your words are safe on this device and will go up as soon as it answers.';
+    if (sum) sum.textContent = 'Needs a look';
+  } else {
+    box.classList.add('good');
+    box.textContent = 'On. Last backed up ' + syncWhen(state.syncLastAt) + '.';
+    if (sum) sum.textContent = syncWhen(state.syncLastAt);
+  }
+  document.getElementById('syncOffBox').style.display = state.syncOn ? 'none' : '';
+  document.getElementById('syncOnBox').style.display = state.syncOn ? '' : 'none';
+  const show = document.getElementById('syncKeyShow');
+  if (show) show.textContent = state.syncKey || '';
+  const dev = document.getElementById('syncDeviceInput');
+  if (dev && document.activeElement !== dev) dev.value = state.syncDevice || '';
+  const url = document.getElementById('syncUrlInput');
+  if (url && document.activeElement !== url) url.value = state.syncUrl || '';
+  const aud = document.getElementById('toggleSyncAudio');
+  if (aud) aud.classList.toggle('on', state.syncAudio !== false);
+}
+
+function syncGuessDeviceName() {
+  const ua = navigator.userAgent || '';
+  if (/iPad/.test(ua)) return 'iPad';
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/Android/.test(ua)) return 'Android';
+  if (/Mac/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return 'PC';
+  return 'this device';
+}
+
+async function syncTakeUrl() {
+  const v = (document.getElementById('syncUrlInput').value || '').trim();
+  if (!v) { alert('Paste the address of your Worker first.'); return false; }
+  const url = /^https?:\/\//.test(v) ? v : 'https://' + v;
+  try {
+    await syncCheckHealth(url);
+  } catch (err) {
+    alert('That address did not answer as expected.\n\n' + ((err && err.message) || err) +
+          '\n\nCheck the Worker is deployed and that its BUCKET binding is set.');
+    return false;
+  }
+  state.syncUrl = url.replace(/\/+$/, '');
+  return true;
+}
+
+document.getElementById('syncStartBtn').addEventListener('click', async () => {
+  if (!(await syncTakeUrl())) return;
+  state.syncKey = syncMakeKey();
+  state.syncDevice = state.syncDevice || syncGuessDeviceName();
+  state.syncOn = true;
+  state.syncError = '';
+  await save();
+  renderSyncStatus();
+  await syncPush(true);
+  syncRecoveryFile();
+  alert('Sync is on.\n\nA recovery file has been saved to your downloads. It holds your sync key — keep it somewhere safe, because it is the only thing that can unlock your backups.');
+  renderSyncStatus();
+});
+
+document.getElementById('syncJoinBtn').addEventListener('click', async () => {
+  if (!(await syncTakeUrl())) return;
+  const entered = prompt('Paste the sync key from your other device');
+  if (!entered) return;
+  const key = syncCleanKey(entered);
+  if (!syncValidKey(key)) { alert('That does not look like a sync key.'); return; }
+  state.syncKey = key;
+  state.syncDevice = state.syncDevice || syncGuessDeviceName();
+  state.syncOn = true;
+  state.syncError = '';
+  await save();
+  const got = await syncPull(false, true);
+  renderSyncStatus();
+  if (got) {
+    renderSettings();
+    alert('Connected. This device now matches the others.');
+  } else if (state.syncError) {
+    alert('Connected, but nothing came back: ' + state.syncError);
+  } else {
+    alert('Connected. There was nothing stored under that key yet, so this device’s words have been sent up as the starting point.');
+    await syncPush(true);
+  }
+});
+
+document.getElementById('syncCopyBtn').addEventListener('click', () => {
+  const key = state.syncKey || '';
+  if (navigator.clipboard) navigator.clipboard.writeText(key).then(
+    () => alert('Sync key copied.'),
+    () => prompt('Copy your sync key', key));
+  else prompt('Copy your sync key', key);
+});
+
+document.getElementById('syncFileBtn').addEventListener('click', syncRecoveryFile);
+
+document.getElementById('syncDeviceInput').addEventListener('change', () => {
+  state.syncDevice = (document.getElementById('syncDeviceInput').value || '').trim() || syncGuessDeviceName();
+  save();
+});
+
+document.getElementById('toggleSyncAudio').addEventListener('click', () => {
+  state.syncAudio = !(state.syncAudio !== false);
+  save(); renderSyncStatus();
+});
+
+document.getElementById('syncNowBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('syncNowBtn');
+  btn.textContent = 'Syncing…';
+  await syncPull(false);
+  await syncPush(false);
+  btn.textContent = 'Sync now';
+  renderSettings();
+  renderSyncStatus();
+});
+
+document.getElementById('syncStopBtn').addEventListener('click', async () => {
+  if (!confirm('Stop syncing this device?\n\nNothing is deleted here or in your backups — they simply stop talking. You can reconnect any time with the same key.')) return;
+  state.syncOn = false;
+  await save();
+  renderSyncStatus();
+});
+
+document.getElementById('syncHistoryBtn').addEventListener('click', async () => {
+  const list = document.getElementById('syncHistList');
+  list.innerHTML = '<div class="empty-note">Looking…</div>';
+  document.getElementById('syncHistMenu').classList.add('show');
+  let snaps = [];
+  try {
+    snaps = await syncHistory();
+  } catch (err) {
+    list.innerHTML = '';
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = 'Could not reach the server: ' + ((err && err.message) || err);
+    list.appendChild(n);
+    return;
+  }
+  list.innerHTML = '';
+  if (!snaps.length) {
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = 'Nothing stored yet.';
+    list.appendChild(n);
+    return;
+  }
+  snaps.forEach(sn => {
+    const when = new Date(sn.stamp.replace(
+      /^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/,
+      '$1-$2-$3T$4:$5:$6.$7Z'));
+    const row = document.createElement('button');
+    row.className = 'sh-row';
+    const w = document.createElement('span');
+    w.className = 'sh-when';
+    w.textContent = isNaN(when) ? sn.stamp : when.toLocaleString();
+    const who = document.createElement('span');
+    who.className = 'sh-who';
+    who.textContent = (sn.device || '') + (sn.size ? ' · ' + Math.round(sn.size / 1024) + ' KB' : '');
+    row.appendChild(w); row.appendChild(who);
+    row.addEventListener('click', async () => {
+      if (!confirm('Put everything back to how it was on ' + w.textContent + '?\n\nThis becomes the current version everywhere. The version you are on now stays in the list, so you can come back to it.')) return;
+      row.disabled = true;
+      w.textContent = 'Restoring…';
+      try {
+        await syncRestore(sn.stamp);
+        document.getElementById('syncHistMenu').classList.remove('show');
+        renderSettings();
+        alert('Restored.');
+      } catch (err) {
+        alert('That did not work: ' + ((err && err.message) || err));
+        w.textContent = when.toLocaleString();
+        row.disabled = false;
+      }
+    });
+    list.appendChild(row);
+  });
+});
+
+document.getElementById('syncHistMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if ((btn && btn.dataset.action === 'cancel') || e.target.id === 'syncHistMenu') {
+    document.getElementById('syncHistMenu').classList.remove('show');
+  }
+});
+
+// ---- is this the newest build? ----
+async function checkForUpdate() {
+  if (location.protocol === 'file:') return;      // a downloaded copy has nothing to check against
+  try {
+    const res = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const text = await res.text();
+    const m = text.match(/const BUILD = '([^']*)'/);
+    if (!m || m[1] === BUILD) return;
+    const bar = document.getElementById('updateBar');
+    bar.querySelector('.ub-text').textContent = 'A newer version is ready';
+    bar.classList.add('show');
+  } catch (e) {}
+}
+document.getElementById('updateReload').addEventListener('click', () => {
+  location.replace(location.pathname + '?v=' + Date.now());
+});
+setTimeout(checkForUpdate, 4000);
+window.addEventListener('focus', () => { if (Date.now() - lastUpdateCheck > 3600000) { lastUpdateCheck = Date.now(); checkForUpdate(); } });
+let lastUpdateCheck = Date.now();
+
+window.addEventListener('online', () => { if (syncPending) syncPush(false); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (syncReady()) syncPush(false); return; }
+  if (syncReady() && Date.now() - syncLastPull > SYNC_PULL_GAP_MS) syncPull(false);
+});
 
 let currentAudio = null;
 function playClip(dataURL) {
@@ -3263,6 +4025,7 @@ function renderWordList() {
     x.className = 'x'; x.textContent = '×';
     x.addEventListener('click', e => {
       e.stopPropagation();
+      syncTombWord(w);
       state.words.splice(i, 1);
       if (state.currentTarget === w) {
         state.currentTarget = null;
@@ -3346,6 +4109,7 @@ function addCategory(name, parent, color) {
 }
 function deleteCategory(id) {
   childrenOf(id, true).forEach(c => deleteCategory(c.id));
+  syncTombCat(id);
   state.categories = state.categories.filter(c => c.id !== id);
 }
 // The standard starting set. Safe to run on a bank that already has groups:
@@ -4182,6 +4946,7 @@ function renderCatWords() {
     const x = document.createElement('button');
     x.className = 'x'; x.textContent = '\u00d7';
     x.addEventListener('click', () => {
+      syncTombCatWord(c.id, r.word);
       c.words = c.words.filter(w => w !== r.word);
       save(); renderCatWords();
     });
@@ -4674,6 +5439,7 @@ function openSettingsSheet() {
 
 function renderSettings() {
   document.getElementById('buildStamp').textContent = BUILD;
+  renderSyncStatus();
   // ----- Prompts -----
   document.getElementById('togglePromptColor').classList.toggle('on', state.promptColorOn);
   document.getElementById('togglePromptSize').classList.toggle('on', state.promptSizeOn);
@@ -4884,6 +5650,7 @@ const BANK_FILTERS = { all: 'All', none: 'No group', dup: 'In 2+ groups' };
 let bankFilter = 'all';
 
 function deleteWordEverywhere(word) {
+  syncTombWord(word);
   state.words = state.words.filter(w => w !== word);
   delete state.wordHistory[word];
   delete state.hiddenWords[word];
