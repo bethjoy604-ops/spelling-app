@@ -317,6 +317,15 @@
     background: #fff; color: var(--ink); font-family: inherit; font-weight: 900;
     font-size: 14px; cursor: pointer;
   }
+  .pair-qr {
+    display: flex; justify-content: center; margin: 14px 0 10px;
+  }
+  .pair-qr svg { border-radius: 12px; box-shadow: var(--shadow); }
+  .pair-link {
+    background: var(--bg); border-radius: 12px; padding: 10px 12px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+    word-break: break-all; color: var(--muted);
+  }
   .sync-status {
     background: var(--bg); border-radius: 12px; padding: 10px 12px;
     font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.4;
@@ -1496,6 +1505,19 @@
   <span class="ub-text"></span>
   <button class="ub-btn" id="updateReload">Reload</button>
 </div>
+<div class="overlay" id="pairMenu">
+  <div class="sheet">
+    <h3>Add another device</h3>
+    <div class="help-note">On the other device, open the camera and point it at this code. The app will open there with everything already set up.</div>
+    <div class="pair-qr" id="pairQr"></div>
+    <div class="pair-link" id="pairLink"></div>
+    <div class="full-row" style="margin-top: 12px;">
+      <button class="mbtn action" id="pairCopyBtn">Copy the link</button>
+      <button class="mbtn action primary" data-action="cancel">Done</button>
+    </div>
+    <div class="help-note">Anyone with this link gets your words, so only send it to yourself. To give the app to someone else, share <b id="pairPlain"></b> instead \u2014 they will get their own.</div>
+  </div>
+</div>
 <div class="overlay" id="syncHistMenu">
   <div class="sheet">
     <h3>Earlier versions</h3>
@@ -1830,24 +1852,25 @@
       <div class="sgroup-body">
         <div class="sync-status" id="syncStatus">Not set up yet.</div>
 
-        <div class="sublabel">Server address</div>
-        <input type="text" id="syncUrlInput" placeholder="https://youspell-sync.....workers.dev"
-               autocomplete="off" spellcheck="false" style="width:100%;">
-        <div class="help-note">The address of your own Cloudflare Worker. Everything is encrypted on this device before it is sent, so the server only ever holds bytes it cannot read.</div>
-
         <div id="syncOffBox">
-          <button class="mbtn action primary" id="syncStartBtn" style="width:100%; margin-top:8px;">Turn on sync on this device</button>
-          <button class="mbtn action" id="syncJoinBtn" style="width:100%; margin-top:8px;">I already have a sync key</button>
+          <button class="mbtn action primary" id="syncStartBtn" style="width:100%; margin-top:8px;">Back up my words</button>
+          <button class="mbtn action" id="syncJoinBtn" style="width:100%; margin-top:8px;">Join another device</button>
+          <div class="help-note">Backing up keeps a copy of your words safe, and lets your other devices show the same ones. Everything is scrambled on this device before it is sent, so no one else can read it.</div>
         </div>
 
         <div id="syncOnBox" style="display:none;">
-          <div class="sublabel">Your sync key</div>
-          <div class="sync-key" id="syncKeyShow"></div>
-          <div class="full-row" style="margin-top:8px;">
-            <button class="mbtn action" id="syncCopyBtn">Copy key</button>
-            <button class="mbtn action" id="syncFileBtn">Save recovery file</button>
+          <button class="mbtn action primary" id="syncPairBtn" style="width:100%; margin-top:8px;">Add another device \u2192</button>
+          <div class="help-note">Shows a square code. Point your other device's camera at it and the app opens there already set up \u2014 nothing to type.</div>
+
+          <button class="mbtn action" id="syncKeyToggle" style="width:100%; margin-top:10px;">Show my key and recovery file</button>
+          <div id="syncKeyBox" style="display:none;">
+            <div class="sync-key" id="syncKeyShow"></div>
+            <div class="full-row" style="margin-top:8px;">
+              <button class="mbtn action" id="syncCopyBtn">Copy key</button>
+              <button class="mbtn action" id="syncFileBtn">Save recovery file</button>
+            </div>
+            <div class="help-note">This key is the only thing that can unlock your backups. Keep the recovery file somewhere safe, and treat it like a password.</div>
           </div>
-          <div class="help-note">Type this key into the same screen on another device and the two stay in step. It is also the only thing that can unlock your backups, so keep the recovery file somewhere safe.</div>
 
           <div class="sublabel">This device is called</div>
           <input type="text" id="syncDeviceInput" placeholder="iPad" maxlength="24"
@@ -1921,7 +1944,9 @@ const DEFAULT_PHONEMES = {
 const CASE_LABELS = ['All Caps', 'All Lower', 'Sentence', 'Auto'];
 const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
-const BUILD = 'build 43 \u00b7 3 Aug';
+// Where backups go. Built in, so no one is ever asked for a server address.
+const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
+const BUILD = 'build 44 \u00b7 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2048,11 +2073,12 @@ const state = {
   colorCoding: true,          // tint words by the group they belong to
   gridFill: 9,                // tiles a screenful holds: 6 | 9 | 12 | 0 for scroll
   syncOn: false,              // sync to your own Cloudflare bucket
-  syncUrl: '',                // the Worker address
+  syncUrl: SYNC_SERVER,       // the backup server, changeable but rarely touched
   syncKey: '',                // the secret that names and unlocks your backups
   syncDevice: '',             // a friendly name so history shows where a save came from
   syncAudio: true,            // include voice recordings in the snapshot
   syncLastAt: 0, syncLastStamp: '', syncError: '',
+  backupAsked: false,         // the one-time offer has been made on this device
   settingsAt: 0,              // when this device last changed something
   syncRestoredAt: 0,          // when a rollback was last made, so devices follow it
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
@@ -2171,10 +2197,11 @@ async function load() {
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
         colorCoding: saved.colorCoding ?? true,
         syncOn: saved.syncOn ?? false,
-        syncUrl: saved.syncUrl || '',
+        syncUrl: saved.syncUrl || SYNC_SERVER,
         syncKey: saved.syncKey || '',
         syncDevice: saved.syncDevice || '',
         syncAudio: saved.syncAudio ?? true,
+        backupAsked: saved.backupAsked ?? false,
         syncLastAt: saved.syncLastAt || 0,
         syncLastStamp: saved.syncLastStamp || '',
         settingsAt: saved.settingsAt || 0,
@@ -2223,6 +2250,10 @@ async function load() {
   }
   await loadRecordings();
   showSplash();
+  // A link with a key pairs this device; otherwise a new one is offered backup
+  await pairFromLink();
+  offerBackup();
+  if (syncReady()) syncPull(true);
 }
 async function save() {
   try {
@@ -2283,6 +2314,7 @@ async function save() {
       syncKey: state.syncKey,
       syncDevice: state.syncDevice,
       syncAudio: state.syncAudio,
+      backupAsked: state.backupAsked,
       syncLastAt: state.syncLastAt,
       syncLastStamp: state.syncLastStamp,
       settingsAt: state.settingsAt,
@@ -2332,6 +2364,247 @@ async function loadRecordings() {
 }
 async function saveRecordings() {
   try { await Store.set('kbd-recordings-v1', JSON.stringify(recordings)); } catch (e) {}
+}
+
+/* ---- A small QR encoder ----
+   Byte mode, error correction level M, versions 1 to 6 (up to 106 characters),
+   which is ample for a pairing link. Written out here rather than pulled from a
+   library so the app stays a single file and works with no connection. */
+
+const QR_M = {
+  //           size, total, data, ecPerBlock, blocks, alignment
+  1: { n: 21, total: 26,  data: 16,  ec: 10, blocks: 1, align: [] },
+  2: { n: 25, total: 44,  data: 28,  ec: 16, blocks: 1, align: [6, 18] },
+  3: { n: 29, total: 70,  data: 44,  ec: 26, blocks: 1, align: [6, 22] },
+  4: { n: 33, total: 100, data: 64,  ec: 18, blocks: 2, align: [6, 26] },
+  5: { n: 37, total: 134, data: 86,  ec: 24, blocks: 2, align: [6, 30] },
+  6: { n: 41, total: 172, data: 108, ec: 16, blocks: 4, align: [6, 34] },
+};
+
+// Galois field tables for Reed-Solomon
+const QR_EXP = new Uint8Array(512), QR_LOG = new Uint8Array(256);
+(function () {
+  let x = 1;
+  for (let i = 0; i < 255; i++) {
+    QR_EXP[i] = x; QR_LOG[x] = i;
+    x <<= 1;
+    if (x & 0x100) x ^= 0x11d;
+  }
+  for (let i = 255; i < 512; i++) QR_EXP[i] = QR_EXP[i - 255];
+})();
+function qrMul(a, b) { return (a === 0 || b === 0) ? 0 : QR_EXP[QR_LOG[a] + QR_LOG[b]]; }
+
+function qrEcc(data, ecLen) {
+  // generator polynomial
+  let gen = [1];
+  for (let i = 0; i < ecLen; i++) {
+    const next = new Array(gen.length + 1).fill(0);
+    for (let j = 0; j < gen.length; j++) {
+      next[j] ^= gen[j];
+      next[j + 1] ^= qrMul(gen[j], QR_EXP[i]);
+    }
+    gen = next;
+  }
+  const rem = new Array(ecLen).fill(0);
+  for (let i = 0; i < data.length; i++) {
+    const factor = data[i] ^ rem[0];
+    rem.shift(); rem.push(0);
+    if (factor !== 0) for (let j = 0; j < ecLen; j++) rem[j] ^= qrMul(gen[j + 1], factor);
+  }
+  return rem;
+}
+
+function qrEncode(text) {
+  const bytes = Array.from(new TextEncoder().encode(text));
+  let version = 0;
+  for (let v = 1; v <= 6; v++) {
+    if (bytes.length + 2 <= QR_M[v].data) { version = v; break; }
+  }
+  if (!version) throw new Error('too long for a code');
+  const spec = QR_M[version];
+
+  // bit stream: mode 0100, 8-bit length, the bytes, terminator, padding
+  const bits = [];
+  const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+  push(4, 4);
+  push(bytes.length, 8);
+  bytes.forEach(b => push(b, 8));
+  for (let i = 0; i < 4 && bits.length < spec.data * 8; i++) bits.push(0);
+  while (bits.length % 8) bits.push(0);
+  const words = [];
+  for (let i = 0; i < bits.length; i += 8) {
+    words.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+  }
+  const pads = [0xec, 0x11];
+  for (let i = 0; words.length < spec.data; i++) words.push(pads[i % 2]);
+
+  // split into blocks, work out the checks, then interleave
+  const perBlock = Math.floor(spec.data / spec.blocks);
+  const extra = spec.data % spec.blocks;
+  const dataBlocks = [], ecBlocks = [];
+  let at = 0;
+  for (let b = 0; b < spec.blocks; b++) {
+    const len = perBlock + (b >= spec.blocks - extra ? 1 : 0);
+    const block = words.slice(at, at + len); at += len;
+    dataBlocks.push(block);
+    ecBlocks.push(qrEcc(block, spec.ec));
+  }
+  const out = [];
+  const maxData = Math.max.apply(null, dataBlocks.map(b => b.length));
+  for (let i = 0; i < maxData; i++) dataBlocks.forEach(b => { if (i < b.length) out.push(b[i]); });
+  for (let i = 0; i < spec.ec; i++) ecBlocks.forEach(b => out.push(b[i]));
+
+  return { version, size: spec.n, codewords: out, spec };
+}
+
+function qrMatrix(text) {
+  const { size, codewords, spec } = qrEncode(text);
+  const m = [], reserved = [];
+  for (let i = 0; i < size; i++) {
+    m.push(new Array(size).fill(0));
+    reserved.push(new Array(size).fill(false));
+  }
+  const set = (r, c, v) => { m[r][c] = v ? 1 : 0; reserved[r][c] = true; };
+
+  // finder patterns and their separators
+  const finder = (r0, c0) => {
+    for (let r = -1; r <= 7; r++) for (let c = -1; c <= 7; c++) {
+      const rr = r0 + r, cc = c0 + c;
+      if (rr < 0 || cc < 0 || rr >= size || cc >= size) continue;
+      const on = (r >= 0 && r <= 6 && (c === 0 || c === 6)) ||
+                 (c >= 0 && c <= 6 && (r === 0 || r === 6)) ||
+                 (r >= 2 && r <= 4 && c >= 2 && c <= 4);
+      set(rr, cc, on);
+    }
+  };
+  finder(0, 0); finder(0, size - 7); finder(size - 7, 0);
+
+  // timing
+  for (let i = 8; i < size - 8; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+
+  // alignment
+  spec.align.forEach(r0 => spec.align.forEach(c0 => {
+    if ((r0 <= 8 && c0 <= 8) || (r0 <= 8 && c0 >= size - 9) || (r0 >= size - 9 && c0 <= 8)) return;
+    for (let r = -2; r <= 2; r++) for (let c = -2; c <= 2; c++) {
+      set(r0 + r, c0 + c, Math.max(Math.abs(r), Math.abs(c)) !== 1);
+    }
+  }));
+
+  // the dark module, and space kept for the format bits
+  set(size - 8, 8, true);
+  for (let i = 0; i < 9; i++) {
+    if (!reserved[8][i]) reserved[8][i] = true;
+    if (!reserved[i][8]) reserved[i][8] = true;
+  }
+  for (let i = 0; i < 8; i++) {
+    reserved[8][size - 1 - i] = true;
+    reserved[size - 1 - i][8] = true;
+  }
+
+  // lay the data in, bottom right, upward then downward, two columns at a time
+  let bitIndex = 0;
+  const nextBit = () => {
+    const byte = codewords[bitIndex >> 3];
+    const bit = byte === undefined ? 0 : (byte >> (7 - (bitIndex & 7))) & 1;
+    bitIndex++;
+    return bit;
+  };
+  let upward = true;
+  for (let col = size - 1; col > 0; col -= 2) {
+    if (col === 6) col--;                       // the timing column is skipped
+    for (let i = 0; i < size; i++) {
+      const row = upward ? size - 1 - i : i;
+      for (let k = 0; k < 2; k++) {
+        const c = col - k;
+        if (reserved[row][c]) continue;
+        m[row][c] = nextBit();
+      }
+    }
+    upward = !upward;
+  }
+
+  // try every mask, keep the tidiest
+  const maskFn = [
+    (r, c) => (r + c) % 2 === 0,
+    (r, c) => r % 2 === 0,
+    (r, c) => c % 3 === 0,
+    (r, c) => (r + c) % 3 === 0,
+    (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+    (r, c) => ((r * c) % 2) + ((r * c) % 3) === 0,
+    (r, c) => (((r * c) % 2) + ((r * c) % 3)) % 2 === 0,
+    (r, c) => (((r + c) % 2) + ((r * c) % 3)) % 2 === 0,
+  ];
+  let best = null;
+  for (let mask = 0; mask < 8; mask++) {
+    const t = m.map(row => row.slice());
+    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+      if (!reserved[r][c] && maskFn[mask](r, c)) t[r][c] ^= 1;
+    }
+    qrFormat(t, reserved, mask, size);
+    const score = qrPenalty(t, size);
+    if (!best || score < best.score) best = { score, grid: t };
+  }
+  return best.grid;
+}
+
+// format information: EC level M with the chosen mask, protected by a BCH code
+function qrFormat(grid, reserved, mask, size) {
+  let data = (0x00 << 3) | mask;              // 00 is level M
+  let rem = data;
+  for (let i = 0; i < 10; i++) rem = (rem << 1) ^ (((rem >> 9) & 1) * 0x537);
+  const bits = ((data << 10) | rem) ^ 0x5412;
+  for (let i = 0; i < 15; i++) {
+    const bit = (bits >> i) & 1;
+    // the copy running down the left of the top-left finder
+    if (i < 6) grid[i][8] = bit;
+    else if (i < 8) grid[i + 1][8] = bit;
+    else grid[size - 15 + i][8] = bit;
+    // and the copy running along row 8
+    if (i < 8) grid[8][size - 1 - i] = bit;
+    else if (i === 8) grid[8][7] = bit;
+    else grid[8][14 - i] = bit;
+  }
+  grid[size - 8][8] = 1;                      // the dark module stays dark
+}
+
+function qrPenalty(g, size) {
+  let p = 0;
+  // runs of five or more
+  for (let r = 0; r < size; r++) {
+    for (let dir = 0; dir < 2; dir++) {
+      let run = 1;
+      for (let c = 1; c < size; c++) {
+        const a = dir ? g[c - 1][r] : g[r][c - 1];
+        const b = dir ? g[c][r] : g[r][c];
+        if (a === b) { run++; if (run === 5) p += 3; else if (run > 5) p++; }
+        else run = 1;
+      }
+    }
+  }
+  // two by two blocks
+  for (let r = 0; r < size - 1; r++) for (let c = 0; c < size - 1; c++) {
+    const v = g[r][c];
+    if (v === g[r][c + 1] && v === g[r + 1][c] && v === g[r + 1][c + 1]) p += 3;
+  }
+  // balance of dark to light
+  let dark = 0;
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) dark += g[r][c];
+  p += Math.floor(Math.abs((dark * 100) / (size * size) - 50) / 5) * 10;
+  return p;
+}
+
+// Draw it as an SVG so it stays crisp at any size
+function qrSvg(text, px) {
+  const g = qrMatrix(text);
+  const n = g.length, quiet = 4, total = n + quiet * 2;
+  let path = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    if (g[r][c]) path += 'M' + (c + quiet) + ' ' + (r + quiet) + 'h1v1h-1z';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + px + '" height="' + px +
+    '" viewBox="0 0 ' + total + ' ' + total + '" shape-rendering="crispEdges">' +
+    '<rect width="' + total + '" height="' + total + '" fill="#ffffff"/>' +
+    '<path d="' + path + '" fill="#000000"/></svg>';
 }
 
 // ===== Sync =====
@@ -2606,7 +2879,7 @@ function syncTombCatWord(id, w) {
 
 /* ---- talking to the Worker ---- */
 
-function syncBase() { return String(state.syncUrl || '').replace(/\/+$/, ''); }
+function syncBase() { return String(state.syncUrl || SYNC_SERVER).replace(/\/+$/, ''); }
 function syncReady() { return !!(state.syncOn && syncBase() && syncValidKey(state.syncKey)); }
 
 async function syncPush(force) {
@@ -2775,8 +3048,6 @@ function renderSyncStatus() {
   if (show) show.textContent = state.syncKey || '';
   const dev = document.getElementById('syncDeviceInput');
   if (dev && document.activeElement !== dev) dev.value = state.syncDevice || '';
-  const url = document.getElementById('syncUrlInput');
-  if (url && document.activeElement !== url) url.value = state.syncUrl || '';
   const aud = document.getElementById('toggleSyncAudio');
   if (aud) aud.classList.toggle('on', state.syncAudio !== false);
 }
@@ -2791,15 +3062,13 @@ function syncGuessDeviceName() {
   return 'this device';
 }
 
+// The server is built in. This only checks it is reachable before promising anything.
 async function syncTakeUrl() {
-  const v = (document.getElementById('syncUrlInput').value || '').trim();
-  if (!v) { alert('Paste the address of your Worker first.'); return false; }
-  const url = /^https?:\/\//.test(v) ? v : 'https://' + v;
+  const url = state.syncUrl || SYNC_SERVER;
   try {
     await syncCheckHealth(url);
   } catch (err) {
-    alert('That address did not answer as expected.\n\n' + ((err && err.message) || err) +
-          '\n\nCheck the Worker is deployed and that its BUCKET binding is set.');
+    alert('Could not reach the backup service just now.\n\nYour words are safe on this device. Try again when you have a connection.');
     return false;
   }
   state.syncUrl = url.replace(/\/+$/, '');
@@ -2822,7 +3091,7 @@ document.getElementById('syncStartBtn').addEventListener('click', async () => {
 
 document.getElementById('syncJoinBtn').addEventListener('click', async () => {
   if (!(await syncTakeUrl())) return;
-  const entered = prompt('Paste the sync key from your other device');
+  const entered = prompt('On your other device open Settings \u2192 Sync, tap "Add another device", and either scan the square code or type the key here.');
   if (!entered) return;
   const key = syncCleanKey(entered);
   if (!syncValidKey(key)) { alert('That does not look like a sync key.'); return; }
@@ -2963,6 +3232,111 @@ document.getElementById('updateReload').addEventListener('click', () => {
 setTimeout(checkForUpdate, 4000);
 window.addEventListener('focus', () => { if (Date.now() - lastUpdateCheck > 3600000) { lastUpdateCheck = Date.now(); checkForUpdate(); } });
 let lastUpdateCheck = Date.now();
+
+
+
+// Asked once on a device that has never been offered it. Saying no is
+// remembered, and Settings still has the switch either way.
+function offerBackup() {
+  if (state.syncOn || state.backupAsked) return;
+  setTimeout(async () => {
+    if (state.syncOn || state.backupAsked) return;   // sorted out in the meantime
+    state.backupAsked = true;
+    await save();
+    const yes = confirm(
+      'Keep your words safe?\n\n' +
+      'Right now they live only in this browser, so clearing it would lose them. ' +
+      'Backing up keeps a copy you can restore, and lets your other devices show the same words.\n\n' +
+      'Your words are scrambled on this device before they are sent, so nobody else can read them. ' +
+      'You can turn this off any time in Settings.');
+    if (!yes) return;
+    state.syncKey = syncMakeKey();
+    state.syncUrl = state.syncUrl || SYNC_SERVER;
+    state.syncDevice = state.syncDevice || syncGuessDeviceName();
+    state.syncOn = true;
+    await save();
+    await syncPush(true);
+    renderSyncStatus();
+    if (!state.syncError) alert('Backing up. Settings \u2192 Sync has a code for adding your other devices.');
+  }, 1200);
+}
+
+/* ---- pairing a second device ---- */
+
+function pairPlainLink() {
+  return location.origin + location.pathname.replace(/index\.html$/, '');
+}
+function pairLink() {
+  return pairPlainLink() + '#k=' + state.syncKey;
+}
+
+document.getElementById('syncPairBtn').addEventListener('click', () => {
+  const link = pairLink();
+  const box = document.getElementById('pairQr');
+  box.innerHTML = '';
+  try {
+    const px = Math.min(280, Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.55));
+    box.innerHTML = qrSvg(link, px);
+  } catch (err) {
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = 'Could not draw the code \u2014 use the link below instead.';
+    box.appendChild(n);
+  }
+  document.getElementById('pairLink').textContent = link;
+  document.getElementById('pairPlain').textContent = pairPlainLink().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  document.getElementById('pairMenu').classList.add('show');
+});
+
+document.getElementById('pairCopyBtn').addEventListener('click', () => {
+  const link = pairLink();
+  if (navigator.clipboard) navigator.clipboard.writeText(link).then(
+    () => alert('Link copied. Open it on your other device.'),
+    () => prompt('Copy this link', link));
+  else prompt('Copy this link', link);
+});
+
+document.getElementById('pairMenu').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if ((btn && btn.dataset.action === 'cancel') || e.target.id === 'pairMenu') {
+    document.getElementById('pairMenu').classList.remove('show');
+  }
+});
+
+document.getElementById('syncKeyToggle').addEventListener('click', () => {
+  const box = document.getElementById('syncKeyBox');
+  const open = box.style.display !== 'none';
+  box.style.display = open ? 'none' : '';
+  document.getElementById('syncKeyToggle').textContent =
+    open ? 'Show my key and recovery file' : 'Hide my key';
+});
+
+// A link with a key in it connects this device and then tidies the address bar,
+// so the key is never left sitting where it can be read over a shoulder.
+async function pairFromLink() {
+  const m = (location.hash || '').match(/[#&]k=([a-z0-9]{20,64})/i);
+  if (!m) return;
+  const key = syncCleanKey(m[1]);
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!syncValidKey(key)) return;
+  if (state.syncOn && state.syncKey === key) return;      // already paired
+  state.syncKey = key;
+  state.syncUrl = state.syncUrl || SYNC_SERVER;
+  state.syncDevice = state.syncDevice || syncGuessDeviceName();
+  state.syncOn = true;
+  state.syncError = '';
+  await save();
+  const got = await syncPull(false, true);                // adopt what is stored
+  renderSyncStatus();
+  if (got) {
+    if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+    render();
+    alert('This device is connected. It now shows the same words as your other one.');
+  } else {
+    await syncPush(true);
+    alert('Connected. There was nothing stored yet, so this device has become the starting point.');
+  }
+}
 
 window.addEventListener('online', () => { if (syncPending) syncPush(false); });
 document.addEventListener('visibilitychange', () => {
