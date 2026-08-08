@@ -312,6 +312,11 @@
     font-size: 14px; font-weight: 800; transition: transform 0.25s ease;
   }
   .update-bar.show { transform: translateX(-50%) translateY(0); }
+  .update-bar .ub-later {
+    border: none; background: none; color: rgba(255,255,255,0.7);
+    font-family: inherit; font-size: 20px; line-height: 1;
+    padding: 0 6px 0 0; cursor: pointer;
+  }
   .update-bar .ub-btn {
     border: none; border-radius: 999px; padding: 7px 16px;
     background: #fff; color: var(--ink); font-family: inherit; font-weight: 900;
@@ -1503,7 +1508,8 @@
 <!-- Where does this word go? -->
 <div class="update-bar" id="updateBar">
   <span class="ub-text"></span>
-  <button class="ub-btn" id="updateReload">Reload</button>
+  <button class="ub-btn" id="updateReload">Update</button>
+  <button class="ub-later" id="updateLater" aria-label="Not now">&times;</button>
 </div>
 <div class="overlay" id="pairMenu">
   <div class="sheet">
@@ -1946,7 +1952,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 44 \u00b7 3 Aug';
+const BUILD = 'build 45 \u00b7 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3213,25 +3219,35 @@ document.getElementById('syncHistMenu').addEventListener('click', e => {
 });
 
 // ---- is this the newest build? ----
+// Asked once, on the opening screen only. It must never appear over the keys
+// while someone is spelling, and it never asks twice in the same sitting.
+let updateAsked = false;
 async function checkForUpdate() {
+  if (updateAsked) return;
   if (location.protocol === 'file:') return;      // a downloaded copy has nothing to check against
+  if (!document.getElementById('viewSplash').classList.contains('active') &&
+      !document.getElementById('viewSetup').classList.contains('active')) return;
   try {
     const res = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return;
     const text = await res.text();
     const m = text.match(/const BUILD = '([^']*)'/);
     if (!m || m[1] === BUILD) return;
+    updateAsked = true;
     const bar = document.getElementById('updateBar');
     bar.querySelector('.ub-text').textContent = 'A newer version is ready';
     bar.classList.add('show');
   } catch (e) {}
 }
+function hideUpdateBar() {
+  updateAsked = true;
+  document.getElementById('updateBar').classList.remove('show');
+}
 document.getElementById('updateReload').addEventListener('click', () => {
   location.replace(location.pathname + '?v=' + Date.now());
 });
-setTimeout(checkForUpdate, 4000);
-window.addEventListener('focus', () => { if (Date.now() - lastUpdateCheck > 3600000) { lastUpdateCheck = Date.now(); checkForUpdate(); } });
-let lastUpdateCheck = Date.now();
+document.getElementById('updateLater').addEventListener('click', hideUpdateBar);
+setTimeout(checkForUpdate, 3000);
 
 
 
@@ -3418,6 +3434,8 @@ function speakWord(word, rate) {
 
 let kbSearch = false, searchPrefix = '';
 function setView(name) {
+  // the update prompt belongs to the opening screen and nowhere else
+  if (name !== 'splash' && name !== 'setup' && typeof hideUpdateBar === 'function') hideUpdateBar();
   ['splash', 'setup', 'home', 'keyboard'].forEach(v => {
     document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1))
       .classList.toggle('active', v === name);
