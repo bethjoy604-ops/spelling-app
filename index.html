@@ -9,7 +9,7 @@
 <title>Spelling Practice</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #faf6f0;
@@ -25,7 +25,7 @@
     --green-tint: #ebfaee;
     --red: #ff453a;
     --red-soft: #ffe0dc;
-    --red-tint: #fff0ee;
+    --red-tint: #ffdcd6;
     --yellow: #ffd60a;
     --yellow-warm: #ffc94d;
     --gold: #ffb800;
@@ -39,7 +39,7 @@
     --prompt: #2e8bff;
     --prompt-soft: #dbe9ff;
     --prompt-glow: rgba(46, 139, 255, 0.45);
-    --prompt-ink: #ffffff;
+    --prompt-ink: #1a1a1a;
     --prompt-f1: #6daaff;
     --prompt-f2: #c2dcff;
     --boost: 1;
@@ -52,7 +52,7 @@
     touch-action: manipulation;
     user-select: none; -webkit-user-select: none;
     background: var(--bg);
-    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--ink);
   }
 
@@ -291,7 +291,11 @@
   .home-card.add-tile { border: 2px dashed var(--border); background: var(--bg); box-shadow: none; }
 
   /* ===== HOME ===== */
-  .view-home { flex-direction: column; padding: 14px; gap: 12px; height: 100%; min-height: 0; overflow: hidden; }
+  .view-home {
+    flex-direction: column; height: 100%; min-height: 0; overflow: hidden;
+    padding: clamp(16px, 2.4vmin, 30px);
+    gap: clamp(12px, 1.8vmin, 22px);
+  }
   /* The phrase bar is the keyboard's typing bar, so sizes match exactly */
   .phrase-bar .pb-chip {
     background: var(--prompt-soft); color: var(--ink);
@@ -299,6 +303,7 @@
     display: inline-block;
     font-size: 1em; font-weight: 900; line-height: 1.15;
   }
+  .view-home .phrase-bar { min-height: clamp(120px, 20vh, 220px); }
   .key.home-enter {
     flex: none; width: clamp(86px, 13vmin, 150px);
     min-height: clamp(52px, 9vmin, 96px); height: auto;
@@ -331,6 +336,57 @@
     font-family: ui-monospace, Menlo, monospace; font-size: 12px;
     word-break: break-all; color: var(--muted);
   }
+  /* ---- the folders flow ---- */
+  .pb-input {
+    flex: 1 1 auto; min-width: 60px; border: none; outline: none; background: transparent;
+    font-family: inherit; font-weight: 900; color: var(--ink);
+    font-size: inherit; padding: 0; min-height: 1.2em;
+  }
+  .pb-input::placeholder { color: var(--border); }
+  .folder-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: clamp(10px, 1.4vmin, 18px); }
+  .fv-crumbs { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; flex-wrap: wrap; }
+  .fv-crumb {
+    border: none; background: var(--surface); border-radius: 10px;
+    padding: 7px 14px; font-family: inherit; font-weight: 800;
+    font-size: clamp(13px, 1.8vmin, 17px); color: var(--muted);
+    box-shadow: var(--shadow); cursor: pointer;
+  }
+  .fv-crumb.here { color: var(--ink); }
+  .fv-crumb-sep { color: var(--border); font-weight: 900; }
+  .fv-body { flex: 1; min-height: 0; overflow-y: auto; }
+  .fv-body.is-tiles { overflow: hidden; }
+  /* the root: a grid of folder tiles */
+  .fv-tiles { display: grid; gap: clamp(14px, 2vmin, 26px); height: 100%; }
+  .fv-tile {
+    border: none; border-radius: 18px; box-shadow: var(--shadow);
+    background: var(--surface);
+    font-family: inherit; font-weight: 700; color: var(--ink);
+    padding: 8px 12px; cursor: pointer; text-align: center;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; min-height: 0; overflow: hidden;
+    line-height: 1.15; word-break: break-word;
+  }
+  .fv-tile:active { transform: scale(0.97); }
+  /* inside a folder: one row per word, the way a music list reads */
+  .fv-row {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    border: none; background: var(--surface); border-radius: 14px;
+    box-shadow: var(--shadow); margin-bottom: clamp(8px, 1.2vmin, 16px); cursor: pointer;
+    padding: clamp(10px, 1.6vh, 18px) 18px; font-family: inherit; text-align: left;
+  }
+  .fv-row:active { transform: scale(0.995); }
+  .fv-row .fv-name {
+    flex: 1; min-width: 0; font-weight: 700; color: var(--ink);
+    font-size: clamp(17px, 2.8vmin, 30px); line-height: 1.2; word-break: break-word;
+  }
+  /* the same small / medium / large the rest of the app answers to */
+  .fv-body.ds-small .fv-row .fv-name { font-size: clamp(15px, 2.2vmin, 24px); }
+  .fv-body.ds-med   .fv-row .fv-name { font-size: clamp(19px, 3.2vmin, 36px); }
+  .fv-body.ds-large .fv-row .fv-name { font-size: clamp(24px, 4.4vmin, 52px); }
+  .fv-body.ds-small .fv-row { padding: clamp(8px, 1.2vh, 14px) 16px; }
+  .fv-body.ds-large .fv-row { padding: clamp(14px, 2.2vh, 26px) 22px; }
+  .fv-row.is-folder { background: var(--bg); box-shadow: 0 0 0 3px var(--border) inset; }
+  .fv-row .fv-go { font-size: 1.2em; font-weight: 900; color: var(--muted); }
   .sync-status {
     background: var(--bg); border-radius: 12px; padding: 10px 12px;
     font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.4;
@@ -456,7 +512,8 @@
   /* ===== KEYBOARD ===== */
   .view-keyboard {
     flex-direction: column;
-    padding: 14px; gap: 12px;
+    padding: clamp(16px, 2.4vmin, 30px);
+    gap: clamp(12px, 1.8vmin, 22px);
     height: 100%; min-height: 0; overflow: hidden;
   }
   .view-keyboard .target-banner { flex: none; }
@@ -549,11 +606,11 @@
   /* On the keyboard page the bar shares the height with the keys instead of
      staying a fixed size while they stretch */
   .view-keyboard .display { flex: 1.1 1 0; }
-  .view-keyboard .display.ds-small { flex: 0.7 1 0; font-size: clamp(28px, 5vh, 50px); }
-  .view-keyboard .display.ds-med   { flex: 1.1 1 0; font-size: clamp(36px, 7vh, 74px); }
-  .view-keyboard .display.ds-large { flex: 1.6 1 0; font-size: clamp(46px, 9.5vh, 98px); }
-  /* the keyboard is the point of the page, so it takes what's left */
-  .view-keyboard .keyboard { flex: 4 1 0; }
+  .view-keyboard .display.ds-small { flex: 0.55 1 0; font-size: clamp(28px, 5vh, 50px); }
+  .view-keyboard .display.ds-med   { flex: 0.8 1 0; font-size: clamp(36px, 7vh, 74px); }
+  .view-keyboard .display.ds-large { flex: 1.25 1 0; font-size: clamp(46px, 9.5vh, 98px); }
+  /* the keyboard is the point of the page, so it takes the lion's share */
+  .view-keyboard .keyboard { flex: 5 1 0; }
   .view-keyboard .display { min-height: 0; }
   .display.celebrating {
     animation: celebrateBg 0.8s ease-out;
@@ -748,9 +805,9 @@
   .keyboard {
     flex: 1;
     display: flex; flex-direction: column;
-    gap: 8px;
+    gap: clamp(8px, 1.2vmin, 16px);
   }
-  .row { flex: 1; min-height: 0; display: flex; gap: 8px; justify-content: center; }
+  .row { flex: 1; min-height: 0; display: flex; gap: clamp(8px, 1.2vmin, 16px); justify-content: center; }
   .key {
     flex: 1;
     background: var(--surface);
@@ -1321,7 +1378,10 @@
 <!-- ===== HOME ===== -->
 <div class="view view-home" id="viewHome">
   <div class="display phrase-bar" id="phraseBar">
-    <div class="display-content pb-words" id="pbWords"><span class="caret"></span></div>
+    <div class="display-content pb-words" id="pbWords"></div>
+    <input class="pb-input" id="pbInput" type="text" maxlength="80"
+           autocomplete="off" autocapitalize="characters" spellcheck="false"
+           aria-label="Type a word">
     <button class="display-clear" id="pbClear" aria-label="Clear phrase">&times;</button>
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
@@ -1331,6 +1391,7 @@
       <span class="chevron" id="homeChevron">&#9662;</span>
     </button>
     <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
+    <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
     <div class="folder-strip" id="catTiles"></div>
     <div class="modes-wrap" id="homeModesWrap">
       <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
@@ -1347,6 +1408,10 @@
 
   <div class="bank-area">
     <div class="home-grid" id="homeGrid"></div>
+    <div class="folder-view" id="folderView" style="display:none;">
+      <div class="fv-crumbs" id="fvCrumbs"></div>
+      <div class="fv-body" id="fvBody"></div>
+    </div>
   </div>
 </div>
 
@@ -1372,11 +1437,10 @@
     <button class="ctl icon" id="modesToggle" aria-label="Show modes">
       <span class="chevron" id="modesChevron">▾</span>
     </button>
-    <button class="ctl icon" id="kbRailToggle" aria-label="Folders">&#9776;</button>
       <div class="modes-wrap" id="modesWrap">
       <button class="ctl" id="wordToggle">
-        <span class="label">Word</span>
-        <span class="value" id="wordValue">Free type</span>
+        <span class="label">Mode</span>
+        <span class="value" id="wordValue">Spelling practice</span>
       </button>
       <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     </div>
@@ -1389,8 +1453,6 @@
     <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
     <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
   </div>
-
-  <div class="folder-strip" id="kbFolders"></div>
 
   <div class="keyboard" id="keyboard"></div>
 
@@ -1433,7 +1495,7 @@
 
     <div class="menu-section-label">Add Word</div>
     <div class="word-add">
-      <input type="text" id="newWordInput" placeholder="Type word..." maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <input type="text" id="newWordInput" placeholder="Type a word or title..." maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false">
       <button id="addWordBtn">Add</button>
     </div>
     <div class="full-row" style="margin-top: 16px;">
@@ -1552,7 +1614,7 @@
     <div class="key-preview" style="font-size: 30px;">&#128193;</div>
     <div class="cat-list" id="catList"></div>
     <div class="word-add" style="margin-top:10px;">
-      <input type="text" id="newCatInput" placeholder="New group name..." maxlength="24" autocomplete="off" spellcheck="false">
+      <input type="text" id="newCatInput" placeholder="New group name..." maxlength="40" autocomplete="off" spellcheck="false">
       <button id="addCatBtn">Add</button>
     </div>
     <button class="mbtn action" id="defaultGroupsBtn" style="width:100%; margin-top:10px;">Use default groups</button>
@@ -1569,7 +1631,7 @@
   <div class="sheet">
     <h3 id="catWordsTitle">Group words</h3>
     <div class="word-add" style="margin-top:0;">
-      <input type="text" id="catWordInput" placeholder="Add a word or phrase..." maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <input type="text" id="catWordInput" placeholder="Add a word or phrase..." maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false">
       <button id="catWordAdd">Add</button>
     </div>
     <div class="menu-section-label">In this group</div>
@@ -1761,7 +1823,7 @@
       <div class="sgroup-body">
         <div class="sublabel">Add a word</div>
         <div class="word-add" style="margin-top:0;">
-          <input type="text" id="setWordInput" placeholder="Add a word or phrase..." maxlength="40"
+          <input type="text" id="setWordInput" placeholder="Add a word or phrase..." maxlength="80"
                  autocomplete="off" autocapitalize="characters" spellcheck="false">
           <button id="setWordAdd">Add</button>
         </div>
@@ -1804,9 +1866,7 @@
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
           <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
-          <div class="setting-row"><span>&#128193; Group tiles on home</span><div class="toggle on" id="toggleTiles"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
-          <div class="setting-row"><span>&#127912; Colour code words by group</span><div class="toggle on" id="toggleColor"></div></div>
         </div>
 
         <div class="sublabel">Order words by</div>
@@ -1815,6 +1875,10 @@
         <div class="sublabel">What goes on a tile</div>
         <div class="seg-row" id="segTileMode"></div>
         <div class="help-note">Words keeps one word per tile and splits anything longer as it's added. Sentences shows only saved phrases. Both mixes them. Any folder switched to phrases in Edit groups ignores this and keeps full names like "Doc Hudson Best Moments" on one tile.</div>
+
+        <div class="sublabel">How home works</div>
+        <div class="seg-row" id="segHomeMode"></div>
+        <div class="help-note">Tiles spreads the words used most recently across the screen, with folders in a strip. Words is the same but plainer. Folders opens on a grid of your groups instead, and each one opens as a list you scroll \u2014 better for long titles, and there is always a way back to the top.</div>
 
         <div class="sublabel">Tiles on a screenful</div>
         <div class="seg-row" id="segGridFill"></div>
@@ -1952,7 +2016,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 45 \u00b7 3 Aug';
+const BUILD = 'build 55 \u00b7 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2074,9 +2138,10 @@ const state = {
   showSearchBtn: false,       // magnifier that searches past words
   showHelpBtn: false,         // fires the prompts on demand
   homeEnabled: false,         // land on a word-bank home page
-  homeMode: 'tiles',          // tiles | words — how home presents the bank
+  practiceMode: true,         // spelling practice by default; off means free typing
+  homeMode: 'tiles',          // tiles | words | folders — how home presents the bank
   bankSort: 'recent',         // recent | groups | stale
-  colorCoding: true,          // tint words by the group they belong to
+  colorCoding: false,          // tint words by the group they belong to
   gridFill: 9,                // tiles a screenful holds: 6 | 9 | 12 | 0 for scroll
   syncOn: false,              // sync to your own Cloudflare bucket
   syncUrl: SYNC_SERVER,       // the backup server, changeable but rarely touched
@@ -2196,12 +2261,13 @@ async function load() {
         showSearchBtn: saved.showSearchBtn ?? false,
         showHelpBtn: saved.showHelpBtn ?? false,
         homeEnabled: saved.homeEnabled ?? false,
-        homeMode: (saved.homeMode === 'words') ? 'words' : 'tiles',
+        practiceMode: saved.practiceMode ?? true,
+        homeMode: ['words', 'folders'].includes(saved.homeMode) ? saved.homeMode : 'tiles',
         railOpen: saved.railOpen ?? true,
         kbRailOpen: saved.kbRailOpen ?? false,
         settingsOrder: saved.settingsOrder || [],
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
-        colorCoding: saved.colorCoding ?? true,
+        colorCoding: false,          // colour coding is retired: everything reads plain
         syncOn: saved.syncOn ?? false,
         syncUrl: saved.syncUrl || SYNC_SERVER,
         syncKey: saved.syncKey || '',
@@ -2307,6 +2373,7 @@ async function save() {
       showSearchBtn: state.showSearchBtn,
       showHelpBtn: state.showHelpBtn,
       homeEnabled: state.homeEnabled,
+      practiceMode: state.practiceMode,
       homeMode: state.homeMode,
       railOpen: state.railOpen,
       kbRailOpen: state.kbRailOpen,
@@ -3681,7 +3748,7 @@ function applyPromptTheme() {
   r.setProperty('--prompt', base);
   r.setProperty('--prompt-soft', mixHex(base, '#ffffff', 0.78));
   r.setProperty('--prompt-glow', 'rgba(' + r0 + ',' + g0 + ',' + b0 + ',0.45)');
-  r.setProperty('--prompt-ink', inkFor(base));
+  r.setProperty('--prompt-ink', 'var(--ink)');
   r.setProperty('--prompt-f1', mixHex(base, '#ffffff', 0.35));
   r.setProperty('--prompt-f2', mixHex(base, '#ffffff', 0.72));
 }
@@ -3778,13 +3845,6 @@ function render() {
 
   if (kbSearch) { renderSearchStrip(); }
 
-  // folder strip on the keyboard page — tapping one opens it on the home page
-  const kbf = document.getElementById('kbFolders');
-  kbf.className = 'folder-strip' + (state.kbRailOpen ? ' open' : '');
-  document.getElementById('kbRailToggle').classList.toggle('open', state.kbRailOpen);
-  document.getElementById('kbRailToggle').style.display = state.modesOpen ? 'none' : '';
-  if (state.kbRailOpen) renderCatTiles('kbFolders', () => showHome());
-
   const banner = document.getElementById('targetBanner');
   banner.classList.remove('bs-small', 'bs-med', 'bs-large');
   banner.classList.add('bs-' + state.bannerSize);
@@ -3828,8 +3888,8 @@ function render() {
   document.getElementById('modesChevron').classList.toggle('open', state.modesOpen);
 
   document.getElementById('wordValue').textContent =
-    (state.currentTarget ? displayWord(state.currentTarget) : 'Free type');
-  document.getElementById('wordToggle').classList.toggle('active', !!state.currentTarget);
+    state.practiceMode ? 'Spelling practice' : 'Free type';
+  document.getElementById('wordToggle').classList.toggle('active', state.practiceMode);
 
   document.getElementById('wordBankCount').textContent = state.wordBank.length;
   document.getElementById('wordBankBtn').style.display = state.showBankCount ? '' : 'none';
@@ -3922,6 +3982,31 @@ function makeSpecialKey(label, action, cls) {
     } else if (action === 'enter') {
       buzz([30, 50, 30]);
       resolvePendingFlash();
+      // Searching: enter takes whatever was typed, match or not, and sets it up
+      // to be spelled. It joins the bank once it has been spelled through.
+      if (kbSearch) {
+        const typed = normaliseWord(searchPrefix);
+        closeLetterSearch();
+        if (typed) {
+          const parts = typed.split(' ').filter(Boolean);
+          if (parts.length > 1) selectPhrase(parts);
+          else selectTargetWord(typed, true);
+        }
+        render();
+        return;
+      }
+      // In practice with nothing chosen, whatever was typed becomes the word to
+      // spell: the prompts start from the beginning and it is saved once done.
+      if (state.practiceMode && !state.currentTarget) {
+        const typed = normaliseWord(state.text);
+        if (typed) {
+          const parts = typed.split(' ').filter(Boolean);
+          if (parts.length > 1) selectPhrase(parts);
+          else selectTargetWord(typed, true);
+          render();
+          return;
+        }
+      }
       if (isPhrase() && isWordComplete()) { finishPhrase(); return; }
       const trimmed = applyCase(state.text).trim();
       const wasComplete = isWordComplete();
@@ -3956,6 +4041,13 @@ function makeSpecialKey(label, action, cls) {
           });
         }
         celebrate(completedWord);
+
+        // A word practised from scratch joins the bank, and asks where it belongs
+        const isNew = !state.words.includes(completedWord);
+        if (isNew) {
+          state.words.push(completedWord);
+          setTimeout(() => askCategoryFor(completedWord, () => { save(); renderSetup(); }), 1400);
+        }
 
         const counter = getOrInitWordData(completedWord);
         counter.successes++;
@@ -4292,8 +4384,16 @@ document.getElementById('phonemePreview').addEventListener('click', () => {
 
 // Word picker
 document.getElementById('wordToggle').addEventListener('click', () => {
-  renderWordList();
-  document.getElementById('wordMenu').classList.add('show');
+  state.practiceMode = !state.practiceMode;
+  // Free type means no target and no prompting; practice starts with a clean bar
+  state.currentTarget = null;
+  state.phraseWords = [];
+  state.targetIndex = 0;
+  state.targetProgress = [];
+  state.targetPromptedFlags = [];
+  state.text = '';
+  clearPromptTimer();
+  save(); render(); renderSetup();
 });
 document.getElementById('setupWordBtn').addEventListener('click', () => {
   renderWordList();
@@ -4659,6 +4759,8 @@ window.addEventListener('resize', () => {
   fitTimer = setTimeout(() => {
     fitGrid(document.getElementById('homeGrid'));
     fitGrid(document.getElementById('kbGrid'));
+    const ft = document.querySelector('#fvBody .fv-tiles');
+    if (ft) fitTiles(ft);
   }, 120);
 });
 
@@ -4834,12 +4936,10 @@ function renderPhraseBar() {
     c.textContent = bankLabel(w);
     box.appendChild(c);
   });
-  // same blinking cursor the keyboard's typing bar uses
-  const caret = document.createElement('span');
-  caret.className = 'caret';
-  box.appendChild(caret);
-  // Green enter: ready when there's something to spell
-  document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0);
+  // Green enter: ready when there's something to spell or something typed
+  const typed = (document.getElementById('pbInput').value || '').trim();
+  document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
+  document.getElementById('pbInput').placeholder = '';
 }
 function startPhraseFromHome() {
   const parts = homePhrase.join(' ').split(' ').filter(Boolean);
@@ -4852,7 +4952,17 @@ function startPhraseFromHome() {
   renderSetup();
   showKeyboard();
 }
-document.getElementById('pbGo').addEventListener('click', startPhraseFromHome);
+document.getElementById('homeRootBtn').addEventListener('click', () => {
+  homePath = [];
+  renderHome(true);
+});
+// Enter on the bar: anything typed becomes a new word, otherwise spell what is there
+document.getElementById('pbInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); if (!commitTypedWord()) startPhraseFromHome(); }
+});
+document.getElementById('pbGo').addEventListener('click', () => {
+  if (!commitTypedWord()) startPhraseFromHome();
+});
 document.getElementById('pbClear').addEventListener('click', () => {
   homePhrase = [];
   renderPhraseBar();
@@ -4876,8 +4986,6 @@ function renderCatTiles(containerId, rerender) {
     const b = document.createElement('button');
     b.className = 'cat-tile' + (homePath[level] === c.id ? ' selected' : '');
     b.textContent = c.name;
-    b.style.background = tintFor(c, 0.65);
-    b.style.color = inkFor(tintFor(c, 0.65));
     b.addEventListener('pointerdown', () => {
       longPressed = false;
       tileTimer = setTimeout(() => {
@@ -4955,12 +5063,196 @@ function bankRows() {
   return all.slice().sort((a, b) => b.t - a.t || b.n - a.n);
 }
 
+/* ===== The folders flow =====
+   Home is a grid of folders rather than a spread of recent words. Opening one
+   reads as a list, a line per word, the way a music library does. Every page
+   keeps the icon bar and a trail back to the top, so nobody is ever stranded. */
+
+const RECENT_ID = '__recent__';        // the pretend folder that holds recent words
+
+function foldersMode() { return state.homeMode === 'folders'; }
+
+// How many words sit in a folder, counting the ones in folders inside it
+function folderCount(cat) {
+  let n = tileModeFilter(rankWords(cat.words || [])).length;
+  childrenOf(cat.id).forEach(c => { n += folderCount(c); });
+  return n;
+}
+
+function renderFolders() {
+  const view = document.getElementById('folderView');
+  const crumbs = document.getElementById('fvCrumbs');
+  const body = document.getElementById('fvBody');
+  view.style.display = '';
+  document.getElementById('homeGrid').style.display = 'none';
+  crumbs.innerHTML = '';
+  body.innerHTML = '';
+
+  const inRecent = homePath[0] === RECENT_ID;
+  const cat = inRecent ? null : currentCat();
+
+  // A trail is only worth showing once you are more than one folder deep;
+  // at the first level the home icon already says everything it would.
+  if (homePath.length > 1) {
+    const trail = homePath.map(id => catById(id)).filter(Boolean);
+    trail.forEach((c, i) => {
+      if (i) {
+        const sep = document.createElement('span');
+        sep.className = 'fv-crumb-sep';
+        sep.textContent = '›';
+        crumbs.appendChild(sep);
+      }
+      const b = document.createElement('button');
+      b.className = 'fv-crumb' + (i === trail.length - 1 ? ' here' : '');
+      b.textContent = c.name;
+      b.addEventListener('click', () => { homePath = homePath.slice(0, i + 1); renderHome(true); });
+      crumbs.appendChild(b);
+    });
+  }
+
+  // ---- the top: every folder as a tile, Recent bringing up the rear ----
+  if (!homePath.length) {
+    body.className = 'fv-body is-tiles';
+    const tiles = document.createElement('div');
+    tiles.className = 'fv-tiles';
+    childrenOf(null).forEach(c => {
+      tiles.appendChild(makeFolderTile(c.name, () => { homePath = [c.id]; renderHome(true); }));
+    });
+    tiles.appendChild(makeFolderTile('Recent', () => { homePath = [RECENT_ID]; renderHome(true); }));
+    body.appendChild(tiles);
+    requestAnimationFrame(() => fitTiles(tiles));
+    return;
+  }
+  body.classList.remove('is-tiles');
+  body.className = 'fv-body ds-' + state.displaySize;
+
+  // ---- inside: folders first, then the words, a line each ----
+  const kids = cat ? childrenOf(cat.id) : [];
+  kids.forEach(c => {
+    const row = document.createElement('button');
+    row.className = 'fv-row is-folder';
+    const name = document.createElement('span');
+    name.className = 'fv-name';
+    name.textContent = c.name;
+    const go = document.createElement('span');
+    go.className = 'fv-go';
+    go.textContent = folderCount(c) + '  ›';
+    row.appendChild(name); row.appendChild(go);
+    row.addEventListener('click', () => { homePath = pathTo(c.id); renderHome(true); });
+    body.appendChild(row);
+  });
+
+  const rows = (inRecent ? bankRows() : categoryRows(cat))
+    .filter(r => !state.hiddenWords[r.word])
+    .slice()
+    .sort((a, b) => (b.t || 0) - (a.t || 0) || (b.n || 0) - (a.n || 0));
+  rows.forEach(r => {
+    const row = document.createElement('button');
+    row.className = 'fv-row';
+    const name = document.createElement('span');
+    name.className = 'fv-name';
+    name.textContent = bankLabel(r.word);
+    row.appendChild(name);
+    row.addEventListener('click', () => {
+      homePhrase.push(r.word);
+      warmSpeech();
+      speakWord(r.word, 0.95);
+      renderPhraseBar();
+      renderMagic(r.word);
+    });
+    body.appendChild(row);
+  });
+
+  if (!kids.length && !rows.length) {
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.textContent = 'Nothing in here yet — type a word in the bar above to add one.';
+    body.appendChild(n);
+  }
+}
+
+function makeFolderTile(label, onTap) {
+  const b = document.createElement('button');
+  b.className = 'fv-tile';
+  const t = document.createElement('span');
+  t.className = 'fv-label';
+  t.textContent = label;
+  b.appendChild(t);
+  b.addEventListener('click', onTap);
+  return b;
+}
+
+// Choose the arrangement that fills the space with the squarest tiles it can,
+// then size the type to whatever each tile turned out to be.
+function fitTiles(grid) {
+  const tiles = Array.from(grid.children);
+  const n = tiles.length;
+  if (!n) return;
+  const W = grid.clientWidth, H = grid.clientHeight;
+  if (!W || !H) return;
+  const gap = parseFloat(getComputedStyle(grid).gap) || 18;
+  let best = null;
+  for (let c = 1; c <= n; c++) {
+    const r = Math.ceil(n / c);
+    const cw = (W - gap * (c - 1)) / c;
+    const ch = (H - gap * (r - 1)) / r;
+    if (cw < 90 || ch < 64) continue;
+    const ratio = cw / ch;
+    const score = -Math.abs(ratio - 1.2) - (c * r - n) * 0.08;   // square, and few gaps
+    if (!best || score > best.score) best = { c, r, cw, ch, score };
+  }
+  if (!best) best = { c: Math.max(2, Math.floor(W / 200)), r: 0, cw: W / 3, ch: 90 };
+  grid.style.gridTemplateColumns = 'repeat(' + best.c + ', 1fr)';
+  grid.style.gridTemplateRows = 'repeat(' + Math.ceil(n / best.c) + ', 1fr)';
+  tiles.forEach(t => {
+    const label = t.querySelector('.fv-label');
+    if (!label) return;
+    const len = Math.max(3, label.textContent.length);
+    label.style.fontSize =
+      Math.max(16, Math.min(best.ch * 0.34, (best.cw * 1.5) / len, 54)) + 'px';
+  });
+}
+
+/* ---- typing straight into the bar, from any page ---- */
+
+function commitTypedWord() {
+  const inp = document.getElementById('pbInput');
+  const raw = normaliseWord(inp.value);
+  if (!raw) return false;
+  inp.value = '';
+  if (!state.words.includes(raw)) state.words.push(raw);
+  if (!state.wordHistory[raw]) state.wordHistory[raw] = { n: 0, t: 0 };
+  homePhrase.push(raw);
+  warmSpeech();
+  speakWord(raw, 0.95);
+  save();
+  renderPhraseBar();
+  askCategoryFor(raw, () => { renderHome(true); });
+  return true;
+}
+
 function renderHome(reset) {
   const grid = document.getElementById('homeGrid');
   const cat = currentCat();
   if (reset) {
     renderPhraseBar();
     renderCatTiles('catTiles', () => renderHome(true));
+    // In the folders flow the icons stay put on every page, so there is always
+    // a way home, and the folder strip gives way to the tiles.
+    const useFolders = foldersMode();
+    document.getElementById('homeRootBtn').style.display = useFolders && homePath.length ? '' : 'none';
+    document.getElementById('railToggle').style.display = useFolders ? 'none' : '';
+    document.getElementById('folderView').style.display = useFolders ? '' : 'none';
+    grid.style.display = useFolders ? 'none' : '';
+    if (useFolders) {
+      const wrap = document.getElementById('homeModesWrap');
+      wrap.classList.toggle('expanded', state.homeModesOpen);
+      document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
+      document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
+      document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
+      renderFolders();
+      return;
+    }
     // the fold-down options row behaves like the keyboard's
     const wrap = document.getElementById('homeModesWrap');
     wrap.classList.toggle('expanded', state.homeModesOpen);
@@ -5000,7 +5292,7 @@ function renderHome(reset) {
   slice.forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
-    const tint = state.colorCoding ? (cat ? tintFor(cat, 0.8) : wordTint(r.word)) : null;
+    const tint = null;             // words read plain now, no colour by group
     // Stacked orders wear their colour; the plain recent list only shows it on touch
     const alwaysOn = !!cat || state.bankSort !== 'recent';
     if (tint) {
@@ -5032,10 +5324,6 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
 document.getElementById('railToggle').addEventListener('click', () => {
   state.railOpen = !state.railOpen;
   save(); renderHome(true);
-});
-document.getElementById('kbRailToggle').addEventListener('click', () => {
-  state.kbRailOpen = !state.kbRailOpen;
-  save(); render();
 });
 document.getElementById('homeModesToggle').addEventListener('click', () => {
   state.homeModesOpen = !state.homeModesOpen;
@@ -5088,7 +5376,9 @@ function renderSearchStrip() {
   if (!hits.length) {
     const n = document.createElement('span');
     n.className = 'ss-none';
-    n.textContent = q ? 'nothing starts with that' : 'tap letters to find a word';
+    // Nothing matching is not a failure — carry on typing and press enter to
+    // spell it. Saying "nothing starts with that" only reads as a rebuff.
+    n.textContent = q ? '\u23ce to spell it' : 'tap letters to find a word';
     box.appendChild(n);
     return;
   }
@@ -5096,7 +5386,7 @@ function renderSearchStrip() {
     const b = document.createElement('button');
     b.className = 'ss-word';
     b.textContent = bankLabel(r.word);
-    const tint = state.colorCoding ? wordTint(r.word) : null;
+    const tint = null;
     if (tint) b.style.background = tint;
     b.addEventListener('click', () => {
       const parts = r.word.split(' ').filter(Boolean);
@@ -5132,8 +5422,7 @@ function renderKbBank() {
   bankVisibleRows().forEach(r => {
     const card = document.createElement('button');
     card.className = 'home-card';
-    const tint = (state.colorCoding && state.bankSort !== 'stale')
-      ? (cat ? tintFor(cat, 0.8) : wordTint(r.word)) : null;
+    const tint = null;
     if (tint) card.style.background = tint;
     const w = document.createElement('span');
     w.className = 'hw';
@@ -5199,8 +5488,6 @@ function askCategoryFor(word, after) {
       const b = document.createElement('button');
       b.className = 'cat-tile';
       b.textContent = (depth ? '\u2514 ' : '') + c.name;
-      b.style.background = tintFor(c, 0.65);
-      b.style.color = inkFor(tintFor(c, 0.65));
       b.style.marginLeft = (depth * 12) + 'px';
       b.addEventListener('click', () => {
         // a phrase folder keeps "Doc Hudson Best Moments" whole; others split it
@@ -5725,6 +6012,7 @@ function groupSummaries() {
   if (state.showHelpBtn) btns.push('Help');
   if (state.homeEnabled) btns.push('Home');
   if (state.homeEnabled && state.homeMode === 'tiles') btns.push('Tiles');
+  if (state.homeEnabled && state.homeMode === 'folders') btns.push('Folders');
   const hiddenN = Object.keys(state.hiddenKeys).length;
   return {
     prompts: promptSummary(),
@@ -5903,9 +6191,14 @@ function renderSettings() {
   document.getElementById('toggleSearchBtn').classList.toggle('on', state.showSearchBtn);
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
-  document.getElementById('toggleTiles').classList.toggle('on', state.homeMode === 'tiles');
+  buildSeg('segHomeMode', [
+      { value: 'tiles', label: 'Tiles' },
+      { value: 'words', label: 'Words' },
+      { value: 'folders', label: 'Folders' },
+    ], state.homeMode,
+    v => { state.homeMode = v; homePath = []; save(); renderSettings();
+           if (document.getElementById('viewHome').classList.contains('active')) renderHome(true); });
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
-  document.getElementById('toggleColor').classList.toggle('on', state.colorCoding);
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -6167,10 +6460,6 @@ document.getElementById('toggleHelpBtn').addEventListener('click', () => {
 document.getElementById('toggleHome').addEventListener('click', () => {
   state.homeEnabled = !state.homeEnabled; save(); renderSettings();
 });
-document.getElementById('toggleTiles').addEventListener('click', () => {
-  state.homeMode = (state.homeMode === 'tiles') ? 'words' : 'tiles';
-  save(); renderSettings();
-});
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
 });
@@ -6179,11 +6468,6 @@ document.getElementById('unhideWordsBtn').addEventListener('click', () => {
   save(); renderSettings();
   if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
   if (kbBankOpen) renderKbBank();
-});
-document.getElementById('toggleColor').addEventListener('click', () => {
-  state.colorCoding = !state.colorCoding;
-  save(); renderSettings();
-  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
 });
 document.getElementById('toggleSpeakError').addEventListener('click', () => {
   state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
