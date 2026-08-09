@@ -1905,7 +1905,7 @@
     </div>
 
     <!-- ============ VOICE ============ -->
-    <div class="sgroup" data-group="sync">
+    <div class="sgroup" data-group="sync" style="display:none;">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">&#9729;</span>
         <span class="sg-title">Sync &amp; backup</span>
@@ -2009,7 +2009,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 67 - 3 Aug';
+const BUILD = 'build 68 - 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2139,7 +2139,7 @@ const state = {
   bankSort: 'recent',         // recent | groups | stale
   colorCoding: false,          // tint words by the group they belong to
   gridFill: 9,                // tiles a screenful holds: 6 | 9 | 12 | 0 for scroll
-  syncOn: false,              // sync to your own Cloudflare bucket
+  syncOn: false,              // parked for now; the backups themselves are untouched
   syncUrl: SYNC_SERVER,       // the backup server, changeable but rarely touched
   syncKey: '',                // the secret that names and unlocks your backups
   syncDevice: '',             // a friendly name so history shows where a save came from
@@ -2267,7 +2267,7 @@ async function load() {
         settingsOrder: saved.settingsOrder || [],
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
         colorCoding: false,          // colour coding is retired: everything reads plain
-        syncOn: saved.syncOn ?? false,
+        syncOn: false,
         syncUrl: saved.syncUrl || SYNC_SERVER,
         syncKey: saved.syncKey || '',
         syncDevice: saved.syncDevice || '',
@@ -2315,6 +2315,8 @@ async function load() {
     });
     save();
   }
+
+  if (state.syncOn) { state.syncOn = false; save(); }   // parked, not deleted
 
   if (!state.settingsTidied) {
     state.settingsTidied = true;
@@ -3393,6 +3395,8 @@ function mergeStarterWords() {
 // Asked once on a device that has never been offered it. Saying no is
 // remembered, and Settings still has the switch either way.
 function offerBackup() {
+  return;                       // backup is off for now, so nothing to ask about
+  /* eslint-disable no-unreachable */
   if (state.syncOn || state.backupAsked) return;
   setTimeout(async () => {
     if (state.syncOn || state.backupAsked) return;   // sorted out in the meantime
