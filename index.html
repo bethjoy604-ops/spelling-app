@@ -2016,7 +2016,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 55 \u00b7 3 Aug';
+const BUILD = 'build 56 - 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3286,25 +3286,42 @@ document.getElementById('syncHistMenu').addEventListener('click', e => {
 });
 
 // ---- is this the newest build? ----
-// Asked once, on the opening screen only. It must never appear over the keys
-// while someone is spelling, and it never asks twice in the same sitting.
+// A tab left open for days would otherwise sit on an old version for ever. So
+// the app checks quietly and, if it is behind and nobody is mid-word, fetches
+// the new one itself. Only if that cannot be done safely does it ask.
 let updateAsked = false;
-async function checkForUpdate() {
-  if (updateAsked) return;
-  if (location.protocol === 'file:') return;      // a downloaded copy has nothing to check against
-  if (!document.getElementById('viewSplash').classList.contains('active') &&
-      !document.getElementById('viewSetup').classList.contains('active')) return;
+async function newestBuild() {
+  if (location.protocol === 'file:') return null;   // a local copy has nothing to check against
   try {
     const res = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return;
-    const text = await res.text();
-    const m = text.match(/const BUILD = '([^']*)'/);
-    if (!m || m[1] === BUILD) return;
-    updateAsked = true;
-    const bar = document.getElementById('updateBar');
-    bar.querySelector('.ub-text').textContent = 'A newer version is ready';
-    bar.classList.add('show');
-  } catch (e) {}
+    if (!res.ok) return null;
+    const m = (await res.text()).match(/const BUILD = '([^']*)'/);
+    if (!m) return null;
+    // the file is source code, so \uXXXX has not been resolved yet
+    return m[1].replace(/\\u([0-9a-fA-F]{4})/g,
+      (_, h) => String.fromCharCode(parseInt(h, 16)));
+  } catch (e) { return null; }
+}
+function busyWithAWord() {
+  return !!(state.currentTarget || (state.text || '').length || homePhrase.length);
+}
+async function checkForUpdate() {
+  if (updateAsked) return;
+  const latest = await newestBuild();
+  if (!latest || latest === BUILD) return;
+
+  // Reload on the spot when nothing would be lost, and only ever once per
+  // visit, so a bad deploy can never put the app in a loop.
+  const already = sessionStorage.getItem('kbd-self-updated');
+  if (!already && !busyWithAWord()) {
+    try { sessionStorage.setItem('kbd-self-updated', latest); } catch (e) {}
+    location.replace(location.pathname + '?v=' + Date.now());
+    return;
+  }
+  updateAsked = true;
+  const bar = document.getElementById('updateBar');
+  bar.querySelector('.ub-text').textContent = 'A newer version is ready';
+  bar.classList.add('show');
 }
 function hideUpdateBar() {
   updateAsked = true;
@@ -3314,7 +3331,17 @@ document.getElementById('updateReload').addEventListener('click', () => {
   location.replace(location.pathname + '?v=' + Date.now());
 });
 document.getElementById('updateLater').addEventListener('click', hideUpdateBar);
-setTimeout(checkForUpdate, 3000);
+setTimeout(checkForUpdate, 2500);
+// Coming back to a tab that has been sitting in the background is exactly when
+// it is most likely to be out of date.
+window.addEventListener('pageshow', e => { if (e.persisted) checkForUpdate(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && Date.now() - lastUpdateLook > 300000) {
+    lastUpdateLook = Date.now();
+    checkForUpdate();
+  }
+});
+let lastUpdateLook = Date.now();
 
 
 
