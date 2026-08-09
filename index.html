@@ -372,19 +372,19 @@
     display: flex; align-items: center; gap: 12px; width: 100%;
     border: none; background: var(--surface); border-radius: 14px;
     box-shadow: var(--shadow); margin-bottom: clamp(8px, 1.2vmin, 16px); cursor: pointer;
-    padding: clamp(10px, 1.6vh, 18px) 18px; font-family: inherit; text-align: left;
+    padding: clamp(14px, 2.2vh, 26px) 22px; font-family: inherit; text-align: left;
   }
   .fv-row:active { transform: scale(0.995); }
   .fv-row .fv-name {
-    flex: 1; min-width: 0; font-weight: 700; color: var(--ink);
-    font-size: clamp(17px, 2.8vmin, 30px); line-height: 1.2; word-break: break-word;
+    flex: 1; min-width: 0; font-weight: 800; color: var(--ink);
+    font-size: clamp(30px, 5.2vmin, 60px); line-height: 1.15; word-break: break-word;
   }
   /* the same small / medium / large the rest of the app answers to */
-  .fv-body.ds-small .fv-row .fv-name { font-size: clamp(15px, 2.2vmin, 24px); }
-  .fv-body.ds-med   .fv-row .fv-name { font-size: clamp(19px, 3.2vmin, 36px); }
-  .fv-body.ds-large .fv-row .fv-name { font-size: clamp(24px, 4.4vmin, 52px); }
-  .fv-body.ds-small .fv-row { padding: clamp(8px, 1.2vh, 14px) 16px; }
-  .fv-body.ds-large .fv-row { padding: clamp(14px, 2.2vh, 26px) 22px; }
+  .fv-body.ds-small .fv-row .fv-name { font-size: clamp(24px, 4vmin, 44px); }
+  .fv-body.ds-med   .fv-row .fv-name { font-size: clamp(30px, 5.2vmin, 60px); }
+  .fv-body.ds-large .fv-row .fv-name { font-size: clamp(38px, 6.8vmin, 82px); }
+  .fv-body.ds-small .fv-row { padding: clamp(10px, 1.6vh, 18px) 20px; }
+  .fv-body.ds-large .fv-row { padding: clamp(18px, 2.8vh, 34px) 26px; }
   .fv-row.is-folder { background: var(--bg); box-shadow: 0 0 0 3px var(--border) inset; }
   .fv-row .fv-go { font-size: 1.2em; font-weight: 900; color: var(--muted); }
   .sync-status {
@@ -1391,13 +1391,13 @@
       <span class="chevron" id="homeChevron">&#9662;</span>
     </button>
     <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
-    <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
     <div class="folder-strip" id="catTiles"></div>
     <div class="modes-wrap" id="homeModesWrap">
       <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     </div>
     <div class="spacer"></div>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#128161;</button>
+    <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
@@ -1446,10 +1446,6 @@
     </div>
     <div class="spacer"></div>
     <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
-    <button class="wordbank-btn" id="wordBankBtn" aria-label="Word bank">
-      <span class="emoji">📚</span>
-      <span class="count" id="wordBankCount">0</span>
-    </button>
     <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
     <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
   </div>
@@ -1583,7 +1579,7 @@
       <button class="mbtn action" id="pairCopyBtn">Copy the link</button>
       <button class="mbtn action primary" data-action="cancel">Done</button>
     </div>
-    <div class="help-note">Anyone with this link gets your words, so only send it to yourself. To give the app to someone else, share <b id="pairPlain"></b> instead \u2014 they will get their own.</div>
+    <div class="help-note">Anyone with this link gets your words, so only send it to yourself. To give the app to someone else, share <b id="pairPlain"></b> instead — they will get their own.</div>
   </div>
 </div>
 <div class="overlay" id="syncHistMenu">
@@ -1856,13 +1852,10 @@
       </button>
       <div class="sgroup-body">
         <div class="settings-list">
-          <div class="setting-row"><span>Setup mode (long-press menu)</span><div class="toggle on" id="toggleSetupMode"></div></div>
-          <div class="setting-row"><span>Haptics (Android only)</span><div class="toggle on" id="toggleHaptics"></div></div>
         </div>
 
         <div class="sublabel">On-screen buttons</div>
         <div class="settings-list">
-          <div class="setting-row"><span>&#128218; Word bank button</span><div class="toggle on" id="toggleBankCount"></div></div>
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
           <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
@@ -1878,11 +1871,11 @@
 
         <div class="sublabel">How home works</div>
         <div class="seg-row" id="segHomeMode"></div>
-        <div class="help-note">Tiles spreads the words used most recently across the screen, with folders in a strip. Words is the same but plainer. Folders opens on a grid of your groups instead, and each one opens as a list you scroll \u2014 better for long titles, and there is always a way back to the top.</div>
+        <div class="help-note">Tiles spreads the words used most recently across the screen, with folders in a strip. Words is the same but plainer. Folders opens on a grid of your groups instead, and each one opens as a list you scroll — better for long titles, and there is always a way back to the top.</div>
 
         <div class="sublabel">Tiles on a screenful</div>
         <div class="seg-row" id="segGridFill"></div>
-        <div class="help-note">Every tile uses the same size of type; each one is only as wide as its word, and the rows fill the width neatly. This number sets how big that type is \u2014 pick 6 for big tiles, 12 for smaller ones. More words than that simply carry on below, so nothing is ever hidden.</div>
+        <div class="help-note">Every tile uses the same size of type; each one is only as wide as its word, and the rows fill the width neatly. This number sets how big that type is — pick 6 for big tiles, 12 for smaller ones. More words than that simply carry on below, so nothing is ever hidden.</div>
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
         <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
 
@@ -1930,7 +1923,7 @@
 
         <div id="syncOnBox" style="display:none;">
           <button class="mbtn action primary" id="syncPairBtn" style="width:100%; margin-top:8px;">Add another device \u2192</button>
-          <div class="help-note">Shows a square code. Point your other device's camera at it and the app opens there already set up \u2014 nothing to type.</div>
+          <div class="help-note">Shows a square code. Point your other device's camera at it and the app opens there already set up — nothing to type.</div>
 
           <button class="mbtn action" id="syncKeyToggle" style="width:100%; margin-top:10px;">Show my key and recovery file</button>
           <div id="syncKeyBox" style="display:none;">
@@ -2016,7 +2009,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 57 - 3 Aug';
+const BUILD = 'build 65 - 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2054,7 +2047,7 @@ function shadeFor(solid, intensity) {
   if (intensity === 'dark')  return mixHex(solid, '#000000', 0.34);
   return solid;
 }
-const BANK_SORTS = { recent: 'Recent', groups: 'Groups', stale: 'Needs practice' };
+const BANK_SORTS = { recent: 'Recent', used: 'Most used' };
 const TILE_MODES = { word: 'Words', sentence: 'Sentences', mixed: 'Both' };
 const GRID_FILLS = { 6: '6', 9: '9', 12: '12', 0: 'Scroll' };
 const SIZE_STEPS = ['small', 'med', 'large'];
@@ -2083,22 +2076,25 @@ const ENTER_SPEECH_LABELS = {
 };
 const ERROR_FLASH_MS = 1100;
 const ERROR_ACTION_LABELS = {
-  now:     'Show prompt now',
+  now:     'Show prompt next',
   restart: 'Restart the wait',
   none:    'No change',
 };
+// A beat between naming the letter that was wrong and offering the right one,
+// so the two do not run together into one noise.
+const ERROR_TO_PROMPT_MS = 900;
 
 const state = {
   text: '',
-  caseMode: 0,
+  caseMode: 3,                // aA auto: a capital only where one belongs
   keyLevels: {},
   hiddenKeys: {},
   phonemes: {...DEFAULT_PHONEMES},
   letterSpeech: true,
   enterSpeech: true,
-  setupMode: true,
+  setupMode: false,           // retired: no long-press menu
   phoneticMode: false,
-  haptics: true,
+  haptics: false,             // retired
   targetSpeech: true,
   modesOpen: false,
   voiceName: '',
@@ -2124,20 +2120,20 @@ const state = {
   promptColor: 'blue',        // key of PROMPT_COLORS
   promptIntensity: 'medium',  // light | medium | dark
   promptPulseOn: true,        // gentle pulsing motion on the prompted letter
-  promptSizeOn: false,        // enlarge the next letter's key
-  promptTileOn: false,        // magnify the letter in the Target bar
-  promptTileSize: 'med',      // small | med | large
-  promptSize: 'med',          // small | med | large
-  promptVerbalOn: false,      // speak the next letter as a prompt
+  promptSizeOn: true,         // enlarge the next letter's key
+  promptTileOn: true,         // magnify the letter in the Target bar
+  promptTileSize: 'large',    // small | med | large
+  promptSize: 'large',        // small | med | large
+  promptVerbalOn: true,       // speak the next letter as a prompt
   promptDelaySec: 0,          // 0-10s before any prompt appears
   helpMode: false,            // prompts wait until the lightbulb is pressed
   otherKeysMode: 'normal',    // normal | faded | blank | black
 
   // ===== On-screen keyboard buttons =====
-  showBankCount: true,        // the number badge on the word bank
-  showSearchBtn: false,       // magnifier that searches past words
+  showBankCount: false,       // retired with the word bank button
+  showSearchBtn: true,        // magnifier that searches past words
   showHelpBtn: false,         // fires the prompts on demand
-  homeEnabled: false,         // land on a word-bank home page
+  homeEnabled: true,          // land on a word-bank home page
   practiceMode: true,         // spelling practice by default; off means free typing
   homeMode: 'tiles',          // tiles | words | folders — how home presents the bank
   bankSort: 'recent',         // recent | groups | stale
@@ -2152,6 +2148,8 @@ const state = {
   backupAsked: false,         // the one-time offer has been made on this device
   settingsAt: 0,              // when this device last changed something
   syncRestoredAt: 0,          // when a rollback was last made, so devices follow it
+  settingsTidied: false,      // the one-time clean-up of retired defaults
+  wordCase: {},               // how each title was written, for reading back
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
   revives: { word: {}, cat: {}, catWord: {} }, // and deliberate re-adds, which undo them
   bankLimit: 0,               // no cap: the layout grows instead of hiding words
@@ -2167,17 +2165,17 @@ const state = {
   wordHistory: {},            // {WORD: {n: times spelled, t: last finished}}
 
   // ===== Sizes =====
-  keySize: 'med',             // keyboard letter size
+  keySize: 'large',           // keyboard letter size
   displaySize: 'med',         // speller's typing bar
   bannerSize: 'med',          // target/prompt bar above the typing bar
 
   // ===== Error correction =====
-  errorFeedback: 'none',      // none | phrase | wrong | correct
+  errorFeedback: 'wrong',     // none | phrase | wrong | correct
   errorPhrase: DEFAULT_ERROR_PHRASE, // spoken when errorFeedback is 'phrase' (a recording wins)
   errorPromptAction: 'now',   // now | restart | none
-  errorLetterMode: 'keep',    // keep | flash | remove — what happens to the wrong letter
+  errorLetterMode: 'flash',   // keep | flash | remove — what happens to the wrong letter
   speakErrorLetter: true,     // say a wrong letter out loud as it's typed
-  enterSpeechMode: 'typed',   // typed | correct — what Enter reads back
+  enterSpeechMode: 'correct', // typed | correct — what Enter reads back
 };
 
 // Pending "flash then clear" state (runtime only)
@@ -2218,15 +2216,15 @@ async function load() {
     if (res && res.value) {
       const saved = JSON.parse(res.value);
       Object.assign(state, {
-        caseMode: saved.caseMode ?? 0,
+        caseMode: saved.caseMode ?? 3,
         keyLevels: saved.keyLevels || {},
         hiddenKeys: saved.hiddenKeys || {},
         phonemes: {...DEFAULT_PHONEMES, ...(saved.phonemes || {})},
         letterSpeech: saved.letterSpeech ?? true,
         enterSpeech: saved.enterSpeech ?? true,
-        setupMode: saved.setupMode ?? true,
+        setupMode: false,
         phoneticMode: saved.phoneticMode ?? false,
-        haptics: saved.haptics ?? true,
+        haptics: false,
         targetSpeech: saved.targetSpeech ?? true,
         modesOpen: saved.modesOpen ?? false,
         voiceName: saved.voiceName ?? '',
@@ -2248,19 +2246,19 @@ async function load() {
         promptColor: PROMPT_COLORS[saved.promptColor] ? saved.promptColor : 'blue',
         promptIntensity: INTENSITY_LABELS[saved.promptIntensity] ? saved.promptIntensity : 'medium',
         promptPulseOn: saved.promptPulseOn ?? true,
-        promptSizeOn: saved.promptSizeOn ?? false,
-        promptTileOn: saved.promptTileOn ?? false,
-        promptTileSize: SIZE_STEPS.includes(saved.promptTileSize) ? saved.promptTileSize : 'med',
-        promptSize: SIZE_STEPS.includes(saved.promptSize) ? saved.promptSize : 'med',
-        promptVerbalOn: saved.promptVerbalOn ?? false,
+        promptSizeOn: saved.promptSizeOn ?? true,
+        promptTileOn: saved.promptTileOn ?? true,
+        promptTileSize: SIZE_STEPS.includes(saved.promptTileSize) ? saved.promptTileSize : 'large',
+        promptSize: SIZE_STEPS.includes(saved.promptSize) ? saved.promptSize : 'large',
+        promptVerbalOn: saved.promptVerbalOn ?? true,
         promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
         helpMode: saved.helpMode ?? false,
         otherKeysMode: OTHER_KEYS_LABELS[saved.otherKeysMode] ? saved.otherKeysMode : 'normal',
 
-        showBankCount: saved.showBankCount ?? true,
-        showSearchBtn: saved.showSearchBtn ?? false,
+        showBankCount: false,
+        showSearchBtn: saved.showSearchBtn ?? true,
         showHelpBtn: saved.showHelpBtn ?? false,
-        homeEnabled: saved.homeEnabled ?? false,
+        homeEnabled: saved.homeEnabled ?? true,
         practiceMode: saved.practiceMode ?? true,
         homeMode: ['words', 'folders'].includes(saved.homeMode) ? saved.homeMode : 'tiles',
         railOpen: saved.railOpen ?? true,
@@ -2278,6 +2276,8 @@ async function load() {
         syncLastStamp: saved.syncLastStamp || '',
         settingsAt: saved.settingsAt || 0,
         syncRestoredAt: saved.syncRestoredAt || 0,
+        settingsTidied: saved.settingsTidied ?? false,
+        wordCase: saved.wordCase || {},
         tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
         revives: saved.revives || { word: {}, cat: {}, catWord: {} },
         gridFill: (saved.gridFill !== undefined ? +saved.gridFill
@@ -2290,7 +2290,7 @@ async function load() {
         catSeq: saved.catSeq || 1,
         wordHistory: saved.wordHistory || {},
 
-        keySize: SIZE_STEPS.includes(saved.keySize) ? saved.keySize : 'med',
+        keySize: SIZE_STEPS.includes(saved.keySize) ? saved.keySize : 'large',
         displaySize: SIZE_STEPS.includes(saved.displaySize) ? saved.displaySize : 'med',
         bannerSize: SIZE_STEPS.includes(saved.bannerSize) ? saved.bannerSize : 'med',
 
@@ -2298,12 +2298,24 @@ async function load() {
                        : (ERROR_FEEDBACK_LABELS[saved.errorFeedback] ? saved.errorFeedback : 'none'),
         errorPhrase: saved.errorPhrase ?? DEFAULT_ERROR_PHRASE,
         errorPromptAction: ERROR_ACTION_LABELS[saved.errorPromptAction] ? saved.errorPromptAction : 'now',
-        errorLetterMode: ERROR_LETTER_LABELS[saved.errorLetterMode] ? saved.errorLetterMode : 'keep',
+        errorLetterMode: ERROR_LETTER_LABELS[saved.errorLetterMode] ? saved.errorLetterMode : 'flash',
         speakErrorLetter: saved.speakErrorLetter ?? true,
-        enterSpeechMode: ENTER_SPEECH_LABELS[saved.enterSpeechMode] ? saved.enterSpeechMode : 'typed',
+        enterSpeechMode: ENTER_SPEECH_LABELS[saved.enterSpeechMode] ? saved.enterSpeechMode : 'correct',
       });
     }
   } catch (e) {}
+  // Settings that were on by default before, and should not have been
+  if (!state.settingsTidied) {
+    state.settingsTidied = true;
+    state.showHelpBtn = false;
+    state.helpMode = false;
+    state.showBankCount = false;
+    state.setupMode = false;
+    state.haptics = false;
+    state.colorCoding = false;
+    save();
+  }
+
   // The starter words are always available alongside whatever has been added,
   // rather than only appearing in an empty bank. Anything deliberately deleted
   // stays deleted — they are topped up, not forced back.
@@ -2390,6 +2402,8 @@ async function save() {
       syncLastStamp: state.syncLastStamp,
       settingsAt: state.settingsAt,
       syncRestoredAt: state.syncRestoredAt,
+      settingsTidied: state.settingsTidied,
+      wordCase: state.wordCase,
       tombs: state.tombs,
       revives: state.revives,
       tileMode: state.tileMode,
@@ -2765,6 +2779,7 @@ function syncSnapshot(withAudio) {
     words: (state.words || []).slice(),
     wordHistory: state.wordHistory || {},
     hiddenWords: state.hiddenWords || {},
+    wordCase: state.wordCase || {},
     categories: (state.categories || []).map(c => Object.assign({}, c)),
     catSeq: state.catSeq || 0,
     tombs: state.tombs || { word: {}, cat: {}, catWord: {} },
@@ -2866,6 +2881,7 @@ function syncMerge(mine, theirs) {
   });
 
   const hiddenWords = Object.assign({}, mine.hiddenWords || {}, theirs.hiddenWords || {});
+  const wordCase = Object.assign({}, mine.wordCase || {}, theirs.wordCase || {});
 
   // groups: matched on id, the newer side describes them, both sides' words are kept
   const byId = {};
@@ -2905,6 +2921,7 @@ function syncMerge(mine, theirs) {
     words,
     wordHistory,
     hiddenWords,
+    wordCase,
     categories: order.map(id => byId[id]),
     catSeq: Math.max(mine.catSeq || 0, theirs.catSeq || 0),
     tombs,
@@ -2920,6 +2937,7 @@ function syncApply(snap) {
   state.words = snap.words || [];
   state.wordHistory = snap.wordHistory || {};
   state.hiddenWords = snap.hiddenWords || {};
+  state.wordCase = snap.wordCase || {};
   state.categories = snap.categories || [];
   state.catSeq = Math.max(state.catSeq || 0, snap.catSeq || 0);
   state.tombs = syncTombs(snap.tombs);
@@ -3668,10 +3686,6 @@ function showLevelUp(letter, faded) {
     ? displayLetter(letter) + ' is on its own!'
     : 'Level Up!';
   el.classList.add('show');
-  // sparkle bump the word bank
-  const bank = document.getElementById('wordBankBtn');
-  bank.classList.add('bouncing');
-  setTimeout(() => bank.classList.remove('bouncing'), 900);
   setTimeout(() => el.classList.remove('show'), 1900);
 }
 function showMastered(word) {
@@ -3933,8 +3947,6 @@ function render() {
     state.practiceMode ? 'Spelling practice' : 'Free type';
   document.getElementById('wordToggle').classList.toggle('active', state.practiceMode);
 
-  document.getElementById('wordBankCount').textContent = state.wordBank.length;
-  document.getElementById('wordBankBtn').style.display = state.showBankCount ? '' : 'none';
   document.getElementById('homeBtn').style.display = state.homeEnabled ? '' : 'none';
   document.getElementById('searchBtn').style.display = state.showSearchBtn ? '' : 'none';
   document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
@@ -4314,13 +4326,24 @@ function handleError(expectedLetter, typedLetter) {
   // 2. What the prompt does
   // If the error feedback already said the letter, don't say it twice
   const alreadySaid = (state.errorFeedback === 'correct');
-  if (state.errorPromptAction === 'now') {
-    revealPromptNow(!alreadySaid);
-  } else if (state.errorPromptAction === 'restart') {
-    armPrompt(true);
-  } else if (state.promptVerbalOn && promptsShowing() && !alreadySaid) {
-    speakVerbalPrompt(true); // already showing — repeat the spoken cue
-  }
+  // Anything spoken about the mistake needs room to finish before the app
+  // offers the next letter, or the two talk over each other.
+  const spokeAboutTheSlip =
+    state.errorFeedback === 'phrase' ||
+    (state.errorFeedback === 'wrong' && !!typedLetter) ||
+    (state.letterSpeech && state.speakErrorLetter && !!typedLetter);
+  const beat = spokeAboutTheSlip ? gap + ERROR_TO_PROMPT_MS : 0;
+  const thenPrompt = () => {
+    if (state.errorPromptAction === 'now') {
+      revealPromptNow(!alreadySaid);
+    } else if (state.errorPromptAction === 'restart') {
+      armPrompt(true);
+    } else if (state.promptVerbalOn && promptsShowing() && !alreadySaid) {
+      speakVerbalPrompt(true); // already showing — repeat the spoken cue
+    }
+  };
+  if (beat) setTimeout(thenPrompt, beat);
+  else thenPrompt();
 }
 
 // ---- Celebration ----
@@ -4349,7 +4372,7 @@ function celebrate(word) {
 
   // Flying word to word bank
   const dispRect = display.getBoundingClientRect();
-  const bankBtn = document.getElementById('wordBankBtn');
+  const bankBtn = document.getElementById('homeBtn');
   const bankRect = bankBtn.getBoundingClientRect();
   const fw = document.createElement('div');
   fw.className = 'flying-word';
@@ -4467,8 +4490,10 @@ document.getElementById('newWordInput').addEventListener('keydown', e => {
 });
 function addWordFromInput() {
   const inp = document.getElementById('newWordInput');
-  const raw = normaliseWord(inp.value);
+  const typed = inp.value;
+  const raw = normaliseWord(typed);
   if (!raw) return;
+  rememberCase(typed, raw);
   if (!state.words.includes(raw)) {
     state.words.push(raw);
     if (!state.wordHistory[raw]) state.wordHistory[raw] = { n: 0, t: 0 };
@@ -4719,9 +4744,8 @@ function categoryRows(cat) {
   if (cat.rule === 'recent') return searchWords('').slice().sort((a, b) => b.t - a.t);
   const rows = catAllowsPhrases(cat) ? rankWords(cat.words || []) : tileModeFilter(rankWords(cat.words || []));
   // The order control applies inside a group too
-  if (state.bankSort === 'recent') return rows.sort((a, b) => b.t - a.t || b.n - a.n);
-  if (state.bankSort === 'stale') return rows.sort((a, b) => (a.t || 0) - (b.t || 0));
-  return rows;
+  if (state.bankSort === 'used') return rows.sort((a, b) => b.n - a.n || b.t - a.t);
+  return rows.sort((a, b) => b.t - a.t || b.n - a.n);
 }
 
 // Lay the tiles out in clean rows: one font size for the lot, each tile only
@@ -4845,7 +4869,32 @@ function makeFolderCard(c, rerender) {
 }
 
 // The bank always reads in lower case, whatever the spelling case mode is
-function bankLabel(w) { return (w || '').toLowerCase(); }
+// Words are stored in capitals so spelling can be checked letter by letter, but
+// a title deserves to read the way it was written. Whatever was typed is kept
+// and shown; anything in a phrase folder falls back to title case.
+function rememberCase(raw, key) {
+  const text = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!text || text === key) return;               // nothing worth keeping
+  // an all-lower-case word is just the ordinary way words already read
+  if (text === text.toLowerCase()) return;
+  state.wordCase = state.wordCase || {};
+  state.wordCase[key] = text;
+}
+function titleCase(w) {
+  return String(w || '').toLowerCase().split(' ').map(part => {
+    if (!part) return part;
+    if (part.length === 1) return part.toUpperCase();
+    return part.charAt(0).toUpperCase() + part.slice(1);
+  }).join(' ');
+}
+function bankLabel(w) {
+  const key = w || '';
+  const kept = (state.wordCase || {})[key];
+  if (kept) return kept;
+  // a title inside a phrase folder reads as a title
+  if (key.includes(' ') && categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
+  return key.toLowerCase();
+}
 // Which groups a word belongs to — drives the tint behind its card
 function categoriesOf(word) {
   return state.categories.filter(c => (c.words || []).includes(word));
@@ -5082,25 +5131,9 @@ function tileModeFilter(rows) {
 // The bank in whichever order is chosen
 function bankRows() {
   const all = tileModeFilter(searchWords(''));
-  if (state.bankSort === 'stale') {
-    return all.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
-  }
-  if (state.bankSort === 'groups') {
-    const out = [];
-    const placed = {};
-    const walk = (parent) => {
-      childrenOf(parent).forEach(c => {
-        tileModeFilter(rankWords(c.words || [])).sort((a, b) => (a.t || 0) - (b.t || 0)).forEach(r => {
-          if (placed[r.word]) return;
-          placed[r.word] = true;
-          out.push(r);
-        });
-        walk(c.id);
-      });
-    };
-    walk(null);
-    all.forEach(r => { if (!placed[r.word]) out.push(r); });
-    return out;
+  // Most used counts how often a word has been spelled; Recent is by when.
+  if (state.bankSort === 'used') {
+    return all.slice().sort((a, b) => (b.n || 0) - (a.n || 0) || (b.t || 0) - (a.t || 0));
   }
   return all.slice().sort((a, b) => b.t - a.t || b.n - a.n);
 }
@@ -5259,8 +5292,10 @@ function fitTiles(grid) {
 
 function commitTypedWord() {
   const inp = document.getElementById('pbInput');
-  const raw = normaliseWord(inp.value);
+  const typed = inp.value;
+  const raw = normaliseWord(typed);
   if (!raw) return false;
+  rememberCase(typed, raw);
   inp.value = '';
   if (!state.words.includes(raw)) state.words.push(raw);
   if (!state.wordHistory[raw]) state.wordHistory[raw] = { n: 0, t: 0 };
@@ -5790,7 +5825,9 @@ function importText(text) {
     if (!cat) { cat = addCategory(name, parent); groups++; }
     stack.push({ depth, id: cat.id });
     rest.split(',').forEach(raw => {
-      splitForMode(raw, cat).forEach(w => {
+      const parts = splitForMode(raw, cat);
+      if (parts.length === 1) rememberCase(raw, parts[0]);
+      parts.forEach(w => {
         if (!cat.words.includes(w)) { cat.words.push(w); words++; }
         if (!state.words.includes(w)) state.words.push(w);
         if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
@@ -5892,10 +5929,6 @@ document.getElementById('helpBtn').addEventListener('click', () => {
 });
 
 // Word bank sheet
-document.getElementById('wordBankBtn').addEventListener('click', () => {
-  renderWordBank();
-  document.getElementById('wordBankMenu').classList.add('show');
-});
 function renderWordBank() {
   const empty = document.getElementById('wordBankEmpty');
   const bw = document.getElementById('bankWords');
@@ -6224,7 +6257,6 @@ function renderSettings() {
   buildSeg('segEnterSpeech', Object.entries(ENTER_SPEECH_LABELS).map(([v, l]) => ({ value: v, label: l })), state.enterSpeechMode,
     v => { state.enterSpeechMode = v; save(); renderSettings(); });
   document.getElementById('toggleSpeakError').classList.toggle('on', state.speakErrorLetter);
-  document.getElementById('toggleBankCount').classList.toggle('on', state.showBankCount);
   const bankN = searchWords('').length;
   document.getElementById('setWordCount').textContent =
     bankN ? bankN + ' words in the bank \u00b7 ' + state.categories.length + ' groups'
@@ -6259,8 +6291,6 @@ function renderSettings() {
 
   document.getElementById('toggleLetterSpeech').classList.toggle('on', state.letterSpeech);
   document.getElementById('toggleEnterSpeech').classList.toggle('on', state.enterSpeech);
-  document.getElementById('toggleSetupMode').classList.toggle('on', state.setupMode);
-  document.getElementById('toggleHaptics').classList.toggle('on', state.haptics);
   document.getElementById('toggleTargetSpeech').classList.toggle('on', state.targetSpeech);
   document.getElementById('toggleScore').classList.toggle('on', state.scoreMode);
   document.getElementById('toggleFade').classList.toggle('on', state.fadeMode);
@@ -6469,8 +6499,10 @@ document.getElementById('bulkAddBtn').addEventListener('click', () => {
 // ---- Word bank, from settings ----
 function addWordFromSettings() {
   const inp = document.getElementById('setWordInput');
-  const raw = normaliseWord(inp.value);
+  const typed = inp.value;
+  const raw = normaliseWord(typed);
   if (!raw) return;
+  rememberCase(typed, raw);
   if (!state.words.includes(raw)) state.words.push(raw);
   if (!state.wordHistory[raw]) state.wordHistory[raw] = { n: 0, t: 0 };
   inp.value = '';
@@ -6488,10 +6520,6 @@ document.getElementById('setGroupsBtn').addEventListener('click', () => {
 document.getElementById('setImportBtn').addEventListener('click', () => {
   document.getElementById('importBox').value = '';
   document.getElementById('importMenu').classList.add('show');
-});
-
-document.getElementById('toggleBankCount').addEventListener('click', () => {
-  state.showBankCount = !state.showBankCount; save(); render(); renderSettings();
 });
 document.getElementById('toggleSearchBtn').addEventListener('click', () => {
   state.showSearchBtn = !state.showSearchBtn; save(); render(); renderSettings();
@@ -6526,8 +6554,6 @@ document.getElementById('delaySlider').addEventListener('change', () => {
 
 document.getElementById('toggleLetterSpeech').addEventListener('click', () => { state.letterSpeech = !state.letterSpeech; save(); renderSettings(); });
 document.getElementById('toggleEnterSpeech').addEventListener('click', () => { state.enterSpeech = !state.enterSpeech; save(); renderSettings(); });
-document.getElementById('toggleSetupMode').addEventListener('click', () => { state.setupMode = !state.setupMode; save(); renderSettings(); });
-document.getElementById('toggleHaptics').addEventListener('click', () => { state.haptics = !state.haptics; save(); renderSettings(); });
 document.getElementById('toggleTargetSpeech').addEventListener('click', () => { state.targetSpeech = !state.targetSpeech; save(); renderSettings(); });
 document.getElementById('toggleScore').addEventListener('click', () => { state.scoreMode = !state.scoreMode; save(); renderSettings(); });
 document.getElementById('toggleFade').addEventListener('click', () => { state.fadeMode = !state.fadeMode; save(); render(); renderSettings(); });
