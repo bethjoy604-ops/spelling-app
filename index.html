@@ -2009,7 +2009,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 65 - 3 Aug';
+const BUILD = 'build 66 - 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2148,6 +2148,7 @@ const state = {
   backupAsked: false,         // the one-time offer has been made on this device
   settingsAt: 0,              // when this device last changed something
   syncRestoredAt: 0,          // when a rollback was last made, so devices follow it
+  groupOrder: 0,              // which arrangement of the standard groups is in use
   settingsTidied: false,      // the one-time clean-up of retired defaults
   wordCase: {},               // how each title was written, for reading back
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
@@ -2276,6 +2277,7 @@ async function load() {
         syncLastStamp: saved.syncLastStamp || '',
         settingsAt: saved.settingsAt || 0,
         syncRestoredAt: saved.syncRestoredAt || 0,
+        groupOrder: saved.groupOrder ?? 0,
         settingsTidied: saved.settingsTidied ?? false,
         wordCase: saved.wordCase || {},
         tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
@@ -2305,6 +2307,15 @@ async function load() {
     }
   } catch (e) {}
   // Settings that were on by default before, and should not have been
+  if (state.groupOrder !== 2) {
+    state.groupOrder = 2;
+    DEFAULT_GROUPS.forEach((n, i) => {
+      const c = state.categories.find(x => x.name.toLowerCase() === n.toLowerCase() && !x.parent);
+      if (c) c.order = i;
+    });
+    save();
+  }
+
   if (!state.settingsTidied) {
     state.settingsTidied = true;
     state.showHelpBtn = false;
@@ -2402,6 +2413,7 @@ async function save() {
       syncLastStamp: state.syncLastStamp,
       settingsAt: state.settingsAt,
       syncRestoredAt: state.syncRestoredAt,
+      groupOrder: state.groupOrder,
       settingsTidied: state.settingsTidied,
       wordCase: state.wordCase,
       tombs: state.tombs,
@@ -4673,7 +4685,7 @@ function deleteCategory(id) {
 }
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
-const DEFAULT_GROUPS = ['Chat', 'Eat', 'Action', 'People', 'Places', 'My Stuff'];
+const DEFAULT_GROUPS = ['Chat', 'Eat', 'My Stuff', 'Action', 'People', 'Places'];
 const DEFAULT_COLORS = {
   Chat: 'blue', Eat: 'green', Action: 'purple', People: 'pink', Places: 'teal', 'My Stuff': 'orange',
 };
