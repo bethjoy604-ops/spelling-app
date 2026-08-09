@@ -2016,7 +2016,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 56 - 3 Aug';
+const BUILD = 'build 57 - 3 Aug';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2304,13 +2304,11 @@ async function load() {
       });
     }
   } catch (e) {}
-  // An empty bank starts with the everyday groups and the starter words, whether
-  // this is a brand new install or a browser that has never had words in it
-  if (state.words.length === 0) {
-    applyDefaultGroups();
-    importText(STARTER_WORDS);
-    save();
-  }
+  // The starter words are always available alongside whatever has been added,
+  // rather than only appearing in an empty bank. Anything deliberately deleted
+  // stays deleted — they are topped up, not forced back.
+  if (state.categories.length === 0) applyDefaultGroups();
+  mergeStarterWords();
   // First run after the search feature arrived: seed history from the existing bank
   if (Object.keys(state.wordHistory).length === 0 && state.wordBank.length > 0) {
     state.wordBank.forEach(w => {
@@ -3344,6 +3342,23 @@ document.addEventListener('visibilitychange', () => {
 let lastUpdateLook = Date.now();
 
 
+
+// Tops the bank up with the starter words without disturbing anything already
+// there, and without undoing deletions.
+function mergeStarterWords() {
+  const tombs = syncTombs(state.tombs);
+  const revives = syncRevives(state.revives);
+  const before = new Set(state.words || []);
+  const added = importText(STARTER_WORDS);
+  // put back any deletion this would otherwise have undone
+  Object.keys(tombs.word).forEach(w => {
+    if (before.has(w)) return;                                  // it was already here
+    if ((revives.word[w] || 0) > tombs.word[w]) return;          // deliberately re-added
+    state.words = (state.words || []).filter(x => x !== w);
+    state.categories.forEach(c => { c.words = (c.words || []).filter(x => x !== w); });
+  });
+  if (added && added.words) save();
+}
 
 // Asked once on a device that has never been offered it. Saying no is
 // remembered, and Settings still has the switch either way.
