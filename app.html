@@ -2008,7 +2008,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 81 - 2 Oct';
+const BUILD = 'build 82 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3971,7 +3971,14 @@ function render() {
   document.getElementById('wordToggle').classList.toggle('active', state.practiceMode);
 
   document.getElementById('homeBtn').style.display = state.homeEnabled ? '' : 'none';
-  document.getElementById('searchBtn').style.display = state.showSearchBtn ? '' : 'none';
+  // With a home page, settings, the menu and search all live there — the spelling
+  // page keeps only what is needed while spelling. Without one they stay here,
+  // or there would be no way to reach them.
+  const barHere = state.homeEnabled ? 'none' : '';
+  document.getElementById('settingsBtn').style.display = barHere;
+  document.getElementById('modesToggle').style.display = barHere;
+  wrap.style.display = barHere;
+  document.getElementById('searchBtn').style.display = (!state.homeEnabled && state.showSearchBtn) ? '' : 'none';
   document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
 
   const kb = document.getElementById('keyboard');
