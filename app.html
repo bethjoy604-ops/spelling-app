@@ -865,6 +865,11 @@
   .key.wide { flex: 1.6; font-size: clamp(20px, 4vmin, 40px); font-weight: 700; }
   .key.space { flex: 4.5; }
   .key.backspace { background: var(--red-tint); color: var(--red); }
+  /* the up arrow and the delete key: one size, at either end of the bottom letter row */
+  .key.side { flex: 1.25; font-size: clamp(18px, 3.4vmin, 34px); font-weight: 900; }
+  .key.shift.on { background: var(--ink); color: #fff; }
+  .key.shift.disabled { opacity: 0.35; }
+  .key.numkey { font-size: clamp(16px, 3vmin, 30px); font-weight: 900; letter-spacing: 1px; }
   .key.enter { background: var(--green-tint); color: var(--green); }
   .key.enter.enter-ready {
     background: var(--green); color: white;
@@ -1352,7 +1357,7 @@
         <button class="pill" data-case="2">Abc</button>
         <button class="pill" data-case="3">aA Auto</button>
       </div>
-      <div class="setup-hint">Auto uses a capital only where one belongs, and the keyboard follows along.</div>
+      <div class="setup-hint">Auto uses a capital only where the word itself has one, such as a name.</div>
     </div>
 
     <div class="setup-section">
@@ -1386,7 +1391,7 @@
   <div class="display phrase-bar" id="phraseBar">
     <div class="display-content pb-words" id="pbWords"></div>
     <input class="pb-input" id="pbInput" type="text" maxlength="80"
-           autocomplete="off" autocapitalize="characters" spellcheck="false"
+           autocomplete="off" autocapitalize="off" spellcheck="false"
            aria-label="Type a word">
     <button class="display-clear" id="pbClear" aria-label="Clear phrase">&times;</button>
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
@@ -1490,7 +1495,7 @@
 
     <div class="menu-section-label">Add Word</div>
     <div class="word-add">
-      <input type="text" id="newWordInput" placeholder="Type a word or title..." maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <input type="text" id="newWordInput" placeholder="Type a word or title..." maxlength="80" autocomplete="off" autocapitalize="off" spellcheck="false">
       <button id="addWordBtn">Add</button>
     </div>
     <div class="full-row" style="margin-top: 16px;">
@@ -1626,7 +1631,7 @@
   <div class="sheet">
     <h3 id="catWordsTitle">Group words</h3>
     <div class="word-add" style="margin-top:0;">
-      <input type="text" id="catWordInput" placeholder="Add a word or phrase..." maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <input type="text" id="catWordInput" placeholder="Add a word or phrase..." maxlength="80" autocomplete="off" autocapitalize="off" spellcheck="false">
       <button id="catWordAdd">Add</button>
     </div>
     <div class="menu-section-label">In this group</div>
@@ -1662,7 +1667,7 @@
     <div class="key-preview" style="font-size: 30px;">&#128269;</div>
     <div class="word-add" style="margin-top:0;">
       <input type="text" id="searchInput" placeholder="Type a few letters..." maxlength="20"
-             autocomplete="off" autocapitalize="characters" spellcheck="false">
+             autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
     <div class="menu-section-label">Recent &amp; matching</div>
     <div class="word-list" id="searchResults"></div>
@@ -1808,7 +1813,9 @@
 
         <div class="sublabel">Letter case</div>
         <div class="seg-row" id="segCaseMode"></div>
-        <div class="help-note">Auto keeps everything lowercase and switches to a capital only where one belongs — the first letter of a word.</div>
+        <div class="help-note">Auto keeps everything lowercase and uses a capital only where the word itself has one — a name such as Coco. To save a word with a capital, type it that way when adding it.</div>
+        <div class="setting-row" style="margin-top:10px;"><span>&#8679; Require the up arrow for capitals</span><div class="toggle" id="toggleRequireCaps"></div></div>
+        <div class="help-note">Off: capitals appear by themselves and the up arrow is never needed.<br>On: the up arrow is prompted before a capital letter, and typing the letter without it counts as an error.</div>
       </div>
     </div>
 
@@ -1824,7 +1831,7 @@
         <div class="sublabel">Add a word</div>
         <div class="word-add" style="margin-top:0;">
           <input type="text" id="setWordInput" placeholder="Add a word or phrase..." maxlength="80"
-                 autocomplete="off" autocapitalize="characters" spellcheck="false">
+                 autocomplete="off" autocapitalize="off" spellcheck="false">
           <button id="setWordAdd">Add</button>
         </div>
         <div class="help-note" id="setWordCount"></div>
@@ -1994,6 +2001,16 @@
 </div>
 
 <script>
+const NUM_LAYOUT = [
+  ['1','2','3','4','5','6','7','8','9','0'],
+  ['-','/',':',';','(',')','$','&','@','"'],
+  ['.',',','?','!',"'"]
+];
+const SYMBOL_NAMES = {
+  '.': 'period', ',': 'comma', '?': 'question mark', '!': 'exclamation mark', "'": 'apostrophe',
+  '-': 'dash', '/': 'slash', ':': 'colon', ';': 'semicolon', '(': 'open bracket', ')': 'close bracket',
+  '$': 'dollar', '&': 'and', '@': 'at', '"': 'quote'
+};
 const LAYOUT = [
   ['Q','W','E','R','T','Y','U','I','O','P'],
   ['A','S','D','F','G','H','J','K','L'],
@@ -2013,7 +2030,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 83 - 2 Oct';
+const BUILD = 'build 84 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2090,7 +2107,8 @@ const ERROR_TO_PROMPT_MS = 900;
 
 const state = {
   text: '',
-  caseMode: 3,                // aA auto: a capital only where one belongs
+  caseMode: 3,                // aA auto: a capital only where the word itself has one
+  requireCaps: false,         // on: the up arrow must be pressed for a capital, and missing it is an error
   keyLevels: {},
   hiddenKeys: {},
   phonemes: {...DEFAULT_PHONEMES},
@@ -2194,6 +2212,9 @@ let promptVisible = true;
 let helpRequested = false;   // set by the lightbulb; lasts until this word is finished or changed
 let promptDelayTimer = null;
 let verbalSpokenFor = -1;
+let shiftOn = false;          // the up arrow: the next letter is a capital
+let kbNumbers = false;       // the 123 page of the keyboard is showing
+const freeCaps = new Set();  // positions typed as capitals when there is no target word
 let echoSkipped = false;      // the typed letter was not voiced because the prompt had just said it
 
 let availableVoices = [];
@@ -2225,6 +2246,7 @@ async function load() {
       const saved = JSON.parse(res.value);
       Object.assign(state, {
         caseMode: saved.caseMode ?? 3,
+        requireCaps: saved.requireCaps ?? false,
         keyLevels: saved.keyLevels || {},
         hiddenKeys: saved.hiddenKeys || {},
         phonemes: {...DEFAULT_PHONEMES, ...(saved.phonemes || {})},
@@ -2364,6 +2386,7 @@ async function save() {
   try {
     await Store.set('kbd-state-v6', JSON.stringify({
       caseMode: state.caseMode,
+      requireCaps: state.requireCaps,
       keyLevels: state.keyLevels,
       hiddenKeys: state.hiddenKeys,
       phonemes: state.phonemes,
@@ -2782,7 +2805,7 @@ async function syncOpen(bytes, key) {
 /* ---- what a snapshot holds ---- */
 
 const SYNC_SETTING_KEYS = [
-  'caseMode', 'keyLevels', 'hiddenKeys', 'phonemes', 'letterSpeech', 'enterSpeech',
+  'caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'phonemes', 'letterSpeech', 'enterSpeech',
   'phoneticMode', 'haptics', 'targetSpeech', 'voiceName', 'voiceRate', 'voicePitch',
   'promptColor', 'promptShade', 'promptHighlightOn', 'promptPulseOn', 'promptSizeOn',
   'promptTileOn', 'promptTileSize', 'promptSize', 'promptVerbalOn', 'promptDelaySec',
@@ -3560,11 +3583,40 @@ function stopRecording() {
   try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch (e) {}
 }
 
-// Is the letter at this position one that is drawn as a capital? Only the first
-// letter of the word or phrase, and only in the modes that mix cases — in All Caps
-// every letter is a capital, so calling it out would say nothing.
+// A word the way it is written: the capitals it was saved with (a name such as
+// Coco), otherwise all lower case. Phrases fall back to word-by-word.
+function casedText(w) {
+  const key = w || '';
+  const kept = (state.wordCase || {})[key];
+  if (kept && kept.toUpperCase() === key) return kept;
+  if (key.includes(' ')) return key.split(' ').map(casedText).join(' ');
+  return key.toLowerCase();
+}
+function usesShift() { return state.caseMode === 2 || state.caseMode === 3; }
+// Is this position of the target word a capital?
+function targetCapAt(index) {
+  if (!state.currentTarget) return false;
+  if (state.caseMode === 2) return index === 0;
+  if (state.caseMode === 3) {
+    const c = casedText(state.currentTarget)[index];
+    return !!c && c !== c.toLowerCase();
+  }
+  return false;
+}
+// Is the letter at this position spoken as a capital? In All Caps every letter
+// is one, so calling it out would say nothing.
 function capitalAt(index) {
-  return (state.caseMode === 2 || state.caseMode === 3) && index === 0;
+  if (state.currentTarget) return targetCapAt(index);
+  if (state.caseMode === 2) return index === 0;
+  if (state.caseMode === 3) return freeCaps.has(index);
+  return false;
+}
+// The keys are showing capitals right now: the up arrow is on, or — when the up
+// arrow is not required — the next letter is a capital and the keys follow along.
+function capsShowing() {
+  if (shiftOn) return true;
+  if (state.currentTarget) return !state.requireCaps && targetCapAt(state.targetIndex);
+  return state.caseMode === 2 && (state.text || '').length === 0;
 }
 // Speak a letter — prefers a recording, else falls back to TTS. "Capital" is said
 // only when the caller knows this letter sits where a capital belongs.
@@ -3574,7 +3626,7 @@ function speakLetter(letter, capital) {
     speak(state.phonemes[letter] || letter, 1.0);
   } else {
     if (recordings.letterName[letter] && playClip(recordings.letterName[letter])) return;
-    const name = letter.toLowerCase();
+    const name = SYMBOL_NAMES[letter] || letter.toLowerCase();
     speak(capital ? 'capital ' + name : name, 1.15);
   }
 }
@@ -3582,7 +3634,8 @@ function speakLetter(letter, capital) {
 function displayWord(w) {
   if (!w) return '';
   if (state.caseMode === 1) return w.toLowerCase();
-  if (state.caseMode === 2 || state.caseMode === 3) return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  if (state.caseMode === 2) return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  if (state.caseMode === 3) return casedText(w);
   return w;
 }
 // Speak a word — prefers a recording, else TTS
@@ -3753,35 +3806,33 @@ function rotateToNextWord() {
 }
 
 // ===== Case handling =====
-// Mode 3 (Auto): lowercase everywhere except where a capital is needed —
-// the first letter of a word — and the keyboard follows along as you type.
-function autoWantsCapital(textSoFar) {
-  // only the very start of the phrase — later words stay lower case
-  return (textSoFar || '').length === 0;
-}
+// Mode 3 (Auto): lower case everywhere except where the word itself has a
+// capital (a name), or where the up arrow was used while typing freely.
 function applyCase(rawText) {
   if (!rawText) return '';
   if (state.caseMode === 0) return rawText;
   if (state.caseMode === 1) return rawText.toLowerCase();
   if (state.caseMode === 3) {
-    const lower = rawText.toLowerCase();
-    return lower.charAt(0).toUpperCase() + lower.slice(1);
+    const cased = state.currentTarget ? casedText(state.currentTarget) : null;
+    return [...rawText].map((ch, i) => {
+      const cap = cased
+        ? (i < cased.length && cased[i].toUpperCase() === ch && cased[i] !== cased[i].toLowerCase())
+        : freeCaps.has(i);
+      return cap ? ch.toUpperCase() : ch.toLowerCase();
+    }).join('');
   }
   return rawText.charAt(0).toUpperCase() + rawText.slice(1).toLowerCase();
 }
 // How a letter should be drawn on a key right now
 function displayLetter(L) {
   if (state.caseMode === 1) return L.toLowerCase();
-  if (state.caseMode === 3) return autoWantsCapital(state.text) ? L.toUpperCase() : L.toLowerCase();
+  if (usesShift()) return capsShowing() ? L.toUpperCase() : L.toLowerCase();
   return L;
 }
 // How a letter at a known position in the target word should be drawn
 function displayLetterAt(L, index) {
   if (state.caseMode === 1) return L.toLowerCase();
-  // Sentence and Auto both write the word with one leading capital
-  if (state.caseMode === 2 || state.caseMode === 3) {
-    return index === 0 ? L.toUpperCase() : L.toLowerCase();
-  }
+  if (usesShift()) return targetCapAt(index) ? L.toUpperCase() : L.toLowerCase();
   return L;
 }
 
@@ -4001,27 +4052,52 @@ function render() {
   kb.classList.remove('ks-small', 'ks-med', 'ks-large', 'ok-faded', 'ok-blank', 'ok-black');
   kb.classList.add('ks-' + state.keySize);
   if (showing && state.otherKeysMode !== 'normal') kb.classList.add('ok-' + state.otherKeysMode);
+  freeCaps.forEach(i => { if (i >= state.text.length) freeCaps.delete(i); });
   const expected = nextExpectedLetter();
-  LAYOUT.forEach(row => {
+  // the same prompts a letter key gets, for a key that has to be pressed first
+  const promptKey = k => {
+    const fl = fadeLevelAt(state.targetIndex);
+    k.classList.add('prompting');
+    if (state.promptColorOn) {
+      k.classList.add('prompt-color');
+      if (fl > 0) k.classList.add('fade-' + fl);
+    }
+    if (state.promptPulseOn && fl < 2) k.classList.add('prompt-pulse');
+    if (state.promptSizeOn) k.classList.add('prompt-size', 'boost-' + state.promptSize);
+  };
+  // The next character is on the other page of the keyboard: prompt the 123 / ABC key
+  const needsSwitch = showing && !!expected && expected !== ' ' &&
+                      (/[A-Z]/.test(expected) === kbNumbers);
+  // A capital is next and the up arrow is required: prompt the up arrow first
+  const needsShift = showing && !needsSwitch && !!expected && state.requireCaps && usesShift() &&
+                     !shiftOn && targetCapAt(state.targetIndex);
+  const keyTarget = (needsSwitch || needsShift) ? null : expected;
+  const layout = kbNumbers ? NUM_LAYOUT : LAYOUT;
+  layout.forEach((row, ri) => {
     const r = document.createElement('div');
     r.className = 'row';
-    row.forEach(letter => r.appendChild(makeLetterKey(letter, expected)));
+    if (ri === 2) {
+      // the up arrow sits above 123; on the 123 page an empty slot keeps the row lined up
+      const shiftKey = makeSpecialKey('\u21E7', 'shift', 'side shift');
+      if (kbNumbers) shiftKey.classList.add('hidden');
+      else {
+        if (!usesShift()) shiftKey.classList.add('disabled');
+        if (shiftOn) shiftKey.classList.add('on');
+        if (needsShift) promptKey(shiftKey);
+      }
+      r.appendChild(shiftKey);
+    }
+    row.forEach(letter => r.appendChild(makeLetterKey(letter, keyTarget)));
+    if (ri === 2) r.appendChild(makeSpecialKey('\u2715', 'backspace', 'side backspace'));
     kb.appendChild(r);
   });
   const r = document.createElement('div');
   r.className = 'row';
-  r.appendChild(makeSpecialKey('⌫', 'backspace', 'wide backspace'));
+  const numKey = makeSpecialKey(kbNumbers ? 'ABC' : '123', 'numbers', 'wide numkey');
+  if (needsSwitch) promptKey(numKey);
+  r.appendChild(numKey);
   const spaceKey = makeSpecialKey('', 'space', 'space space-blank');
-  if (expected === ' ' && showing) {
-    const fl = fadeLevelAt(state.targetIndex);
-    spaceKey.classList.add('prompting');
-    if (state.promptColorOn) {
-      spaceKey.classList.add('prompt-color');
-      if (fl > 0) spaceKey.classList.add('fade-' + fl);
-    }
-    if (state.promptPulseOn && fl < 2) spaceKey.classList.add('prompt-pulse');
-    if (state.promptSizeOn) spaceKey.classList.add('prompt-size', 'boost-' + state.promptSize);
-  }
+  if (expected === ' ' && showing) promptKey(spaceKey);
   r.appendChild(spaceKey);
   const enterKey = makeSpecialKey('⏎', 'enter', 'wide enter');
   if (isWordComplete()) enterKey.classList.add('enter-ready');
@@ -4059,6 +4135,20 @@ function makeSpecialKey(label, action, cls) {
   k.addEventListener('click', () => {
     warmSpeech();
     touchSession();
+    if (action === 'shift') {
+      if (!usesShift()) return;          // All Caps and All Lower have nothing to switch
+      buzz(10);
+      shiftOn = !shiftOn;
+      render();
+      return;
+    }
+    if (action === 'numbers') {
+      buzz(10);
+      kbNumbers = !kbNumbers;
+      shiftOn = false;
+      render();
+      return;
+    }
     if (action === 'space') {
       if (state.currentTarget) { typeChar(' '); return; }
       buzz(10);
@@ -4099,6 +4189,8 @@ function makeSpecialKey(label, action, cls) {
       if (state.practiceMode && !state.currentTarget) {
         const typed = normaliseWord(state.text);
         if (typed) {
+          // capitals typed with the up arrow are kept as the way this word is written
+          if (state.caseMode === 3) rememberCase(applyCase(state.text), typed);
           const parts = typed.split(' ').filter(Boolean);
           if (parts.length > 1) selectPhrase(parts);
           else selectTargetWord(typed, true);
@@ -4242,7 +4334,11 @@ function typeChar(letter) {
   const isSpace = (letter === ' ');
   const prompted = isLetterPrompted(letter);
   const expectedNow = state.currentTarget ? state.currentTarget[state.targetIndex] : null;
-  const isWrong = !!state.currentTarget && (!expectedNow || letter !== expectedNow.toUpperCase());
+  // With "require the up arrow" on, the right letter in the wrong case is an error
+  const caseWrong = !!state.currentTarget && state.requireCaps && usesShift() &&
+                    /[A-Z]/.test(letter) && shiftOn !== targetCapAt(state.targetIndex);
+  const isWrong = !!state.currentTarget &&
+                  (!expectedNow || letter !== expectedNow.toUpperCase() || caseWrong);
 
   // "Clear instantly" never puts the wrong letter in the bar at all
   const keepInBar = !isWrong || state.errorLetterMode !== 'remove';
@@ -4252,13 +4348,16 @@ function typeChar(letter) {
   // typed just repeats it, so go straight on to the next one
   echoSkipped = !isWrong && !!state.currentTarget && state.promptVerbalOn &&
                 verbalSpokenFor === state.targetIndex;
+  if (!state.currentTarget) { if (shiftOn) freeCaps.add(landsAt); else freeCaps.delete(landsAt); }
+  shiftOn = false;                       // the up arrow covers one letter
+  if (letter === "'") kbNumbers = false; // an apostrophe sits inside a word, so back to the letters
   if (keepInBar) state.text += letter;
   if (!isSpace && state.letterSpeech && !echoSkipped && (!isWrong || state.speakErrorLetter)) {
     speakLetter(letter, capitalAt(landsAt));
   }
 
   // Buffer per-letter stats; committed on Enter, discarded on cancel
-  if (state.scoreMode) {
+  if (state.scoreMode && /[A-Z]/.test(letter)) {
     if (!state.pendingLetterCounts[letter]) state.pendingLetterCounts[letter] = { independent: 0, prompted: 0 };
     if (prompted) state.pendingLetterCounts[letter].prompted++;
     else state.pendingLetterCounts[letter].independent++;
@@ -4266,7 +4365,7 @@ function typeChar(letter) {
 
   if (state.currentTarget) {
     const expected = state.currentTarget[state.targetIndex];
-    if (expected && letter === expected.toUpperCase()) {
+    if (expected && !isWrong) {
       state.targetIndex++;
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
@@ -6336,6 +6435,7 @@ function renderSettings() {
     bankN ? bankN + ' words in the bank \u00b7 ' + state.categories.length + ' groups'
           : 'The bank is empty \u2014 add words here or import a list.';
   renderBankEditor();
+  document.getElementById('toggleRequireCaps').classList.toggle('on', state.requireCaps);
   document.getElementById('toggleSearchBtn').classList.toggle('on', state.showSearchBtn);
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
@@ -6594,6 +6694,9 @@ document.getElementById('setGroupsBtn').addEventListener('click', () => {
 document.getElementById('setImportBtn').addEventListener('click', () => {
   document.getElementById('importBox').value = '';
   document.getElementById('importMenu').classList.add('show');
+});
+document.getElementById('toggleRequireCaps').addEventListener('click', () => {
+  state.requireCaps = !state.requireCaps; shiftOn = false; save(); render(); renderSettings();
 });
 document.getElementById('toggleSearchBtn').addEventListener('click', () => {
   state.showSearchBtn = !state.showSearchBtn; save(); render(); renderSettings();
