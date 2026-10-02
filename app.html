@@ -2008,7 +2008,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 79 - 2 Oct';
+const BUILD = 'build 80 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3794,7 +3794,7 @@ function justFinishedWord() {
   if (seq[i - 1] === ' ') return false;
   return (i >= seq.length) || seq[i] === ' ';
 }
-function selectPhrase(words) {
+function selectPhrase(words, quiet) {
   if (kbSearch) closeLetterSearch();
   state.phraseWords = words.slice();
   state.currentTarget = words.join(' ');
@@ -3806,7 +3806,7 @@ function selectPhrase(words) {
   getOrInitWordData(state.currentTarget);
   armPrompt();
   save(); render();
-  if (state.targetSpeech) speakWord(state.currentTarget, 0.85);
+  if (!quiet && state.targetSpeech) speakWord(state.currentTarget, 0.85);
 }
 
 function nextExpectedLetter() {
@@ -5034,7 +5034,7 @@ function renderMagic(word) {
     b.appendChild(t);
     b.addEventListener('click', () => {
       homePhrase = phrase.split(' ').filter(Boolean);
-      startPhraseFromHome();
+      startPhraseFromHome(true);
     });
     row.appendChild(b);
   });
@@ -5062,12 +5062,14 @@ function renderPhraseBar() {
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
   document.getElementById('pbInput').placeholder = '';
 }
-function startPhraseFromHome() {
+// Words put in the bar were each said aloud as they went in, so pressing enter
+// does not say them again. sayIt is for a phrase that was never voiced.
+function startPhraseFromHome(sayIt) {
   const parts = homePhrase.join(' ').split(' ').filter(Boolean);
   if (parts.length === 0) { showKeyboard(); return; }   // empty simply opens the keyboard
   parts.forEach(w => { if (!state.words.includes(w)) state.words.push(w); });
-  if (parts.length > 1) selectPhrase(parts);
-  else selectTargetWord(parts[0], true);
+  if (parts.length > 1) selectPhrase(parts, !sayIt);
+  else selectTargetWord(parts[0], !!sayIt);
   homePhrase = [];
   hideMagic();
   renderSetup();
