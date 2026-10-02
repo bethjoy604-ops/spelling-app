@@ -1393,14 +1393,9 @@
   </div>
 
   <div class="controls-row home-row">
-    <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
-      <span class="chevron" id="homeChevron">&#9662;</span>
-    </button>
+    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
     <div class="folder-strip" id="catTiles"></div>
-    <div class="modes-wrap" id="homeModesWrap">
-      <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
-    </div>
     <div class="spacer"></div>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#128161;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
@@ -2015,7 +2010,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 76 - 2 Oct';
+const BUILD = 'build 77 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5359,25 +5354,15 @@ function renderHome(reset) {
     document.getElementById('folderView').style.display = useFolders ? '' : 'none';
     grid.style.display = useFolders ? 'none' : '';
     if (useFolders) {
-      const wrap = document.getElementById('homeModesWrap');
-      wrap.classList.toggle('expanded', state.homeModesOpen);
-      document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
       document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
       document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
       renderFolders();
       return;
     }
-    // the fold-down options row behaves like the keyboard's
-    const wrap = document.getElementById('homeModesWrap');
-    wrap.classList.toggle('expanded', state.homeModesOpen);
-    document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
+    // the gear is always on the bar; the sandwich beside it unfolds the folder strip
     const rail = document.getElementById('catTiles');
-    // opening the options folds the folder strip away, so the gear sits right beside the arrow;
-    // closing them brings the strip back as it was
-    rail.className = 'folder-strip' + (state.railOpen && !state.homeModesOpen ? ' open' : '');
+    rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     document.getElementById('railToggle').classList.toggle('open', state.railOpen);
-    // with the options open, only the gear is on show
-    document.getElementById('railToggle').style.display = state.homeModesOpen ? 'none' : '';
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
 
@@ -5439,10 +5424,6 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
 });
 document.getElementById('railToggle').addEventListener('click', () => {
   state.railOpen = !state.railOpen;
-  save(); renderHome(true);
-});
-document.getElementById('homeModesToggle').addEventListener('click', () => {
-  state.homeModesOpen = !state.homeModesOpen;
   save(); renderHome(true);
 });
 document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
