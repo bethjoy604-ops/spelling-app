@@ -1692,7 +1692,12 @@
             <span class="hero-title">&#128161; Help mode</span>
             <div class="toggle" id="toggleHelpMode"></div>
           </div>
-          <div class="hero-note">On: nothing prompts by itself. The lightbulb appears on every page and the speller taps it when they want help.<br>Off: the prompts below happen automatically, and the lightbulb is hidden.</div>
+          <div class="hero-note">On: nothing prompts by itself. The lightbulb appears on the spelling page once a word is chosen. Tapping it prompts the current letter straight away, then each following letter after the wait below.<br>Off: the prompts below happen automatically, and the lightbulb is hidden.</div>
+          <div class="sublabel" style="margin-top:10px;">After the lightbulb, wait before each next letter</div>
+          <div class="slider-row">
+            <input type="range" id="helpDelaySlider" min="0" max="10" step="1" value="3">
+            <span class="slider-val" id="helpDelayValue">3 sec</span>
+          </div>
         </div>
 
         <div class="help-note">Turn on as many prompts as you like — they stack. Colour, size and voice can all run together.</div>
@@ -2008,7 +2013,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 82 - 2 Oct';
+const BUILD = 'build 83 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2126,6 +2131,7 @@ const state = {
   promptVerbalOn: true,       // speak the next letter as a prompt
   promptDelaySec: 0,          // 0-10s before any prompt appears
   helpMode: false,            // prompts wait until the lightbulb is pressed
+  helpDelaySec: 3,            // after the lightbulb: wait before each following letter is prompted
   otherKeysMode: 'normal',    // normal | faded | blank | black
 
   // ===== On-screen keyboard buttons =====
@@ -2185,7 +2191,7 @@ let pendingErrorPos = null;
 
 // Prompt visibility is runtime-only (never persisted)
 let promptVisible = true;
-let helpRequested = false;   // set by the lightbulb, cleared on the next letter
+let helpRequested = false;   // set by the lightbulb; lasts until this word is finished or changed
 let promptDelayTimer = null;
 let verbalSpokenFor = -1;
 let echoSkipped = false;      // the typed letter was not voiced because the prompt had just said it
@@ -2255,6 +2261,7 @@ async function load() {
         promptVerbalOn: saved.promptVerbalOn ?? true,
         promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
         helpMode: saved.helpMode ?? false,
+        helpDelaySec: Math.min(10, Math.max(0, saved.helpDelaySec ?? 3)),
         otherKeysMode: OTHER_KEYS_LABELS[saved.otherKeysMode] ? saved.otherKeysMode : 'normal',
 
         showBankCount: false,
@@ -2393,6 +2400,7 @@ async function save() {
       promptVerbalOn: state.promptVerbalOn,
       promptDelaySec: state.promptDelaySec,
       helpMode: state.helpMode,
+      helpDelaySec: state.helpDelaySec,
       otherKeysMode: state.otherKeysMode,
 
       showBankCount: state.showBankCount,
@@ -2778,7 +2786,7 @@ const SYNC_SETTING_KEYS = [
   'phoneticMode', 'haptics', 'targetSpeech', 'voiceName', 'voiceRate', 'voicePitch',
   'promptColor', 'promptShade', 'promptHighlightOn', 'promptPulseOn', 'promptSizeOn',
   'promptTileOn', 'promptTileSize', 'promptSize', 'promptVerbalOn', 'promptDelaySec',
-  'helpMode', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn',
+  'helpMode', 'helpDelaySec', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn',
   'homeEnabled', 'homeMode', 'settingsOrder', 'bankSort', 'colorCoding', 'gridFill',
   'tileMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback',
   'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode',
@@ -3731,6 +3739,7 @@ function selectTargetWord(w, speakIt) {
   state.pendingLetterCounts = {};
   state.text = '';
   getOrInitWordData(w);
+  helpRequested = false;
   armPrompt();
   save(); render();
   if (speakIt && state.targetSpeech) speakWord(w, 0.85);
@@ -3804,6 +3813,7 @@ function selectPhrase(words, quiet) {
   state.pendingLetterCounts = {};
   state.text = '';
   getOrInitWordData(state.currentTarget);
+  helpRequested = false;
   armPrompt();
   save(); render();
   if (!quiet && state.targetSpeech) speakWord(state.currentTarget, 0.85);
@@ -3851,8 +3861,11 @@ function clearPromptTimer() {
 function armPrompt(force) {
   clearPromptTimer();
   verbalSpokenFor = -1;
-  helpRequested = false;
-  const delay = Math.max(0, Math.min(10, state.promptDelaySec || 0));
+  // Once help has been asked for, the rest of the word keeps prompting, each
+  // letter after its own short wait so there is a chance to try first
+  const delay = helpRequested
+    ? Math.max(0, Math.min(10, state.helpDelaySec ?? 3))
+    : Math.max(0, Math.min(10, state.promptDelaySec || 0));
   if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; }
   if (delay === 0 && !force) {
     promptVisible = true;
@@ -3979,7 +3992,9 @@ function render() {
   document.getElementById('modesToggle').style.display = barHere;
   wrap.style.display = barHere;
   document.getElementById('searchBtn').style.display = (!state.homeEnabled && state.showSearchBtn) ? '' : 'none';
-  document.getElementById('helpBtn').style.display = state.showHelpBtn ? '' : 'none';
+  // the lightbulb belongs to a word in progress: nothing to help with otherwise
+  document.getElementById('helpBtn').style.display =
+    (state.showHelpBtn && state.currentTarget && !isWordComplete()) ? '' : 'none';
 
   const kb = document.getElementById('keyboard');
   kb.innerHTML = '';
@@ -4154,6 +4169,7 @@ function makeSpecialKey(label, action, cls) {
       state.targetIndex = 0;
       state.targetProgress = [];
       state.targetPromptedFlags = [];
+      helpRequested = false;   // the next attempt starts without help
       if (wasComplete && completedWord && state.homeEnabled) {
         // heading home: no prompt for another go at the same word
         clearPromptTimer(); promptVisible = false;
@@ -4342,6 +4358,7 @@ function finishPhrase() {
   state.targetIndex = 0;
   state.targetProgress = [];
   state.targetPromptedFlags = [];
+  helpRequested = false;
   if (state.homeEnabled) {
     clearPromptTimer(); promptVisible = false;
     goHomeAfter(phrase, words.length);
@@ -5390,7 +5407,7 @@ function renderHome(reset) {
     grid.style.display = useFolders ? 'none' : '';
     if (useFolders) {
       document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
-      document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
+      document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
       renderFolders();
       return;
     }
@@ -5399,7 +5416,7 @@ function renderHome(reset) {
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     document.getElementById('railToggle').classList.toggle('open', state.railOpen);
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
-    document.getElementById('homeHelpBtn').style.display = state.showHelpBtn ? '' : 'none';
+    document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
@@ -6284,6 +6301,9 @@ function renderSettings() {
   buildSeg('segOtherKeys', Object.entries(OTHER_KEYS_LABELS).map(([v, l]) => ({ value: v, label: l })), state.otherKeysMode,
     v => { state.otherKeysMode = v; save(); render(); renderSettings(); });
 
+  document.getElementById('helpDelaySlider').value = state.helpDelaySec;
+  document.getElementById('helpDelayValue').textContent =
+    state.helpDelaySec === 0 ? 'None' : state.helpDelaySec + ' sec';
   const slider = document.getElementById('delaySlider');
   slider.value = state.promptDelaySec;
   document.getElementById('delayValue').textContent =
@@ -6595,6 +6615,13 @@ document.getElementById('unhideWordsBtn').addEventListener('click', () => {
 });
 document.getElementById('toggleSpeakError').addEventListener('click', () => {
   state.speakErrorLetter = !state.speakErrorLetter; save(); renderSettings();
+});
+document.getElementById('helpDelaySlider').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  state.helpDelaySec = isNaN(v) ? 3 : v;
+  document.getElementById('helpDelayValue').textContent =
+    state.helpDelaySec === 0 ? 'None' : state.helpDelaySec + ' sec';
+  save();
 });
 document.getElementById('delaySlider').addEventListener('input', e => {
   state.promptDelaySec = parseInt(e.target.value) || 0;
