@@ -1435,15 +1435,13 @@
   </div>
 
   <div class="controls-row">
-    <button class="ctl icon" id="modesToggle" aria-label="Show modes">
-      <span class="chevron" id="modesChevron">▾</span>
-    </button>
-      <div class="modes-wrap" id="modesWrap">
+    <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
+    <button class="ctl icon" id="modesToggle" aria-label="Show modes">&#9776;</button>
+    <div class="modes-wrap" id="modesWrap">
       <button class="ctl" id="wordToggle">
         <span class="label">Mode</span>
         <span class="value" id="wordValue">Spelling practice</span>
       </button>
-      <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     </div>
     <div class="spacer"></div>
     <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
@@ -2010,7 +2008,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 77 - 2 Oct';
+const BUILD = 'build 78 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3965,7 +3963,7 @@ function render() {
 
   const wrap = document.getElementById('modesWrap');
   wrap.classList.toggle('expanded', state.modesOpen);
-  document.getElementById('modesChevron').classList.toggle('open', state.modesOpen);
+  document.getElementById('modesToggle').classList.toggle('open', state.modesOpen);
 
   document.getElementById('wordValue').textContent =
     state.practiceMode ? 'Spelling practice' : 'Free type';
