@@ -2008,7 +2008,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 80 - 2 Oct';
+const BUILD = 'build 81 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4135,7 +4135,8 @@ function makeSpecialKey(label, action, cls) {
           setTimeout(() => { triggerFade(completedWord); save(); render(); }, 950);
         }
         // Rotate to next word after 3 in a row
-        if (state.rotateMode && counter.successes >= 3 && state.words.length > 1) {
+        // (only when there is no home page to go back to)
+        if (!state.homeEnabled && state.rotateMode && counter.successes >= 3 && state.words.length > 1) {
           counter.successes = 0;
           setTimeout(() => rotateToNextWord(), 2000);
         }
@@ -4146,7 +4147,11 @@ function makeSpecialKey(label, action, cls) {
       state.targetIndex = 0;
       state.targetProgress = [];
       state.targetPromptedFlags = [];
-      armPrompt();
+      if (wasComplete && completedWord && state.homeEnabled) {
+        // heading home: no prompt for another go at the same word
+        clearPromptTimer(); promptVisible = false;
+        goHomeAfter(completedWord, 1);
+      } else armPrompt();
     }
     render();
   });
@@ -4330,7 +4335,10 @@ function finishPhrase() {
   state.targetIndex = 0;
   state.targetProgress = [];
   state.targetPromptedFlags = [];
-  armPrompt();
+  if (state.homeEnabled) {
+    clearPromptTimer(); promptVisible = false;
+    goHomeAfter(phrase, words.length);
+  } else armPrompt();
   save(); render();
 }
 
@@ -4375,6 +4383,26 @@ function handleError(expectedLetter, typedLetter) {
   };
   if (beat) setTimeout(thenPrompt, beat);
   else thenPrompt();
+}
+
+// ---- Back to the home page once a word is done ----
+// Waits for the word to be said and the cheer to play, then clears the target
+// and goes home. Does nothing if the home page is switched off, or if typing
+// has already started again.
+const HOME_AFTER_WORD_MS = 1900;
+function goHomeAfter(word, wordCount) {
+  if (!state.homeEnabled) return;
+  setTimeout(() => {
+    if (state.currentTarget !== word || state.text) return;
+    state.currentTarget = null;
+    state.phraseWords = [];
+    state.targetIndex = 0;
+    state.targetProgress = [];
+    state.targetPromptedFlags = [];
+    clearPromptTimer(); promptVisible = true;
+    save(); render();
+    showHome();
+  }, HOME_AFTER_WORD_MS + Math.max(0, (wordCount || 1) - 1) * 450);   // a phrase takes longer to read out
 }
 
 // ---- Celebration ----
