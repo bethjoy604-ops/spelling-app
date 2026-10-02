@@ -2008,7 +2008,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 78 - 2 Oct';
+const BUILD = 'build 79 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2156,7 +2156,8 @@ const state = {
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
   homeModesOpen: false,       // the fold-down options row on home
-  railOpen: true,             // the folder strip on home, open by default
+  railOpen: false,            // the folder strip on home: folded until opened, then it stays open
+  barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
   magicType: true,            // offer whole-phrase suggestions on tap
@@ -2262,7 +2263,9 @@ async function load() {
         homeEnabled: saved.homeEnabled ?? true,
         practiceMode: saved.practiceMode ?? true,
         homeMode: ['words', 'folders'].includes(saved.homeMode) ? saved.homeMode : 'tiles',
-        railOpen: saved.railOpen ?? true,
+        // saves from before the strip was folded by default start folded once
+        railOpen: saved.barV2 ? (saved.railOpen ?? false) : false,
+        barV2: true,
         kbRailOpen: saved.kbRailOpen ?? false,
         settingsOrder: saved.settingsOrder || [],
         bankSort: BANK_SORTS[saved.bankSort] ? saved.bankSort : 'recent',
@@ -2399,6 +2402,7 @@ async function save() {
       practiceMode: state.practiceMode,
       homeMode: state.homeMode,
       railOpen: state.railOpen,
+      barV2: true,
       kbRailOpen: state.kbRailOpen,
       settingsOrder: state.settingsOrder,
       bankSort: state.bankSort,
@@ -3595,7 +3599,6 @@ function showHome() { if (kbSearch) closeLetterSearch(); setView('home'); touchS
 function showKeyboard() {
   if (kbSearch) closeLetterSearch();     // arrive ready to type, never mid-search
   setView('keyboard');
-  state.modesOpen = false; // always arrive with the options tucked away
   touchSession(); armPrompt(); render();
 }
 
@@ -3668,8 +3671,7 @@ function buzz(pattern = 15) {
 }
 
 function autoCollapseSpellingMode() {
-  // Anything on screen that isn't the task is a distraction — fold the bar away again.
-  state.modesOpen = false;
+  // The menu used to fold itself away here. It now stays as the user left it.
 }
 
 // ---- Fade / trial helpers ----
@@ -3801,7 +3803,6 @@ function selectPhrase(words) {
   state.targetPromptedFlags = [];
   state.pendingLetterCounts = {};
   state.text = '';
-  state.modesOpen = false;
   getOrInitWordData(state.currentTarget);
   armPrompt();
   save(); render();
@@ -4594,7 +4595,6 @@ function renderWordList() {
       state.targetPromptedFlags = [];
       state.pendingLetterCounts = {};
       state.text = '';
-      state.modesOpen = false; // collapse when entering spelling mode
       getOrInitWordData(w);
       armPrompt();
       save(); render(); renderSetup();
@@ -5919,7 +5919,6 @@ function renderSearchResults() {
     t.appendChild(meta);
     row.addEventListener('click', () => {
       if (!state.words.includes(r.word)) state.words.push(r.word);
-      state.modesOpen = false;
       selectTargetWord(r.word, true);
       renderSetup();
       closeAllMenus();
