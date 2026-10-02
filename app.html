@@ -13,7 +13,7 @@
 <style>
   :root {
     --bg: #faf6f0;
-    --page: #c9bfb0;   /* behind the keys and word tiles: dark enough for white keys to stand out */
+    --page: #b3382f;   /* behind the keys and word tiles: dark enough for white keys to stand out */
     --surface: #ffffff;
     --ink: #1a1a1a;
     --muted: #8a8580;
@@ -500,8 +500,8 @@
     opacity: 1; outline: none;
     box-shadow: inset 0 -3px 0 rgba(0,0,0,0.28);
   }
-  .folder-strip-row .cat-tile.plain { box-shadow: none; background: transparent; color: var(--muted); }
-  .folder-strip-row .cat-tile.plain.selected { color: var(--ink); box-shadow: inset 0 -3px 0 var(--border); }
+  .folder-strip-row .cat-tile.plain { box-shadow: none; background: transparent; color: rgba(255,255,255,0.85); }
+  .folder-strip-row .cat-tile.plain.selected { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
     padding: 14px 20px; font-family: inherit;
@@ -2015,7 +2015,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 70 - 2 Oct';
+const BUILD = 'build 71 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
