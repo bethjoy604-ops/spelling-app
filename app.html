@@ -2015,7 +2015,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 74 - 2 Oct';
+const BUILD = 'build 75 - 2 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2194,6 +2194,7 @@ let promptVisible = true;
 let helpRequested = false;   // set by the lightbulb, cleared on the next letter
 let promptDelayTimer = null;
 let verbalSpokenFor = -1;
+let echoSkipped = false;      // the typed letter was not voiced because the prompt had just said it
 
 let availableVoices = [];
 
@@ -3554,17 +3555,22 @@ function stopRecording() {
   try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch (e) {}
 }
 
-// Speak a letter — prefers a recording, else falls back to TTS (case-aware)
-function speakLetter(letter) {
+// Is the letter at this position one that is drawn as a capital? Only the first
+// letter of the word or phrase, and only in the modes that mix cases — in All Caps
+// every letter is a capital, so calling it out would say nothing.
+function capitalAt(index) {
+  return (state.caseMode === 2 || state.caseMode === 3) && index === 0;
+}
+// Speak a letter — prefers a recording, else falls back to TTS. "Capital" is said
+// only when the caller knows this letter sits where a capital belongs.
+function speakLetter(letter, capital) {
   if (state.phoneticMode) {
     if (recordings.letterSound[letter] && playClip(recordings.letterSound[letter])) return;
     speak(state.phonemes[letter] || letter, 1.0);
   } else {
     if (recordings.letterName[letter] && playClip(recordings.letterName[letter])) return;
-    let sound;
-    if ((state.caseMode === 2 || state.caseMode === 3) && state.text.length === 1) sound = letter; // capital position
-    else sound = letter.toLowerCase();
-    speak(sound, 1.15);
+    const name = letter.toLowerCase();
+    speak(capital ? 'capital ' + name : name, 1.15);
   }
 }
 // Render a stored (uppercase) word the way the current case mode wants it
@@ -3768,7 +3774,8 @@ function displayLetter(L) {
 // How a letter at a known position in the target word should be drawn
 function displayLetterAt(L, index) {
   if (state.caseMode === 1) return L.toLowerCase();
-  if (state.caseMode === 3) {
+  // Sentence and Auto both write the word with one leading capital
+  if (state.caseMode === 2 || state.caseMode === 3) {
     return index === 0 ? L.toUpperCase() : L.toLowerCase();
   }
   return L;
@@ -3857,7 +3864,7 @@ function armPrompt(force) {
     promptVisible = true;
     if (state.promptVerbalOn) {
       promptDelayTimer = setTimeout(() => { promptDelayTimer = null; speakVerbalPrompt(); },
-        state.letterSpeech ? 800 : 200);
+        (state.letterSpeech && !echoSkipped) ? 800 : 200);   // no typed letter to wait for
     }
     return;
   }
@@ -3884,7 +3891,7 @@ function speakVerbalPrompt(force) {
   if (!force && verbalSpokenFor === state.targetIndex) return;
   verbalSpokenFor = state.targetIndex;
   if (L === ' ') speak('space', 1.0);
-  else speakLetter(L);
+  else speakLetter(L, capitalAt(state.targetIndex));
 }
 function isLetterPrompted(letter) {
   // Yellow level highlight always counts as a prompt
@@ -4217,8 +4224,16 @@ function typeChar(letter) {
 
   // "Clear instantly" never puts the wrong letter in the bar at all
   const keepInBar = !isWrong || state.errorLetterMode !== 'remove';
+  // Where this letter lands decides whether it is a capital
+  const landsAt = state.currentTarget ? state.targetIndex : state.text.length;
+  // The voice prompt has already named this letter — saying it again as it is
+  // typed just repeats it, so go straight on to the next one
+  echoSkipped = !isWrong && !!state.currentTarget && state.promptVerbalOn &&
+                verbalSpokenFor === state.targetIndex;
   if (keepInBar) state.text += letter;
-  if (!isSpace && state.letterSpeech && (!isWrong || state.speakErrorLetter)) speakLetter(letter);
+  if (!isSpace && state.letterSpeech && !echoSkipped && (!isWrong || state.speakErrorLetter)) {
+    speakLetter(letter, capitalAt(landsAt));
+  }
 
   // Buffer per-letter stats; committed on Enter, discarded on cancel
   if (state.scoreMode) {
@@ -4340,10 +4355,10 @@ function handleError(expectedLetter, typedLetter) {
   } else if (state.errorFeedback === 'wrong' && typedLetter) {
     // Skip if the wrong letter was just voiced as it was typed
     if (!(state.letterSpeech && state.speakErrorLetter)) {
-      setTimeout(() => speakLetter(typedLetter), gap);
+      setTimeout(() => speakLetter(typedLetter, capitalAt(state.targetIndex)), gap);
     }
   } else if (state.errorFeedback === 'correct' && expectedLetter) {
-    setTimeout(() => speakLetter(expectedLetter), gap);
+    setTimeout(() => speakLetter(expectedLetter, capitalAt(state.targetIndex)), gap);
   }
   // 2. What the prompt does
   // If the error feedback already said the letter, don't say it twice
