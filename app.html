@@ -2033,7 +2033,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 97 - 3 Oct';
+const BUILD = 'build 98 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3811,6 +3811,7 @@ function selectTargetWord(w, speakIt) {
   state.text = '';
   getOrInitWordData(w);
   helpRequested = false;
+  kbNumbers = false; shiftOn = false;    // every word starts on the letters
   armPrompt();
   save(); render();
   if (speakIt && state.targetSpeech) speakWord(w, 0.85);
@@ -3883,6 +3884,7 @@ function selectPhrase(words, quiet) {
   state.text = '';
   getOrInitWordData(state.currentTarget);
   helpRequested = false;
+  kbNumbers = false; shiftOn = false;
   armPrompt();
   save(); render();
   if (!quiet && state.targetSpeech) speakWord(state.currentTarget, 0.85);
@@ -4444,9 +4446,11 @@ function finishPhrase() {
   state.pendingLetterCounts = {};
 
   // Each word is banked, and so is the phrase itself
-  words.forEach(w => state.wordBank.push(w));
+  // (a bare number or mark inside the phrase is not banked as a word of its own)
+  const realWords = words.map(bareWord).filter(Boolean);
+  realWords.forEach(w => state.wordBank.push(w));
   state.wordBank.push(phrase);
-  words.concat([phrase]).forEach(w => {
+  realWords.concat([phrase]).forEach(w => {
     const h = state.wordHistory[w] || { n: 0, t: 0 };
     h.n++; h.t = now;
     state.wordHistory[w] = h;
@@ -4832,15 +4836,27 @@ function renderRecentPicks() {
 
 // ===== Categories =====
 function normaliseWord(v) {
-  return (v || '').toUpperCase().replace(/[^A-Z' ]/g, ' ').replace(/\s+/g, ' ').trim();
+  // Letters, plus everything on the 123 page of the keyboard, so "3 cookies" or
+  // "hi!" can be spelled as written. Curly quotes from the device keyboard are
+  // straightened so they match the keys.
+  return (v || '').toUpperCase()
+    .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+    .replace(/[^A-Z0-9' \-\/:;()$&@".,?!]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 // In word mode a multi-word entry is filed as its separate words — unless it is
 // going into a folder marked for phrases, where the whole name is the point.
+// A word from inside a phrase, as it goes in the bank on its own: marks around
+// it are dropped ("cookies!" is just "cookies") and a bare number is not a word.
+function bareWord(w) {
+  const core = String(w || '').replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/g, '');
+  return /[A-Z]/.test(core) ? core : '';
+}
 function splitForMode(entry, cat) {
   const w = normaliseWord(entry);
   if (!w) return [];
   if (cat && catAllowsPhrases(cat)) return [w];
-  if (state.tileMode === 'word' && w.includes(' ')) return w.split(' ').filter(Boolean);
+  // split into single-word tiles, but a bare number or mark is not a word of its own
+  if (state.tileMode === 'word' && w.includes(' ')) return w.split(' ').map(bareWord).filter(Boolean);
   return [w];
 }
 function catById(id) { return state.categories.find(c => c.id === id) || null; }
@@ -5260,7 +5276,7 @@ function renderPhraseBar() {
 function startPhraseFromHome(sayIt) {
   const parts = homePhrase.join(' ').split(' ').filter(Boolean);
   if (parts.length === 0) { showKeyboard(); return; }   // empty simply opens the keyboard
-  parts.forEach(w => { if (!state.words.includes(w)) state.words.push(w); });
+  parts.map(bareWord).forEach(w => { if (w && !state.words.includes(w)) state.words.push(w); });
   if (parts.length > 1) selectPhrase(parts, !sayIt);
   else selectTargetWord(parts[0], !!sayIt);
   homePhrase = [];
