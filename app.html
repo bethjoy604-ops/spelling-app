@@ -496,12 +496,13 @@
     font-size: clamp(12px, 1.7vmin, 16px);
     opacity: 0.72;
   }
+  /* the tab that is open is solid white; every other tab, All included, looks the same */
   .folder-strip-row .cat-tile.selected {
     opacity: 1; outline: none;
-    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.28);
+    background: var(--surface) !important; color: var(--ink);
+    box-shadow: var(--shadow);
   }
-  .folder-strip-row .cat-tile.plain { box-shadow: none; background: transparent; color: rgba(255,255,255,0.85); }
-  .folder-strip-row .cat-tile.plain.selected { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .folder-strip-row .cat-tile.plain { box-shadow: none; background: var(--surface); color: var(--ink); }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
     padding: 14px 20px; font-family: inherit;
@@ -2031,7 +2032,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 88 - 3 Oct';
+const BUILD = 'build 89 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
