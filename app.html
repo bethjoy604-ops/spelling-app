@@ -1378,7 +1378,7 @@
       <select class="voice-picker" id="setupVoicePicker"></select>
       <button class="voice-preview-btn" id="setupVoicePreview">▶ Test voice — "Apple, A P P L E"</button>
       <div class="voice-hint">
-        💡 <b>For a better voice</b>: in iPad <b>Settings → Accessibility</b>, find the <b>Voices</b> menu — depending on your iPadOS version, it lives under <b>Spoken Content</b>, <b>Live Speech</b>, or <b>VoiceOver → Speech</b>. Tap a US English voice → choose <b>Enhanced</b> or <b>Premium</b> to download (Ava, Allison, Tom, and Samantha sound clearest). It'll then appear in this dropdown.
+        ⭐ <b>For a better voice</b>: in iPad <b>Settings → Accessibility</b>, find the <b>Voices</b> menu — depending on your iPadOS version, it lives under <b>Spoken Content</b>, <b>Live Speech</b>, or <b>VoiceOver → Speech</b>. Tap a US English voice → choose <b>Enhanced</b> or <b>Premium</b> to download (Ava, Allison, Tom, and Samantha sound clearest). It'll then appear in this dropdown.
       </div>
     </div>
 
@@ -1402,7 +1402,7 @@
     <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
     <div class="folder-strip" id="catTiles"></div>
     <div class="spacer"></div>
-    <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#128161;</button>
+    <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#11088;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
@@ -1440,6 +1440,7 @@
   </div>
 
   <div class="controls-row">
+    <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
     <button class="ctl icon" id="settingsBtn" aria-label="Settings">⚙</button>
     <button class="ctl icon" id="modesToggle" aria-label="Show modes">&#9776;</button>
     <div class="modes-wrap" id="modesWrap">
@@ -1449,8 +1450,7 @@
       </button>
     </div>
     <div class="spacer"></div>
-    <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#128161;</button>
-    <button class="ctl icon" id="homeBtn" aria-label="Home" style="display:none">&#127968;</button>
+    <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#11088;</button>
     <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
@@ -1694,11 +1694,11 @@
       <div class="sgroup-body">
         <div class="hero-setting">
           <div class="hero-row">
-            <span class="hero-title">&#128161; Help mode</span>
+            <span class="hero-title">&#11088; Help mode</span>
             <div class="toggle" id="toggleHelpMode"></div>
           </div>
-          <div class="hero-note">On: nothing prompts by itself. The lightbulb appears on the spelling page once a word is chosen. Tapping it prompts the current letter straight away, then each following letter after the wait below.<br>Off: the prompts below happen automatically, and the lightbulb is hidden.</div>
-          <div class="sublabel" style="margin-top:10px;">After the lightbulb, wait before each next letter</div>
+          <div class="hero-note">On: nothing prompts by itself. The star appears on the spelling page once a word is chosen. Tapping it prompts the current letter straight away, then each following letter after the wait below.<br>Off: the prompts below happen automatically, and the star is hidden.</div>
+          <div class="sublabel" style="margin-top:10px;">After the star, wait before each next letter</div>
           <div class="slider-row">
             <input type="range" id="helpDelaySlider" min="0" max="10" step="1" value="3">
             <span class="slider-val" id="helpDelayValue">3 sec</span>
@@ -1868,7 +1868,7 @@
         <div class="sublabel">On-screen buttons</div>
         <div class="settings-list">
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
-          <div class="setting-row"><span>&#128161; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
+          <div class="setting-row"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
         </div>
@@ -2030,7 +2030,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 84 - 2 Oct';
+const BUILD = 'build 85 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2148,8 +2148,8 @@ const state = {
   promptSize: 'large',        // small | med | large
   promptVerbalOn: true,       // speak the next letter as a prompt
   promptDelaySec: 0,          // 0-10s before any prompt appears
-  helpMode: false,            // prompts wait until the lightbulb is pressed
-  helpDelaySec: 3,            // after the lightbulb: wait before each following letter is prompted
+  helpMode: false,            // prompts wait until the star is pressed
+  helpDelaySec: 3,            // after the star: wait before each following letter is prompted
   otherKeysMode: 'normal',    // normal | faded | blank | black
 
   // ===== On-screen keyboard buttons =====
@@ -2209,7 +2209,7 @@ let pendingErrorPos = null;
 
 // Prompt visibility is runtime-only (never persisted)
 let promptVisible = true;
-let helpRequested = false;   // set by the lightbulb; lasts until this word is finished or changed
+let helpRequested = false;   // set by the star; lasts until this word is finished or changed
 let promptDelayTimer = null;
 let verbalSpokenFor = -1;
 let shiftOn = false;          // the up arrow: the next letter is a capital
@@ -4043,7 +4043,7 @@ function render() {
   document.getElementById('modesToggle').style.display = barHere;
   wrap.style.display = barHere;
   document.getElementById('searchBtn').style.display = (!state.homeEnabled && state.showSearchBtn) ? '' : 'none';
-  // the lightbulb belongs to a word in progress: nothing to help with otherwise
+  // the star belongs to a word in progress: nothing to help with otherwise
   document.getElementById('helpBtn').style.display =
     (state.showHelpBtn && state.currentTarget && !isWordComplete()) ? '' : 'none';
 
@@ -5579,7 +5579,7 @@ document.getElementById('railToggle').addEventListener('click', () => {
 });
 document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
 document.getElementById('homeHelpBtn').addEventListener('click', () => {
-  // On home the bulb takes you to the keys with help already granted
+  // On home the star takes you to the keys with help already granted
   showKeyboard();
   if (state.currentTarget && !isWordComplete()) {
     helpRequested = true;
@@ -6537,7 +6537,7 @@ document.getElementById('togglePromptVerbal').addEventListener('click', () => {
 });
 document.getElementById('toggleHelpMode').addEventListener('click', () => {
   state.helpMode = !state.helpMode;
-  // the lightbulb setting follows help mode, so the two can't disagree
+  // the star setting follows help mode, so the two can't disagree
   state.showHelpBtn = state.helpMode;
   helpRequested = false;
   save(); render(); renderSettings();
