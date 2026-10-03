@@ -2141,7 +2141,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 127 - 3 Oct';
+const BUILD = 'build 128 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5315,10 +5315,16 @@ function pathTo(id) {
 }
 // The folders inside the open one, shown as tiles in the grid. Step into one
 // and they give way to its words; the bar above takes you back out.
-function gridFolders() {
-  const cat = currentCat();
-  return cat ? childrenOf(cat.id) : [];
+// The folders shown on a folder's page: the ones that live in it, then any
+// existing folders that have been added to it as well (they stay where they are
+// and simply show here too).
+function foldersShownIn(cat) {
+  if (!cat) return [];
+  const own = childrenOf(cat.id);
+  const linked = (cat.links || []).map(catById).filter(c => c && !c.hidden && !own.includes(c));
+  return own.concat(linked);
 }
+function gridFolders() { return foldersShownIn(currentCat()); }
 // A folder can be marked as holding phrases, and anything inside it follows suit
 function catAllowsPhrases(cat) {
   let c = cat, guard = 0;
@@ -5334,11 +5340,35 @@ function makeFolderCard(c, rerender) {
   w.className = 'hw';
   w.textContent = c.name;
   card.appendChild(w);
-  // tap opens the folder; hold lifts it to drag, or let go for rename, move and delete
-  attachWordHold(card, null, null, c);
+  const host = currentCat();
+  const isLink = !!host && (c.parent || null) !== host.id;
+  if (isLink) {
+    // a folder shown here as well as in its own place: hold for its options (it is not dragged from here)
+    let timer = null;
+    card.addEventListener('pointerdown', () => {
+      timer = setTimeout(() => { timer = null; suppressTileClick = true; buzz(15); card.classList.add('held'); }, 520);
+    });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    card.addEventListener('pointerup', stop);
+    ['pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, () => { stop(); suppressTileClick = false; card.classList.remove('held'); }));
+    card.addEventListener('contextmenu', e => e.preventDefault());
+  } else {
+    // tap opens the folder; hold lifts it to drag, or let go for rename, move and delete
+    attachWordHold(card, null, null, c);
+  }
   card.addEventListener('click', () => {
-    if (suppressTileClick) { suppressTileClick = false; return; }
-    homePath = pathTo(c.id); rerender();
+    card.classList.remove('held');
+    if (suppressTileClick) {
+      suppressTileClick = false;
+      if (isLink) openFolderEdit(c, body => body.appendChild(sheetBtn('Take it off this page only', '', () => {
+        host.links = (host.links || []).filter(x => x !== c.id);
+        save(); closeWordSheet(); renderHome(true);
+      })));
+      return;
+    }
+    // step into it from here, so going back returns to this page
+    homePath = host ? homePath.concat([c.id]) : pathTo(c.id);
+    rerender();
   });
   return card;
 }
@@ -6215,7 +6245,7 @@ function renderBuilder(grid) {
   if ('cat' in here) {
     // a folder reached from the builder: its sub-folders, then its words
     const c = catById(here.cat);
-    childrenOf(c.id).forEach(sub => {
+    foldersShownIn(c).forEach(sub => {
       holdable(tile(sub.name, true), () => { builderPath.push({ cat: sub.id }); renderHome(true); },
         () => openFolderEdit(sub));
       count++;
@@ -6394,6 +6424,35 @@ function openFolderAdd(cat) {
       const name = String(typed || '').replace(/\s+/g, ' ').trim();
       if (!name) return false;
       addCategory(name, cat.id);
+    })));
+    body.appendChild(sheetBtn('An existing folder', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Show which folder in ' + cat.name + '?');
+      const n = document.createElement('div');
+      n.className = 'help-note'; n.style.marginTop = '6px';
+      n.textContent = 'The folder stays where it is and shows here as well. To move it instead, hold the folder and choose Move.';
+      b2.appendChild(n);
+      const list = document.createElement('div');
+      list.className = 'pick-list';
+      b2.appendChild(list);
+      // not itself, and not a folder it sits inside
+      const above = pathTo(cat.id);
+      const walk = (parent, depth) => childrenOf(parent, true).forEach(c => {
+        const here = c.parent === cat.id || (cat.links || []).includes(c.id);
+        if (!above.includes(c.id)) {
+          const r = document.createElement('button');
+          r.className = 'pick-row';
+          r.style.marginLeft = (depth * 18) + 'px';
+          r.textContent = c.name + (here ? '  (already here)' : '');
+          r.addEventListener('click', () => {
+            if (!here) { cat.links = (cat.links || []).concat([c.id]); save(); }
+            closeWordSheet(); renderHome(true);
+          });
+          list.appendChild(r);
+        }
+        walk(c.id, depth + 1);
+      });
+      walk(null, 0);
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
     if (hasSmallStrip(cat)) body.appendChild(sheetBtn('Choose the small words row', '', openSmallRowPicker));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
