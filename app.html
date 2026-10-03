@@ -856,7 +856,7 @@
     border: none; border-radius: 16px; background: #bfd8ff; color: var(--ink);
     font-family: inherit; font-weight: 900; font-size: 20px; padding: 14px 20px; cursor: pointer;
   }
-  .small-head .sh-arrow { font-size: 14px; color: var(--ink); }
+  .small-head .sh-arrow { font-size: 0.7em; color: var(--ink); }
   .small-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
   .small-list .empty-note { grid-column: 1 / -1; }
   .small-list .small-tile { box-shadow: var(--shadow); border-radius: 14px; }
@@ -2173,7 +2173,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 154 - 3 Oct';
+const BUILD = 'build 155 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7223,6 +7223,9 @@ function renderSlotGrid(grid, cat, folders) {
     head.className = 'small-head';
     head.setAttribute('aria-expanded', state.smallOpen ? 'true' : 'false');
     head.innerHTML = '<span></span><span class="sh-arrow"></span>';
+    // as tall as a small tile, with the same size of type
+    head.style.height = Math.max(48, Math.round(rowH / 2)) + 'px';
+    head.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
     head.firstChild.textContent = sec.name;
     head.lastChild.textContent = state.smallOpen ? '\u25B2' : '\u25BC';
     head.addEventListener('click', () => {
