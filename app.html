@@ -828,7 +828,7 @@
     font-size: 22px;
   }
   /* speak mode / builder switched off: the icon is greyed out */
-  #homeSpeakBtn.off, #homeBuilderBtn.off { filter: grayscale(1); opacity: 0.4; }
+  #homeSpeakBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
   #builderBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
   .modes-wrap {
     display: flex; gap: 8px;
@@ -1471,7 +1471,6 @@
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9662;</span>
     </button>
-    <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
     <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <div class="folder-strip" id="catTiles"></div>
     <button class="ctl icon" id="homeAddFolderBtn" aria-label="New folder" style="display:none">+</button>
@@ -1480,8 +1479,9 @@
     <div class="spacer"></div>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#11088;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
-    <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
+    <button class="ctl icon" id="railToggle" aria-label="Folder menu">&#9776;</button>
     <button class="ctl icon" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
+    <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
@@ -2109,7 +2109,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 119 - 3 Oct';
+const BUILD = 'build 120 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5755,10 +5755,15 @@ function renderHome(reset) {
   if (reset) {
     renderPhraseBar();
     renderBuilderBar();
-    document.getElementById('homeModesToggle').style.display = state.builderMode ? 'none' : '';
+    // The arrow houses only the settings gear. The sandwich sits on the right with
+    // the other switches and shows or hides the folder menu.
+    document.getElementById('homeSettingsBtn').style.display = state.homeModesOpen ? '' : 'none';
+    document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
+    document.getElementById('railToggle').style.display = '';
+    document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
-      // the builder takes over the page: no menu, no folder strip, just its own pages
-      ['homeSettingsBtn', 'railToggle', 'homeAddFolderBtn', 'homeRootBtn', 'homeHelpBtn', 'folderView']
+      // the builder takes over the page: no folder menu, just its own pages
+      ['homeAddFolderBtn', 'homeRootBtn', 'homeHelpBtn', 'folderView']
         .forEach(id => { document.getElementById(id).style.display = 'none'; });
       document.getElementById('catTiles').className = 'folder-strip';
       document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
@@ -5773,7 +5778,6 @@ function renderHome(reset) {
     // a way home, and the folder strip gives way to the tiles.
     const useFolders = foldersMode();
     document.getElementById('homeRootBtn').style.display = useFolders && homePath.length ? '' : 'none';
-    document.getElementById('railToggle').style.display = useFolders ? 'none' : '';
     document.getElementById('folderView').style.display = useFolders ? '' : 'none';
     grid.style.display = useFolders ? 'none' : '';
     if (useFolders) {
@@ -5785,17 +5789,12 @@ function renderHome(reset) {
       renderFolders();
       return;
     }
-    // Three states, to keep the bar bare: just the arrow; the arrow with the gear
-    // and the sandwich; or the arrow with the folder strip the sandwich opened.
+    // the folder menu shows while the sandwich is switched on
     const rail = document.getElementById('catTiles');
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     // the plus ends the menu bar while a folder is open: it makes a new folder inside it
     document.getElementById('homeAddFolderBtn').style.display =
       (state.railOpen && cat && !cat.rule) ? '' : 'none';
-    const iconsOut = state.homeModesOpen && !state.railOpen;
-    document.getElementById('homeSettingsBtn').style.display = iconsOut ? '' : 'none';
-    document.getElementById('railToggle').style.display = iconsOut ? '' : 'none';
-    document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen || state.railOpen);
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
@@ -6585,14 +6584,14 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
   }
 });
 document.getElementById('railToggle').addEventListener('click', () => {
-  state.railOpen = true;       // the folder strip takes the icons' place
+  // in the builder the sandwich goes back to the folder menu; otherwise it shows or hides it
+  if (state.builderMode) { state.builderMode = false; builderPath = []; state.railOpen = true; }
+  else state.railOpen = !state.railOpen;
+  buzz(10);
   save(); renderHome(true);
 });
 document.getElementById('homeModesToggle').addEventListener('click', () => {
-  // from the folder strip the arrow closes everything, back to the bare arrow;
-  // otherwise it shows or hides the two icons
-  if (state.railOpen && !foldersMode()) { state.railOpen = false; state.homeModesOpen = false; }
-  else state.homeModesOpen = !state.homeModesOpen;
+  state.homeModesOpen = !state.homeModesOpen;    // shows or hides the settings gear
   save(); renderHome(true);
 });
 document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
