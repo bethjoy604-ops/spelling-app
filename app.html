@@ -2121,7 +2121,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 123 - 3 Oct';
+const BUILD = 'build 124 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6008,10 +6008,8 @@ function renderBuilder(grid) {
     const words = (Array.isArray(c.slots) ? c.slots.filter(Boolean) : (c.words || []))
       .filter(w => !state.hiddenWords[w]);
     words.forEach(w => {
-      tile(bankLabel(w), false).addEventListener('click', () => {
-        // stays on this page so more can be added; enter (or the X) goes back to the start
-        builderSay(w);
-      });
+      // stays on this page so more can be added; enter (or the X) goes back to the start
+      holdable(tile(bankLabel(w), false), () => builderSay(w), () => openWordActions(w, c));
       count++;
     });
   } else {
@@ -6186,7 +6184,7 @@ function openFolderAdd(cat) {
   });
 }
 // Rename, move or delete any folder, the default ones included
-function openFolderEdit(c) {
+function openFolderEdit(c, extra) {
   if (!c) return;
   const done = () => { save(); closeWordSheet(); renderHome(true); };
   const inside = id => { let x = catById(id), g = 0; while (x && g++ < 20) { if (x.id === c.id) return true; x = x.parent ? catById(x.parent) : null; } return false; };
@@ -6241,6 +6239,7 @@ function openFolderEdit(c) {
       deleteCategory(c.id);
       done();
     }));
+    if (extra) extra(body);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -6339,22 +6338,12 @@ function openBuilderTile(parent, node) {
   });
 }
 function openBuilderLink(parent, cid) {
-  const c = catById(cid);
-  openWordSheet(body => {
-    sheetTitle(body, 'This folder');
-    const p = document.createElement('div');
-    p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = c ? c.name : '';
-    body.appendChild(p);
-    body.appendChild(sheetBtn('Rename, move or delete the folder', '', () => openFolderEdit(c)));
-    body.appendChild(sheetBtn('Take it off this page', 'danger', () => {
+  // the same options as any folder, plus taking just the link off this page
+  openFolderEdit(catById(cid), body => {
+    body.appendChild(sheetBtn('Take it off this page only', '', () => {
       parent.cats = parent.cats.filter(x => x !== cid);
       save(); closeWordSheet(); renderHome(true);
     }));
-    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
-    const n = document.createElement('div');
-    n.className = 'help-note'; n.style.marginTop = '12px';
-    n.textContent = 'The folder itself and its words are not deleted.';
-    body.appendChild(n);
   });
 }
 document.getElementById('homeBuilderBtn').addEventListener('click', () => {
