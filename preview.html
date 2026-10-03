@@ -2173,7 +2173,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 147 - 3 Oct';
+const BUILD = 'build 148 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6261,7 +6261,7 @@ function makeSmallStrip(rowH, base, owner) {
   };
   shown.forEach((row, r) => row.forEach((w, i) => {
     edit = () => editRow(r);
-    const b = mk(bankLabel(w), () => {
+    const b = mk(sentenceLabel(w), () => {      // the blue row is always small letters (I and names aside)
       homePhrase.push(w);
       warmSpeech();
       speakWord(w, 0.95);
