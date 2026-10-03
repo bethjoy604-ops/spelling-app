@@ -2099,7 +2099,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 106 - 3 Oct';
+const BUILD = 'build 107 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2246,6 +2246,7 @@ const state = {
   groupsV3: false,            // the one-time reorder inside Categories
   groupsV4: false,            // the one-time change to My Stuff's folders
   groupsV5: false,            // the one-time rename of Activities to Actions
+  groupsV6: false,            // the one-time reorder putting Things before People
   wordCase: {},               // how each title was written, for reading back
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
   revives: { word: {}, cat: {}, catWord: {} }, // and deliberate re-adds, which undo them
@@ -2389,6 +2390,7 @@ async function load() {
         groupsV3: saved.groupsV3 ?? false,
         groupsV4: saved.groupsV4 ?? false,
         groupsV5: saved.groupsV5 ?? false,
+        groupsV6: saved.groupsV6 ?? false,
         wordCase: saved.wordCase || {},
         tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
         revives: saved.revives || { word: {}, cat: {}, catWord: {} },
@@ -2480,8 +2482,9 @@ async function load() {
   if (state.categories.length === 0) applyDefaultGroups();
   mergeStarterWords();
   // One-time: inside Categories, Activities comes first, then Food, People, Places, Things
-  if (!state.groupsV3) {
-    state.groupsV3 = true;
+  // (and again when the order became Actions, Food, Things, People, Places)
+  if (!state.groupsV3 || !state.groupsV6) {
+    state.groupsV3 = true; state.groupsV6 = true;
     const cats = state.categories.find(c => !c.parent && c.name.toLowerCase() === 'categories');
     if (cats) CATEGORY_SUBS.forEach((n, i) => {
       const c = state.categories.find(x => x.parent === cats.id && x.name.toLowerCase() === n.toLowerCase());
@@ -2579,6 +2582,7 @@ async function save() {
       groupsV3: state.groupsV3,
       groupsV4: state.groupsV4,
       groupsV5: state.groupsV5,
+      groupsV6: state.groupsV6,
       wordCase: state.wordCase,
       tombs: state.tombs,
       revives: state.revives,
@@ -5005,7 +5009,7 @@ function deleteCategory(id) {
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
 const DEFAULT_GROUPS = ['Chat', 'Categories', 'My Stuff'];
-const CATEGORY_SUBS = ['Actions', 'Food', 'People', 'Places', 'Things'];
+const CATEGORY_SUBS = ['Actions', 'Food', 'Things', 'People', 'Places'];
 const DEFAULT_COLORS = {
   Chat: 'blue', Categories: 'green', 'My Stuff': 'orange',
   Food: 'green', Actions: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
