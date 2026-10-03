@@ -438,6 +438,34 @@
     font-size: 0.9em; font-weight: 900; color: var(--muted); line-height: 1;
   }
   .cc-btn.on { background: var(--ink); color: #fff; }
+  /* arranging a folder */
+  .home-card { -webkit-touch-callout: none; }
+  .home-card.add-folder {
+    background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset;
+    min-width: 70px; min-height: 70px;
+  }
+  .home-card.add-folder .hw { color: rgba(0,0,0,0.42); }
+  .home-card.drag-src { opacity: 0.3; }
+  .home-card.drag-ghost {
+    position: fixed; z-index: 500; pointer-events: none; margin: 0;
+    transform: scale(1.06) rotate(-1.5deg); opacity: 0.95;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+  }
+  .home-card.drop-before { box-shadow: -9px 0 0 var(--green), var(--shadow); }
+  .home-card.drop-after  { box-shadow: 9px 0 0 var(--green), var(--shadow); }
+  [data-cat-id].drop-into { outline: 5px solid var(--green) !important; outline-offset: 2px; opacity: 1 !important; }
+  .word-edit-input {
+    width: 100%; margin-top: 12px; padding: 14px 16px; border-radius: 14px;
+    border: 2px solid var(--border); background: var(--bg);
+    font-family: inherit; font-size: 26px; font-weight: 900; color: var(--ink);
+    user-select: text; -webkit-user-select: text;
+  }
+  .pick-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-height: 44vh; overflow-y: auto; }
+  .pick-row {
+    text-align: left; border: 2px solid var(--border); background: var(--bg); border-radius: 12px;
+    padding: 12px 14px; font-family: inherit; font-size: 17px; font-weight: 800; color: var(--ink); cursor: pointer;
+  }
+  .pick-row.on { background: var(--green); border-color: var(--green); color: #fff; }
 
   .home-bar .ctl.icon { flex: none; }
   /* Chosen words take the room they need; the typing box fills what is left.
@@ -1613,6 +1641,11 @@
   </div>
 </div>
 
+<!-- A held word: edit it, or choose where it moves to -->
+<div class="overlay" id="wordSheet">
+  <div class="sheet" id="wordSheetBody"></div>
+</div>
+
 <!-- Manage groups -->
 <div class="overlay" id="manageMenu">
   <div class="sheet">
@@ -2033,7 +2066,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 98 - 3 Oct';
+const BUILD = 'build 99 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2177,6 +2210,7 @@ const state = {
   groupOrder: 0,              // which arrangement of the standard groups is in use
   settingsTidied: false,      // the one-time clean-up of retired defaults
   groupsV2: false,            // the one-time move to the Categories layout
+  groupsV3: false,            // the one-time reorder inside Categories
   wordCase: {},               // how each title was written, for reading back
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
   revives: { word: {}, cat: {}, catWord: {} }, // and deliberate re-adds, which undo them
@@ -2316,6 +2350,7 @@ async function load() {
         groupOrder: saved.groupOrder ?? 0,
         settingsTidied: saved.settingsTidied ?? false,
         groupsV2: saved.groupsV2 ?? false,
+        groupsV3: saved.groupsV3 ?? false,
         wordCase: saved.wordCase || {},
         tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
         revives: saved.revives || { word: {}, cat: {}, catWord: {} },
@@ -2379,6 +2414,16 @@ async function load() {
   }
   if (state.categories.length === 0) applyDefaultGroups();
   mergeStarterWords();
+  // One-time: inside Categories, Activities comes first, then Food, People, Places, Things
+  if (!state.groupsV3) {
+    state.groupsV3 = true;
+    const cats = state.categories.find(c => !c.parent && c.name.toLowerCase() === 'categories');
+    if (cats) CATEGORY_SUBS.forEach((n, i) => {
+      const c = state.categories.find(x => x.parent === cats.id && x.name.toLowerCase() === n.toLowerCase());
+      if (c) c.order = i;
+    });
+    save();
+  }
   // First run after the search feature arrived: seed history from the existing bank
   if (Object.keys(state.wordHistory).length === 0 && state.wordBank.length > 0) {
     state.wordBank.forEach(w => {
@@ -2466,6 +2511,7 @@ async function save() {
       groupOrder: state.groupOrder,
       settingsTidied: state.settingsTidied,
       groupsV2: state.groupsV2,
+      groupsV3: state.groupsV3,
       wordCase: state.wordCase,
       tombs: state.tombs,
       revives: state.revives,
@@ -4618,7 +4664,7 @@ function openKeyMenu(letter) {
   menu.classList.add('show');
 }
 function closeAllMenus() {
-  ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu','searchMenu','manageMenu','catWordsMenu','importMenu'].forEach(id =>
+  ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu','searchMenu','manageMenu','catWordsMenu','importMenu','wordSheet'].forEach(id =>
     document.getElementById(id).classList.remove('show'));
 }
 function saveCurrentPhoneme() {
@@ -4893,7 +4939,7 @@ function deleteCategory(id) {
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
 const DEFAULT_GROUPS = ['Chat', 'Categories', 'My Stuff'];
-const CATEGORY_SUBS = ['Food', 'Activities', 'People', 'Places', 'Things'];
+const CATEGORY_SUBS = ['Activities', 'Food', 'People', 'Places', 'Things'];
 const DEFAULT_COLORS = {
   Chat: 'blue', Categories: 'green', 'My Stuff': 'orange',
   Food: 'green', Activities: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
@@ -4981,10 +5027,13 @@ function categoryRows(cat) {
   if (!cat) return searchWords('');
   if (cat.rule === 'used') return searchWords('').slice().sort((a, b) => b.n - a.n || b.t - a.t);
   if (cat.rule === 'recent') return searchWords('').slice().sort((a, b) => b.t - a.t);
-  const rows = catAllowsPhrases(cat) ? rankWords(cat.words || []) : tileModeFilter(rankWords(cat.words || []));
-  // The order control applies inside a group too
-  if (state.bankSort === 'used') return rows.sort((a, b) => b.n - a.n || b.t - a.t);
-  return rows.sort((a, b) => b.t - a.t || b.n - a.n);
+  // A folder keeps its words exactly where they were put, so each one is always
+  // found in the same spot. Only Recents / Popular re-sorts by use.
+  const rows = (cat.words || []).map(w => {
+    const d = state.wordHistory[w] || {};
+    return { word: w, n: d.n || 0, t: d.t || 0 };
+  });
+  return catAllowsPhrases(cat) ? rows : tileModeFilter(rows);
 }
 
 // Lay the tiles out in clean rows: one font size for the lot, each tile only
@@ -5099,6 +5148,7 @@ function catAllowsPhrases(cat) {
 function makeFolderCard(c, rerender) {
   const card = document.createElement('button');
   card.className = 'home-card folder-card';
+  card.dataset.catId = c.id;
   const w = document.createElement('span');
   w.className = 'hw';
   w.textContent = c.name;
@@ -5317,6 +5367,7 @@ function renderCatTiles(containerId, rerender) {
   const makeTile = (c, level) => {
     const b = document.createElement('button');
     b.className = 'cat-tile' + (homePath[level] === c.id ? ' selected' : '');
+    b.dataset.catId = c.id;
     b.textContent = c.name;
     b.addEventListener('pointerdown', () => {
       longPressed = false;
@@ -5329,6 +5380,7 @@ function renderCatTiles(containerId, rerender) {
     });
     b.addEventListener('pointerup', () => {
       if (tileTimer) clearTimeout(tileTimer);
+      if (wordDrag) return;      // a word is being dropped here, not a tap on the tab
       if (longPressed) return;
       // stay on the bar: pick at this level, drop anything deeper
       homePath = homePath.slice(0, level);
@@ -5591,6 +5643,7 @@ function renderHome(reset) {
     homeShown = 0;
     grid.innerHTML = '';
     grid.scrollTop = 0;
+    if (cat && !cat.rule) grid.appendChild(makeAddFolderCard(cat));
     folders.forEach(c => grid.appendChild(makeFolderCard(c, () => renderHome(true))));
     if (homeRows.length === 0 && folders.length === 0) {
       const n = document.createElement('div');
@@ -5621,18 +5674,282 @@ function renderHome(reset) {
     w.className = 'hw';
     w.textContent = bankLabel(r.word);
     card.appendChild(w);
+    card.dataset.word = r.word;
     card.addEventListener('click', () => {
+      if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
       homePhrase.push(r.word);
       warmSpeech();
       speakWord(r.word, 0.95);
       renderPhraseBar();
       renderMagic(r.word);
     });
+    // inside a folder a word can be held to edit it, or dragged to a new spot or folder
+    if (cat && !cat.rule) attachWordHold(card, r.word, cat);
     grid.appendChild(card);
   });
   homeShown += slice.length;
   requestAnimationFrame(() => fitGrid(grid));
 }
+// ===== Arranging a folder: hold a word to edit it, drag it to move it =====
+let suppressTileClick = false;
+let wordDrag = null;
+
+// The grey plus at the start of a folder: makes a new folder inside this one
+function makeAddFolderCard(cat) {
+  const card = document.createElement('button');
+  card.className = 'home-card add-folder';
+  card.setAttribute('aria-label', 'New folder');
+  const w = document.createElement('span');
+  w.className = 'hw';
+  w.textContent = '+';
+  card.appendChild(w);
+  card.addEventListener('click', () => {
+    const v = prompt('Name the new folder (it goes inside ' + cat.name + ')');
+    if (!v || !v.trim()) return;
+    addCategory(v.trim(), cat.id);
+    save(); renderHome(true);
+  });
+  return card;
+}
+
+function attachWordHold(card, word, cat) {
+  let timer = null, sx = 0, sy = 0;
+  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  card.addEventListener('pointerdown', e => {
+    if (e.button) return;
+    sx = e.clientX; sy = e.clientY;
+    cancel();
+    timer = setTimeout(() => { timer = null; startWordDrag(card, word, cat, sx, sy); }, 480);
+  });
+  // a finger that travels is scrolling the page, not holding the word
+  card.addEventListener('pointermove', e => {
+    if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, cancel));
+  card.addEventListener('contextmenu', e => e.preventDefault());
+}
+function startWordDrag(card, word, cat, x, y) {
+  const r = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.className = 'home-card drag-ghost';
+  ghost.style.width = r.width + 'px';
+  ghost.style.height = r.height + 'px';
+  ghost.style.left = r.left + 'px';
+  ghost.style.top = r.top + 'px';
+  document.body.appendChild(ghost);
+  card.classList.add('drag-src');
+  suppressTileClick = true;
+  buzz(15);
+  wordDrag = { word, cat, card, ghost, ox: x - r.left, oy: y - r.top, sx: x, sy: y, moved: false, target: null };
+}
+function clearDropMarks() {
+  document.querySelectorAll('.drop-before, .drop-after, .drop-into')
+    .forEach(el => el.classList.remove('drop-before', 'drop-after', 'drop-into'));
+}
+document.addEventListener('pointermove', e => {
+  const d = wordDrag;
+  if (!d) return;
+  d.ghost.style.left = (e.clientX - d.ox) + 'px';
+  d.ghost.style.top = (e.clientY - d.oy) + 'px';
+  if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 8) d.moved = true;
+  // near the top or bottom edge the page scrolls along
+  const grid = document.getElementById('homeGrid');
+  const gr = grid.getBoundingClientRect();
+  if (e.clientY > gr.bottom - 40) grid.scrollTop += 14;
+  else if (e.clientY < gr.top + 30 && e.clientY > gr.top - 10) grid.scrollTop -= 14;
+
+  clearDropMarks();
+  d.target = null;
+  if (!d.moved) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (!el) return;
+  const tile = el.closest('.home-card[data-word]');
+  const folder = el.closest('[data-cat-id]');
+  if (tile && tile !== d.card) {
+    const tr = tile.getBoundingClientRect();
+    const after = e.clientX > tr.left + tr.width / 2;
+    tile.classList.add(after ? 'drop-after' : 'drop-before');
+    d.target = { kind: 'word', word: tile.dataset.word, after };
+  } else if (folder) {
+    folder.classList.add('drop-into');
+    d.target = { kind: 'folder', id: Number(folder.dataset.catId) };
+  }
+});
+function endWordDrag(cancelled) {
+  const d = wordDrag;
+  if (!d) return;
+  wordDrag = null;
+  d.ghost.remove();
+  d.card.classList.remove('drag-src');
+  clearDropMarks();
+  // the tap that would follow a hold is swallowed; if none comes, stop waiting for it
+  setTimeout(() => { suppressTileClick = false; }, 350);
+  if (cancelled) return;
+  if (!d.moved) { openWordActions(d.word, d.cat); return; }
+  const t = d.target;
+  if (!t) return;
+  if (t.kind === 'word') {
+    const list = (d.cat.words || []).filter(w => w !== d.word);
+    let at = list.indexOf(t.word);
+    if (at === -1) return;
+    if (t.after) at++;
+    list.splice(at, 0, d.word);
+    d.cat.words = list;
+    save(); renderHome(true);
+  } else if (t.kind === 'folder') {
+    const dest = catById(t.id);
+    if (dest && dest.id !== d.cat.id) openMovePicker(d.word, d.cat, dest);
+  }
+}
+document.addEventListener('pointerup', () => endWordDrag(false));
+document.addEventListener('pointercancel', () => endWordDrag(true));
+// while a word is being carried the page must not scroll under the finger
+document.addEventListener('touchmove', e => { if (wordDrag) e.preventDefault(); }, { passive: false });
+
+// ---- the sheet used for a held word ----
+function openWordSheet(build) {
+  const body = document.getElementById('wordSheetBody');
+  body.innerHTML = '';
+  build(body);
+  document.getElementById('wordSheet').classList.add('show');
+}
+function closeWordSheet() { document.getElementById('wordSheet').classList.remove('show'); }
+function sheetBtn(label, cls, fn) {
+  const b = document.createElement('button');
+  b.className = 'mbtn action' + (cls ? ' ' + cls : '');
+  b.style.width = '100%'; b.style.marginTop = '8px';
+  b.textContent = label;
+  b.addEventListener('click', fn);
+  return b;
+}
+function sheetTitle(body, text, word) {
+  const h = document.createElement('h3');
+  h.textContent = text;
+  body.appendChild(h);
+  if (word) {
+    const p = document.createElement('div');
+    p.className = 'key-preview';
+    p.style.fontSize = '30px';
+    p.textContent = bankLabel(word);
+    body.appendChild(p);
+  }
+}
+function openWordActions(word, cat) {
+  openWordSheet(body => {
+    sheetTitle(body, 'This word', word);
+    body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
+    body.appendChild(sheetBtn('Move to another folder', '', () => openMovePicker(word, cat, null)));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+    const n = document.createElement('div');
+    n.className = 'help-note'; n.style.marginTop = '12px';
+    n.textContent = 'To move it, hold the word and drag: onto another word to change its place, or onto a folder to move it there.';
+    body.appendChild(n);
+  });
+}
+function openWordEdit(word) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Edit word');
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.maxLength = 80; inp.value = bankLabel(word);
+    inp.autocomplete = 'off'; inp.autocapitalize = 'off'; inp.spellcheck = false;
+    inp.className = 'word-edit-input';
+    body.appendChild(inp);
+    const n = document.createElement('div');
+    n.className = 'help-note'; n.style.marginTop = '8px';
+    n.textContent = 'Type it exactly as it should be spelled, capitals included.';
+    body.appendChild(n);
+    const saveIt = () => {
+      const typed = inp.value;
+      const key = normaliseWord(typed);
+      if (!key) return;
+      if (key !== word) renameWord(word, key);
+      setWordCase(typed, key);
+      save(); closeWordSheet(); renderHome(true);
+    };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveIt(); });
+    body.appendChild(sheetBtn('Save', 'primary', saveIt));
+    body.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    setTimeout(() => inp.focus(), 60);
+  });
+}
+// An edit says exactly how the word is written, so it is kept as typed
+function setWordCase(raw, key) {
+  const text = String(raw || '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ').trim();
+  state.wordCase = state.wordCase || {};
+  if (text.toUpperCase() === key) state.wordCase[key] = text;
+  else delete state.wordCase[key];
+}
+// Change a word's spelling everywhere it appears, keeping its place and its history
+function renameWord(from, to) {
+  const swap = list => {
+    const out = [];
+    (list || []).forEach(w => { const v = (w === from) ? to : w; if (!out.includes(v)) out.push(v); });
+    return out;
+  };
+  state.words = swap(state.words);
+  state.categories.forEach(c => { c.words = swap(c.words); });
+  state.wordBank = (state.wordBank || []).map(w => w === from ? to : w);
+  homePhrase = homePhrase.map(w => w === from ? to : w);
+  const a = state.wordHistory[from], b = state.wordHistory[to];
+  if (a || b) state.wordHistory[to] = { n: ((a && a.n) || 0) + ((b && b.n) || 0), t: Math.max((a && a.t) || 0, (b && b.t) || 0) };
+  delete state.wordHistory[from];
+  if (state.hiddenWords[from]) { state.hiddenWords[to] = true; delete state.hiddenWords[from]; }
+  if (state.wordCase) delete state.wordCase[from];
+  // prompt fading is counted letter by letter, so it starts again for the new spelling
+  delete state.wordFadeLevels[from];
+  delete state.wordTrialCounters[from];
+  if (recordings.word && recordings.word[from]) {
+    if (!recordings.word[to]) recordings.word[to] = recordings.word[from];
+    delete recordings.word[from];
+    saveRecordings();
+  }
+  syncTombWord(from);
+}
+// Choose where a word goes. With a folder given (it was dropped on one) the
+// choice is that folder or one inside it; otherwise every folder is offered.
+function openMovePicker(word, fromCat, root) {
+  openWordSheet(body => {
+    sheetTitle(body, root ? 'Move into ' + root.name : 'Move to which folder?', word);
+    let chosen = root ? root.id : null;
+    const list = document.createElement('div');
+    list.className = 'pick-list';
+    body.appendChild(list);
+    const move = sheetBtn('Move', 'primary', () => {
+      const dest = catById(chosen);
+      if (!dest) return;
+      if (dest.id !== fromCat.id) {
+        fromCat.words = (fromCat.words || []).filter(w => w !== word);
+        if (!dest.words.includes(word)) dest.words.push(word);
+        save();
+      }
+      closeWordSheet(); renderHome(true);
+    });
+    const paint = () => {
+      list.querySelectorAll('.pick-row').forEach(b => b.classList.toggle('on', Number(b.dataset.id) === chosen));
+      move.disabled = chosen === null;
+      move.style.opacity = chosen === null ? 0.4 : 1;
+    };
+    const row = (c, depth) => {
+      const b = document.createElement('button');
+      b.className = 'pick-row';
+      b.dataset.id = c.id;
+      b.style.marginLeft = (depth * 18) + 'px';
+      b.textContent = c.name + (c.id === fromCat.id ? '  (it is here now)' : '');
+      b.addEventListener('click', () => { chosen = c.id; paint(); });
+      list.appendChild(b);
+    };
+    const walk = (parent, depth) => childrenOf(parent, true).forEach(c => { row(c, depth); walk(c.id, depth + 1); });
+    if (root) { row(root, 0); walk(root.id, 1); } else walk(null, 0);
+    body.appendChild(move);
+    body.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    paint();
+  });
+}
+document.getElementById('wordSheet').addEventListener('click', e => {
+  if (e.target.id === 'wordSheet') closeWordSheet();
+});
+
 document.getElementById('homeGrid').addEventListener('scroll', e => {
   const g = e.target;
   if (homeShown < homeRows.length && g.scrollTop + g.clientHeight > g.scrollHeight - 300) {
@@ -6009,7 +6326,7 @@ document.getElementById('starterWordsBtn').addEventListener('click', () => {
   if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
   alert(r.words + ' word' + (r.words === 1 ? '' : 's') + ' added.');
 });
-['manageMenu','catWordsMenu','importMenu'].forEach(id => {
+['manageMenu','catWordsMenu','importMenu','wordSheet'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     const btn = e.target.closest('[data-action]');
     if ((btn && btn.dataset.action === 'cancel') || e.target.id === id) {
