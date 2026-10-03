@@ -477,6 +477,9 @@
     30% { transform: translate(-50%, -55%) scale(1.3); opacity: 1; }
     100% { transform: translate(-50%, -110%) scale(2.2); opacity: 0; }
   }
+  /* a carried folder about to land before / after another */
+  .home-card.drop-before { box-shadow: -10px 0 0 var(--green), var(--shadow); }
+  .home-card.drop-after  { box-shadow: 10px 0 0 var(--green), var(--shadow); }
   /* picked up and ready to move */
   .home-card.drag-ghost { outline: 6px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .home-card.drag-ghost { transition: transform 0.12s ease, opacity 0.12s ease; }
@@ -2138,7 +2141,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 125 - 3 Oct';
+const BUILD = 'build 126 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5320,19 +5323,10 @@ function makeFolderCard(c, rerender) {
   w.className = 'hw';
   w.textContent = c.name;
   card.appendChild(w);
-  // tap opens the folder; hold brings up rename, move and delete
-  let timer = null, held = false;
-  card.addEventListener('pointerdown', () => {
-    held = false;
-    timer = setTimeout(() => { timer = null; held = true; buzz(15); card.classList.add('held'); }, 520);
-  });
-  const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
-  card.addEventListener('pointerup', stop);
-  ['pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, () => { stop(); held = false; card.classList.remove('held'); }));
-  card.addEventListener('contextmenu', e => e.preventDefault());
+  // tap opens the folder; hold lifts it to drag, or let go for rename, move and delete
+  attachWordHold(card, null, null, c);
   card.addEventListener('click', () => {
-    card.classList.remove('held');
-    if (held) { held = false; openFolderEdit(c); return; }
+    if (suppressTileClick) { suppressTileClick = false; return; }
     homePath = pathTo(c.id); rerender();
   });
   return card;
@@ -6696,14 +6690,14 @@ function renderSlotGrid(grid, cat, folders) {
   }
 }
 
-function attachWordHold(card, word, cat) {
+function attachWordHold(card, word, cat, folder) {
   let timer = null, sx = 0, sy = 0;
   const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
   card.addEventListener('pointerdown', e => {
     if (e.button) return;
     sx = e.clientX; sy = e.clientY;
     cancel();
-    timer = setTimeout(() => { timer = null; startWordDrag(card, word, cat, sx, sy); }, 480);
+    timer = setTimeout(() => { timer = null; startWordDrag(card, word, cat, sx, sy, folder); }, 480);
   });
   // a finger that travels is scrolling the page, not holding the word
   card.addEventListener('pointermove', e => {
@@ -6712,7 +6706,7 @@ function attachWordHold(card, word, cat) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, cancel));
   card.addEventListener('contextmenu', e => e.preventDefault());
 }
-function startWordDrag(card, word, cat, x, y) {
+function startWordDrag(card, word, cat, x, y, folder) {
   const r = card.getBoundingClientRect();
   const ghost = card.cloneNode(true);
   ghost.className = 'home-card drag-ghost';
@@ -6724,15 +6718,16 @@ function startWordDrag(card, word, cat, x, y) {
   ghost.style.top = r.top + 'px';
   ghost.style.transformOrigin = (x - r.left) + 'px ' + (y - r.top) + 'px';   // shrinks toward the finger
   document.body.appendChild(ghost);
-  card.classList.add(cat ? 'drag-src' : 'held');   // on Recents the tile stays put and just lights up
-  if (!cat) ghost.style.display = 'none';
+  const lifts = !!cat || !!folder;
+  card.classList.add(lifts ? 'drag-src' : 'held');   // on Recents the tile stays put and just lights up
+  if (!lifts) ghost.style.display = 'none';
   suppressTileClick = true;
   buzz(15);
-  wordDrag = { word, cat, card, ghost, ox: x - r.left, oy: y - r.top, sx: x, sy: y, x, y, moved: false, target: null };
+  wordDrag = { word, cat, folder: folder || null, card, ghost, ox: x - r.left, oy: y - r.top, sx: x, sy: y, x, y, moved: false, target: null };
 }
 function clearDropMarks() {
-  document.querySelectorAll('.drop-here, .drop-into')
-    .forEach(el => el.classList.remove('drop-here', 'drop-into'));
+  document.querySelectorAll('.drop-here, .drop-into, .drop-before, .drop-after')
+    .forEach(el => el.classList.remove('drop-here', 'drop-into', 'drop-before', 'drop-after'));
 }
 // Where the carried tile is now: move its ghost and work out what is under it
 function trackWordDrag() {
@@ -6747,6 +6742,27 @@ function trackWordDrag() {
   if (!d.moved) return;
   const el = document.elementFromPoint(d.x, d.y);
   if (!el) return;
+  // A folder being carried: the edge of another folder puts it before or after
+  // that one; the middle of a folder (or a tab on the menu bar) puts it inside.
+  if (d.folder) {
+    const over = el.closest('[data-cat-id]');
+    if (!over || over === d.card) return;
+    const id = Number(over.dataset.catId);
+    // never into itself or something it holds
+    let x = catById(id), g = 0, bad = false;
+    while (x && g++ < 20) { if (x.id === d.folder.id) { bad = true; break; } x = x.parent ? catById(x.parent) : null; }
+    if (bad) return;
+    let how = 'into';
+    if (over.classList.contains('folder-card')) {
+      const r = over.getBoundingClientRect();
+      const f = (d.x - r.left) / r.width;
+      if (f < 0.3) how = 'before'; else if (f > 0.7) how = 'after';
+    }
+    over.classList.add(how === 'into' ? 'drop-into' : 'drop-' + how);
+    if (how === 'into') d.ghost.classList.add('over-folder');
+    d.target = { kind: 'folder-' + how, id };
+    return;
+  }
   // only an empty place takes a tile: one that is in the way has to be moved first
   const hole = el.closest('.slot-empty');
   const folder = el.closest('[data-cat-id]');
@@ -6787,9 +6803,29 @@ function endWordDrag(cancelled) {
   // the tap that would follow a hold is swallowed; if none comes, stop waiting for it
   setTimeout(() => { suppressTileClick = false; }, 350);
   if (cancelled) return;
-  if (!d.moved) { openWordActions(d.word, d.cat); return; }
+  if (!d.moved) { if (d.folder) openFolderEdit(d.folder); else openWordActions(d.word, d.cat); return; }
   const t = d.target;
   if (!t) return;
+  if (d.folder) {
+    const c = d.folder, over = catById(t.id);
+    if (!over) return;
+    if (t.kind === 'folder-into') {
+      c.parent = over.id;
+      c.order = childrenOf(over.id, true).filter(x => x.id !== c.id).length;
+    } else {
+      // take a place among the other folder's siblings, just before or after it
+      const parent = over.parent || null;
+      const sibs = childrenOf(parent, true).filter(x => x.id !== c.id);
+      let at = sibs.findIndex(x => x.id === over.id);
+      if (t.kind === 'folder-after') at++;
+      sibs.splice(at, 0, c);
+      c.parent = parent;
+      sibs.forEach((x, i) => { x.order = i; });
+    }
+    if (homePath.includes(c.id)) homePath = [];
+    save(); renderHome(true);
+    return;
+  }
   if (t.kind === 'slot') {
     const slots = (d.cat.slots || []).slice();
     if (slots[t.slot]) return;                 // taken in the meantime
