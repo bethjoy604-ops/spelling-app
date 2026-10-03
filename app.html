@@ -2173,7 +2173,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 150 - 3 Oct';
+const BUILD = 'build 151 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6306,7 +6306,7 @@ function openSmallRowPicker(owner, rowIndex) {
     allSmallWords().forEach(w => {
       const r = document.createElement('button');
       r.className = 'pick-row' + (picked.includes(w) ? ' on' : '');
-      r.textContent = bankLabel(w);
+      r.textContent = sentenceLabel(w);     // shown the way the row will show it: small letters
       r.addEventListener('click', () => {
         if (picked.includes(w)) picked = picked.filter(x => x !== w);
         else picked.push(w);
