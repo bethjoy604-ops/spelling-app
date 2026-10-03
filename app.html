@@ -2073,7 +2073,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 101 - 3 Oct';
+const BUILD = 'build 102 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5666,7 +5666,8 @@ function renderHome(reset) {
     homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
     const folders = gridFolders();
     // A folder is a grid of fixed places: every tile stays where it was put
-    const slotted = !!(cat && !cat.rule);
+    // (Recents / Popular uses the same grid and type size, just without fixed places)
+    const slotted = !!(cat && !cat.rule) || homeRows.length > 0 || folders.length > 0;
     grid.classList.toggle('slot-grid', slotted);
     grid.style.gridTemplateColumns = ''; grid.style.gridAutoRows = '';
     if (slotted) {
@@ -5787,18 +5788,22 @@ function renderSlotGrid(grid, cat, folders) {
   const cellW = Math.max(60, (W - gap * (cols - 1)) / cols);
   const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
   const words = homeRows.map(r => r.word);
-  const slots = slotsFor(cat, words, cols);
-  const head = 1 + folders.length;                  // the plus, then the sub-folders
+  // only a real folder can be arranged; Recents / Popular just lists its words in order
+  const arrange = !!(cat && !cat.rule);
+  const slots = arrange ? slotsFor(cat, words, cols) : words;
+  const head = (arrange ? 1 : 0) + folders.length;  // the plus, then the sub-folders
   const lastRow = Math.ceil((head + slots.length) / cols);
-  const totalRows = Math.max(screenRows, lastRow + 1);   // always a spare row to move things into
+  const totalRows = arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
+                            : lastRow;
   grid.innerHTML = '';
   grid.scrollTop = 0;
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
   grid.style.gridAutoRows = rowH + 'px';
 
-  // one size of type for every ordinary word; only a long one is trimmed to fit
+  // One size of type on every page, small enough that a twelve-letter word
+  // fits its tile, so nothing has to be shrunk next to its neighbours.
   const room = cellW - 30;
-  const base = Math.min(rowH * 0.4, room / (7 * 0.62));
+  const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   const place = (el, cell) => {
     el.style.gridRow = String(Math.floor(cell / cols) + 1);
     el.style.gridColumn = String((cell % cols) + 1);
@@ -5807,21 +5812,30 @@ function renderSlotGrid(grid, cat, folders) {
   const fit = (card, label) => {
     const t = card.querySelector('.hw');
     const one = room / (Math.max(1, label.length) * 0.62);
-    if (!label.includes(' ') || one >= base * 0.7) { t.style.fontSize = Math.min(base, one) + 'px'; return; }
+    if (!label.includes(' ') || one >= base) { t.style.fontSize = Math.min(base, one) + 'px'; return; }
     // a long title wraps onto lines instead of shrinking away
     const parts = label.split(' ');
     const longest = Math.max(...parts.map(x => x.length));
+    // how many lines it takes at the standard size; only shrink if they will not fit
+    const perLine = Math.max(longest, Math.floor(room / (base * 0.62)));
+    let lines = 1, run = 0;
+    parts.forEach(x => {
+      if (run && run + 1 + x.length > perLine) { lines++; run = x.length; }
+      else run += (run ? 1 : 0) + x.length;
+    });
     t.style.whiteSpace = 'normal';
-    t.style.fontSize = Math.min(base, room / (longest * 0.62), (rowH - 20) / (Math.min(parts.length, 3) * 1.15)) + 'px';
+    t.style.fontSize = Math.min(base, room / (longest * 0.62), (rowH - 16) / (lines * 1.1)) + 'px';
   };
 
-  const plus = makeAddFolderCard(cat);
-  plus.querySelector('.hw').style.fontSize = Math.min(rowH * 0.5, 64) + 'px';
-  place(plus, 0);
+  if (arrange) {
+    const plus = makeAddFolderCard(cat);
+    plus.querySelector('.hw').style.fontSize = Math.min(rowH * 0.5, 64) + 'px';
+    place(plus, 0);
+  }
   folders.forEach((c, i) => {
     const card = makeFolderCard(c, () => renderHome(true));
     fit(card, c.name);
-    place(card, 1 + i);
+    place(card, (arrange ? 1 : 0) + i);
   });
   for (let i = 0; head + i < totalRows * cols; i++) {
     const w = slots[i];
@@ -5848,7 +5862,7 @@ function renderSlotGrid(grid, cat, folders) {
       renderPhraseBar();
       renderMagic(w);
     });
-    attachWordHold(card, w, cat);
+    if (arrange) attachWordHold(card, w, cat);
     fit(card, bankLabel(w));
     place(card, head + i);
   }
