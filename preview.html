@@ -851,15 +851,15 @@
     justify-self: start; max-width: 100%; box-sizing: border-box;
   }
   .small-section { display: flex; flex-direction: column; gap: 16px; padding: 8px 0 16px; }
-  .small-section.top { padding: 0; align-items: flex-start; }
+  .small-section.top { padding: 0; align-items: stretch; }
   .small-section.top .small-head { align-self: stretch; }
   .small-section.top { gap: 12px; }
   .small-head {
-    display: flex; align-items: center; justify-content: center; width: 100%; height: 36px;
+    display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 40px;
     border: none; border-radius: 16px; background: #bfd8ff; color: var(--ink);
     font-family: inherit; font-weight: 900; font-size: 20px; padding: 0 20px; cursor: pointer;
   }
-  .small-head .sh-arrow { font-size: 0.7em; color: var(--ink); }
+  .small-head .sh-arrow { font-size: 20px; color: var(--ink); }
   .small-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
   .small-list .empty-note { grid-column: 1 / -1; }
   .small-list .small-tile { box-shadow: var(--shadow); border-radius: 14px; }
@@ -2176,7 +2176,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 160 - 3 Oct';
+const BUILD = 'build 161 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7229,8 +7229,7 @@ function renderSlotGrid(grid, cat, folders) {
   const slots = arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   const lastRow = Math.ceil((head + slots.length) / cols);
-  const totalRows = sec ? Math.max(1, lastRow)
-                  : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
+  const totalRows = arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
   grid.scrollTop = 0;
@@ -7242,14 +7241,14 @@ function renderSlotGrid(grid, cat, folders) {
   const room = cellW - 30;
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   // folders inside Categories carry a row of small words above their tiles
-  const strip = arrange && hasSmallStrip(cat);
-  grid.style.gridTemplateRows = sec ? (strip ? 'auto ' : '') + 'repeat(' + totalRows + ', ' + rowH + 'px) auto'
-                              : strip ? 'auto' : '';
+  const strip = arrange && !sec && hasSmallStrip(cat);
+  const topRow = !!(strip || sec);    // the small words bar takes the first row, above the tiles
+  grid.style.gridTemplateRows = topRow ? 'auto' : '';
   if (sec) {
     const wrap = document.createElement('div');
-    wrap.className = 'small-section';
+    wrap.className = 'small-section top';
     wrap.style.gridColumn = '1 / -1';
-    wrap.style.gridRow = String(totalRows + (strip ? 1 : 0) + 1);
+    wrap.style.gridRow = '1';
     const head = document.createElement('button');
     head.className = 'small-head';
     head.setAttribute('aria-expanded', state.smallOpen ? 'true' : 'false');
@@ -7259,14 +7258,7 @@ function renderSlotGrid(grid, cat, folders) {
     head.lastChild.textContent = state.smallOpen ? '\u25B2' : '\u25BC';
     head.addEventListener('click', () => {
       state.smallOpen = !state.smallOpen;
-      const was = grid.scrollTop;
       buzz(10); save(); renderHome(false);
-      // stay where the row is: opened, the row sits at the top with its words under it
-      const settle = () => {
-        const h = grid.querySelector('.small-head');
-        grid.scrollTop = (state.smallOpen && h) ? h.offsetTop - grid.offsetTop : was;
-      };
-      settle(); requestAnimationFrame(settle);
     });
     wrap.appendChild(head);
     if (state.smallOpen) {
@@ -7326,7 +7318,7 @@ function renderSlotGrid(grid, cat, folders) {
     grid.appendChild(el);
   }
   const place = (el, cell) => {
-    const r = Math.floor(cell / cols) + (strip ? 1 : 0), c = cell % cols;
+    const r = Math.floor(cell / cols) + (topRow ? 1 : 0), c = cell % cols;
     el.style.gridRow = String(r + 1);
     // below the first row, the first tile also takes the slim column the plus sits in
     el.style.gridColumn = String(c + 1);
