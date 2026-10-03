@@ -2173,7 +2173,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 148 - 3 Oct';
+const BUILD = 'build 149 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6973,7 +6973,6 @@ function openBuilderAddTo(here, heading) {
       b2.appendChild(sheetBtn('Add', 'primary', add));
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    body.appendChild(sheetBtn('A choice board', '', () => openChoiceBoardPicker(here)));
     if (here !== state.builder) body.appendChild(sheetBtn('A folder of words', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Open which folder?');
       const n = document.createElement('div');
@@ -7007,7 +7006,8 @@ function openBuilderAddTo(here, heading) {
       }));
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    body.appendChild(sheetBtn('Small words', '', () => openSmallRowPicker(here)));
+    body.appendChild(sheetBtn('A small words row', '', () => openSmallRowPicker(here)));
+    body.appendChild(sheetBtn('A choice board', '', () => openChoiceBoardPicker(here)));
     body.appendChild(sheetBtn('A new choice board', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Name the new choice board');
       const inp = builderInput(b2, '');
