@@ -6759,7 +6759,7 @@ function trackWordDrag() {
       if (f < 0.3) how = 'before'; else if (f > 0.7) how = 'after';
     }
     over.classList.add(how === 'into' ? 'drop-into' : 'drop-' + how);
-    if (how === 'into') d.ghost.classList.add('over-folder');
+    d.ghost.classList.add('over-folder');   // shrink out of the way so the mark on the folder shows
     d.target = { kind: 'folder-' + how, id };
     return;
   }
