@@ -562,7 +562,9 @@
   .target-word { align-items: center; }
   .tletter.next.fade-1 { background: var(--prompt-f1); }
   .tletter.next.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; }
-  .tletter.pending { color: var(--muted); opacity: 0.4; }
+  /* letters still to come read as strongly as the keys: this is the word to look at */
+  .tletter.pending { color: var(--ink); }
+  .tletter.tspace.pending { color: var(--muted); opacity: 0.4; }
   .tletter.tspace { min-width: 26px; padding: 6px 4px; font-size: 0.75em; }
   .tletter.draft-word { min-width: 0; padding: 6px 16px; }
   .key.space-blank.prompt-color { background: var(--prompt); }
@@ -1424,7 +1426,6 @@
 <!-- ===== KEYBOARD ===== -->
 <div class="view view-keyboard" id="viewKeyboard">
   <div class="target-banner" id="targetBanner">
-    <div class="target-label">Target</div>
     <div class="target-word" id="targetWord"></div>
     <button class="target-clear" id="targetClearBtn" title="Clear target">×</button>
   </div>
@@ -2030,7 +2031,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 87 - 3 Oct';
+const BUILD = 'build 88 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3999,13 +4000,17 @@ function render() {
     banner.classList.add('active');
     const tw = document.getElementById('targetWord');
     tw.innerHTML = '';
+    // In help mode the word bar always marks the letter to type next, straight
+    // away; the matching highlight on the keys still waits to be asked for
+    const helpLead = state.helpMode && !isWordComplete() && fadeLevelAt(state.targetIndex) < 3;
     [...state.currentTarget].forEach((ch, i) => {
       const s = document.createElement('span');
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
-      else if (i === state.targetIndex && showing && (state.promptColorOn || state.promptTileOn)) {
+      else if (i === state.targetIndex &&
+               ((showing && (state.promptColorOn || state.promptTileOn)) || helpLead)) {
         const fl = fadeLevelAt(i);
-        if (state.promptColorOn) {
+        if (state.promptColorOn || helpLead) {
           s.classList.add('next');
           if (fl > 0) s.classList.add('fade-' + fl);
         } else {
