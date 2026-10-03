@@ -2172,7 +2172,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 145 - 3 Oct';
+const BUILD = 'build 146 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6561,16 +6561,19 @@ function renderBuilder(grid) {
       // a linking word: it goes into the sentence, then opens the choice boards linked to it
       const leads = () => {
         const n = builderWordNode(w, false);
-        return (n && (n.kids.length || n.cats.some(id => { const x = catById(id); return x && !x.hidden; }))) ? n : null;
+        const ok = id => { const x = id ? catById(id) : null; return !!x && !x.hidden; };
+        return (n && (ok(n.go) || n.kids.length || n.cats.some(ok))) ? n : null;
       };
       const wt = tile(bankLabel(w), false);
       if (leads()) wt.classList.add('link-word');
       holdable(wt, () => {
         builderSay(w);
         const n = leads();
-        if (n) { builderPath.push(n); renderHome(true); }
+        const g = n && n.go ? catById(n.go) : null;
+        if (g && !g.hidden) { builderPath.push({ cat: n.go, via: w }); renderHome(true); }
+        else if (n) { builderPath.push(n); renderHome(true); }
       }, () => openWordActions(w, c, body => {
-        body.insertBefore(sheetBtn('Link a choice board', '', () => openChoiceBoardPicker(builderWordNode(w, true))), body.lastChild.previousSibling);
+        body.insertBefore(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')), body.lastChild.previousSibling);
       }));
       count++;
     });
@@ -7029,7 +7032,6 @@ function openBuilderTile(parent, node) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = node.label;
     body.appendChild(p);
-    body.appendChild(sheetBtn('Link a choice board', '', () => openChoiceBoardPicker(node)));
     body.appendChild(sheetBtn('Add what comes next', '', () =>
       openBuilderAddTo(node, 'After "' + node.label + '"')));
     body.appendChild(sheetBtn('Change the word', '', () => openWordSheet(b2 => {
