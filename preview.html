@@ -435,11 +435,15 @@
   }
   .home-card.folder-card .hw { color: var(--ink); }
   .home-card.folder-card::after {
-    content: '\203A'; position: absolute; top: 6px; right: 14px;
-    font-size: 0.9em; font-weight: 900; color: var(--muted); line-height: 1;
+    content: '\203A'; position: absolute; top: 3px; right: 12px;
+    font-size: 26px; font-weight: 900; color: var(--green); line-height: 1;
+  }
+  /* a linking word: it goes into the sentence and then opens choice boards - a small green dot */
+  .home-card.link-word::after {
+    content: ''; position: absolute; top: 10px; right: 12px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--green);
   }
   /* builder mode: a choice board (opens a set of choices, adds nothing to the sentence) has a green corner arrow */
-  .home-card.choice-board::after { color: var(--green); font-size: 26px; top: 3px; right: 12px; }
   .cc-btn.on { background: var(--ink); color: #fff; }
   /* arranging a folder */
   .home-card { -webkit-touch-callout: none; }
@@ -2157,7 +2161,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 137 - 3 Oct';
+const BUILD = 'build 138 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6404,12 +6408,16 @@ function renderBuilder(grid) {
     words.forEach(w => {
       // stays on this page so more can be added; enter (or the X) goes back to the start
       // a linking word: it goes into the sentence, then opens the choice boards linked to it
-      holdable(tile(bankLabel(w), false), () => {
-        builderSay(w);
+      const leads = () => {
         const n = builderWordNode(w, false);
-        if (n && (n.kids.length || n.cats.some(id => { const x = catById(id); return x && !x.hidden; }))) {
-          builderPath.push(n); renderHome(true);
-        }
+        return (n && (n.kids.length || n.cats.some(id => { const x = catById(id); return x && !x.hidden; }))) ? n : null;
+      };
+      const wt = tile(bankLabel(w), false);
+      if (leads()) wt.classList.add('link-word');
+      holdable(wt, () => {
+        builderSay(w);
+        const n = leads();
+        if (n) { builderPath.push(n); renderHome(true); }
       }, () => openWordActions(w, c, body => {
         body.insertBefore(sheetBtn('Link a choice board', '', () => openChoiceBoardPicker(builderWordNode(w, true))), body.lastChild.previousSibling);
       }));
@@ -6428,7 +6436,9 @@ function renderBuilder(grid) {
     };
     here.kids.forEach(k => {
       const key = normaliseWord(k.label);
-      movable(tile(k.label, false), here.kids, k, 'kids', () => {
+      const kt = tile(k.label, false);
+      if (k.kids.length || k.cats.length) kt.classList.add('link-word');
+      movable(kt, here.kids, k, 'kids', () => {
         if (key) builderSay(key);
         // a tile with nothing after it leaves the page as it is, so more can be added
         if (k.kids.length || k.cats.length) { builderPath.push(k); renderHome(true); }
