@@ -2176,7 +2176,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 163 - 3 Oct';
+const BUILD = 'build 164 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6347,6 +6347,17 @@ function smallRowList(owner) {
   if (isCatOwner(owner)) return Array.isArray(owner.row) ? owner.row : (state.smallRow || []);
   return (owner ? owner.small : state.smallRow) || [];
 }
+// A page that is only a menu of choice boards (folder tiles, no words of its own) never carries
+// a small words row: the row belongs on pages where words are picked
+function isBoardMenu(owner) {
+  if (!owner) return false;
+  const shown = id => { const c = catById(id); return !!c && !c.hidden; };
+  if (isCatOwner(owner)) {
+    const words = (owner.words || []).filter(w => !state.hiddenWords[w]);
+    return foldersShownIn(owner).filter(f => !f.smallSec).length > 0 && words.length === 0;
+  }
+  return (owner.cats || []).some(shown) && !(owner.kids || []).length;
+}
 function smallRows(owner) {
   const rows = [[]];
   smallRowList(owner).forEach(w => { if (w === '\n') rows.push([]); else rows[rows.length - 1].push(w); });
@@ -6571,11 +6582,11 @@ function renderBuilder(grid) {
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
   grid.style.gridAutoRows = 'auto';
   grid.style.gridTemplateRows = '';
-  if ('cat' in here && hasSmallStrip(catById(here.cat))) {
+  if ('cat' in here && hasSmallStrip(catById(here.cat)) && !isBoardMenu(catById(here.cat))) {
     const el = makeSmallStrip(rowH, base, catById(here.cat));   // the folder's own row, the same one menu mode shows
     el.style.gridColumn = '1 / -1';
     grid.appendChild(el);
-  } else if (!('cat' in here) && (here.small || []).length) {
+  } else if (!('cat' in here) && (here.small || []).length && !isBoardMenu(here)) {
     // a builder page can carry its own row of small words
     const el = makeSmallStrip(rowH, base, here);
     el.style.gridColumn = '1 / -1';
@@ -6864,7 +6875,7 @@ function openFolderAdd(cat) {
       walk(null, 0);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    if (hasSmallStrip(cat)) body.appendChild(sheetBtn('Choose the small words row', '', () => openSmallRowPicker(cat, 0)));
+    if (hasSmallStrip(cat) && !isBoardMenu(cat)) body.appendChild(sheetBtn('Choose the small words row', '', () => openSmallRowPicker(cat, 0)));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -7088,7 +7099,7 @@ function openBuilderAddTo(here, heading) {
       }));
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    body.appendChild(sheetBtn('A small words row', '', () => openSmallRowPicker(here)));
+    if (!isBoardMenu(here)) body.appendChild(sheetBtn('A small words row', '', () => openSmallRowPicker(here)));
     body.appendChild(sheetBtn('A choice board', '', () => openChoiceBoardPicker(here)));
     body.appendChild(sheetBtn('A new choice board', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Name the new choice board');
@@ -7241,7 +7252,7 @@ function renderSlotGrid(grid, cat, folders) {
   const room = cellW - 30;
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   // folders inside Categories carry a row of small words above their tiles
-  const strip = arrange && !sec && hasSmallStrip(cat);
+  const strip = arrange && !sec && hasSmallStrip(cat) && !isBoardMenu(cat);
   const topRow = !!(strip || sec);    // the small words bar takes the first row, above the tiles
   grid.style.gridTemplateRows = topRow ? 'auto' : '';
   if (sec) {
