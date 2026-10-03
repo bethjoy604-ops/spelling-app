@@ -2161,7 +2161,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 139 - 3 Oct';
+const BUILD = 'build 140 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2325,6 +2325,7 @@ const state = {
   starterDone: false,         // the starter folders and words have been added once
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
+  caseV2: false,
   layoutV9: false,            // the one-time addition of the New folder
   smallRow: null,             // the small words shown in the row above the tiles, in order
   homeModesOpen: false,       // the fold-down options row on home
@@ -2482,6 +2483,7 @@ async function load() {
         starterDone: saved.starterDone ?? false,
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
+        caseV2: saved.caseV2 ?? false,
         layoutV9: saved.layoutV9 ?? false,
         smallRow: Array.isArray(saved.smallRow) ? saved.smallRow : null,
         magicType: saved.magicType ?? true,
@@ -2587,6 +2589,19 @@ async function load() {
   if (!state.layoutV7) {
     state.layoutV7 = true;
     migrateLayoutV7();
+    save();
+  }
+  // One-time: builder tiles used to pin a word's first capital ("More"); tiles now do that themselves
+  if (!state.caseV2) {
+    state.caseV2 = true;
+    const seen = n => {
+      const key = normaliseWord(n.label || '');
+      const kept = (state.wordCase || {})[key];
+      if (kept && key !== 'I' && kept.slice(1) === kept.slice(1).toLowerCase()
+          && !categoriesOf(key).length) delete state.wordCase[key];
+      (n.kids || []).forEach(seen);
+    };
+    if (state.builder) (state.builder.kids || []).forEach(seen);
     save();
   }
   // One-time: a New folder on the menu bar, after the others
@@ -2730,6 +2745,7 @@ async function save() {
       starterDone: state.starterDone,
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
+      caseV2: state.caseV2,
       layoutV9: state.layoutV9,
       smallRow: state.smallRow,
       magicType: state.magicType,
@@ -4252,10 +4268,10 @@ function render() {
     b.className = 'target-banner active bs-' + state.bannerSize;
     const tw = document.getElementById('targetWord');
     tw.innerHTML = '';
-    homePhrase.forEach(w => {
+    homePhrase.forEach((w, i) => {
       const c = document.createElement('span');
       c.className = 'tletter done draft-word';
-      c.textContent = bankLabel(w);
+      c.textContent = i ? sentenceLabel(w) : bankLabel(w);
       tw.appendChild(c);
     });
     const disp = document.getElementById('display');
@@ -5430,10 +5446,20 @@ function titleCase(w) {
     return part.charAt(0).toUpperCase() + part.slice(1);
   }).join(' ');
 }
-function bankLabel(w) {
+// How a tile (or a list) shows a word: always starting with a capital
+function capFirst(t) {
+  t = String(t || '');
+  return t === t.toLowerCase() ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+}
+function bankLabel(w) { return capFirst(sentenceLabel(w)); }
+// A sentence: the first word starts with a capital, the rest read as they would mid-sentence
+function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : bankLabel(w)); }
+// How a word reads in the middle of a sentence: small letters, unless it is a name
+function sentenceLabel(w) {
   const key = w || '';
   const kept = (state.wordCase || {})[key];
   if (kept) return kept;
+  if (key === 'I' || key.startsWith("I'")) return 'I' + key.slice(1).toLowerCase();
   // anything in My Stuff is a name or a title, so it reads with capitals
   if (categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
   if (key.includes(' ')) return key.split(' ').map(casedText).join(' ');   // each word keeps its own capitals
@@ -5566,10 +5592,10 @@ function renderPhraseBar() {
   bar.className = 'display phrase-bar ds-' + state.displaySize;
   bar.classList.toggle('has-text', homePhrase.length > 0);
   box.innerHTML = '';
-  homePhrase.forEach(w => {
+  homePhrase.forEach((w, i) => {
     const c = document.createElement('span');
     c.className = 'pb-chip';
-    c.textContent = bankLabel(w);
+    c.textContent = i ? sentenceLabel(w) : bankLabel(w);
     box.appendChild(c);
   });
   // Green enter: ready when there's something to spell or something typed
@@ -6042,7 +6068,7 @@ function applyDefaultLayout() {
   state.bankSort = L.bankSort;
   // none of the step-by-step changes that older installs went through apply
   ['starterDone', 'groupsV2', 'groupsV3', 'groupsV4', 'groupsV5', 'groupsV6',
-   'layoutV7', 'layoutV8', 'layoutV9', 'builderV2'].forEach(k => { state[k] = true; });
+   'layoutV7', 'layoutV8', 'layoutV9', 'caseV2', 'builderV2'].forEach(k => { state[k] = true; });
 }
 
 // Put back any built-in folder that is missing (deleted by accident, say), with
@@ -6245,7 +6271,7 @@ function exportBuilderLog() {
   const lines = ['Date,Time,Sentence'];
   log.forEach(e => {
     const d = new Date(e.t || 0);
-    const text = e.words.map(bankLabel).join(' ');
+    const text = sentenceWords(e.words).join(' ');
     lines.push([
       d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
       pad(d.getHours()) + ':' + pad(d.getMinutes()),
@@ -6364,6 +6390,7 @@ function renderBuilder(grid) {
 
   const tile = (label, folder) => {
     const card = document.createElement('button');
+    label = capFirst(label);
     card.className = 'home-card' + (folder ? ' folder-card choice-board' : '');
     card.style.height = rowH + 'px';   // tiles carry their own height so the transcript rows can be slimmer
     const t = document.createElement('span');
@@ -6477,7 +6504,7 @@ function renderBuilderLog(grid, tileType) {
   log.slice(0, 30).forEach(entry => {      // the latest 30; the full list can be exported from settings
     const row = document.createElement('button');
     row.className = 'bl-row';
-    const text = entry.words.map(bankLabel).join(' ');
+    const text = sentenceWords(entry.words).join(' ');
     const line1 = document.createElement('span');
     line1.textContent = text.charAt(0).toUpperCase() + text.slice(1);   // reads as a sentence
     row.appendChild(line1);
@@ -6511,7 +6538,7 @@ function renderBuilderLog(grid, tileType) {
 }
 // A held transcript row: delete it or file it in a folder
 function openLogEntry(entry) {
-  const text = entry.words.map(bankLabel).join(' ');
+  const text = sentenceWords(entry.words).join(' ');
   const shown = text.charAt(0).toUpperCase() + text.slice(1);
   const drop = () => { state.builderLog = (state.builderLog || []).filter(e => e !== entry); };
   const title = (body, t) => {
@@ -6574,7 +6601,8 @@ function builderInput(body, value) {
 }
 function builderKeepCase(label) {
   const key = normaliseWord(label);
-  if (key) setWordCase(label, key);      // it reads in the bar the way it reads on its tile
+  // tiles always start with a capital, so a plain first capital is not kept; a name can be set by editing the word
+  if (key && (key === 'I' || label.slice(1) !== label.slice(1).toLowerCase())) setWordCase(label, key);
 }
 // The plus inside a folder (in the builder or on the ordinary pages): add a word
 // tile to it, or a new folder inside it
@@ -7333,13 +7361,13 @@ function openWordEdit(word) {
   openWordSheet(body => {
     sheetTitle(body, 'Edit word');
     const inp = document.createElement('input');
-    inp.type = 'text'; inp.maxLength = 80; inp.value = bankLabel(word);
+    inp.type = 'text'; inp.maxLength = 80; inp.value = sentenceLabel(word);
     inp.autocomplete = 'off'; inp.autocapitalize = 'off'; inp.spellcheck = false;
     inp.className = 'word-edit-input';
     body.appendChild(inp);
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '8px';
-    n.textContent = 'Type it exactly as it should be spelled, capitals included.';
+    n.textContent = 'Type it the way it reads in the middle of a sentence. Tiles always start with a capital; only give it capitals here if it is a name.';
     body.appendChild(n);
     const saveIt = () => {
       const typed = inp.value;
