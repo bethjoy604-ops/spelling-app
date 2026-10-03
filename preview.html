@@ -846,7 +846,7 @@
   /* the row of small words above a folder's tiles */
   .small-strip {
     display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
-    padding: 10px; border-radius: 16px; background: rgba(255,255,255,0.32);
+    padding: 10px; border-radius: 16px; background: var(--green);
   }
   .small-tile {
     border: none; border-radius: 12px; background: var(--blue-soft); color: var(--ink);
@@ -2161,7 +2161,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 140 - 3 Oct';
+const BUILD = 'build 141 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6130,12 +6130,26 @@ function hasSmallStrip(cat) {
 }
 // (owner: a builder page with its own row of small words; without one it is the shared row)
 function makeSmallStrip(rowH, base, owner) {
-  const edit = () => openSmallRowPicker(owner);
+  // rows are kept in one list, with '\n' marking where a new row starts
+  const rows = smallRows(owner);
+  const editRow = r => openWordSheet(body => {
+    sheetTitle(body, 'Small words');
+    body.appendChild(sheetBtn('Choose the words in this row', '', () => openSmallRowPicker(owner, r)));
+    body.appendChild(sheetBtn('Add a new row', '', () => openSmallRowPicker(owner, rows.length)));
+    if (rows.length > 1) body.appendChild(sheetBtn('Remove this row', 'danger', () => {
+      setSmallRows(owner, rows.filter((x, i) => i !== r));
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+  let edit = () => openSmallRowPicker(owner, 0);
   const strip = document.createElement('div');
   strip.className = 'small-strip';
   const h = Math.max(48, Math.round(rowH / 2));
-  const words = ((owner ? owner.small : state.smallRow) || []).filter(w => state.words.includes(w));
+  const shown = rows.map(row => row.filter(w => state.words.includes(w)));
+  const words = [].concat(...shown);
   const mk = (label, onTap) => {
+    const hold = edit;
     const b = document.createElement('button');
     b.className = 'small-tile';
     b.style.height = h + 'px';
@@ -6153,28 +6167,45 @@ function makeSmallStrip(rowH, base, owner) {
     b.addEventListener('contextmenu', e => e.preventDefault());
     b.addEventListener('click', () => {
       b.classList.remove('held');
-      if (held) { held = false; edit(); } else onTap();
+      if (held) { held = false; hold(); } else onTap();
     });
     strip.appendChild(b);
     return b;
   };
-  words.forEach(w => mk(bankLabel(w), () => {
-    homePhrase.push(w);
-    warmSpeech();
-    speakWord(w, 0.95);
-    renderPhraseBar();
+  shown.forEach((row, r) => row.forEach((w, i) => {
+    edit = () => editRow(r);
+    const b = mk(bankLabel(w), () => {
+      homePhrase.push(w);
+      warmSpeech();
+      speakWord(w, 0.95);
+      renderPhraseBar();
+    });
+    if (i === 0) b.style.gridColumnStart = 1;     // each row starts on its own line
   }));
+  edit = () => openSmallRowPicker(owner, 0);
   if (!words.length) mk('+ small words', edit).classList.add('empty');
   return strip;
 }
-function openSmallRowPicker(owner) {
-  // the shared row above the Categories folders, or one builder page's own row
-  let picked = ((owner ? owner.small : state.smallRow) || []).slice();
+function smallRows(owner) {
+  const rows = [[]];
+  ((owner ? owner.small : state.smallRow) || []).forEach(w => { if (w === '\n') rows.push([]); else rows[rows.length - 1].push(w); });
+  return rows.filter(r => r.length);
+}
+function setSmallRows(owner, rows) {
+  const flat = [];
+  rows.filter(r => r.length).forEach((r, i) => { if (i) flat.push('\n'); flat.push(...r); });
+  if (owner) owner.small = flat; else state.smallRow = flat;
+}
+function openSmallRowPicker(owner, rowIndex) {
+  // the shared rows above the Categories folders, or one builder page's own rows
+  const rows = smallRows(owner);
+  const at = Math.min(rowIndex || 0, rows.length);
+  let picked = (rows[at] || []).slice();
   openWordSheet(body => {
-    sheetTitle(body, owner ? 'Small words on this page' : 'Small words row');
+    sheetTitle(body, at >= rows.length && rows.length ? 'New row of small words' : (owner ? 'Small words on this page' : 'Small words row'));
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '6px';
-    n.textContent = 'Tap the words to show. Six fit on a row; choosing more starts another row. The list comes from the Chat folder.';
+    n.textContent = 'Tap the words for this row. Six fit across. The list comes from the Chat folder.';
     body.appendChild(n);
     const list = document.createElement('div');
     list.className = 'pick-list small-pick';
@@ -6191,7 +6222,8 @@ function openSmallRowPicker(owner) {
       list.appendChild(r);
     });
     body.appendChild(sheetBtn('Done', 'primary', () => {
-      if (owner) owner.small = picked; else state.smallRow = picked;
+      rows[at] = picked;
+      setSmallRows(owner, rows);
       save(); closeWordSheet(); renderHome(true);
     }));
   });
