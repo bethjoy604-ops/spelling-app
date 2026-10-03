@@ -872,6 +872,7 @@
   .small-tile.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .small-tile.empty { grid-column: 1 / -1; background: rgba(255,255,255,0.85); color: rgba(0,0,0,0.5); padding: 0 18px; }
   .small-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .small-pick .small-new { margin: 0; min-width: 0; width: 100%; box-sizing: border-box; font-size: 18px; text-align: center; }
   .small-pick .pick-row { text-align: center; }
   /* the builder's transcript, under its first page */
   .builder-log { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
@@ -2176,7 +2177,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 164 - 3 Oct';
+const BUILD = 'build 165 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6377,22 +6378,63 @@ function openSmallRowPicker(owner, rowIndex) {
     sheetTitle(body, at >= rows.length && rows.length ? 'New row of small words' : (isCatOwner(owner) ? 'Small words for ' + owner.name : owner ? 'Small words on this page' : 'Small words row'));
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '6px';
-    n.textContent = 'Tap the words for this row. Six fit across. The list comes from the Chat folder.';
+    n.textContent = 'Tap the words for this row. Six fit across. The list comes from the Chat folder; use + to add a word that is not there yet.';
     body.appendChild(n);
     const list = document.createElement('div');
     list.className = 'pick-list small-pick';
     body.appendChild(list);
-    allSmallWords().forEach(w => {
-      const r = document.createElement('button');
-      r.className = 'pick-row' + (picked.includes(w) ? ' on' : '');
-      r.textContent = sentenceLabel(w);     // shown the way the row will show it: small letters
-      r.addEventListener('click', () => {
-        if (picked.includes(w)) picked = picked.filter(x => x !== w);
-        else picked.push(w);
-        r.classList.toggle('on', picked.includes(w));
+    const fill = () => {
+      list.innerHTML = '';
+      allSmallWords().forEach(w => {
+        const r = document.createElement('button');
+        r.className = 'pick-row' + (picked.includes(w) ? ' on' : '');
+        r.textContent = sentenceLabel(w);     // shown the way the row will show it: small letters
+        r.addEventListener('click', () => {
+          if (picked.includes(w)) picked = picked.filter(x => x !== w);
+          else picked.push(w);
+          r.classList.toggle('on', picked.includes(w));
+        });
+        list.appendChild(r);
       });
-      list.appendChild(r);
-    });
+      // the plus at the end: a word that is not in the list yet. It joins the Small words folder in
+      // Chat, and is ticked for this row straight away.
+      const plus = document.createElement('button');
+      plus.className = 'pick-row';
+      plus.textContent = '+';
+      plus.setAttribute('aria-label', 'Add a new small word');
+      plus.addEventListener('click', () => {
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.maxLength = 30; inp.className = 'word-edit-input small-new';
+        inp.autocomplete = 'off'; inp.autocapitalize = 'off'; inp.spellcheck = false;
+        inp.placeholder = 'new word';
+        plus.replaceWith(inp);
+        inp.focus();
+        let finished = false;
+        const add = () => {
+          if (finished) return;
+          finished = true;
+          const key = normaliseWord(inp.value);
+          if (key) {
+            const sf = smallFolder();
+            const chat = sf ? catById(sf.parent) : state.categories.find(c => c.small);
+            if (!state.words.includes(key)) state.words.push(key);
+            if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+            if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
+            if (!allSmallWords().includes(key)) {
+              const dest = sf || chat;
+              if (dest) dest.words.push(key);
+            }
+            if (!picked.includes(key)) picked.push(key);
+            save();
+          }
+          fill();
+        };
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+        inp.addEventListener('blur', add);
+      });
+      list.appendChild(plus);
+    };
+    fill();
     body.appendChild(sheetBtn('Done', 'primary', () => {
       rows[at] = picked;
       setSmallRows(owner, rows);
