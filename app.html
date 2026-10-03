@@ -2173,7 +2173,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 149 - 3 Oct';
+const BUILD = 'build 150 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6565,7 +6565,7 @@ function renderBuilder(grid) {
         const ok = id => { const x = id ? catById(id) : null; return !!x && !x.hidden; };
         return (n && (ok(n.go) || n.kids.length || n.cats.some(ok))) ? n : null;
       };
-      const wt = tile(bankLabel(w), false);
+      const wt = tile(leads() ? sentenceLabel(w) : bankLabel(w), false);
       if (leads()) wt.classList.add('link-word');
       holdable(wt, () => {
         builderSay(w);
@@ -6591,7 +6591,7 @@ function renderBuilder(grid) {
     };
     here.kids.forEach(k => {
       const key = normaliseWord(k.label);
-      const kt = tile(isSmallWord(key) ? k.label : capFirst(k.label), false);
+      const kt = tile(key ? sentenceLabel(key) : k.label, false);   // linking words read in small letters (I and names aside)
       const goCat = () => { const c = k.go ? catById(k.go) : null; return (c && !c.hidden) ? c : null; };
       if (k.kids.length || k.cats.length || goCat()) kt.classList.add('link-word');
       movable(kt, here.kids, k, 'kids', () => {
