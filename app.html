@@ -489,11 +489,12 @@
     flex: 0 0 auto;
     /* a slim tab: height fixed, width follows the name */
     min-width: 0; width: auto;
-    height: clamp(34px, 4.6vh, 46px);
-    border-radius: 10px; padding: 0 14px;
+    /* as tall as the icon buttons beside it */
+    height: 54px;
+    border-radius: 14px; padding: 0 18px;
     display: flex; align-items: center; justify-content: center;
     line-height: 1; white-space: nowrap;
-    font-size: clamp(12px, 1.7vmin, 16px);
+    font-size: clamp(14px, 2vmin, 18px);
     opacity: 0.72;
   }
   /* the tab that is open is solid white; every other tab, All included, looks the same */
@@ -2035,7 +2036,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 90 - 3 Oct';
+const BUILD = 'build 91 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
