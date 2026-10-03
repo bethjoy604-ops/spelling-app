@@ -2107,7 +2107,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 117 - 3 Oct';
+const BUILD = 'build 118 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5896,8 +5896,8 @@ function renderBuilderBar() {
   b.setAttribute('aria-pressed', on ? 'true' : 'false');
   const here = builderHere();
   document.getElementById('builderBackBtn').style.display = (on && builderPath.length) ? '' : 'none';
-  // options can be added to a builder page, but not to a folder it leads to
-  document.getElementById('builderAddBtn').style.display = (on && here && !('cat' in here)) ? '' : 'none';
+  // every page has the plus: a builder page takes words and folder links, a folder takes words and sub-folders
+  document.getElementById('builderAddBtn').style.display = (on && here) ? '' : 'none';
 }
 function renderBuilder(grid) {
   if (!state.builder) state.builder = defaultBuilder();
@@ -6004,9 +6004,40 @@ function builderKeepCase(label) {
   const key = normaliseWord(label);
   if (key) setWordCase(label, key);      // it reads in the bar the way it reads on its tile
 }
+// The plus inside a folder (in the builder or on the ordinary pages): add a word
+// tile to it, or a new folder inside it
+function openFolderAdd(cat) {
+  if (!cat) return;
+  const ask = (title, btn, done) => openWordSheet(b2 => {
+    sheetTitle(b2, title);
+    const inp = builderInput(b2, '');
+    const ok = () => { if (done(inp.value) !== false) { save(); closeWordSheet(); renderHome(true); } };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    b2.appendChild(sheetBtn(btn, 'primary', ok));
+    b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+  });
+  openWordSheet(body => {
+    sheetTitle(body, 'Add to ' + cat.name);
+    body.appendChild(sheetBtn('A word', '', () => ask('New word in ' + cat.name, 'Add', typed => {
+      const key = normaliseWord(typed);
+      if (!key) return false;
+      if (!cat.words.includes(key)) cat.words.push(key);
+      if (!state.words.includes(key)) state.words.push(key);
+      if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+      rememberCase(typed, key);
+    })));
+    body.appendChild(sheetBtn('A new folder', '', () => ask('New folder in ' + cat.name, 'Create', typed => {
+      const name = String(typed || '').replace(/\s+/g, ' ').trim();
+      if (!name) return false;
+      addCategory(name, cat.id);
+    })));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
 function openBuilderAdd() {
   const here = builderHere();
-  if (!here || 'cat' in here) return;
+  if (!here) return;
+  if ('cat' in here) { openFolderAdd(catById(here.cat)); return; }
   openWordSheet(body => {
     sheetTitle(body, 'Add to this page');
     body.appendChild(sheetBtn('A word', '', () => openWordSheet(b2 => {
@@ -6114,14 +6145,10 @@ document.getElementById('builderAddBtn').addEventListener('click', openBuilderAd
 let suppressTileClick = false;
 let wordDrag = null;
 
-// The plus at the end of the menu bar: makes a new folder inside the one that is open
+// The plus at the end of the menu bar: adds a word or a new folder to the one that is open
 document.getElementById('homeAddFolderBtn').addEventListener('click', () => {
   const cat = currentCat();
-  if (!cat || cat.rule) return;
-  const v = prompt('Name the new folder (it goes inside ' + cat.name + ')');
-  if (!v || !v.trim()) return;
-  addCategory(v.trim(), cat.id);
-  save(); renderHome(true);
+  if (cat && !cat.rule) openFolderAdd(cat);
 });
 
 // Columns and rows on a screen, from the "tiles on a screenful" setting
