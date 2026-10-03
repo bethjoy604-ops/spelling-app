@@ -539,7 +539,7 @@
   /* Folders: uniform squares in a strip you can scroll sideways */
   .bank-area { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
   .folder-strip {
-    display: none; flex: 1 1 auto; min-width: 0;
+    display: none; flex: 0 1 auto; min-width: 0;   /* only as wide as its tabs, so the plus sits right after them */
     overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
     margin-left: 4px;
   }
@@ -1469,6 +1469,7 @@
     <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
     <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <div class="folder-strip" id="catTiles"></div>
+    <button class="ctl icon" id="homeAddFolderBtn" aria-label="New folder" style="display:none">+</button>
     <div class="spacer"></div>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#11088;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
@@ -2099,7 +2100,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 107 - 3 Oct';
+const BUILD = 'build 108 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5700,6 +5701,9 @@ function renderHome(reset) {
     // and the sandwich; or the arrow with the folder strip the sandwich opened.
     const rail = document.getElementById('catTiles');
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
+    // the plus ends the menu bar while a folder is open: it makes a new folder inside it
+    document.getElementById('homeAddFolderBtn').style.display =
+      (state.railOpen && cat && !cat.rule) ? '' : 'none';
     const iconsOut = state.homeModesOpen && !state.railOpen;
     document.getElementById('homeSettingsBtn').style.display = iconsOut ? '' : 'none';
     document.getElementById('railToggle').style.display = iconsOut ? '' : 'none';
@@ -5774,23 +5778,15 @@ function renderHome(reset) {
 let suppressTileClick = false;
 let wordDrag = null;
 
-// The grey plus at the start of a folder: makes a new folder inside this one
-function makeAddFolderCard(cat) {
-  const card = document.createElement('button');
-  card.className = 'home-card add-folder';
-  card.setAttribute('aria-label', 'New folder');
-  const w = document.createElement('span');
-  w.className = 'hw';
-  w.textContent = '+';
-  card.appendChild(w);
-  card.addEventListener('click', () => {
-    const v = prompt('Name the new folder (it goes inside ' + cat.name + ')');
-    if (!v || !v.trim()) return;
-    addCategory(v.trim(), cat.id);
-    save(); renderHome(true);
-  });
-  return card;
-}
+// The plus at the end of the menu bar: makes a new folder inside the one that is open
+document.getElementById('homeAddFolderBtn').addEventListener('click', () => {
+  const cat = currentCat();
+  if (!cat || cat.rule) return;
+  const v = prompt('Name the new folder (it goes inside ' + cat.name + ')');
+  if (!v || !v.trim()) return;
+  addCategory(v.trim(), cat.id);
+  save(); renderHome(true);
+});
 
 // Columns and rows on a screen, from the "tiles on a screenful" setting
 function slotShape() {
@@ -5833,8 +5829,7 @@ function renderSlotGrid(grid, cat, folders) {
   const W = grid.clientWidth, H = grid.clientHeight;
   // only a real folder can be arranged; Recents / Popular just lists its words in order
   const arrange = !!(cat && !cat.rule);
-  // the plus gets a slim column of its own at the start of the first row
-  const plusW = arrange ? 64 : 0;
+  const plusW = 0;   // the plus lives on the menu bar now, so every column is a tile
   const cellW = Math.max(60, (W - (plusW ? plusW + gap : 0) - gap * (cols - 1)) / cols);
   const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
   const words = homeRows.map(r => r.word);
@@ -5851,9 +5846,7 @@ function renderSlotGrid(grid, cat, folders) {
   // One size of type on every page, small enough that a twelve-letter word
   // fits its tile, so nothing has to be shrunk next to its neighbours.
   const room = cellW - 30;
-  // (measured against a folder's slightly narrower tile, so Recents matches the folders)
-  const folderCellW = Math.max(60, (W - 64 - gap - gap * (cols - 1)) / cols);
-  const base = Math.min(rowH * 0.4, (folderCellW - 30) / (12 * 0.62));
+  const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   const place = (el, cell) => {
     const r = Math.floor(cell / cols), c = cell % cols;
     el.style.gridRow = String(r + 1);
@@ -5880,12 +5873,6 @@ function renderSlotGrid(grid, cat, folders) {
     t.style.fontSize = Math.min(base, room / (longest * 0.62), (rowH - 16) / (lines * 1.1)) + 'px';
   };
 
-  if (arrange) {
-    const plus = makeAddFolderCard(cat);
-    plus.querySelector('.hw').style.fontSize = '34px';
-    plus.style.gridRow = '1'; plus.style.gridColumn = '1';
-    grid.appendChild(plus);
-  }
   folders.forEach((c, i) => {
     const card = makeFolderCard(c, () => renderHome(true));
     fit(card, c.name);
