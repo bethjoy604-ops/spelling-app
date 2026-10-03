@@ -846,8 +846,10 @@
   /* the row of small words above a folder's tiles */
   .small-strip {
     display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
-    padding: 10px; border-radius: 16px; background: var(--green);
+    padding: 10px; border-radius: 16px; background: rgba(255,255,255,0.32);
   }
+  .small-section { display: flex; flex-direction: column; gap: 14px; padding-top: 6px; }
+  .small-strip.plain { background: none; padding: 0; }
   .small-tile {
     border: none; border-radius: 12px; background: var(--blue-soft); color: var(--ink);
     font-family: inherit; font-weight: 900; cursor: pointer; min-width: 0; padding: 0 6px;
@@ -2161,7 +2163,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 141 - 3 Oct';
+const BUILD = 'build 142 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2326,6 +2328,8 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  smallV2: false,            // the one-time marking of which Chat words are small words
+  smallSet: {},               // words marked as small words (the, a, my ...)
   layoutV9: false,            // the one-time addition of the New folder
   smallRow: null,             // the small words shown in the row above the tiles, in order
   homeModesOpen: false,       // the fold-down options row on home
@@ -2484,6 +2488,8 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        smallV2: saved.smallV2 ?? false,
+        smallSet: saved.smallSet || {},
         layoutV9: saved.layoutV9 ?? false,
         smallRow: Array.isArray(saved.smallRow) ? saved.smallRow : null,
         magicType: saved.magicType ?? true,
@@ -2589,6 +2595,12 @@ async function load() {
   if (!state.layoutV7) {
     state.layoutV7 = true;
     migrateLayoutV7();
+    save();
+  }
+  // One-time: small words are now marked word by word; the joining words in Chat start off marked
+  if (!state.smallV2) {
+    state.smallV2 = true;
+    seedSmallSet();
     save();
   }
   // One-time: builder tiles used to pin a word's first capital ("More"); tiles now do that themselves
@@ -2746,6 +2758,8 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      smallV2: state.smallV2,
+      smallSet: state.smallSet,
       layoutV9: state.layoutV9,
       smallRow: state.smallRow,
       magicType: state.magicType,
@@ -5451,7 +5465,7 @@ function capFirst(t) {
   t = String(t || '');
   return t === t.toLowerCase() ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
-function bankLabel(w) { return capFirst(sentenceLabel(w)); }
+function bankLabel(w) { return isSmallWord(w) ? sentenceLabel(w) : capFirst(sentenceLabel(w)); }   // small words stay small
 // A sentence: the first word starts with a capital, the rest read as they would mid-sentence
 function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : bankLabel(w)); }
 // How a word reads in the middle of a sentence: small letters, unless it is a name
@@ -6068,7 +6082,9 @@ function applyDefaultLayout() {
   state.bankSort = L.bankSort;
   // none of the step-by-step changes that older installs went through apply
   ['starterDone', 'groupsV2', 'groupsV3', 'groupsV4', 'groupsV5', 'groupsV6',
-   'layoutV7', 'layoutV8', 'layoutV9', 'caseV2', 'builderV2'].forEach(k => { state[k] = true; });
+   'layoutV7', 'layoutV8', 'layoutV9', 'caseV2', 'smallV2', 'builderV2'].forEach(k => { state[k] = true; });
+  state.smallSet = {};
+  if (L.smallWords) L.smallWords.forEach(w => { state.smallSet[w] = true; }); else seedSmallSet();
 }
 
 // Put back any built-in folder that is missing (deleted by accident, say), with
@@ -6116,7 +6132,32 @@ function isSmallCat(c) {
   while (x && g++ < 20) { if (x.small) return true; x = x.parent ? catById(x.parent) : null; }
   return false;
 }
-function isSmallWord(w) { return categoriesOf(w).some(isSmallCat); }
+function isSmallWord(w) { return !!(state.smallSet || {})[w]; }
+const SMALL_STARTERS = ['I', 'IT', 'AND', 'YOU', 'MY', 'THE', 'A', 'AN', 'IS', 'BE', 'NOT', 'ARE', 'WE', 'YOUR', 'THAT', 'THIS',
+  'TO', 'AM', 'ME', 'HE', 'SHE', 'THEY', 'HIS', 'HER', 'OUR', 'OF', 'IN', 'ON', 'AT', 'FOR', 'WITH', 'OR', 'BUT', 'SO', 'DO', 'CAN', 'WAS', 'HAVE', 'HAS'];
+function seedSmallSet() {
+  state.smallSet = state.smallSet || {};
+  state.categories.filter(isSmallCat).forEach(c => (c.words || []).forEach(w => {
+    if (SMALL_STARTERS.includes(w)) state.smallSet[w] = true;
+  }));
+}
+// A switch in a word's hold menu: small word (the, a, my) or an ordinary word
+function smallWordBtn(word) {
+  const b = sheetBtn('', '', () => {
+    state.smallSet = state.smallSet || {};
+    if (state.smallSet[word]) delete state.smallSet[word]; else state.smallSet[word] = true;
+    save(); paint(); renderHome(false);
+    document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+  });
+  const paint = () => {
+    const on = isSmallWord(word);
+    b.textContent = on ? '\u2713  Small word (tap to make it a normal word)' : 'Make it a small word';
+    b.style.background = on ? 'var(--green)' : '';
+    b.style.color = on ? '#fff' : '';
+  };
+  paint();
+  return b;
+}
 function allSmallWords() {
   const out = [];
   state.categories.filter(isSmallCat).forEach(c => (c.words || []).forEach(w => { if (!out.includes(w)) out.push(w); }));
@@ -6339,6 +6380,7 @@ function exportLayout() {
     hiddenWords: Object.keys(state.hiddenWords || {}),
     recentsHidden: Object.keys(state.recentsHidden || {}),
     smallRow: state.smallRow || [],
+    smallWords: Object.keys(state.smallSet || {}),
     builder: state.builder,
   };
   const text = JSON.stringify(layout, null, 1);
@@ -7007,11 +7049,15 @@ function renderSlotGrid(grid, cat, folders) {
   const plusW = 0;   // the plus lives on the menu bar now, so every column is a tile
   const cellW = Math.max(60, (W - (plusW ? plusW + gap : 0) - gap * (cols - 1)) / cols);
   const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
-  const words = homeRows.map(r => r.word);
+  let words = homeRows.map(r => r.word);
+  // in Chat the small words sit in their own section under a line, as small tiles
+  const smalls = (arrange && isSmallCat(cat)) ? words.filter(isSmallWord) : [];
+  if (smalls.length) words = words.filter(w => !isSmallWord(w));
   const slots = arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   const lastRow = Math.ceil((head + slots.length) / cols);
-  const totalRows = arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
+  const totalRows = smalls.length ? Math.max(1, lastRow)
+                  : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
   grid.scrollTop = 0;
@@ -7024,7 +7070,48 @@ function renderSlotGrid(grid, cat, folders) {
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   // folders inside Categories carry a row of small words above their tiles
   const strip = arrange && hasSmallStrip(cat);
-  grid.style.gridTemplateRows = strip ? 'auto' : '';
+  grid.style.gridTemplateRows = smalls.length ? (strip ? 'auto ' : '') + 'repeat(' + totalRows + ', ' + rowH + 'px) auto'
+                              : strip ? 'auto' : '';
+  if (smalls.length) {
+    const sec = document.createElement('div');
+    sec.className = 'small-section';
+    sec.style.gridColumn = '1 / -1';
+    sec.style.gridRow = String(totalRows + (strip ? 1 : 0) + 1);
+    const line = document.createElement('div');
+    line.className = 'bl-line'; line.style.flex = 'none';
+    sec.appendChild(line);
+    const box = document.createElement('div');
+    box.className = 'small-strip plain';
+    const h = Math.max(48, Math.round(rowH / 2));
+    smalls.forEach(w => {
+      const b = document.createElement('button');
+      b.className = 'small-tile';
+      b.dataset.word = w;
+      b.style.height = h + 'px';
+      b.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
+      b.textContent = bankLabel(w);
+      let timer = null, held = false;
+      b.addEventListener('pointerdown', () => {
+        held = false;
+        timer = setTimeout(() => { timer = null; held = true; buzz(15); b.classList.add('held'); }, 520);
+      });
+      const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+      b.addEventListener('pointerup', stop);
+      ['pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, () => { stop(); held = false; b.classList.remove('held'); }));
+      b.addEventListener('contextmenu', e => e.preventDefault());
+      b.addEventListener('click', () => {
+        b.classList.remove('held');
+        if (held) { held = false; openWordActions(w, cat); return; }
+        homePhrase.push(w);
+        warmSpeech();
+        speakWord(w, 0.95);
+        renderPhraseBar();
+      });
+      box.appendChild(b);
+    });
+    sec.appendChild(box);
+    grid.appendChild(sec);
+  }
   if (strip) {
     const el = makeSmallStrip(rowH, base);
     el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
@@ -7343,6 +7430,7 @@ function openWordActions(word, cat, extra) {
       if (!filed) body.appendChild(sheetBtn('Move to a folder', '', () => openMovePicker(word, null, null)));
       const nb = newListBtn(word);
       if (nb) body.appendChild(nb);
+      body.appendChild(smallWordBtn(word));
       body.appendChild(sheetBtn(filed ? 'Remove from ' + page : 'Delete this word', 'danger', () => poofWord(word)));
       body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
       const n = document.createElement('div');
@@ -7360,6 +7448,7 @@ function openWordActions(word, cat, extra) {
     body.appendChild(sheetBtn('Move to another folder', '', () => openMovePicker(word, cat, null)));
     const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
     if (nb) body.appendChild(nb);
+    body.appendChild(smallWordBtn(word));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '12px';
