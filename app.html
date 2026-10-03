@@ -851,6 +851,8 @@
     justify-self: start; max-width: 100%; box-sizing: border-box;
   }
   .small-section { display: flex; flex-direction: column; gap: 16px; padding: 8px 0 16px; }
+  .small-section.top { padding: 0; align-items: flex-start; }
+  .small-section.top .small-head { align-self: stretch; }
   .small-head {
     display: flex; align-items: center; justify-content: space-between; width: 100%;
     border: none; border-radius: 16px; background: #bfd8ff; color: var(--ink);
@@ -2173,7 +2175,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 155 - 3 Oct';
+const BUILD = 'build 156 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2340,6 +2342,7 @@ const state = {
   caseV2: false,
   linkV1: false,              // the one-time marking of Actions as a folder of linking words
   smallV3: false,            // the one-time creation of the Small words folder inside Chat
+  rowOpen: false,             // whether the small words row above a folder's tiles is opened out (menu mode)
   smallOpen: false,           // whether the Small words row in Chat is opened out
   smallV2: false,            // the one-time marking of which Chat words are small words
   smallSet: {},               // words marked as small words (the, a, my ...)
@@ -2503,6 +2506,7 @@ async function load() {
         caseV2: saved.caseV2 ?? false,
         linkV1: saved.linkV1 ?? false,
         smallV3: saved.smallV3 ?? false,
+        rowOpen: !!saved.rowOpen,
         smallOpen: !!saved.smallOpen,
         smallV2: saved.smallV2 ?? false,
         smallSet: saved.smallSet || {},
@@ -2789,6 +2793,7 @@ async function save() {
       caseV2: state.caseV2,
       linkV1: state.linkV1,
       smallV3: state.smallV3,
+      rowOpen: state.rowOpen,
       smallOpen: state.smallOpen,
       smallV2: state.smallV2,
       smallSet: state.smallSet,
@@ -7281,8 +7286,20 @@ function renderSlotGrid(grid, cat, folders) {
     grid.appendChild(wrap);
   }
   if (strip) {
-    const el = makeSmallStrip(rowH, base);
+    // a bar that opens out into the row of small words, the same as the one in Chat
+    const el = document.createElement('div');
+    el.className = 'small-section top';
     el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
+    const bar = document.createElement('button');
+    bar.className = 'small-head';
+    bar.setAttribute('aria-expanded', state.rowOpen ? 'true' : 'false');
+    bar.innerHTML = '<span>Small words</span><span class="sh-arrow"></span>';
+    bar.lastChild.textContent = state.rowOpen ? '\u25B2' : '\u25BC';
+    bar.style.height = Math.max(48, Math.round(rowH / 2)) + 'px';
+    bar.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
+    bar.addEventListener('click', () => { state.rowOpen = !state.rowOpen; buzz(10); save(); renderHome(false); });
+    el.appendChild(bar);
+    if (state.rowOpen) el.appendChild(makeSmallStrip(rowH, base));
     grid.appendChild(el);
   }
   const place = (el, cell) => {
