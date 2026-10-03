@@ -2033,7 +2033,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 96 - 3 Oct';
+const BUILD = 'build 97 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5628,9 +5628,9 @@ document.getElementById('railToggle').addEventListener('click', () => {
   save(); renderHome(true);
 });
 document.getElementById('homeModesToggle').addEventListener('click', () => {
-  // from the folder strip the arrow steps back to the two icons; otherwise it
-  // shows or hides them
-  if (state.railOpen && !foldersMode()) { state.railOpen = false; state.homeModesOpen = true; }
+  // from the folder strip the arrow closes everything, back to the bare arrow;
+  // otherwise it shows or hides the two icons
+  if (state.railOpen && !foldersMode()) { state.railOpen = false; state.homeModesOpen = false; }
   else state.homeModesOpen = !state.homeModesOpen;
   save(); renderHome(true);
 });
