@@ -2176,7 +2176,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 161 - 3 Oct';
+const BUILD = 'build 162 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2344,7 +2344,7 @@ const state = {
   caseV3: false,              // the one-time clearing of accidental first capitals
   linkV1: false,              // the one-time marking of Actions as a folder of linking words
   smallV3: false,            // the one-time creation of the Small words folder inside Chat
-  rowOpen: false,             // whether the small words row above a folder's tiles is opened out (menu mode)
+  rowOpenBy: {},              // which folders have their small words row opened out (menu mode), by folder id
   smallOpen: false,           // whether the Small words row in Chat is opened out
   smallV2: false,            // the one-time marking of which Chat words are small words
   smallSet: {},               // words marked as small words (the, a, my ...)
@@ -2509,7 +2509,7 @@ async function load() {
         caseV3: saved.caseV3 ?? false,
         linkV1: saved.linkV1 ?? false,
         smallV3: saved.smallV3 ?? false,
-        rowOpen: !!saved.rowOpen,
+        rowOpenBy: saved.rowOpenBy || {},
         smallOpen: !!saved.smallOpen,
         smallV2: saved.smallV2 ?? false,
         smallSet: saved.smallSet || {},
@@ -2807,7 +2807,7 @@ async function save() {
       caseV3: state.caseV3,
       linkV1: state.linkV1,
       smallV3: state.smallV3,
-      rowOpen: state.rowOpen,
+      rowOpenBy: state.rowOpenBy,
       smallOpen: state.smallOpen,
       smallV2: state.smallV2,
       smallSet: state.smallSet,
@@ -7308,13 +7308,19 @@ function renderSlotGrid(grid, cat, folders) {
     el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
     const bar = document.createElement('button');
     bar.className = 'small-head';
-    bar.setAttribute('aria-expanded', state.rowOpen ? 'true' : 'false');
+    // each folder remembers for itself whether its row is opened out
+    const isOpen = !!(state.rowOpenBy || {})[cat.id];
+    bar.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     bar.innerHTML = '<span class="sh-arrow"></span>';
     bar.setAttribute('aria-label', 'Small words');
-    bar.lastChild.textContent = state.rowOpen ? '\u25B2' : '\u25BC';
-    bar.addEventListener('click', () => { state.rowOpen = !state.rowOpen; buzz(10); save(); renderHome(false); });
+    bar.lastChild.textContent = isOpen ? '\u25B2' : '\u25BC';
+    bar.addEventListener('click', () => {
+      state.rowOpenBy = state.rowOpenBy || {};
+      if (isOpen) delete state.rowOpenBy[cat.id]; else state.rowOpenBy[cat.id] = true;
+      buzz(10); save(); renderHome(false);
+    });
     el.appendChild(bar);
-    if (state.rowOpen) el.appendChild(makeSmallStrip(rowH, base, cat));
+    if (isOpen) el.appendChild(makeSmallStrip(rowH, base, cat));
     grid.appendChild(el);
   }
   const place = (el, cell) => {
