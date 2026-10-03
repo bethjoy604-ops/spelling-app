@@ -1997,6 +1997,8 @@
         <div class="seg-row" id="segGridFill"></div>
         <div class="help-note">Every tile uses the same size of type; each one is only as wide as its word, and the rows fill the width neatly. This number sets how big that type is — pick 6 for big tiles, 12 for smaller ones. More words than that simply carry on below, so nothing is ever hidden.</div>
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
+        <button class="mbtn action" id="exportLayoutBtn" style="width:100%; margin-top:8px;">Export my layout</button>
+        <div class="help-note">Saves the folders, the words and their places, the builder pages and the small-words rows as one file, so the layout on this device can be made the built-in default.</div>
         <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
         <div class="help-note">Saves every sentence built in the builder, with its date and time, as a file that opens in Numbers or Excel. The builder page itself shows the latest 30.</div>
         <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
@@ -2141,7 +2143,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 129 - 3 Oct';
+const BUILD = 'build 130 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6152,6 +6154,37 @@ function exportBuilderLog() {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 document.getElementById('exportLogBtn').addEventListener('click', exportBuilderLog);
+// Everything that makes up the layout on this device, as one file. No usage
+// history, transcript or recordings: just what is where.
+function exportLayout() {
+  const layout = {
+    kind: 'spelling-app-layout', version: 1, build: BUILD, exported: new Date().toISOString(),
+    gridFill: state.gridFill, bankSort: state.bankSort, caseMode: state.caseMode,
+    categories: state.categories.map(c => ({
+      id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
+      words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
+      links: c.links || [], small: !!c.small, strip: !!c.strip, nopop: !!c.nopop,
+      phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
+    })),
+    looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
+    wordCase: state.wordCase || {},
+    keptPhrases: Object.keys(state.keptPhrases || {}),
+    hiddenWords: Object.keys(state.hiddenWords || {}),
+    recentsHidden: Object.keys(state.recentsHidden || {}),
+    smallRow: state.smallRow || [],
+    builder: state.builder,
+  };
+  const text = JSON.stringify(layout, null, 1);
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'spelling-app-layout.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+document.getElementById('exportLayoutBtn').addEventListener('click', exportLayout);
 
 // ===== Builder mode: a sentence built page by page =====
 // The pages form a tree. Each tile says its word and opens the page of things
