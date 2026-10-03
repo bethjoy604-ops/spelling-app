@@ -2161,7 +2161,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 138 - 3 Oct';
+const BUILD = 'build 139 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7259,6 +7259,8 @@ function newListBtn(word) {
     if (nf.words.includes(word)) nf.words = nf.words.filter(w => w !== word);
     else nf.words.push(word);
     save(); paint(); renderHome(false);
+    // the change is already made, so the button underneath now confirms and closes rather than cancels
+    document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
   });
   const paint = () => {
     const on = nf.words.includes(word);
