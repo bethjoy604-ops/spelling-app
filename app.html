@@ -442,7 +442,7 @@
   .home-card { -webkit-touch-callout: none; }
   .home-card.add-folder {
     background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset;
-    min-width: 70px; min-height: 70px;
+    min-width: 0; min-height: 0; padding: 0 !important;
   }
   .home-card.add-folder .hw { color: rgba(0,0,0,0.42); }
   .home-card.drag-src { opacity: 0.3; }
@@ -2099,7 +2099,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 105 - 3 Oct';
+const BUILD = 'build 106 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5827,28 +5827,35 @@ function renderSlotGrid(grid, cat, folders) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
   const W = grid.clientWidth, H = grid.clientHeight;
-  const cellW = Math.max(60, (W - gap * (cols - 1)) / cols);
-  const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
-  const words = homeRows.map(r => r.word);
   // only a real folder can be arranged; Recents / Popular just lists its words in order
   const arrange = !!(cat && !cat.rule);
+  // the plus gets a slim column of its own at the start of the first row
+  const plusW = arrange ? 64 : 0;
+  const cellW = Math.max(60, (W - (plusW ? plusW + gap : 0) - gap * (cols - 1)) / cols);
+  const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
+  const words = homeRows.map(r => r.word);
   const slots = arrange ? slotsFor(cat, words, cols) : words;
-  const head = (arrange ? 1 : 0) + folders.length;  // the plus, then the sub-folders
+  const head = folders.length;                      // sub-folders come first
   const lastRow = Math.ceil((head + slots.length) / cols);
   const totalRows = arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
   grid.scrollTop = 0;
-  grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+  grid.style.gridTemplateColumns = (plusW ? plusW + 'px ' : '') + 'repeat(' + cols + ', minmax(0, 1fr))';
   grid.style.gridAutoRows = rowH + 'px';
 
   // One size of type on every page, small enough that a twelve-letter word
   // fits its tile, so nothing has to be shrunk next to its neighbours.
   const room = cellW - 30;
-  const base = Math.min(rowH * 0.4, room / (12 * 0.62));
+  // (measured against a folder's slightly narrower tile, so Recents matches the folders)
+  const folderCellW = Math.max(60, (W - 64 - gap - gap * (cols - 1)) / cols);
+  const base = Math.min(rowH * 0.4, (folderCellW - 30) / (12 * 0.62));
   const place = (el, cell) => {
-    el.style.gridRow = String(Math.floor(cell / cols) + 1);
-    el.style.gridColumn = String((cell % cols) + 1);
+    const r = Math.floor(cell / cols), c = cell % cols;
+    el.style.gridRow = String(r + 1);
+    // below the first row, the first tile also takes the slim column the plus sits in
+    if (!plusW) el.style.gridColumn = String(c + 1);
+    else el.style.gridColumn = (c === 0 && r > 0) ? '1 / span 2' : String(c + 2);
     grid.appendChild(el);
   };
   const fit = (card, label) => {
@@ -5871,13 +5878,14 @@ function renderSlotGrid(grid, cat, folders) {
 
   if (arrange) {
     const plus = makeAddFolderCard(cat);
-    plus.querySelector('.hw').style.fontSize = Math.min(rowH * 0.5, 64) + 'px';
-    place(plus, 0);
+    plus.querySelector('.hw').style.fontSize = '34px';
+    plus.style.gridRow = '1'; plus.style.gridColumn = '1';
+    grid.appendChild(plus);
   }
   folders.forEach((c, i) => {
     const card = makeFolderCard(c, () => renderHome(true));
     fit(card, c.name);
-    place(card, (arrange ? 1 : 0) + i);
+    place(card, i);
   });
   for (let i = 0; head + i < totalRows * cols; i++) {
     const w = slots[i];
