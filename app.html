@@ -2155,7 +2155,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 132 - 3 Oct';
+const BUILD = 'build 133 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6717,23 +6717,40 @@ function openBuilderAddTo(here, heading) {
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
     body.appendChild(sheetBtn('A folder of words', '', () => openWordSheet(b2 => {
-      sheetTitle(b2, 'Which folder?');
+      sheetTitle(b2, 'Which folders?');
+      const n = document.createElement('div');
+      n.className = 'help-note'; n.style.marginTop = '6px';
+      n.textContent = 'The green ones are already linked here. Tap a folder to link it, or tap a green one to take it off.';
+      b2.appendChild(n);
       const list = document.createElement('div');
       list.className = 'pick-list';
       b2.appendChild(list);
-      const walk = (parent, depth) => childrenOf(parent, true).forEach(c => {
+      let picked = here.cats.slice();
+      const walk = (parent, depth) => childrenOf(parent).forEach(c => {
         const r = document.createElement('button');
         r.className = 'pick-row';
         r.style.marginLeft = (depth * 18) + 'px';
-        r.textContent = c.name + (here.cats.includes(c.id) ? '  (already here)' : '');
+        const paint = () => {
+          const on = picked.includes(c.id);
+          r.classList.toggle('on', on);
+          r.textContent = (on ? '\u2713  ' : '') + c.name + (on ? '  (linked)' : '');
+        };
         r.addEventListener('click', () => {
-          if (!here.cats.includes(c.id)) here.cats.push(c.id);
-          save(); closeWordSheet(); renderHome(true);
+          if (picked.includes(c.id)) picked = picked.filter(x => x !== c.id); else picked.push(c.id);
+          paint();
         });
+        paint();
         list.appendChild(r);
         walk(c.id, depth + 1);
       });
       walk(null, 0);
+      b2.appendChild(sheetBtn('Done', 'primary', () => {
+        // keep links to folders that are not in the list (hidden ones), in their old order
+        const shown = id => { const c = catById(id); return !!c && !c.hidden; };
+        here.cats = here.cats.filter(id => !shown(id) || picked.includes(id))
+          .concat(picked.filter(id => !here.cats.includes(id)));
+        save(); closeWordSheet(); renderHome(true);
+      }));
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
     body.appendChild(sheetBtn('Small words', '', () => openSmallRowPicker(here)));
