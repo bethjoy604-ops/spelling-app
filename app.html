@@ -2243,7 +2243,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 171 - 3 Oct';
+const BUILD = 'build 172 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5907,6 +5907,7 @@ function chatSendReply() {
   chatReply = []; chatPrefix = '';
   buzz(15);
   save();
+  if (!state.builderMode) homePath = [];      // menu mode: back to Recents / Popular, where the conversation shows
   showHome();
 }
 // On the builder's first page, chat mode shows the conversation where the transcript usually is:
@@ -7704,6 +7705,12 @@ function renderSlotGrid(grid, cat, folders) {
     attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, bankLabel(w));
     place(card, head + i);
+  }
+  // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
+  if (!arrange && state.chatMode) {
+    grid.style.gridTemplateRows = 'repeat(' + Math.max(1, totalRows) + ', ' + rowH + 'px) auto';
+    renderChatLog(grid, base);
+    grid.lastChild.style.gridRow = String(Math.max(1, totalRows) + 1);
   }
 }
 
