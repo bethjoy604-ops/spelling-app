@@ -497,10 +497,10 @@
     font-size: clamp(14px, 2vmin, 18px);
     opacity: 0.72;
   }
-  /* the tab that is open is solid white; every other tab, All included, looks the same */
+  /* the tab that is open is green, like the enter button; every other tab, All included, looks the same */
   .folder-strip-row .cat-tile.selected {
     opacity: 1; outline: none;
-    background: var(--surface) !important; color: var(--ink);
+    background: var(--green) !important; color: #fff;
     box-shadow: var(--shadow);
   }
   .folder-strip-row .cat-tile.plain { box-shadow: none; background: var(--surface); color: var(--ink); }
@@ -2036,7 +2036,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 91 - 3 Oct';
+const BUILD = 'build 92 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
