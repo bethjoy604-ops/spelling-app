@@ -2104,7 +2104,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 109 - 3 Oct';
+const BUILD = 'build 110 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5426,8 +5426,8 @@ document.getElementById('pbInput').addEventListener('keydown', e => {
 document.getElementById('pbGo').addEventListener('click', () => {
   if (!commitTypedWord()) homeEnter();
 });
-// Enter on home: in speak mode the tiles in the bar are read aloud and stay
-// there; otherwise they go to the spelling page
+// Enter on home: in speak mode the tiles in the bar are read aloud and the bar
+// clears; otherwise they go to the spelling page
 function homeEnter() {
   if (!state.speakMode) { startPhraseFromHome(); return; }
   if (!homePhrase.length) return;
@@ -5441,7 +5441,11 @@ function homeEnter() {
     h.n++; h.t = now;
     state.wordHistory[w] = h;
   });
+  // the bar empties once it has been said, ready for the next thing
+  homePhrase = [];
+  hideMagic();
   save();
+  renderPhraseBar();
 }
 function renderSpeakBtn() {
   const b = document.getElementById('homeSpeakBtn');
