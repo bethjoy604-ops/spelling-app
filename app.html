@@ -2245,7 +2245,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 174 - 3 Oct';
+const BUILD = 'build 175 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6952,11 +6952,12 @@ function renderBuilder(grid) {
     });
   }
   if (!count) {
-    const n = document.createElement('div');
-    n.className = 'empty-note';
-    n.style.gridColumn = '1 / -1';
-    n.textContent = ('cat' in here) ? 'This folder is empty.' : 'Nothing here yet — use + to add a word or a choice board.';
-    grid.appendChild(n);
+    // an empty page: a greyed-out plus tile shows where things go and how to add them
+    const add = tile('+', false);
+    add.classList.add('add-folder');
+    add.setAttribute('aria-label', 'Add a tile');
+    add.querySelector('.hw').style.fontSize = Math.round(rowH * 0.4) + 'px';
+    add.addEventListener('click', openBuilderAdd);
   }
   if (!builderPath.length) { if (state.chatMode) renderChatLog(grid, base); else renderBuilderLog(grid, base); }
 }
@@ -7681,6 +7682,20 @@ function renderSlotGrid(grid, cat, folders) {
   });
   for (let i = 0; head + i < totalRows * cols; i++) {
     const w = slots[i];
+    // an empty page shows a greyed-out plus tile in the first place: tap it to add something
+    if (!w && i === 0 && arrange && head === 0 && !slots.some(Boolean)) {
+      const add = document.createElement('button');
+      add.className = 'home-card add-folder';
+      add.setAttribute('aria-label', 'Add a tile');
+      const t = document.createElement('span');
+      t.className = 'hw';
+      t.style.fontSize = Math.round(rowH * 0.4) + 'px';
+      t.textContent = '+';
+      add.appendChild(t);
+      add.addEventListener('click', () => openFolderAdd(cat));
+      place(add, 0);
+      continue;
+    }
     if (!w) {
       const hole = document.createElement('div');
       hole.className = 'slot-empty';
