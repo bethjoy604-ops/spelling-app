@@ -915,11 +915,23 @@
     color: var(--ink); cursor: pointer;
   }
   .bl-row:first-of-type { background: var(--surface); box-shadow: var(--shadow); }
-  .bl-row { display: flex; flex-direction: column; gap: 4px; -webkit-touch-callout: none; }
+  .bl-row { display: flex; flex-direction: row; align-items: center; gap: 12px; -webkit-touch-callout: none; }
+  .bl-row .bl-text { flex: 1; min-width: 0; }
+  .bl-count {
+    flex: none; min-width: 1.9em; padding: 0.15em 0.5em; border-radius: 999px; text-align: center;
+    background: #bfd8ff; color: var(--ink); font-size: 0.75em; font-weight: 900;
+  }
+  .bl-more {
+    align-self: flex-start; border: none; border-radius: 12px; background: rgba(255,255,255,0.6);
+    font-family: inherit; font-weight: 800; font-size: 16px; color: var(--ink); padding: 10px 16px; cursor: pointer;
+  }
+  .hist-list { max-height: 50vh; overflow-y: auto; }
+  .hist-row { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; border-bottom: 1px solid var(--border); text-align: left; font-weight: 800; }
+  .hist-when { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
   .bl-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .bl-note { font-size: 0.62em; font-weight: 700; color: var(--muted); }
   /* speak mode / builder switched off: the icon is greyed out */
-  #homeSpeakBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
+  #homeSpeakBtn.off, #homeChatBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
   #builderBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
   .modes-wrap {
     display: flex; gap: 8px;
@@ -2223,7 +2235,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 169 - 3 Oct';
+const BUILD = 'build 170 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6949,13 +6961,24 @@ function renderBuilderLog(grid, tileType) {
   line.className = 'bl-line';
   head.appendChild(line);
   box.appendChild(head);
-  log.slice(0, 30).forEach(entry => {      // the latest 30; the full list can be exported from settings
+  // each different sentence once, newest first, with how many times it has been entered in all
+  const counts = {}, firsts = [];
+  log.forEach(e => { const k = e.words.join(' '); if (!counts[k]) { counts[k] = 0; firsts.push(e); } counts[k]++; });
+  firsts.slice(0, 5).forEach(entry => {      // the latest five; the rest is in the full history
     const row = document.createElement('button');
     row.className = 'bl-row';
     const text = sentenceWords(entry.words).join(' ');
     const line1 = document.createElement('span');
+    line1.className = 'bl-text';
     line1.textContent = text.charAt(0).toUpperCase() + text.slice(1);   // reads as a sentence
     row.appendChild(line1);
+    const n = counts[entry.words.join(' ')];
+    if (n > 1) {
+      const badge = document.createElement('span');
+      badge.className = 'bl-count';
+      badge.textContent = n;
+      row.appendChild(badge);
+    }
     if (entry.note) {
       const nt = document.createElement('span');
       nt.className = 'bl-note';
@@ -6982,13 +7005,57 @@ function renderBuilderLog(grid, tileType) {
     });
     box.appendChild(row);
   });
+  if (log.length) {
+    const more = document.createElement('button');
+    more.className = 'bl-more';
+    more.textContent = 'Full history (' + log.length + ')';
+    more.addEventListener('click', openLogHistory);
+    box.appendChild(more);
+  }
   grid.appendChild(box);
+}
+// Everything that has been entered, newest first, each with its date and time
+function openLogHistory() {
+  const log = state.builderLog || [];
+  const stamp = t => {
+    const d = new Date(t);
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' +
+      d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  };
+  openWordSheet(body => {
+    sheetTitle(body, 'Full history');
+    const list = document.createElement('div');
+    list.className = 'pick-list hist-list';
+    log.slice(0, 500).forEach(e => {
+      const r = document.createElement('div');
+      r.className = 'hist-row';
+      const when = document.createElement('span');
+      when.className = 'hist-when';
+      when.textContent = e.t ? stamp(e.t) : '';
+      const what = document.createElement('span');
+      const text = sentenceWords(e.words).join(' ');
+      what.textContent = text.charAt(0).toUpperCase() + text.slice(1);
+      r.appendChild(when); r.appendChild(what);
+      list.appendChild(r);
+    });
+    body.appendChild(list);
+    if (log.length > 500) {
+      const n = document.createElement('div');
+      n.className = 'help-note'; n.style.marginTop = '8px';
+      n.textContent = 'Showing the latest 500 of ' + log.length + '. The whole list can be exported from Settings.';
+      body.appendChild(n);
+    }
+    body.appendChild(sheetBtn('Export as a file', '', () => { exportBuilderLog(); }));
+    body.appendChild(sheetBtn('Close', 'primary', closeWordSheet));
+  });
 }
 // A held transcript row: delete it or file it in a folder
 function openLogEntry(entry) {
   const text = sentenceWords(entry.words).join(' ');
   const shown = text.charAt(0).toUpperCase() + text.slice(1);
-  const drop = () => { state.builderLog = (state.builderLog || []).filter(e => e !== entry); };
+  // the row stands for every time this sentence was entered, so they all go together
+  const same = entry.words.join(' ');
+  const drop = () => { state.builderLog = (state.builderLog || []).filter(e => e.words.join(' ') !== same); };
   const title = (body, t) => {
     sheetTitle(body, t);
     const p = document.createElement('div');
