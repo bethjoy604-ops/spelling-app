@@ -826,6 +826,21 @@
     padding: 0; display: flex; align-items: center; justify-content: center;
     font-size: 22px;
   }
+  /* the row of small words above a folder's tiles */
+  .small-strip {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
+    padding: 10px; border-radius: 16px; background: rgba(255,255,255,0.32);
+  }
+  .small-tile {
+    border: none; border-radius: 12px; background: var(--blue-soft); color: var(--ink);
+    font-family: inherit; font-weight: 900; cursor: pointer; min-width: 0; padding: 0 6px;
+    overflow: hidden; white-space: nowrap; -webkit-touch-callout: none;
+  }
+  .small-tile:active { transform: scale(0.96); }
+  .small-tile.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
+  .small-tile.empty { grid-column: 1 / -1; background: rgba(255,255,255,0.5); color: rgba(0,0,0,0.5); }
+  .small-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .small-pick .pick-row { text-align: center; }
   /* the builder's transcript, under its first page */
   .builder-log { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
   .bl-head { display: flex; align-items: center; gap: 12px; min-height: 30px; margin-top: 6px; }
@@ -1979,6 +1994,8 @@
         <div class="seg-row" id="segGridFill"></div>
         <div class="help-note">Every tile uses the same size of type; each one is only as wide as its word, and the rows fill the width neatly. This number sets how big that type is — pick 6 for big tiles, 12 for smaller ones. More words than that simply carry on below, so nothing is ever hidden.</div>
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
+        <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
+        <div class="help-note">Saves every sentence built in the builder, with its date and time, as a file that opens in Numbers or Excel. The builder page itself shows the latest 30.</div>
         <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
 
         <div class="sublabel">Hidden keys</div>
@@ -2121,7 +2138,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 124 - 3 Oct';
+const BUILD = 'build 125 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2283,6 +2300,8 @@ const state = {
   builderLog: [],             // sentences built in the builder, newest first
   keptPhrases: {},            // sentences filed into a folder whole, so they show as one tile
   starterDone: false,         // the starter folders and words have been added once
+  layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
+  smallRow: null,             // the small words shown in the row above the tiles, in order
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2436,6 +2455,8 @@ async function load() {
         builderLog: Array.isArray(saved.builderLog) ? saved.builderLog : [],
         keptPhrases: saved.keptPhrases || {},
         starterDone: saved.starterDone ?? false,
+        layoutV7: saved.layoutV7 ?? false,
+        smallRow: Array.isArray(saved.smallRow) ? saved.smallRow : null,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2528,6 +2549,11 @@ async function load() {
     state.builder = defaultBuilder();
     state.wordCase = state.wordCase || {};
     if (!state.wordCase['I']) state.wordCase['I'] = 'I';
+    save();
+  }
+  if (!state.layoutV7) {
+    state.layoutV7 = true;
+    migrateLayoutV7();
     save();
   }
   // One-time: the builder's first page says Stop where it used to say All Done
@@ -2652,6 +2678,8 @@ async function save() {
       builderLog: state.builderLog,
       keptPhrases: state.keptPhrases,
       starterDone: state.starterDone,
+      layoutV7: state.layoutV7,
+      smallRow: state.smallRow,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5075,20 +5103,20 @@ function deleteCategory(id) {
 }
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
-const DEFAULT_GROUPS = ['Chat', 'Categories', 'My Stuff'];
-const CATEGORY_SUBS = ['Actions', 'Food', 'Things', 'People', 'Places'];
+const DEFAULT_GROUPS = ['Small Words', 'Categories', 'My Stuff'];
+const CATEGORY_SUBS = ['Actions', 'Food', 'Things', 'People', 'Places', 'Body', 'Feelings', 'Activities'];
 const DEFAULT_COLORS = {
-  Chat: 'blue', Categories: 'green', 'My Stuff': 'orange',
+  'Small Words': 'blue', Categories: 'green', 'My Stuff': 'orange',
   Food: 'green', Actions: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
 };
-const MY_STUFF_SUBS = ['Music', 'TV', 'Movies', 'Books', 'Games', 'Characters'];
+const MY_STUFF_SUBS = ['Music', 'TV', 'Movies', 'Books', 'Games', 'Characters', 'Toys'];
 // The starter vocabulary, so a fresh device opens with the words already in place
-const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nCategories:\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\n  Actions: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\n  People:\n  Places:\n  Things: truck, bear\nMy Stuff:\n  Music:\n  TV: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Books:\n  Games:\n  Characters: peppa, george\n';
+const STARTER_WORDS = 'Small Words: hi, bye, more, again, yes, no, quiet\nCategories:\n  Actions: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read, help, open, play, fix, stop, go, watch\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles, water\n  Things: truck, bear\n  People:\n  Places:\n  Body:\n  Feelings:\n  Activities:\nMy Stuff:\n  Music:\n  TV: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Books:\n  Games:\n  Characters: peppa, george\n  Toys: flicker\n';
 // Older names map onto the current set so nobody ends up with both
 const GROUP_ALIASES = {
-  'conversation': 'Chat', 'social': 'Chat',
+  'conversation': 'Small Words', 'social': 'Small Words', 'chat': 'Small Words',
   'eat': 'Food',
-  'action': 'Actions', 'activities': 'Actions', 'activity': 'Actions',
+  'action': 'Actions',
   'labels': 'My Stuff', 'stuff': 'My Stuff',
   'tv shows': 'TV', 'shows': 'TV', 'songs': 'Music',
 };
@@ -5506,7 +5534,7 @@ function homeEnter() {
   if (state.builderMode && homePhrase.length) {
     builderPath = [];                       // the sentence is done: back to the first page
     // and it joins the transcript under the first page, newest at the top
-    state.builderLog = [{ words: homePhrase.slice(), t: Date.now() }].concat(state.builderLog || []).slice(0, 60);
+    state.builderLog = [{ words: homePhrase.slice(), t: Date.now() }].concat(state.builderLog || []).slice(0, 5000);
   }
   if (!state.speakMode) { startPhraseFromHome(); return; }
   if (!homePhrase.length) return;
@@ -5847,13 +5875,13 @@ function renderHome(reset) {
 
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows())
-      .filter(r => !state.hiddenWords[r.word] && (cat || !state.recentsHidden[r.word]));
+      .filter(r => !state.hiddenWords[r.word] && (cat || (!state.recentsHidden[r.word] && !isSmallWord(r.word))));
     const folders = gridFolders();
     // A folder is a grid of fixed places: every tile stays where it was put
     // (Recents / Popular uses the same grid and type size, just without fixed places)
     const slotted = !!(cat && !cat.rule) || homeRows.length > 0 || folders.length > 0;
     grid.classList.toggle('slot-grid', slotted);
-    grid.style.gridTemplateColumns = ''; grid.style.gridAutoRows = '';
+    grid.style.gridTemplateColumns = ''; grid.style.gridAutoRows = ''; grid.style.gridTemplateRows = '';
     if (slotted) {
       homeShown = homeRows.length;       // nothing more to page in
       renderSlotGrid(grid, cat, folders);
@@ -5908,6 +5936,164 @@ function renderHome(reset) {
   homeShown += slice.length;
   requestAnimationFrame(() => fitGrid(grid));
 }
+// ===== Small words =====
+// Words in the Small Words folder (articles, pronouns and the like) are kept
+// off Recents / Popular, and a row of them sits above the tiles in each folder
+// inside Categories.
+function isSmallCat(c) {
+  let x = c, g = 0;
+  while (x && g++ < 20) { if (x.small) return true; x = x.parent ? catById(x.parent) : null; }
+  return false;
+}
+function isSmallWord(w) { return categoriesOf(w).some(isSmallCat); }
+function allSmallWords() {
+  const out = [];
+  state.categories.filter(isSmallCat).forEach(c => (c.words || []).forEach(w => { if (!out.includes(w)) out.push(w); }));
+  return out;
+}
+// Does this folder sit inside one that gives its sub-folders the small-words row?
+function hasSmallStrip(cat) {
+  let x = cat && cat.parent ? catById(cat.parent) : null, g = 0;
+  while (x && g++ < 20) { if (x.strip) return true; x = x.parent ? catById(x.parent) : null; }
+  return false;
+}
+function makeSmallStrip(rowH, base) {
+  const strip = document.createElement('div');
+  strip.className = 'small-strip';
+  const h = Math.max(48, Math.round(rowH / 2));
+  const words = (state.smallRow || []).filter(w => state.words.includes(w));
+  const mk = (label, onTap) => {
+    const b = document.createElement('button');
+    b.className = 'small-tile';
+    b.style.height = h + 'px';
+    b.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
+    b.textContent = label;
+    // tap says the word; hold opens the list to choose which words are in the row
+    let timer = null, held = false;
+    b.addEventListener('pointerdown', () => {
+      held = false;
+      timer = setTimeout(() => { timer = null; held = true; buzz(15); b.classList.add('held'); }, 520);
+    });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    b.addEventListener('pointerup', stop);
+    ['pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, () => { stop(); held = false; b.classList.remove('held'); }));
+    b.addEventListener('contextmenu', e => e.preventDefault());
+    b.addEventListener('click', () => {
+      b.classList.remove('held');
+      if (held) { held = false; openSmallRowPicker(); } else onTap();
+    });
+    strip.appendChild(b);
+    return b;
+  };
+  words.forEach(w => mk(bankLabel(w), () => {
+    homePhrase.push(w);
+    warmSpeech();
+    speakWord(w, 0.95);
+    renderPhraseBar();
+  }));
+  if (!words.length) mk('+ small words', openSmallRowPicker).classList.add('empty');
+  return strip;
+}
+function openSmallRowPicker() {
+  openWordSheet(body => {
+    sheetTitle(body, 'Small words row');
+    const n = document.createElement('div');
+    n.className = 'help-note'; n.style.marginTop = '6px';
+    n.textContent = 'Tap the words to show. Six fit on a row; choosing more starts another row. The list comes from the Small Words folder.';
+    body.appendChild(n);
+    const list = document.createElement('div');
+    list.className = 'pick-list small-pick';
+    body.appendChild(list);
+    state.smallRow = (state.smallRow || []).slice();
+    allSmallWords().forEach(w => {
+      const r = document.createElement('button');
+      r.className = 'pick-row' + (state.smallRow.includes(w) ? ' on' : '');
+      r.textContent = bankLabel(w);
+      r.addEventListener('click', () => {
+        if (state.smallRow.includes(w)) state.smallRow = state.smallRow.filter(x => x !== w);
+        else state.smallRow.push(w);
+        r.classList.toggle('on', state.smallRow.includes(w));
+      });
+      list.appendChild(r);
+    });
+    body.appendChild(sheetBtn('Done', 'primary', () => { save(); closeWordSheet(); renderHome(true); }));
+  });
+}
+// One-time move to the Small Words / Categories layout. Safe on any device:
+// nothing is deleted, and folders that are already there are reused.
+function migrateLayoutV7() {
+  const top = n => state.categories.find(c => !c.parent && c.name.toLowerCase() === n);
+  const sub = (parent, name) => state.categories.find(c => c.parent === parent.id && c.name.toLowerCase() === name.toLowerCase())
+    || addCategory(name, parent.id);
+  const give = (cat, w) => {
+    if (!cat.words.includes(w)) cat.words.push(w);
+    if (!state.words.includes(w)) state.words.push(w);
+    if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+  };
+  const shift = (from, to, list) => list.forEach(w => {
+    if (!from || !to || !(from.words || []).includes(w)) return;
+    from.words = from.words.filter(x => x !== w);
+    if (!to.words.includes(w)) to.words.push(w);
+  });
+  // Chat becomes Small Words
+  let small = top('small words');
+  const chat = top('chat');
+  if (chat && small && chat !== small) mergeGroups(chat, small);
+  else if (chat) { chat.name = 'Small Words'; small = chat; }
+  else if (!small) small = addCategory('Small Words', null, 'blue');
+  small.small = true;
+
+  const cats = top('categories');
+  let activities = null;
+  if (cats) {
+    cats.strip = true;                    // its sub-folders get the small-words row
+    const actions = sub(cats, 'Actions'), food = sub(cats, 'Food');
+    sub(cats, 'Body'); sub(cats, 'Feelings');
+    activities = sub(cats, 'Activities');
+    shift(small, actions, ['HELP', 'OPEN', 'PLAY', 'FIX', 'STOP', 'GO', 'READ', 'WATCH']);
+    shift(small, food, ['WATER']);
+    ['DANCING', 'SINGING'].forEach(w => give(activities, w));
+  }
+  const mine = top('my stuff');
+  if (mine) shift(small, sub(mine, 'Toys'), ['FLICKER']);
+  ['I', 'YOU', 'MY', 'THE', 'A', 'AND', 'IT', 'IS', 'NOT'].forEach(w => give(small, w));
+
+  // Stop on the builder's first page leads to Activities
+  const stop = ((state.builder && state.builder.kids) || []).find(k => (k.label || '').toLowerCase() === 'stop');
+  if (stop && activities && !stop.cats.includes(activities.id)) stop.cats.push(activities.id);
+
+  if (!Array.isArray(state.smallRow)) {
+    state.smallRow = ['I', 'MY', 'THE', 'A', 'MORE', 'NOT'].filter(w => small.words.includes(w));
+  }
+}
+// The whole builder transcript as a spreadsheet-friendly file, newest first
+function exportBuilderLog() {
+  const log = state.builderLog || [];
+  if (!log.length) { alert('There is nothing in the transcript yet.'); return; }
+  const cell = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const pad = n => String(n).padStart(2, '0');
+  const lines = ['Date,Time,Sentence'];
+  log.forEach(e => {
+    const d = new Date(e.t || 0);
+    const text = e.words.map(bankLabel).join(' ');
+    lines.push([
+      d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+      pad(d.getHours()) + ':' + pad(d.getMinutes()),
+      cell(text.charAt(0).toUpperCase() + text.slice(1)),
+    ].join(','));
+  });
+  const now = new Date();
+  const url = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'builder-transcript-' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+document.getElementById('exportLogBtn').addEventListener('click', exportBuilderLog);
+
 // ===== Builder mode: a sentence built page by page =====
 // The pages form a tree. Each tile says its word and opens the page of things
 // that can follow it; a tile can also lead to one or more of the ordinary folders.
@@ -5963,6 +6149,12 @@ function renderBuilder(grid) {
   grid.scrollTop = 0;
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
   grid.style.gridAutoRows = 'auto';
+  grid.style.gridTemplateRows = '';
+  if ('cat' in here && hasSmallStrip(catById(here.cat))) {
+    const el = makeSmallStrip(rowH, base);
+    el.style.gridColumn = '1 / -1';
+    grid.appendChild(el);
+  }
 
   const tile = (label, folder) => {
     const card = document.createElement('button');
@@ -6051,7 +6243,7 @@ function renderBuilderLog(grid, tileType) {
   line.className = 'bl-line';
   head.appendChild(line);
   box.appendChild(head);
-  log.forEach(entry => {
+  log.slice(0, 30).forEach(entry => {      // the latest 30; the full list can be exported from settings
     const row = document.createElement('button');
     row.className = 'bl-row';
     const text = entry.words.map(bankLabel).join(' ');
@@ -6180,6 +6372,7 @@ function openFolderAdd(cat) {
       if (!name) return false;
       addCategory(name, cat.id);
     })));
+    if (hasSmallStrip(cat)) body.appendChild(sheetBtn('Choose the small words row', '', openSmallRowPicker));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -6432,12 +6625,19 @@ function renderSlotGrid(grid, cat, folders) {
   // fits its tile, so nothing has to be shrunk next to its neighbours.
   const room = cellW - 30;
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
+  // folders inside Categories carry a row of small words above their tiles
+  const strip = arrange && hasSmallStrip(cat);
+  grid.style.gridTemplateRows = strip ? 'auto' : '';
+  if (strip) {
+    const el = makeSmallStrip(rowH, base);
+    el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
+    grid.appendChild(el);
+  }
   const place = (el, cell) => {
-    const r = Math.floor(cell / cols), c = cell % cols;
+    const r = Math.floor(cell / cols) + (strip ? 1 : 0), c = cell % cols;
     el.style.gridRow = String(r + 1);
     // below the first row, the first tile also takes the slim column the plus sits in
-    if (!plusW) el.style.gridColumn = String(c + 1);
-    else el.style.gridColumn = (c === 0 && r > 0) ? '1 / span 2' : String(c + 2);
+    el.style.gridColumn = String(c + 1);
     grid.appendChild(el);
   };
   const fit = (card, label) => {
