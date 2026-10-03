@@ -2141,7 +2141,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 128 - 3 Oct';
+const BUILD = 'build 129 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5993,11 +5993,13 @@ function hasSmallStrip(cat) {
   while (x && g++ < 20) { if (x.strip) return true; x = x.parent ? catById(x.parent) : null; }
   return false;
 }
-function makeSmallStrip(rowH, base) {
+// (owner: a builder page with its own row of small words; without one it is the shared row)
+function makeSmallStrip(rowH, base, owner) {
+  const edit = () => openSmallRowPicker(owner);
   const strip = document.createElement('div');
   strip.className = 'small-strip';
   const h = Math.max(48, Math.round(rowH / 2));
-  const words = (state.smallRow || []).filter(w => state.words.includes(w));
+  const words = ((owner ? owner.small : state.smallRow) || []).filter(w => state.words.includes(w));
   const mk = (label, onTap) => {
     const b = document.createElement('button');
     b.className = 'small-tile';
@@ -6016,7 +6018,7 @@ function makeSmallStrip(rowH, base) {
     b.addEventListener('contextmenu', e => e.preventDefault());
     b.addEventListener('click', () => {
       b.classList.remove('held');
-      if (held) { held = false; openSmallRowPicker(); } else onTap();
+      if (held) { held = false; edit(); } else onTap();
     });
     strip.appendChild(b);
     return b;
@@ -6027,12 +6029,14 @@ function makeSmallStrip(rowH, base) {
     speakWord(w, 0.95);
     renderPhraseBar();
   }));
-  if (!words.length) mk('+ small words', openSmallRowPicker).classList.add('empty');
+  if (!words.length) mk('+ small words', edit).classList.add('empty');
   return strip;
 }
-function openSmallRowPicker() {
+function openSmallRowPicker(owner) {
+  // the shared row above the Categories folders, or one builder page's own row
+  let picked = ((owner ? owner.small : state.smallRow) || []).slice();
   openWordSheet(body => {
-    sheetTitle(body, 'Small words row');
+    sheetTitle(body, owner ? 'Small words on this page' : 'Small words row');
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '6px';
     n.textContent = 'Tap the words to show. Six fit on a row; choosing more starts another row. The list comes from the Chat folder.';
@@ -6040,19 +6044,21 @@ function openSmallRowPicker() {
     const list = document.createElement('div');
     list.className = 'pick-list small-pick';
     body.appendChild(list);
-    state.smallRow = (state.smallRow || []).slice();
     allSmallWords().forEach(w => {
       const r = document.createElement('button');
-      r.className = 'pick-row' + (state.smallRow.includes(w) ? ' on' : '');
+      r.className = 'pick-row' + (picked.includes(w) ? ' on' : '');
       r.textContent = bankLabel(w);
       r.addEventListener('click', () => {
-        if (state.smallRow.includes(w)) state.smallRow = state.smallRow.filter(x => x !== w);
-        else state.smallRow.push(w);
-        r.classList.toggle('on', state.smallRow.includes(w));
+        if (picked.includes(w)) picked = picked.filter(x => x !== w);
+        else picked.push(w);
+        r.classList.toggle('on', picked.includes(w));
       });
       list.appendChild(r);
     });
-    body.appendChild(sheetBtn('Done', 'primary', () => { save(); closeWordSheet(); renderHome(true); }));
+    body.appendChild(sheetBtn('Done', 'primary', () => {
+      if (owner) owner.small = picked; else state.smallRow = picked;
+      save(); closeWordSheet(); renderHome(true);
+    }));
   });
 }
 // The Chat folder, marked as the home of the small words. An older "Small Words"
@@ -6205,6 +6211,11 @@ function renderBuilder(grid) {
   grid.style.gridTemplateRows = '';
   if ('cat' in here && hasSmallStrip(catById(here.cat))) {
     const el = makeSmallStrip(rowH, base);
+    el.style.gridColumn = '1 / -1';
+    grid.appendChild(el);
+  } else if (!('cat' in here) && (here.small || []).length) {
+    // a builder page can carry its own row of small words
+    const el = makeSmallStrip(rowH, base, here);
     el.style.gridColumn = '1 / -1';
     grid.appendChild(el);
   }
@@ -6454,7 +6465,7 @@ function openFolderAdd(cat) {
       walk(null, 0);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    if (hasSmallStrip(cat)) body.appendChild(sheetBtn('Choose the small words row', '', openSmallRowPicker));
+    if (hasSmallStrip(cat)) body.appendChild(sheetBtn('Choose the small words row', '', () => openSmallRowPicker()));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -6562,6 +6573,7 @@ function openBuilderAddTo(here, heading) {
       walk(null, 0);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
+    body.appendChild(sheetBtn('Small words', '', () => openSmallRowPicker(here)));
     body.appendChild(sheetBtn('A new folder', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Name the new folder');
       const inp = builderInput(b2, '');
