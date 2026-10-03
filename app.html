@@ -2073,7 +2073,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 102 - 3 Oct';
+const BUILD = 'build 103 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2219,6 +2219,7 @@ const state = {
   groupsV2: false,            // the one-time move to the Categories layout
   groupsV3: false,            // the one-time reorder inside Categories
   groupsV4: false,            // the one-time change to My Stuff's folders
+  groupsV5: false,            // the one-time rename of Activities to Actions
   wordCase: {},               // how each title was written, for reading back
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
   revives: { word: {}, cat: {}, catWord: {} }, // and deliberate re-adds, which undo them
@@ -2360,6 +2361,7 @@ async function load() {
         groupsV2: saved.groupsV2 ?? false,
         groupsV3: saved.groupsV3 ?? false,
         groupsV4: saved.groupsV4 ?? false,
+        groupsV5: saved.groupsV5 ?? false,
         wordCase: saved.wordCase || {},
         tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
         revives: saved.revives || { word: {}, cat: {}, catWord: {} },
@@ -2433,6 +2435,17 @@ async function load() {
         if (!(vids.words || []).length && !childrenOf(vids.id, true).length) deleteCategory(vids.id);
         else vids.order = 99;
       }
+    }
+    save();
+  }
+  // One-time: Activities is renamed Actions, keeping its words and its place
+  if (!state.groupsV5) {
+    state.groupsV5 = true;
+    const act = state.categories.find(c => c.name.toLowerCase() === 'activities');
+    if (act) {
+      const dup = state.categories.find(c => c.id !== act.id && c.name.toLowerCase() === 'actions');
+      if (dup) mergeGroups(dup, act);
+      act.name = 'Actions';
     }
     save();
   }
@@ -2537,6 +2550,7 @@ async function save() {
       groupsV2: state.groupsV2,
       groupsV3: state.groupsV3,
       groupsV4: state.groupsV4,
+      groupsV5: state.groupsV5,
       wordCase: state.wordCase,
       tombs: state.tombs,
       revives: state.revives,
@@ -3674,11 +3688,9 @@ function casedText(w) {
   const key = w || '';
   const kept = (state.wordCase || {})[key];
   if (kept && kept.toUpperCase() === key) return kept;
-  if (key.includes(' ')) {
-    // a title in a phrase folder reads as a title, the same as it does on its tile
-    if (categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
-    return key.split(' ').map(casedText).join(' ');
-  }
+  // anything in My Stuff is a name or a title: capitals by default, the same as on its tile
+  if (categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
+  if (key.includes(' ')) return key.split(' ').map(casedText).join(' ');
   return key.toLowerCase();
 }
 function usesShift() { return state.caseMode === 2 || state.caseMode === 3; }
@@ -4964,19 +4976,19 @@ function deleteCategory(id) {
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
 const DEFAULT_GROUPS = ['Chat', 'Categories', 'My Stuff'];
-const CATEGORY_SUBS = ['Activities', 'Food', 'People', 'Places', 'Things'];
+const CATEGORY_SUBS = ['Actions', 'Food', 'People', 'Places', 'Things'];
 const DEFAULT_COLORS = {
   Chat: 'blue', Categories: 'green', 'My Stuff': 'orange',
-  Food: 'green', Activities: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
+  Food: 'green', Actions: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
 };
 const MY_STUFF_SUBS = ['Music', 'TV', 'Movies', 'Books', 'Games', 'Characters'];
 // The starter vocabulary, so a fresh device opens with the words already in place
-const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nCategories:\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\n  Activities: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\n  People:\n  Places:\n  Things: truck, bear\nMy Stuff:\n  Music:\n  TV: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Books:\n  Games:\n  Characters: peppa, george\n';
+const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nCategories:\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\n  Actions: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\n  People:\n  Places:\n  Things: truck, bear\nMy Stuff:\n  Music:\n  TV: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Books:\n  Games:\n  Characters: peppa, george\n';
 // Older names map onto the current set so nobody ends up with both
 const GROUP_ALIASES = {
   'conversation': 'Chat', 'social': 'Chat',
   'eat': 'Food',
-  'action': 'Activities', 'activity': 'Activities',
+  'action': 'Actions', 'activities': 'Actions', 'activity': 'Actions',
   'labels': 'My Stuff', 'stuff': 'My Stuff',
   'tv shows': 'TV', 'shows': 'TV', 'songs': 'Music',
 };
@@ -5207,8 +5219,8 @@ function bankLabel(w) {
   const key = w || '';
   const kept = (state.wordCase || {})[key];
   if (kept) return kept;
-  // a title inside a phrase folder reads as a title
-  if (key.includes(' ') && categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
+  // anything in My Stuff is a name or a title, so it reads with capitals
+  if (categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
   return key.toLowerCase();
 }
 // Which groups a word belongs to — drives the tint behind its card
