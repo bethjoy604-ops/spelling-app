@@ -2157,7 +2157,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 136 - 3 Oct';
+const BUILD = 'build 137 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7237,6 +7237,28 @@ function sheetTitle(body, text, word) {
     body.appendChild(p);
   }
 }
+// The New folder: the list of target words for spelling practice
+function newFolder() {
+  return state.categories.find(c => !c.parent && !c.hidden && c.name.toLowerCase() === 'new') || null;
+}
+// A switch in a word's hold menu: put it on the New list too (it stays where it is), or take it off
+function newListBtn(word) {
+  const nf = newFolder();
+  if (!nf) return null;
+  const b = sheetBtn('', '', () => {
+    if (nf.words.includes(word)) nf.words = nf.words.filter(w => w !== word);
+    else nf.words.push(word);
+    save(); paint(); renderHome(false);
+  });
+  const paint = () => {
+    const on = nf.words.includes(word);
+    b.textContent = on ? '\u2713  In New (tap to take it out)' : 'Add to New';
+    b.style.background = on ? 'var(--green)' : '';
+    b.style.color = on ? '#fff' : '';
+  };
+  paint();
+  return b;
+}
 function openWordActions(word, cat, extra) {
   // On Recents / Popular: the word can be taken off the page, and one that has
   // no folder yet can be filed into one
@@ -7247,6 +7269,8 @@ function openWordActions(word, cat, extra) {
       sheetTitle(body, 'This word', word);
       body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
       if (!filed) body.appendChild(sheetBtn('Move to a folder', '', () => openMovePicker(word, null, null)));
+      const nb = newListBtn(word);
+      if (nb) body.appendChild(nb);
       body.appendChild(sheetBtn(filed ? 'Remove from ' + page : 'Delete this word', 'danger', () => poofWord(word)));
       body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
       const n = document.createElement('div');
@@ -7262,6 +7286,8 @@ function openWordActions(word, cat, extra) {
     sheetTitle(body, 'This word', word);
     body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
     body.appendChild(sheetBtn('Move to another folder', '', () => openMovePicker(word, cat, null)));
+    const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
+    if (nb) body.appendChild(nb);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '12px';
