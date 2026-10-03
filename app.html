@@ -1886,9 +1886,6 @@
         <div class="seg-row" id="segTileMode"></div>
         <div class="help-note">Words keeps one word per tile and splits anything longer as it's added. Sentences shows only saved phrases. Both mixes them. Any folder switched to phrases in Edit groups ignores this and keeps full names like "Doc Hudson Best Moments" on one tile.</div>
 
-        <div class="sublabel">How home works</div>
-        <div class="seg-row" id="segHomeMode"></div>
-        <div class="help-note">Tiles spreads the words used most recently across the screen, with folders in a strip. Words is the same but plainer. Folders opens on a grid of your groups instead, and each one opens as a list you scroll — better for long titles, and there is always a way back to the top.</div>
 
         <div class="sublabel">Tiles on a screenful</div>
         <div class="seg-row" id="segGridFill"></div>
@@ -2036,7 +2033,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 95 - 3 Oct';
+const BUILD = 'build 96 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2298,7 +2295,7 @@ async function load() {
         showHelpBtn: saved.showHelpBtn ?? false,
         homeEnabled: saved.homeEnabled ?? true,
         practiceMode: saved.practiceMode ?? true,
-        homeMode: ['words', 'folders'].includes(saved.homeMode) ? saved.homeMode : 'tiles',
+        homeMode: 'tiles',          // the only layout now; Words and Folders were retired
         // saves from before the strip was folded by default start folded once
         railOpen: saved.barV2 ? (saved.railOpen ?? false) : false,
         barV2: true,
@@ -6499,13 +6496,6 @@ function renderSettings() {
   document.getElementById('toggleSearchBtn').classList.toggle('on', state.showSearchBtn);
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
-  buildSeg('segHomeMode', [
-      { value: 'tiles', label: 'Tiles' },
-      { value: 'words', label: 'Words' },
-      { value: 'folders', label: 'Folders' },
-    ], state.homeMode,
-    v => { state.homeMode = v; homePath = []; save(); renderSettings();
-           if (document.getElementById('viewHome').classList.contains('active')) renderHome(true); });
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
 
   // ----- Sizes -----
