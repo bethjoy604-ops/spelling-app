@@ -846,10 +846,19 @@
   /* the row of small words above a folder's tiles */
   .small-strip {
     display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
-    padding: 10px; border-radius: 16px; background: #4a4d52;
+    padding: 10px; border-radius: 16px; background: #bfd8ff;
     justify-self: start; max-width: 100%; box-sizing: border-box;
   }
-  .small-section { display: flex; flex-direction: column; gap: 14px; padding-top: 6px; }
+  .small-section { display: flex; flex-direction: column; gap: 16px; padding: 8px 0 16px; }
+  .small-head {
+    display: flex; align-items: center; justify-content: space-between; width: 100%;
+    border: none; border-radius: 16px; background: rgba(255,255,255,0.55); color: var(--ink);
+    font-family: inherit; font-weight: 900; font-size: 20px; padding: 14px 20px; cursor: pointer;
+  }
+  .small-head .sh-arrow { font-size: 14px; color: var(--ink); }
+  .small-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+  .small-list .empty-note { grid-column: 1 / -1; }
+  .small-list .small-tile { box-shadow: var(--shadow); border-radius: 14px; }
   .small-tile {
     border: none; border-radius: 12px; background: #fff; color: var(--ink);
     font-family: inherit; font-weight: 900; cursor: pointer; min-width: 0; padding: 0 6px;
@@ -2163,7 +2172,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 144 - 3 Oct';
+const BUILD = 'build 145 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2328,6 +2337,8 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  smallV3: false,            // the one-time creation of the Small words folder inside Chat
+  smallOpen: false,           // whether the Small words row in Chat is opened out
   smallV2: false,            // the one-time marking of which Chat words are small words
   smallSet: {},               // words marked as small words (the, a, my ...)
   layoutV9: false,            // the one-time addition of the New folder
@@ -2488,6 +2499,8 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        smallV3: saved.smallV3 ?? false,
+        smallOpen: !!saved.smallOpen,
         smallV2: saved.smallV2 ?? false,
         smallSet: saved.smallSet || {},
         layoutV9: saved.layoutV9 ?? false,
@@ -2601,6 +2614,12 @@ async function load() {
   if (!state.smallV2) {
     state.smallV2 = true;
     seedSmallSet();
+    save();
+  }
+  // One-time: the small words become a real folder inside Chat, so it can be linked like any other
+  if (!state.smallV3) {
+    state.smallV3 = true;
+    ensureSmallFolder();
     save();
   }
   // One-time: builder tiles used to pin a word's first capital ("More"); tiles now do that themselves
@@ -2758,6 +2777,8 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      smallV3: state.smallV3,
+      smallOpen: state.smallOpen,
       smallV2: state.smallV2,
       smallSet: state.smallSet,
       layoutV9: state.layoutV9,
@@ -6085,6 +6106,8 @@ function applyDefaultLayout() {
    'layoutV7', 'layoutV8', 'layoutV9', 'caseV2', 'smallV2', 'builderV2'].forEach(k => { state[k] = true; });
   state.smallSet = {};
   if (L.smallWords) L.smallWords.forEach(w => { state.smallSet[w] = true; }); else seedSmallSet();
+  state.smallV3 = true;
+  ensureSmallFolder();
 }
 
 // Put back any built-in folder that is missing (deleted by accident, say), with
@@ -6132,7 +6155,20 @@ function isSmallCat(c) {
   while (x && g++ < 20) { if (x.small) return true; x = x.parent ? catById(x.parent) : null; }
   return false;
 }
-function isSmallWord(w) { return !!(state.smallSet || {})[w]; }
+// A small word is one kept in the Small words folder (inside Chat)
+function isSmallWord(w) { return state.categories.some(c => c.smallSec && (c.words || []).includes(w)); }
+function smallFolder() { return state.categories.find(c => c.smallSec) || null; }
+function ensureSmallFolder() {
+  if (smallFolder()) return;
+  const chat = state.categories.find(c => c.small);
+  if (!chat) return;
+  const made = addCategory('Small words', chat.id, chat.color);
+  made.smallSec = true;
+  const set = state.smallSet || {};
+  (chat.words || []).slice().forEach(w => { if (set[w]) made.words.push(w); });
+  chat.words = (chat.words || []).filter(w => !made.words.includes(w));
+  Object.keys(set).forEach(w => { if (state.words.includes(w) && !made.words.includes(w)) made.words.push(w); });
+}
 const SMALL_STARTERS = ['I', 'IT', 'AND', 'YOU', 'MY', 'THE', 'A', 'AN', 'IS', 'BE', 'NOT', 'ARE', 'WE', 'YOUR', 'THAT', 'THIS',
   'TO', 'AM', 'ME', 'HE', 'SHE', 'THEY', 'HIS', 'HER', 'OUR', 'OF', 'IN', 'ON', 'AT', 'FOR', 'WITH', 'OR', 'BUT', 'SO', 'DO', 'CAN', 'WAS', 'HAVE', 'HAS'];
 function seedSmallSet() {
@@ -6143,9 +6179,18 @@ function seedSmallSet() {
 }
 // A switch in a word's hold menu: small word (the, a, my) or an ordinary word
 function smallWordBtn(word) {
+  const sf = smallFolder();
+  if (!sf) return document.createComment('');
   const b = sheetBtn('', '', () => {
-    state.smallSet = state.smallSet || {};
-    if (state.smallSet[word]) delete state.smallSet[word]; else state.smallSet[word] = true;
+    const chat = catById(sf.parent);
+    if (sf.words.includes(word)) {
+      sf.words = sf.words.filter(w => w !== word);
+      // back among the big tiles of Chat, unless it also lives in another folder
+      if (chat && !categoriesOf(word).length) chat.words.push(word);
+    } else {
+      sf.words.push(word);
+      if (chat) chat.words = (chat.words || []).filter(w => w !== word);
+    }
     save(); paint(); renderHome(false);
     document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
   });
@@ -6377,7 +6422,7 @@ function exportLayout() {
     categories: state.categories.map(c => ({
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
-      links: c.links || [], small: !!c.small, strip: !!c.strip, nopop: !!c.nopop,
+      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, strip: !!c.strip, nopop: !!c.nopop,
       phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
@@ -6386,7 +6431,7 @@ function exportLayout() {
     hiddenWords: Object.keys(state.hiddenWords || {}),
     recentsHidden: Object.keys(state.recentsHidden || {}),
     smallRow: state.smallRow || [],
-    smallWords: Object.keys(state.smallSet || {}),
+    smallWords: state.words.filter(isSmallWord),
     builder: state.builder,
   };
   const text = JSON.stringify(layout, null, 1);
@@ -6470,7 +6515,6 @@ function renderBuilder(grid) {
 
   const tile = (label, folder) => {
     const card = document.createElement('button');
-    label = capFirst(label);
     card.className = 'home-card' + (folder ? ' folder-card choice-board' : '');
     card.style.height = rowH + 'px';   // tiles carry their own height so the transcript rows can be slimmer
     const t = document.createElement('span');
@@ -6543,7 +6587,7 @@ function renderBuilder(grid) {
     };
     here.kids.forEach(k => {
       const key = normaliseWord(k.label);
-      const kt = tile(k.label, false);
+      const kt = tile(isSmallWord(key) ? k.label : capFirst(k.label), false);
       const goCat = () => { const c = k.go ? catById(k.go) : null; return (c && !c.hidden) ? c : null; };
       if (k.kids.length || k.cats.length || goCat()) kt.classList.add('link-word');
       movable(kt, here.kids, k, 'kids', () => {
@@ -7093,13 +7137,14 @@ function renderSlotGrid(grid, cat, folders) {
   const cellW = Math.max(60, (W - (plusW ? plusW + gap : 0) - gap * (cols - 1)) / cols);
   const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
   let words = homeRows.map(r => r.word);
-  // in Chat the small words sit in their own section under a line, as small tiles
-  const smalls = (arrange && isSmallCat(cat)) ? words.filter(isSmallWord) : [];
-  if (smalls.length) words = words.filter(w => !isSmallWord(w));
+  // in Chat the Small words folder is not a tile: it is a row that opens out into small tiles
+  const sec = arrange ? folders.find(f => f.smallSec) : null;
+  if (sec) folders = folders.filter(f => f !== sec);
+  const smalls = sec ? (sec.words || []).filter(w => !state.hiddenWords[w]) : [];
   const slots = arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   const lastRow = Math.ceil((head + slots.length) / cols);
-  const totalRows = smalls.length ? Math.max(1, lastRow)
+  const totalRows = sec ? Math.max(1, lastRow)
                   : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
@@ -7113,19 +7158,34 @@ function renderSlotGrid(grid, cat, folders) {
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   // folders inside Categories carry a row of small words above their tiles
   const strip = arrange && hasSmallStrip(cat);
-  grid.style.gridTemplateRows = smalls.length ? (strip ? 'auto ' : '') + 'repeat(' + totalRows + ', ' + rowH + 'px) auto'
+  grid.style.gridTemplateRows = sec ? (strip ? 'auto ' : '') + 'repeat(' + totalRows + ', ' + rowH + 'px) auto'
                               : strip ? 'auto' : '';
-  if (smalls.length) {
-    const sec = document.createElement('div');
-    sec.className = 'small-section';
-    sec.style.gridColumn = '1 / -1';
-    sec.style.gridRow = String(totalRows + (strip ? 1 : 0) + 1);
-    const line = document.createElement('div');
-    line.className = 'bl-line'; line.style.flex = 'none';
-    sec.appendChild(line);
+  if (sec) {
+    const wrap = document.createElement('div');
+    wrap.className = 'small-section';
+    wrap.style.gridColumn = '1 / -1';
+    wrap.style.gridRow = String(totalRows + (strip ? 1 : 0) + 1);
+    const head = document.createElement('button');
+    head.className = 'small-head';
+    head.setAttribute('aria-expanded', state.smallOpen ? 'true' : 'false');
+    head.innerHTML = '<span></span><span class="sh-arrow"></span>';
+    head.firstChild.textContent = sec.name;
+    head.lastChild.textContent = state.smallOpen ? '\u25B2' : '\u25BC';
+    head.addEventListener('click', () => {
+      state.smallOpen = !state.smallOpen;
+      const was = grid.scrollTop;
+      buzz(10); save(); renderHome(false);
+      // stay where the row is: opened, the row sits at the top with its words under it
+      const settle = () => {
+        const h = grid.querySelector('.small-head');
+        grid.scrollTop = (state.smallOpen && h) ? h.offsetTop - grid.offsetTop : was;
+      };
+      settle(); requestAnimationFrame(settle);
+    });
+    wrap.appendChild(head);
+    if (state.smallOpen) {
     const box = document.createElement('div');
-    box.className = 'small-strip';
-    box.style.justifySelf = 'stretch';
+    box.className = 'small-list';
     const h = Math.max(48, Math.round(rowH / 2));
     smalls.forEach(w => {
       const b = document.createElement('button');
@@ -7145,7 +7205,7 @@ function renderSlotGrid(grid, cat, folders) {
       b.addEventListener('contextmenu', e => e.preventDefault());
       b.addEventListener('click', () => {
         b.classList.remove('held');
-        if (held) { held = false; openWordActions(w, cat); return; }
+        if (held) { held = false; openWordActions(w, sec); return; }
         homePhrase.push(w);
         warmSpeech();
         speakWord(w, 0.95);
@@ -7153,8 +7213,15 @@ function renderSlotGrid(grid, cat, folders) {
       });
       box.appendChild(b);
     });
-    sec.appendChild(box);
-    grid.appendChild(sec);
+    if (!smalls.length) {
+      const n = document.createElement('div');
+      n.className = 'empty-note';
+      n.textContent = 'No small words yet. Hold a word and choose "Make it a small word".';
+      box.appendChild(n);
+    }
+    wrap.appendChild(box);
+    }
+    grid.appendChild(wrap);
   }
   if (strip) {
     const el = makeSmallStrip(rowH, base);
