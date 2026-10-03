@@ -831,16 +831,15 @@
   .builder-log { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
   .bl-head { display: flex; align-items: center; gap: 12px; min-height: 30px; margin-top: 6px; }
   .bl-line { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.75); }
-  .bl-clear {
-    border: none; background: none; font-family: inherit; font-size: 14px; font-weight: 800;
-    color: rgba(0,0,0,0.5); cursor: pointer; padding: 4px 6px;
-  }
   .bl-row {
     text-align: left; border: none; border-radius: 14px; background: rgba(255,255,255,0.6);
-    padding: 14px 20px; font-family: inherit; font-size: clamp(20px, 3.2vmin, 30px); font-weight: 900;
+    padding: 16px 22px; font-family: inherit; font-size: 1em; font-weight: 900; line-height: 1.15;
     color: var(--ink); cursor: pointer;
   }
   .bl-row:first-of-type { background: var(--surface); box-shadow: var(--shadow); }
+  .bl-row { display: flex; flex-direction: column; gap: 4px; -webkit-touch-callout: none; }
+  .bl-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
+  .bl-note { font-size: 0.62em; font-weight: 700; color: var(--muted); }
   /* speak mode / builder switched off: the icon is greyed out */
   #homeSpeakBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
   #builderBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
@@ -2123,7 +2122,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 121 - 3 Oct';
+const BUILD = 'build 122 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2283,6 +2282,7 @@ const state = {
   builder: null,              // the builder's tree of pages; made from the defaults the first time
   builderV2: false,           // the one-time rename of All Done to Stop
   builderLog: [],             // sentences built in the builder, newest first
+  keptPhrases: {},            // sentences filed into a folder whole, so they show as one tile
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2434,6 +2434,7 @@ async function load() {
         builder: saved.builder || null,
         builderV2: saved.builderV2 ?? false,
         builderLog: Array.isArray(saved.builderLog) ? saved.builderLog : [],
+        keptPhrases: saved.keptPhrases || {},
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2642,6 +2643,7 @@ async function save() {
       builder: state.builder,
       builderV2: state.builderV2,
       builderLog: state.builderLog,
+      keptPhrases: state.keptPhrases,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5311,6 +5313,7 @@ function bankLabel(w) {
   if (kept) return kept;
   // anything in My Stuff is a name or a title, so it reads with capitals
   if (categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
+  if (key.includes(' ')) return key.split(' ').map(casedText).join(' ');   // each word keeps its own capitals
   return key.toLowerCase();
 }
 // Which groups a word belongs to — drives the tint behind its card
@@ -5587,7 +5590,9 @@ function renderCatTiles(containerId, rerender) {
 function tileModeFilter(rows) {
   if (state.tileMode === 'sentence') return rows.filter(r => r.word.includes(' '));
   if (state.tileMode === 'mixed') return rows;
+  // (a sentence filed on purpose from the builder's transcript is kept whole)
   return rows.filter(r => !r.word.includes(' ')
+    || (state.keptPhrases || {})[r.word]
     || categoriesOf(r.word).some(catAllowsPhrases));
 }
 // The bank in whichever order is chosen
@@ -6012,37 +6017,46 @@ function renderBuilder(grid) {
     n.textContent = ('cat' in here) ? 'This folder is empty.' : 'Nothing here yet — use + to add a word or a folder.';
     grid.appendChild(n);
   }
-  if (!builderPath.length) renderBuilderLog(grid);
+  if (!builderPath.length) renderBuilderLog(grid, base);
 }
 // Under the first page: a line, then what has been said, newest first
-function renderBuilderLog(grid) {
+function renderBuilderLog(grid, tileType) {
   const log = state.builderLog || [];
   const box = document.createElement('div');
   box.className = 'builder-log';
+  box.style.fontSize = Math.round(tileType * 0.85) + 'px';   // close to the size of the words on the tiles
   const head = document.createElement('div');
   head.className = 'bl-head';
   const line = document.createElement('div');
   line.className = 'bl-line';
   head.appendChild(line);
-  if (log.length) {
-    const clear = document.createElement('button');
-    clear.className = 'bl-clear';
-    clear.textContent = 'Clear';
-    clear.addEventListener('click', () => {
-      if (!confirm('Clear the list of sentences?')) return;
-      state.builderLog = [];
-      save(); renderHome(true);
-    });
-    head.appendChild(clear);
-  }
   box.appendChild(head);
   log.forEach(entry => {
     const row = document.createElement('button');
     row.className = 'bl-row';
     const text = entry.words.map(bankLabel).join(' ');
-    row.textContent = text.charAt(0).toUpperCase() + text.slice(1);   // reads as a sentence
-    // tapping a sentence puts it back in the bar, ready to say or spell again
+    const line1 = document.createElement('span');
+    line1.textContent = text.charAt(0).toUpperCase() + text.slice(1);   // reads as a sentence
+    row.appendChild(line1);
+    if (entry.note) {
+      const nt = document.createElement('span');
+      nt.className = 'bl-note';
+      nt.textContent = entry.note;
+      row.appendChild(nt);
+    }
+    // tap: the sentence goes back in the bar. Hold: its options.
+    let timer = null, held = false;
+    row.addEventListener('pointerdown', () => {
+      held = false;
+      timer = setTimeout(() => { timer = null; held = true; buzz(15); row.classList.add('held'); }, 520);
+    });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    row.addEventListener('pointerup', stop);
+    ['pointercancel', 'pointerleave'].forEach(ev => row.addEventListener(ev, () => { stop(); held = false; row.classList.remove('held'); }));
+    row.addEventListener('contextmenu', e => e.preventDefault());
     row.addEventListener('click', () => {
+      row.classList.remove('held');
+      if (held) { held = false; openLogEntry(entry); return; }
       homePhrase = entry.words.slice();
       warmSpeech();
       speakWord(homePhrase.join(' '), 0.95);
@@ -6051,6 +6065,59 @@ function renderBuilderLog(grid) {
     box.appendChild(row);
   });
   grid.appendChild(box);
+}
+// A held transcript row: delete it or file it in a folder
+function openLogEntry(entry) {
+  const text = entry.words.map(bankLabel).join(' ');
+  const shown = text.charAt(0).toUpperCase() + text.slice(1);
+  const drop = () => { state.builderLog = (state.builderLog || []).filter(e => e !== entry); };
+  const title = (body, t) => {
+    sheetTitle(body, t);
+    const p = document.createElement('div');
+    p.className = 'key-preview'; p.style.fontSize = '26px'; p.textContent = shown;
+    body.appendChild(p);
+  };
+  openWordSheet(body => {
+    title(body, 'This sentence');
+    body.appendChild(sheetBtn('Move to a folder', '', () => openWordSheet(b2 => {
+      title(b2, 'Move to which folder?');
+      let chosen = null;
+      const list = document.createElement('div');
+      list.className = 'pick-list';
+      b2.appendChild(list);
+      const move = sheetBtn('Move', 'primary', () => {
+        const dest = catById(chosen);
+        if (!dest) return;
+        const key = entry.words.join(' ');
+        if (!dest.words.includes(key)) dest.words.push(key);
+        if (!state.words.includes(key)) state.words.push(key);
+        if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+        state.keptPhrases = state.keptPhrases || {};
+        state.keptPhrases[key] = true;       // stays one tile, not split into words
+        drop();
+        save(); closeWordSheet(); renderHome(true);
+      });
+      const paint = () => {
+        list.querySelectorAll('.pick-row').forEach(r => r.classList.toggle('on', Number(r.dataset.id) === chosen));
+        move.disabled = chosen === null; move.style.opacity = chosen === null ? 0.4 : 1;
+      };
+      const walk = (parent, depth) => childrenOf(parent, true).forEach(c => {
+        const r = document.createElement('button');
+        r.className = 'pick-row'; r.dataset.id = c.id;
+        r.style.marginLeft = (depth * 18) + 'px';
+        r.textContent = c.name;
+        r.addEventListener('click', () => { chosen = c.id; paint(); });
+        list.appendChild(r);
+        walk(c.id, depth + 1);
+      });
+      walk(null, 0);
+      b2.appendChild(move);
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+      paint();
+    })));
+    body.appendChild(sheetBtn('Delete', 'danger', () => { drop(); save(); closeWordSheet(); renderHome(true); }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
 }
 // ---- editing the builder ----
 function builderInput(body, value) {
