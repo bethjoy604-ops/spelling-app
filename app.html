@@ -429,12 +429,14 @@
   .home-card.selected { background: var(--prompt-soft); }
   /* a folder tile: the same as a word tile, marked by an outline and a corner cue */
   .home-card.folder-card {
-    background: var(--bg);
-    box-shadow: 0 0 0 3px var(--border) inset;
+    background: var(--surface);
+    /* white like a word tile, told apart by a thin grey line set just inside the edge */
+    box-shadow: var(--shadow);
+    outline: 2px solid #c9ccd1; outline-offset: -9px;
   }
   .home-card.folder-card .hw { color: var(--ink); }
   .home-card.folder-card::after {
-    content: '\203A'; position: absolute; top: 4px; right: 12px;
+    content: '\203A'; position: absolute; top: 12px; right: 20px;
     font-size: 0.9em; font-weight: 900; color: var(--muted); line-height: 1;
   }
   .cc-btn.on { background: var(--ink); color: #fff; }
@@ -2107,7 +2109,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 118 - 3 Oct';
+const BUILD = 'build 119 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
