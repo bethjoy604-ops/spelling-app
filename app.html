@@ -438,6 +438,8 @@
     content: '\203A'; position: absolute; top: 6px; right: 14px;
     font-size: 0.9em; font-weight: 900; color: var(--muted); line-height: 1;
   }
+  /* builder mode: a choice board (opens a set of choices, adds nothing to the sentence) has a green corner arrow */
+  .home-card.choice-board::after { color: var(--green); font-size: 26px; top: 3px; right: 12px; }
   .cc-btn.on { background: var(--ink); color: #fff; }
   /* arranging a folder */
   .home-card { -webkit-touch-callout: none; }
@@ -2155,7 +2157,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 135 - 3 Oct';
+const BUILD = 'build 136 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6358,7 +6360,7 @@ function renderBuilder(grid) {
 
   const tile = (label, folder) => {
     const card = document.createElement('button');
-    card.className = 'home-card' + (folder ? ' folder-card' : '');
+    card.className = 'home-card' + (folder ? ' folder-card choice-board' : '');
     card.style.height = rowH + 'px';   // tiles carry their own height so the transcript rows can be slimmer
     const t = document.createElement('span');
     t.className = 'hw';
@@ -6401,7 +6403,16 @@ function renderBuilder(grid) {
       .filter(w => !state.hiddenWords[w]);
     words.forEach(w => {
       // stays on this page so more can be added; enter (or the X) goes back to the start
-      holdable(tile(bankLabel(w), false), () => builderSay(w), () => openWordActions(w, c));
+      // a linking word: it goes into the sentence, then opens the choice boards linked to it
+      holdable(tile(bankLabel(w), false), () => {
+        builderSay(w);
+        const n = builderWordNode(w, false);
+        if (n && (n.kids.length || n.cats.some(id => { const x = catById(id); return x && !x.hidden; }))) {
+          builderPath.push(n); renderHome(true);
+        }
+      }, () => openWordActions(w, c, body => {
+        body.insertBefore(sheetBtn('Link a choice board', '', () => openChoiceBoardPicker(builderWordNode(w, true))), body.lastChild.previousSibling);
+      }));
       count++;
     });
   } else {
@@ -6436,7 +6447,7 @@ function renderBuilder(grid) {
     const n = document.createElement('div');
     n.className = 'empty-note';
     n.style.gridColumn = '1 / -1';
-    n.textContent = ('cat' in here) ? 'This folder is empty.' : 'Nothing here yet — use + to add a word or a folder.';
+    n.textContent = ('cat' in here) ? 'This folder is empty.' : 'Nothing here yet — use + to add a word or a choice board.';
     grid.appendChild(n);
   }
   if (!builderPath.length) renderBuilderLog(grid, base);
@@ -6727,29 +6738,21 @@ function openBuilderAdd() {
   if ('cat' in here) { openFolderAdd(catById(here.cat)); return; }
   openBuilderAddTo(here, 'Add to this page');
 }
-// Add what a builder tile (or page) leads to: a word, an existing folder, or a brand new folder
-function openBuilderAddTo(here, heading) {
-  openWordSheet(body => {
-    sheetTitle(body, heading);
-    body.appendChild(sheetBtn('A word', '', () => openWordSheet(b2 => {
-      sheetTitle(b2, 'New word');
-      const inp = builderInput(b2, '');
-      const add = () => {
-        const label = inp.value.replace(/\s+/g, ' ').trim();
-        if (!normaliseWord(label)) return;
-        here.kids.push({ label, kids: [], cats: [] });
-        builderKeepCase(label);
-        save(); closeWordSheet(); renderHome(true);
-      };
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
-      b2.appendChild(sheetBtn('Add', 'primary', add));
-      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
-    })));
-    body.appendChild(sheetBtn('A folder of words', '', () => openWordSheet(b2 => {
-      sheetTitle(b2, 'Which folders?');
+// A word inside a folder can lead on to choice boards too; its links are kept by the word
+function builderWordNode(word, make) {
+  if (!state.builder) state.builder = defaultBuilder();
+  if (!state.builder.words) { if (!make) return null; state.builder.words = {}; }
+  let n = state.builder.words[word];
+  if (!n && make) n = state.builder.words[word] = { label: bankLabel(word), kids: [], cats: [] };
+  return n || null;
+}
+// Pick which choice boards (folders) a tile or page leads to: green = linked, tap to switch
+function openChoiceBoardPicker(here) {
+  openWordSheet(b2 => {
+      sheetTitle(b2, 'Link a choice board');
       const n = document.createElement('div');
       n.className = 'help-note'; n.style.marginTop = '6px';
-      n.textContent = 'The green ones are already linked here. Tap a folder to link it, or tap a green one to take it off.';
+      n.textContent = 'The green ones are already linked here. Tap a choice board to link it, or tap a green one to take it off.';
       b2.appendChild(n);
       const list = document.createElement('div');
       list.className = 'pick-list';
@@ -6781,10 +6784,30 @@ function openBuilderAddTo(here, heading) {
         save(); closeWordSheet(); renderHome(true);
       }));
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+      });
+}
+// Add what a builder tile (or page) leads to: a word, an existing folder, or a brand new folder
+function openBuilderAddTo(here, heading) {
+  openWordSheet(body => {
+    sheetTitle(body, heading);
+    body.appendChild(sheetBtn('A word', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'New word');
+      const inp = builderInput(b2, '');
+      const add = () => {
+        const label = inp.value.replace(/\s+/g, ' ').trim();
+        if (!normaliseWord(label)) return;
+        here.kids.push({ label, kids: [], cats: [] });
+        builderKeepCase(label);
+        save(); closeWordSheet(); renderHome(true);
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+      b2.appendChild(sheetBtn('Add', 'primary', add));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
+    body.appendChild(sheetBtn('A choice board', '', () => openChoiceBoardPicker(here)));
     body.appendChild(sheetBtn('Small words', '', () => openSmallRowPicker(here)));
-    body.appendChild(sheetBtn('A new folder', '', () => openWordSheet(b2 => {
-      sheetTitle(b2, 'Name the new folder');
+    body.appendChild(sheetBtn('A new choice board', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Name the new choice board');
       const inp = builderInput(b2, '');
       const ok = () => {
         const name = inp.value.replace(/\s+/g, ' ').trim();
@@ -6808,6 +6831,7 @@ function openBuilderTile(parent, node) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = node.label;
     body.appendChild(p);
+    body.appendChild(sheetBtn('Link a choice board', '', () => openChoiceBoardPicker(node)));
     body.appendChild(sheetBtn('Add what comes next', '', () =>
       openBuilderAddTo(node, 'After "' + node.label + '"')));
     body.appendChild(sheetBtn('Change the word', '', () => openWordSheet(b2 => {
@@ -7213,7 +7237,7 @@ function sheetTitle(body, text, word) {
     body.appendChild(p);
   }
 }
-function openWordActions(word, cat) {
+function openWordActions(word, cat, extra) {
   // On Recents / Popular: the word can be taken off the page, and one that has
   // no folder yet can be filed into one
   if (!cat) {
@@ -7243,6 +7267,7 @@ function openWordActions(word, cat) {
     n.className = 'help-note'; n.style.marginTop = '12px';
     n.textContent = 'To move it, hold the word until it turns green, then drag it to an empty place, or onto a folder to move it there.';
     body.appendChild(n);
+    if (extra) extra(body);
   });
 }
 // Take a word off Recents / Popular with a puff; the other tiles close the gap
