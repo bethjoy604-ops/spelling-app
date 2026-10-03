@@ -2141,7 +2141,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 126 - 3 Oct';
+const BUILD = 'build 127 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2304,6 +2304,7 @@ const state = {
   keptPhrases: {},            // sentences filed into a folder whole, so they show as one tile
   starterDone: false,         // the starter folders and words have been added once
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
+  layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   smallRow: null,             // the small words shown in the row above the tiles, in order
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
@@ -2459,6 +2460,7 @@ async function load() {
         keptPhrases: saved.keptPhrases || {},
         starterDone: saved.starterDone ?? false,
         layoutV7: saved.layoutV7 ?? false,
+        layoutV8: saved.layoutV8 ?? false,
         smallRow: Array.isArray(saved.smallRow) ? saved.smallRow : null,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
@@ -2557,6 +2559,14 @@ async function load() {
   if (!state.layoutV7) {
     state.layoutV7 = true;
     migrateLayoutV7();
+    save();
+  }
+  // One-time: the small-words folder goes back to being called Chat, and Feelings
+  // (describing words) is kept off Popular
+  if (!state.layoutV8) {
+    state.layoutV8 = true;
+    smallWordsFolder();
+    state.categories.filter(c => c.name.toLowerCase() === 'feelings').forEach(c => { c.nopop = true; });
     save();
   }
   // One-time: the builder's first page says Stop where it used to say All Done
@@ -2682,6 +2692,7 @@ async function save() {
       keptPhrases: state.keptPhrases,
       starterDone: state.starterDone,
       layoutV7: state.layoutV7,
+      layoutV8: state.layoutV8,
       smallRow: state.smallRow,
       magicType: state.magicType,
       categories: state.categories,
@@ -5106,18 +5117,18 @@ function deleteCategory(id) {
 }
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
-const DEFAULT_GROUPS = ['Small Words', 'Categories', 'My Stuff'];
+const DEFAULT_GROUPS = ['Chat', 'Categories', 'My Stuff'];
 const CATEGORY_SUBS = ['Actions', 'Food', 'Things', 'People', 'Places', 'Body', 'Feelings', 'Activities'];
 const DEFAULT_COLORS = {
-  'Small Words': 'blue', Categories: 'green', 'My Stuff': 'orange',
+  Chat: 'blue', Categories: 'green', 'My Stuff': 'orange',
   Food: 'green', Actions: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
 };
 const MY_STUFF_SUBS = ['Music', 'TV', 'Movies', 'Books', 'Games', 'Characters', 'Toys'];
 // The starter vocabulary, so a fresh device opens with the words already in place
-const STARTER_WORDS = 'Small Words: hi, bye, more, again, yes, no, quiet\nCategories:\n  Actions: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read, help, open, play, fix, stop, go, watch\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles, water\n  Things: truck, bear\n  People:\n  Places:\n  Body:\n  Feelings:\n  Activities:\nMy Stuff:\n  Music:\n  TV: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Books:\n  Games:\n  Characters: peppa, george\n  Toys: flicker\n';
+const STARTER_WORDS = 'Chat: hi, bye, more, again, yes, no, quiet\nCategories:\n  Actions: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read, help, open, play, fix, stop, go, watch\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles, water\n  Things: truck, bear\n  People:\n  Places:\n  Body:\n  Feelings:\n  Activities:\nMy Stuff:\n  Music:\n  TV: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Books:\n  Games:\n  Characters: peppa, george\n  Toys: flicker\n';
 // Older names map onto the current set so nobody ends up with both
 const GROUP_ALIASES = {
-  'conversation': 'Small Words', 'social': 'Small Words', 'chat': 'Small Words',
+  'conversation': 'Chat', 'social': 'Chat', 'small words': 'Chat',
   'eat': 'Food',
   'action': 'Actions',
   'labels': 'My Stuff', 'stuff': 'My Stuff',
@@ -5869,7 +5880,8 @@ function renderHome(reset) {
 
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows())
-      .filter(r => !state.hiddenWords[r.word] && (cat || (!state.recentsHidden[r.word] && !isSmallWord(r.word))));
+      .filter(r => !state.hiddenWords[r.word] && (cat || (!state.recentsHidden[r.word] && !offPopular(r.word))));
+    if (!cat) homeRows = homeRows.slice(0, 10);     // Recents / Popular is a short list: the top ten
     const folders = gridFolders();
     // A folder is a grid of fixed places: every tile stays where it was put
     // (Recents / Popular uses the same grid and type size, just without fixed places)
@@ -5993,7 +6005,7 @@ function openSmallRowPicker() {
     sheetTitle(body, 'Small words row');
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '6px';
-    n.textContent = 'Tap the words to show. Six fit on a row; choosing more starts another row. The list comes from the Small Words folder.';
+    n.textContent = 'Tap the words to show. Six fit on a row; choosing more starts another row. The list comes from the Chat folder.';
     body.appendChild(n);
     const list = document.createElement('div');
     list.className = 'pick-list small-pick';
@@ -6013,6 +6025,27 @@ function openSmallRowPicker() {
     body.appendChild(sheetBtn('Done', 'primary', () => { save(); closeWordSheet(); renderHome(true); }));
   });
 }
+// The Chat folder, marked as the home of the small words. An older "Small Words"
+// folder is folded back into it.
+function smallWordsFolder() {
+  const top = n => state.categories.find(c => !c.parent && c.name.toLowerCase() === n);
+  let chat = top('chat');
+  const sw = top('small words');
+  if (chat && sw && chat !== sw) { mergeGroups(sw, chat); if (sw.order < chat.order) chat.order = sw.order; }
+  else if (!chat && sw) { sw.name = 'Chat'; chat = sw; }
+  else if (!chat) chat = state.categories.find(c => !c.parent && c.small) || addCategory('Chat', null, 'blue');
+  chat.small = true;
+  return chat;
+}
+// Popular / Recents shows nouns and verbs only. The app cannot tell what part of
+// speech a word is, so it goes by folder: small words (Chat) are left out, and
+// so is any folder marked as describing words, such as Feelings.
+function offPopular(w) {
+  const cats = categoriesOf(w);
+  if (cats.some(isSmallCat)) return true;
+  const flagged = c => { let x = c, g = 0; while (x && g++ < 20) { if (x.nopop) return true; x = x.parent ? catById(x.parent) : null; } return false; };
+  return cats.length > 0 && cats.every(flagged);
+}
 // One-time move to the Small Words / Categories layout. Safe on any device:
 // nothing is deleted, and folders that are already there are reused.
 function migrateLayoutV7() {
@@ -6029,13 +6062,9 @@ function migrateLayoutV7() {
     from.words = from.words.filter(x => x !== w);
     if (!to.words.includes(w)) to.words.push(w);
   });
-  // Chat becomes Small Words
-  let small = top('small words');
-  const chat = top('chat');
-  if (chat && small && chat !== small) mergeGroups(chat, small);
-  else if (chat) { chat.name = 'Small Words'; small = chat; }
-  else if (!small) small = addCategory('Small Words', null, 'blue');
-  small.small = true;
+  // Chat is the small-words folder. It keeps the name Chat on the menu; "small
+  // words" is only how it is treated (kept off Popular, offered for the row).
+  const small = smallWordsFolder();
 
   const cats = top('categories');
   let activities = null;
@@ -6672,7 +6701,9 @@ function renderSlotGrid(grid, cat, folders) {
     card.dataset.slot = i;
     const t = document.createElement('span');
     t.className = 'hw';
-    t.textContent = bankLabel(w);
+    // on Recents / Popular every tile starts with a capital
+    const label = bankLabel(w);
+    t.textContent = arrange ? label : label.charAt(0).toUpperCase() + label.slice(1);
     card.appendChild(t);
     card.addEventListener('click', () => {
       if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
