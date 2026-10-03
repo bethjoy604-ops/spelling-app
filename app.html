@@ -2155,7 +2155,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 133 - 3 Oct';
+const BUILD = 'build 134 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6386,9 +6386,19 @@ function renderBuilder(grid) {
       count++;
     });
   } else {
+    // tap uses the tile; hold lifts it to drag to a new place, or let go for its options
+    const movable = (card, list, item, kind, onTap, onHold) => {
+      card.dataset.bidx = list.indexOf(item);
+      card.dataset.blist = kind;
+      attachWordHold(card, null, null, null, { list, item, onHold });
+      card.addEventListener('click', () => {
+        if (suppressTileClick) { suppressTileClick = false; return; }
+        onTap();
+      });
+    };
     here.kids.forEach(k => {
       const key = normaliseWord(k.label);
-      holdable(tile(k.label, false), () => {
+      movable(tile(k.label, false), here.kids, k, 'kids', () => {
         if (key) builderSay(key);
         // a tile with nothing after it leaves the page as it is, so more can be added
         if (k.kids.length || k.cats.length) { builderPath.push(k); renderHome(true); }
@@ -6398,7 +6408,7 @@ function renderBuilder(grid) {
     here.cats.forEach(cid => {
       const c = catById(cid);
       if (!c || c.hidden) return;
-      holdable(tile(c.name, true), () => { builderPath.push({ cat: cid }); renderHome(true); },
+      movable(tile(c.name, true), here.cats, cid, 'cats', () => { builderPath.push({ cat: cid }); renderHome(true); },
         () => openBuilderLink(here, cid));
       count++;
     });
@@ -6972,14 +6982,14 @@ function renderSlotGrid(grid, cat, folders) {
   }
 }
 
-function attachWordHold(card, word, cat, folder) {
+function attachWordHold(card, word, cat, folder, builder) {
   let timer = null, sx = 0, sy = 0;
   const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
   card.addEventListener('pointerdown', e => {
     if (e.button) return;
     sx = e.clientX; sy = e.clientY;
     cancel();
-    timer = setTimeout(() => { timer = null; startWordDrag(card, word, cat, sx, sy, folder); }, 480);
+    timer = setTimeout(() => { timer = null; startWordDrag(card, word, cat, sx, sy, folder, builder); }, 480);
   });
   // a finger that travels is scrolling the page, not holding the word
   card.addEventListener('pointermove', e => {
@@ -6988,7 +6998,7 @@ function attachWordHold(card, word, cat, folder) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, cancel));
   card.addEventListener('contextmenu', e => e.preventDefault());
 }
-function startWordDrag(card, word, cat, x, y, folder) {
+function startWordDrag(card, word, cat, x, y, folder, builder) {
   const r = card.getBoundingClientRect();
   const ghost = card.cloneNode(true);
   ghost.className = 'home-card drag-ghost';
@@ -7000,12 +7010,12 @@ function startWordDrag(card, word, cat, x, y, folder) {
   ghost.style.top = r.top + 'px';
   ghost.style.transformOrigin = (x - r.left) + 'px ' + (y - r.top) + 'px';   // shrinks toward the finger
   document.body.appendChild(ghost);
-  const lifts = !!cat || !!folder;
+  const lifts = !!cat || !!folder || !!builder;
   card.classList.add(lifts ? 'drag-src' : 'held');   // on Recents the tile stays put and just lights up
   if (!lifts) ghost.style.display = 'none';
   suppressTileClick = true;
   buzz(15);
-  wordDrag = { word, cat, folder: folder || null, card, ghost, ox: x - r.left, oy: y - r.top, sx: x, sy: y, x, y, moved: false, target: null };
+  wordDrag = { word, cat, folder: folder || null, builder: builder || null, card, ghost, ox: x - r.left, oy: y - r.top, sx: x, sy: y, x, y, moved: false, target: null };
 }
 function clearDropMarks() {
   document.querySelectorAll('.drop-here, .drop-into, .drop-before, .drop-after')
@@ -7024,6 +7034,17 @@ function trackWordDrag() {
   if (!d.moved) return;
   const el = document.elementFromPoint(d.x, d.y);
   if (!el) return;
+  // A builder tile being carried: it lands before or after another tile of the same kind on the page
+  if (d.builder) {
+    const over = el.closest('.home-card[data-bidx]');
+    if (!over || over === d.card || over.dataset.blist !== d.card.dataset.blist) return;
+    const r = over.getBoundingClientRect();
+    const after = d.x > r.left + r.width / 2;
+    over.classList.add(after ? 'drop-after' : 'drop-before');
+    d.ghost.classList.add('over-folder');
+    d.target = { kind: 'builder', idx: Number(over.dataset.bidx), after };
+    return;
+  }
   // A folder being carried: the edge of another folder puts it before or after
   // that one; the middle of a folder (or a tab on the menu bar) puts it inside.
   if (d.folder) {
@@ -7085,9 +7106,27 @@ function endWordDrag(cancelled) {
   // the tap that would follow a hold is swallowed; if none comes, stop waiting for it
   setTimeout(() => { suppressTileClick = false; }, 350);
   if (cancelled) return;
-  if (!d.moved) { if (d.folder) openFolderEdit(d.folder); else openWordActions(d.word, d.cat); return; }
+  if (!d.moved) {
+    if (d.builder) d.builder.onHold();
+    else if (d.folder) openFolderEdit(d.folder);
+    else openWordActions(d.word, d.cat);
+    return;
+  }
   const t = d.target;
   if (!t) return;
+  if (d.builder) {
+    // move it within its page's list; the order is part of the layout, so it is saved and exported
+    const list = d.builder.list, item = d.builder.item;
+    const dest = list[t.idx];
+    const from = list.indexOf(item);
+    if (from === -1 || dest === undefined || dest === item) return;
+    list.splice(from, 1);
+    let at = list.indexOf(dest);
+    if (t.after) at++;
+    list.splice(at, 0, item);
+    save(); renderHome(true);
+    return;
+  }
   if (d.folder) {
     const c = d.folder, over = catById(t.id);
     if (!over) return;
