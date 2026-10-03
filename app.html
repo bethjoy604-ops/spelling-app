@@ -886,6 +886,8 @@
   }
   .small-section { display: flex; flex-direction: column; gap: 16px; padding: 8px 0 16px; }
   .small-section.top { padding: 0; align-items: stretch; }
+  .small-section .small-strip { align-self: flex-start; }
+  .small-strip .empty-note { grid-column: 1 / -1; }
   .small-section.top .small-head { align-self: stretch; }
   .small-section.top { gap: 12px; }
   .small-head {
@@ -2243,7 +2245,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 172 - 3 Oct';
+const BUILD = 'build 173 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7584,7 +7586,10 @@ function renderSlotGrid(grid, cat, folders) {
     wrap.appendChild(head);
     if (state.smallOpen) {
     const box = document.createElement('div');
-    box.className = 'small-list';
+    // the same blue panel as the rows on the other pages, only as wide as its tiles
+    box.className = 'small-strip';
+    const colW = Math.floor((grid.clientWidth - 20 - 50) / 6);
+    box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = Math.max(48, Math.round(rowH / 2));
     smalls.forEach(w => {
       const b = document.createElement('button');
