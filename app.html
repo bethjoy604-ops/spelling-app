@@ -2143,7 +2143,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 130 - 3 Oct';
+const BUILD = 'build 131 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2494,6 +2494,12 @@ async function load() {
   }
 
   if (state.syncOn) { state.syncOn = false; save(); }   // parked, not deleted
+
+  // A brand-new device starts from the built-in layout
+  if (!state.categories.length && !(state.words || []).length && !state.starterDone) {
+    applyDefaultLayout();
+    save();
+  }
 
   if (!state.settingsTidied) {
     state.settingsTidied = true;
@@ -5974,6 +5980,34 @@ function renderHome(reset) {
   homeShown += slice.length;
   requestAnimationFrame(() => fitGrid(grid));
 }
+// ===== The built-in layout =====
+// The folders, words, builder pages and small-words row a new device starts
+// with. Taken from the layout exported on 3 Oct 2026; replace this one line to
+// change what a fresh install looks like.
+const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANK YOU","MORE","ALL DONE","AGAIN","I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO"],"small":true},{"id":2,"name":"Food","parent":12,"order":1,"color":"green","words":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"]},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"phrases":true},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN"]},{"id":5,"name":"People","parent":12,"order":3,"color":"pink","words":[]},{"id":6,"name":"Places","parent":12,"order":4,"color":"teal","words":["PARK","BENCH"]},{"id":7,"name":"Music","parent":3,"order":0,"color":"yellow","words":[]},{"id":9,"name":"TV","parent":3,"order":1,"color":"blue","words":["PEPPA PIG"]},{"id":10,"name":"Movies","parent":3,"order":2,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"]},{"id":11,"name":"Characters","parent":3,"order":5,"color":"purple","words":["PEPPA","GEORGE"]},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"strip":true},{"id":13,"name":"Things","parent":12,"order":2,"color":"yellow","words":["TRUCK","BEAR","FLICKER","VIDEO","MUSIC","YOUTUBE"]},{"id":14,"name":"Books","parent":3,"order":3,"color":"orange","words":[]},{"id":15,"name":"Games","parent":3,"order":4,"color":"pink","words":["PUZZLE"]},{"id":16,"name":"Body","parent":12,"order":5,"color":"red","words":["WATER"]},{"id":20,"name":"Feelings","parent":12,"order":6,"color":"teal","words":[],"nopop":true},{"id":21,"name":"Activities","parent":12,"order":7,"color":"red","words":["DANCING","SINGING"]},{"id":22,"name":"Toys","parent":3,"order":6,"color":"blue","words":["FLICKER"]},{"id":23,"name":"Opposites","parent":12,"order":8,"color":"purple","words":["UP","DOWN","COLD","QUIET","HOT"]}],"wordCase":{"PEPPA":"Peppa","GEORGE":"George","CARS":"Cars","FINDING NEMO":"Finding Nemo","COCO":"Coco","I":"I","LIKE":"like","LOVE":"love","SEE":"see","HEAR":"hear"},"smallRow":["I","MY","THE","A","MORE","NOT"],"builder":{"kids":[{"label":"I","kids":[{"label":"want","kids":[],"cats":[2,13,5,4,6,3]},{"label":"need","kids":[],"cats":[2,13,5,4,3,6,16]},{"label":"feel","kids":[],"cats":[20]},{"label":"like","kids":[],"cats":[]},{"label":"love","kids":[],"cats":[]},{"label":"see","kids":[],"cats":[]},{"label":"hear","kids":[],"cats":[]}],"cats":[]},{"label":"More","kids":[],"cats":[2,13,4,3,5,6]},{"label":"Stop","kids":[],"cats":[21,4,5]}],"cats":[]}}');
+function applyDefaultLayout() {
+  const L = DEFAULT_LAYOUT;
+  state.categories = L.categories.map(c => Object.assign(
+    { rule: null, hidden: false }, JSON.parse(JSON.stringify(c)), { words: c.words.slice(), links: (c.links || []).slice() }));
+  state.catSeq = Math.max(...L.categories.map(c => c.id)) + 1;
+  state.words = [];
+  state.keptPhrases = {};
+  state.categories.forEach(c => c.words.forEach(w => {
+    if (!state.words.includes(w)) state.words.push(w);
+    if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+    // a phrase outside My Stuff stays one tile rather than being split or hidden
+    if (w.includes(' ') && !catAllowsPhrases(c)) state.keptPhrases[w] = true;
+  }));
+  state.wordCase = Object.assign({}, L.wordCase);
+  state.smallRow = L.smallRow.slice();
+  state.builder = JSON.parse(JSON.stringify(L.builder));
+  state.gridFill = L.gridFill;
+  state.bankSort = L.bankSort;
+  // none of the step-by-step changes that older installs went through apply
+  ['starterDone', 'groupsV2', 'groupsV3', 'groupsV4', 'groupsV5', 'groupsV6',
+   'layoutV7', 'layoutV8', 'builderV2'].forEach(k => { state[k] = true; });
+}
+
 // ===== Small words =====
 // Words in the Small Words folder (articles, pronouns and the like) are kept
 // off Recents / Popular, and a row of them sits above the tiles in each folder
@@ -6462,6 +6496,7 @@ function openFolderAdd(cat) {
       if (!cat.words.includes(key)) cat.words.push(key);
       if (!state.words.includes(key)) state.words.push(key);
       if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+      if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
       rememberCase(typed, key);
     })));
     body.appendChild(sheetBtn('A new folder', '', () => ask('New folder in ' + cat.name, 'Create', typed => {
