@@ -478,7 +478,15 @@
   }
   /* picked up and ready to move */
   .home-card.drag-ghost { outline: 6px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
-  [data-cat-id].drop-into { outline: 5px solid var(--green) !important; outline-offset: 2px; opacity: 1 !important; }
+  .home-card.drag-ghost { transition: transform 0.12s ease, opacity 0.12s ease; }
+  .home-card.drag-ghost.over-folder { transform: scale(0.4) translateY(70%); opacity: 0.75; }
+  /* the folder a carried tile is over: solid green, so it is clear it can be let go */
+  [data-cat-id].drop-into {
+    background: var(--green) !important; color: #fff !important; opacity: 1 !important;
+    transform: scale(1.12); box-shadow: 0 0 0 4px #fff, 0 0 0 9px var(--green);   /* a white ring sets it apart from the tab that is merely open */
+    transition: transform 0.12s ease, background 0.12s ease;
+  }
+  .home-card.folder-card.drop-into .hw { color: #fff; }
   .word-edit-input {
     width: 100%; margin-top: 12px; padding: 14px 16px; border-radius: 14px;
     border: 2px solid var(--border); background: var(--bg);
@@ -2091,7 +2099,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 104 - 3 Oct';
+const BUILD = 'build 105 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5928,6 +5936,7 @@ function startWordDrag(card, word, cat, x, y) {
   ghost.style.height = r.height + 'px';
   ghost.style.left = r.left + 'px';
   ghost.style.top = r.top + 'px';
+  ghost.style.transformOrigin = (x - r.left) + 'px ' + (y - r.top) + 'px';   // shrinks toward the finger
   document.body.appendChild(ghost);
   card.classList.add(cat ? 'drag-src' : 'held');   // on Recents the tile stays put and just lights up
   if (!cat) ghost.style.display = 'none';
@@ -5948,6 +5957,7 @@ function trackWordDrag() {
   if (Math.hypot(d.x - d.sx, d.y - d.sy) > 8) d.moved = true;
   clearDropMarks();
   d.target = null;
+  d.ghost.classList.remove('over-folder');
   if (!d.moved) return;
   const el = document.elementFromPoint(d.x, d.y);
   if (!el) return;
@@ -5959,6 +5969,7 @@ function trackWordDrag() {
     d.target = { kind: 'slot', slot: Number(hole.dataset.slot) };
   } else if (folder) {
     folder.classList.add('drop-into');
+    d.ghost.classList.add('over-folder');   // shrink out of the way so the lit folder can be seen
     d.target = { kind: 'folder', id: Number(folder.dataset.catId) };
   }
 }
