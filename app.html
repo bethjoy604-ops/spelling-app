@@ -2107,7 +2107,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 116 - 3 Oct';
+const BUILD = 'build 117 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5959,9 +5959,8 @@ function renderBuilder(grid) {
       .filter(w => !state.hiddenWords[w]);
     words.forEach(w => {
       tile(bankLabel(w), false).addEventListener('click', () => {
+        // stays on this page so more can be added; enter (or the X) goes back to the start
         builderSay(w);
-        builderPath = [];            // the sentence has its ending: back to the first page
-        renderHome(true);
       });
       count++;
     });
@@ -5970,8 +5969,8 @@ function renderBuilder(grid) {
       const key = normaliseWord(k.label);
       holdable(tile(k.label, false), () => {
         if (key) builderSay(key);
-        if (k.kids.length || k.cats.length) builderPath.push(k); else builderPath = [];
-        renderHome(true);
+        // a tile with nothing after it leaves the page as it is, so more can be added
+        if (k.kids.length || k.cats.length) { builderPath.push(k); renderHome(true); }
       }, () => openBuilderTile(here, k));
       count++;
     });
