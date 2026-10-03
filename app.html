@@ -825,6 +825,9 @@
     padding: 0; display: flex; align-items: center; justify-content: center;
     font-size: 22px;
   }
+  /* speak mode switched off: the icon is greyed out */
+  #homeSpeakBtn.off { filter: grayscale(1); opacity: 0.4; }
+  #homeSpeakBtn:not(.off) { box-shadow: inset 0 0 0 3px var(--green), var(--shadow); }
   .modes-wrap {
     display: flex; gap: 8px;
     overflow: hidden;
@@ -1473,6 +1476,7 @@
     <div class="spacer"></div>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#11088;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
+    <button class="ctl icon" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
@@ -2100,7 +2104,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 108 - 3 Oct';
+const BUILD = 'build 109 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2255,6 +2259,7 @@ const state = {
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
   recentsHidden: {},          // words taken off the Recents / Popular page only
+  speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: false,            // the folder strip on home: folded until opened, then it stays open
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2401,6 +2406,7 @@ async function load() {
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
         recentsHidden: saved.recentsHidden || {},
+        speakMode: saved.speakMode ?? false,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2590,6 +2596,7 @@ async function save() {
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
       recentsHidden: state.recentsHidden,
+      speakMode: state.speakMode,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5377,6 +5384,7 @@ document.getElementById('magicSkip').addEventListener('click', hideMagic);
 
 // ---- Phrase bar ----
 function renderPhraseBar() {
+  renderSpeakBtn();
   const bar = document.getElementById('phraseBar');
   const box = document.getElementById('pbWords');
   // Same size settings as the keyboard's typing bar
@@ -5413,10 +5421,37 @@ document.getElementById('homeRootBtn').addEventListener('click', () => {
 });
 // Enter on the bar: anything typed becomes a new word, otherwise spell what is there
 document.getElementById('pbInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); if (!commitTypedWord()) startPhraseFromHome(); }
+  if (e.key === 'Enter') { e.preventDefault(); if (!commitTypedWord()) homeEnter(); }
 });
 document.getElementById('pbGo').addEventListener('click', () => {
-  if (!commitTypedWord()) startPhraseFromHome();
+  if (!commitTypedWord()) homeEnter();
+});
+// Enter on home: in speak mode the tiles in the bar are read aloud and stay
+// there; otherwise they go to the spelling page
+function homeEnter() {
+  if (!state.speakMode) { startPhraseFromHome(); return; }
+  if (!homePhrase.length) return;
+  warmSpeech();
+  buzz(15);
+  speakWord(homePhrase.join(' '), 0.95);
+  // saying a word counts as using it, so Recents / Popular keep up
+  const now = Date.now();
+  homePhrase.forEach(w => {
+    const h = state.wordHistory[w] || { n: 0, t: 0 };
+    h.n++; h.t = now;
+    state.wordHistory[w] = h;
+  });
+  save();
+}
+function renderSpeakBtn() {
+  const b = document.getElementById('homeSpeakBtn');
+  b.classList.toggle('off', !state.speakMode);
+  b.setAttribute('aria-pressed', state.speakMode ? 'true' : 'false');
+}
+document.getElementById('homeSpeakBtn').addEventListener('click', () => {
+  state.speakMode = !state.speakMode;
+  buzz(10);
+  save(); renderSpeakBtn();
 });
 document.getElementById('pbClear').addEventListener('click', () => {
   homePhrase = [];
