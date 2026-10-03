@@ -430,13 +430,12 @@
   /* a folder tile: the same as a word tile, marked by an outline and a corner cue */
   .home-card.folder-card {
     background: var(--surface);
-    /* white like a word tile, told apart by a thin grey line set just inside the edge */
+    /* white like a word tile; the small arrow in the corner is all that marks it as a folder */
     box-shadow: var(--shadow);
-    outline: 2px solid #c9ccd1; outline-offset: -9px;
   }
   .home-card.folder-card .hw { color: var(--ink); }
   .home-card.folder-card::after {
-    content: '\203A'; position: absolute; top: 12px; right: 20px;
+    content: '\203A'; position: absolute; top: 6px; right: 14px;
     font-size: 0.9em; font-weight: 900; color: var(--muted); line-height: 1;
   }
   .cc-btn.on { background: var(--ink); color: #fff; }
@@ -2122,7 +2121,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 122 - 3 Oct';
+const BUILD = 'build 123 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2283,6 +2282,7 @@ const state = {
   builderV2: false,           // the one-time rename of All Done to Stop
   builderLog: [],             // sentences built in the builder, newest first
   keptPhrases: {},            // sentences filed into a folder whole, so they show as one tile
+  starterDone: false,         // the starter folders and words have been added once
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2435,6 +2435,7 @@ async function load() {
         builderV2: saved.builderV2 ?? false,
         builderLog: Array.isArray(saved.builderLog) ? saved.builderLog : [],
         keptPhrases: saved.keptPhrases || {},
+        starterDone: saved.starterDone ?? false,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2515,7 +2516,13 @@ async function load() {
     save();
   }
   if (state.categories.length === 0) applyDefaultGroups();
-  mergeStarterWords();
+  // The starter folders and words are put in once. After that the layout is the
+  // user's own: a folder that is renamed, moved or deleted is not brought back.
+  if (!state.starterDone) {
+    mergeStarterWords();
+    state.starterDone = true;
+    save();
+  }
   // The sentence builder starts from its default pages
   if (!state.builder) {
     state.builder = defaultBuilder();
@@ -2644,6 +2651,7 @@ async function save() {
       builderV2: state.builderV2,
       builderLog: state.builderLog,
       keptPhrases: state.keptPhrases,
+      starterDone: state.starterDone,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5284,7 +5292,21 @@ function makeFolderCard(c, rerender) {
   w.className = 'hw';
   w.textContent = c.name;
   card.appendChild(w);
-  card.addEventListener('click', () => { homePath = pathTo(c.id); rerender(); });
+  // tap opens the folder; hold brings up rename, move and delete
+  let timer = null, held = false;
+  card.addEventListener('pointerdown', () => {
+    held = false;
+    timer = setTimeout(() => { timer = null; held = true; buzz(15); card.classList.add('held'); }, 520);
+  });
+  const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  card.addEventListener('pointerup', stop);
+  ['pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, () => { stop(); held = false; card.classList.remove('held'); }));
+  card.addEventListener('contextmenu', e => e.preventDefault());
+  card.addEventListener('click', () => {
+    card.classList.remove('held');
+    if (held) { held = false; openFolderEdit(c); return; }
+    homePath = pathTo(c.id); rerender();
+  });
   return card;
 }
 
@@ -5545,8 +5567,7 @@ function renderCatTiles(containerId, rerender) {
       tileTimer = setTimeout(() => {
         longPressed = true;
         buzz(15);
-        const v = prompt('Rename this folder', c.name);
-        if (v && v.trim()) { c.name = v.trim(); save(); again(); }
+        openFolderEdit(c);
       }, 650);
     });
     b.addEventListener('pointerup', () => {
@@ -5980,7 +6001,8 @@ function renderBuilder(grid) {
     // a folder reached from the builder: its sub-folders, then its words
     const c = catById(here.cat);
     childrenOf(c.id).forEach(sub => {
-      tile(sub.name, true).addEventListener('click', () => { builderPath.push({ cat: sub.id }); renderHome(true); });
+      holdable(tile(sub.name, true), () => { builderPath.push({ cat: sub.id }); renderHome(true); },
+        () => openFolderEdit(sub));
       count++;
     });
     const words = (Array.isArray(c.slots) ? c.slots.filter(Boolean) : (c.words || []))
@@ -6163,12 +6185,75 @@ function openFolderAdd(cat) {
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
+// Rename, move or delete any folder, the default ones included
+function openFolderEdit(c) {
+  if (!c) return;
+  const done = () => { save(); closeWordSheet(); renderHome(true); };
+  const inside = id => { let x = catById(id), g = 0; while (x && g++ < 20) { if (x.id === c.id) return true; x = x.parent ? catById(x.parent) : null; } return false; };
+  openWordSheet(body => {
+    sheetTitle(body, 'This folder');
+    const p = document.createElement('div');
+    p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = c.name;
+    body.appendChild(p);
+    body.appendChild(sheetBtn('Rename', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Rename folder');
+      const inp = builderInput(b2, c.name);
+      const ok = () => { const v = inp.value.replace(/\s+/g, ' ').trim(); if (!v) return; c.name = v; done(); };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+      b2.appendChild(sheetBtn('Save', 'primary', ok));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
+    body.appendChild(sheetBtn('Move into another folder', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Move "' + c.name + '" to');
+      const list = document.createElement('div');
+      list.className = 'pick-list';
+      b2.appendChild(list);
+      const row = (label, parentId, depth) => {
+        const r = document.createElement('button');
+        r.className = 'pick-row';
+        r.style.marginLeft = (depth * 18) + 'px';
+        r.textContent = label + ((c.parent || null) === parentId ? '  (it is here now)' : '');
+        r.addEventListener('click', () => {
+          c.parent = parentId;
+          c.order = childrenOf(parentId, true).filter(x => x.id !== c.id).length;
+          if (homePath.includes(c.id)) homePath = [];
+          done();
+        });
+        list.appendChild(r);
+      };
+      row('The menu bar (top level)', null, 0);
+      // a folder cannot go inside itself or anything it holds
+      const walk = (parent, depth) => childrenOf(parent, true).forEach(x => {
+        if (inside(x.id)) return;
+        row(x.name, x.id, depth);
+        walk(x.id, depth + 1);
+      });
+      walk(null, 1);
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
+    body.appendChild(sheetBtn('Delete folder', 'danger', () => {
+      const kids = childrenOf(c.id, true).length;
+      const msg = 'Delete the folder "' + c.name + '"' + (kids ? ' and the folders inside it' : '') +
+                  '? Its words stay in the word bank but will not be in this folder.';
+      if (!confirm(msg)) return;
+      if (homePath.includes(c.id)) homePath = homePath.slice(0, homePath.indexOf(c.id));
+      builderPath = builderPath.filter(x => !('cat' in x) || (x.cat !== c.id && catById(x.cat)));
+      deleteCategory(c.id);
+      done();
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
 function openBuilderAdd() {
   const here = builderHere();
   if (!here) return;
   if ('cat' in here) { openFolderAdd(catById(here.cat)); return; }
+  openBuilderAddTo(here, 'Add to this page');
+}
+// Add what a builder tile (or page) leads to: a word, an existing folder, or a brand new folder
+function openBuilderAddTo(here, heading) {
   openWordSheet(body => {
-    sheetTitle(body, 'Add to this page');
+    sheetTitle(body, heading);
     body.appendChild(sheetBtn('A word', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'New word');
       const inp = builderInput(b2, '');
@@ -6203,6 +6288,22 @@ function openBuilderAdd() {
       walk(null, 0);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
+    body.appendChild(sheetBtn('A new folder', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Name the new folder');
+      const inp = builderInput(b2, '');
+      const ok = () => {
+        const name = inp.value.replace(/\s+/g, ' ').trim();
+        if (!name) return;
+        // new folders live in Categories (or on the menu bar if that is gone), and are linked here
+        const home = state.categories.find(x => !x.parent && x.name.toLowerCase() === 'categories');
+        const made = addCategory(name, home ? home.id : null);
+        here.cats.push(made.id);
+        save(); closeWordSheet(); renderHome(true);
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+      b2.appendChild(sheetBtn('Create', 'primary', ok));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -6212,6 +6313,8 @@ function openBuilderTile(parent, node) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = node.label;
     body.appendChild(p);
+    body.appendChild(sheetBtn('Add what comes next', '', () =>
+      openBuilderAddTo(node, 'After "' + node.label + '"')));
     body.appendChild(sheetBtn('Change the word', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Change the word');
       const inp = builderInput(b2, node.label);
@@ -6242,6 +6345,7 @@ function openBuilderLink(parent, cid) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = c ? c.name : '';
     body.appendChild(p);
+    body.appendChild(sheetBtn('Rename, move or delete the folder', '', () => openFolderEdit(c)));
     body.appendChild(sheetBtn('Take it off this page', 'danger', () => {
       parent.cats = parent.cats.filter(x => x !== cid);
       save(); closeWordSheet(); renderHome(true);
