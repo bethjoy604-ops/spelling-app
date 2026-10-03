@@ -825,8 +825,9 @@
     padding: 0; display: flex; align-items: center; justify-content: center;
     font-size: 22px;
   }
-  /* speak mode switched off: the icon is greyed out */
-  #homeSpeakBtn.off { filter: grayscale(1); opacity: 0.4; }
+  /* speak mode / builder switched off: the icon is greyed out */
+  #homeSpeakBtn.off, #homeBuilderBtn.off { filter: grayscale(1); opacity: 0.4; }
+  #builderBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
   .modes-wrap {
     display: flex; gap: 8px;
     overflow: hidden;
@@ -1472,9 +1473,12 @@
     <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <div class="folder-strip" id="catTiles"></div>
     <button class="ctl icon" id="homeAddFolderBtn" aria-label="New folder" style="display:none">+</button>
+    <button class="ctl icon" id="builderBackBtn" aria-label="Back" style="display:none">&#8249;</button>
+    <button class="ctl icon" id="builderAddBtn" aria-label="Add an option" style="display:none">+</button>
     <div class="spacer"></div>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#11088;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
+    <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
@@ -2103,7 +2107,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 114 - 3 Oct';
+const BUILD = 'build 115 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2259,6 +2263,8 @@ const state = {
   hiddenWords: {},            // words kept out of the bank grid
   recentsHidden: {},          // words taken off the Recents / Popular page only
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
+  builderMode: false,         // home shows the sentence builder's pages instead of the menu and tiles
+  builder: null,              // the builder's tree of pages; made from the defaults the first time
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2406,6 +2412,8 @@ async function load() {
         hiddenWords: saved.hiddenWords || {},
         recentsHidden: saved.recentsHidden || {},
         speakMode: saved.speakMode ?? false,
+        builderMode: saved.builderMode ?? false,
+        builder: saved.builder || null,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2487,6 +2495,13 @@ async function load() {
   }
   if (state.categories.length === 0) applyDefaultGroups();
   mergeStarterWords();
+  // The sentence builder starts from its default pages
+  if (!state.builder) {
+    state.builder = defaultBuilder();
+    state.wordCase = state.wordCase || {};
+    if (!state.wordCase['I']) state.wordCase['I'] = 'I';
+    save();
+  }
   // One-time: inside Categories, Activities comes first, then Food, People, Places, Things
   // (and again when the order became Actions, Food, Things, People, Places)
   if (!state.groupsV3 || !state.groupsV6) {
@@ -2597,6 +2612,8 @@ async function save() {
       hiddenWords: state.hiddenWords,
       recentsHidden: state.recentsHidden,
       speakMode: state.speakMode,
+      builderMode: state.builderMode,
+      builder: state.builder,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5433,6 +5450,7 @@ document.getElementById('pbGo').addEventListener('click', () => {
 // Enter on home: in speak mode the tiles in the bar are read aloud and the bar
 // clears; otherwise they go to the spelling page
 function homeEnter() {
+  if (state.builderMode && homePhrase.length) builderPath = [];   // the sentence is done: back to the first page
   if (!state.speakMode) { startPhraseFromHome(); return; }
   if (!homePhrase.length) return;
   warmSpeech();
@@ -5450,6 +5468,7 @@ function homeEnter() {
   hideMagic();
   save();
   renderPhraseBar();
+  if (state.builderMode) renderHome(true);
 }
 function renderSpeakBtn() {
   const b = document.getElementById('homeSpeakBtn');
@@ -5465,6 +5484,7 @@ document.getElementById('pbClear').addEventListener('click', () => {
   homePhrase = [];
   renderPhraseBar();
   hideMagic();
+  if (state.builderMode) { builderPath = []; renderHome(true); }   // start the sentence again
 });
 
 // ---- Category tiles: one line above the bank ----
@@ -5723,6 +5743,20 @@ function renderHome(reset) {
   const cat = currentCat();
   if (reset) {
     renderPhraseBar();
+    renderBuilderBar();
+    document.getElementById('homeModesToggle').style.display = state.builderMode ? 'none' : '';
+    if (state.builderMode) {
+      // the builder takes over the page: no menu, no folder strip, just its own pages
+      ['homeSettingsBtn', 'railToggle', 'homeAddFolderBtn', 'homeRootBtn', 'homeHelpBtn', 'folderView']
+        .forEach(id => { document.getElementById(id).style.display = 'none'; });
+      document.getElementById('catTiles').className = 'folder-strip';
+      document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
+      grid.style.display = '';
+      hideMagic();
+      homeRows = []; homeShown = 0;
+      renderBuilder(grid);
+      return;
+    }
     renderCatTiles('catTiles', () => renderHome(true));
     // In the folders flow the icons stay put on every page, so there is always
     // a way home, and the folder strip gives way to the tiles.
@@ -5817,6 +5851,257 @@ function renderHome(reset) {
   homeShown += slice.length;
   requestAnimationFrame(() => fitGrid(grid));
 }
+// ===== Builder mode: a sentence built page by page =====
+// The pages form a tree. Each tile says its word and opens the page of things
+// that can follow it; a tile can also lead to one or more of the ordinary folders.
+let builderPath = [];        // where we are: tree nodes, or { cat: id } for a folder
+function defaultBuilder() {
+  const id = n => { const c = state.categories.find(x => x.name.toLowerCase() === n.toLowerCase()); return c ? c.id : null; };
+  const cats = (...names) => names.map(id).filter(x => x !== null);
+  const node = (label, kids, links) => ({ label, kids: kids || [], cats: links || [] });
+  return { kids: [
+    node('I', [
+      node('want', [], cats('Food', 'Things', 'People')),
+      node('need', [], cats('Food', 'Things', 'People')),
+      node('feel'),
+      node('see', [], cats('Things', 'People', 'Places')),
+    ]),
+    node('Go', [], cats('Places')),
+    node('More', [], cats('Food', 'Things', 'Actions')),
+    node('All Done'),
+  ], cats: [] };
+}
+function builderHere() {
+  return builderPath.length ? builderPath[builderPath.length - 1] : state.builder;
+}
+function builderSay(word) {
+  homePhrase.push(word);
+  warmSpeech();
+  speakWord(word, 0.95);
+  renderPhraseBar();
+}
+function renderBuilderBar() {
+  const on = !!state.builderMode;
+  const b = document.getElementById('homeBuilderBtn');
+  b.classList.toggle('off', !on);
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const here = builderHere();
+  document.getElementById('builderBackBtn').style.display = (on && builderPath.length) ? '' : 'none';
+  // options can be added to a builder page, but not to a folder it leads to
+  document.getElementById('builderAddBtn').style.display = (on && here && !('cat' in here)) ? '' : 'none';
+}
+function renderBuilder(grid) {
+  if (!state.builder) state.builder = defaultBuilder();
+  let here = builderHere();
+  if (here && 'cat' in here && !catById(here.cat)) { builderPath = []; here = state.builder; }
+  const { cols, rows: screenRows } = slotShape();
+  const gap = 16;
+  const W = grid.clientWidth, H = grid.clientHeight;
+  const cellW = Math.max(60, (W - gap * (cols - 1)) / cols);
+  const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
+  const room = cellW - 30;
+  const base = Math.min(rowH * 0.4, room / (12 * 0.62));
+  grid.classList.add('slot-grid');
+  grid.innerHTML = '';
+  grid.scrollTop = 0;
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+  grid.style.gridAutoRows = rowH + 'px';
+
+  const tile = (label, folder) => {
+    const card = document.createElement('button');
+    card.className = 'home-card' + (folder ? ' folder-card' : '');
+    const t = document.createElement('span');
+    t.className = 'hw';
+    t.textContent = label;
+    const one = room / (Math.max(1, label.length) * 0.62);
+    if (label.includes(' ') && one < base) t.style.whiteSpace = 'normal';
+    const longest = Math.max(...label.split(' ').map(x => x.length));
+    t.style.fontSize = Math.min(base, label.includes(' ') ? room / (longest * 0.62) : one) + 'px';
+    card.appendChild(t);
+    grid.appendChild(card);
+    return card;
+  };
+  // a tile that can be held: let go for its options
+  const holdable = (card, onTap, onHold) => {
+    let timer = null, held = false;
+    card.addEventListener('pointerdown', () => {
+      held = false;
+      timer = setTimeout(() => { timer = null; held = true; buzz(15); card.classList.add('held'); }, 520);
+    });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    ['pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, () => { stop(); card.classList.remove('held'); held = false; }));
+    card.addEventListener('pointerup', stop);
+    card.addEventListener('contextmenu', e => e.preventDefault());
+    card.addEventListener('click', () => {
+      card.classList.remove('held');
+      if (held) { held = false; onHold(); } else onTap();
+    });
+  };
+
+  let count = 0;
+  if ('cat' in here) {
+    // a folder reached from the builder: its sub-folders, then its words
+    const c = catById(here.cat);
+    childrenOf(c.id).forEach(sub => {
+      tile(sub.name, true).addEventListener('click', () => { builderPath.push({ cat: sub.id }); renderHome(true); });
+      count++;
+    });
+    const words = (Array.isArray(c.slots) ? c.slots.filter(Boolean) : (c.words || []))
+      .filter(w => !state.hiddenWords[w]);
+    words.forEach(w => {
+      tile(bankLabel(w), false).addEventListener('click', () => {
+        builderSay(w);
+        builderPath = [];            // the sentence has its ending: back to the first page
+        renderHome(true);
+      });
+      count++;
+    });
+  } else {
+    here.kids.forEach(k => {
+      const key = normaliseWord(k.label);
+      holdable(tile(k.label, false), () => {
+        if (key) builderSay(key);
+        if (k.kids.length || k.cats.length) builderPath.push(k); else builderPath = [];
+        renderHome(true);
+      }, () => openBuilderTile(here, k));
+      count++;
+    });
+    here.cats.forEach(cid => {
+      const c = catById(cid);
+      if (!c) return;
+      holdable(tile(c.name, true), () => { builderPath.push({ cat: cid }); renderHome(true); },
+        () => openBuilderLink(here, cid));
+      count++;
+    });
+  }
+  if (!count) {
+    const n = document.createElement('div');
+    n.className = 'empty-note';
+    n.style.gridColumn = '1 / -1';
+    n.textContent = ('cat' in here) ? 'This folder is empty.' : 'Nothing here yet — use + to add a word or a folder.';
+    grid.appendChild(n);
+  }
+}
+// ---- editing the builder ----
+function builderInput(body, value) {
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.maxLength = 40; inp.value = value || '';
+  inp.autocomplete = 'off'; inp.autocapitalize = 'off'; inp.spellcheck = false;
+  inp.className = 'word-edit-input';
+  body.appendChild(inp);
+  setTimeout(() => inp.focus(), 60);
+  return inp;
+}
+function builderKeepCase(label) {
+  const key = normaliseWord(label);
+  if (key) setWordCase(label, key);      // it reads in the bar the way it reads on its tile
+}
+function openBuilderAdd() {
+  const here = builderHere();
+  if (!here || 'cat' in here) return;
+  openWordSheet(body => {
+    sheetTitle(body, 'Add to this page');
+    body.appendChild(sheetBtn('A word', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'New word');
+      const inp = builderInput(b2, '');
+      const add = () => {
+        const label = inp.value.replace(/\s+/g, ' ').trim();
+        if (!normaliseWord(label)) return;
+        here.kids.push({ label, kids: [], cats: [] });
+        builderKeepCase(label);
+        save(); closeWordSheet(); renderHome(true);
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+      b2.appendChild(sheetBtn('Add', 'primary', add));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
+    body.appendChild(sheetBtn('A folder of words', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Which folder?');
+      const list = document.createElement('div');
+      list.className = 'pick-list';
+      b2.appendChild(list);
+      const walk = (parent, depth) => childrenOf(parent, true).forEach(c => {
+        const r = document.createElement('button');
+        r.className = 'pick-row';
+        r.style.marginLeft = (depth * 18) + 'px';
+        r.textContent = c.name + (here.cats.includes(c.id) ? '  (already here)' : '');
+        r.addEventListener('click', () => {
+          if (!here.cats.includes(c.id)) here.cats.push(c.id);
+          save(); closeWordSheet(); renderHome(true);
+        });
+        list.appendChild(r);
+        walk(c.id, depth + 1);
+      });
+      walk(null, 0);
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
+function openBuilderTile(parent, node) {
+  openWordSheet(body => {
+    sheetTitle(body, 'This tile');
+    const p = document.createElement('div');
+    p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = node.label;
+    body.appendChild(p);
+    body.appendChild(sheetBtn('Change the word', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Change the word');
+      const inp = builderInput(b2, node.label);
+      const ok = () => {
+        const label = inp.value.replace(/\s+/g, ' ').trim();
+        if (!normaliseWord(label)) return;
+        node.label = label;
+        builderKeepCase(label);
+        save(); closeWordSheet(); renderHome(true);
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+      b2.appendChild(sheetBtn('Save', 'primary', ok));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
+    body.appendChild(sheetBtn('Remove this tile', 'danger', () => {
+      const n = node.kids.length + node.cats.length;
+      if (n && !confirm('Remove "' + node.label + '" and everything that follows it?')) return;
+      parent.kids = parent.kids.filter(k => k !== node);
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
+function openBuilderLink(parent, cid) {
+  const c = catById(cid);
+  openWordSheet(body => {
+    sheetTitle(body, 'This folder');
+    const p = document.createElement('div');
+    p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = c ? c.name : '';
+    body.appendChild(p);
+    body.appendChild(sheetBtn('Take it off this page', 'danger', () => {
+      parent.cats = parent.cats.filter(x => x !== cid);
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+    const n = document.createElement('div');
+    n.className = 'help-note'; n.style.marginTop = '12px';
+    n.textContent = 'The folder itself and its words are not deleted.';
+    body.appendChild(n);
+  });
+}
+document.getElementById('homeBuilderBtn').addEventListener('click', () => {
+  state.builderMode = !state.builderMode;
+  builderPath = [];
+  buzz(10);
+  save(); renderHome(true);
+});
+document.getElementById('builderBackBtn').addEventListener('click', () => {
+  const left = builderPath.pop();
+  // stepping back over a word takes that word out of the bar again
+  if (left && !('cat' in left)) {
+    const key = normaliseWord(left.label);
+    if (key && homePhrase[homePhrase.length - 1] === key) homePhrase.pop();
+  }
+  renderHome(true);
+});
+document.getElementById('builderAddBtn').addEventListener('click', openBuilderAdd);
+
 // ===== Arranging a folder: hold a word to edit it, drag it to move it =====
 let suppressTileClick = false;
 let wordDrag = null;
