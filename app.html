@@ -2173,7 +2173,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 151 - 3 Oct';
+const BUILD = 'build 152 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2687,6 +2687,7 @@ async function load() {
   if (syncReady()) syncPull(true);
 }
 async function save() {
+  linkWordCache = null;
   try {
     await Store.set('kbd-state-v6', JSON.stringify({
       caseMode: state.caseMode,
@@ -5487,7 +5488,27 @@ function capFirst(t) {
   t = String(t || '');
   return t === t.toLowerCase() ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
-function bankLabel(w) { return isSmallWord(w) ? sentenceLabel(w) : capFirst(sentenceLabel(w)); }   // small words stay small
+function bankLabel(w) { return (isSmallWord(w) || isLinkWord(w)) ? sentenceLabel(w) : capFirst(sentenceLabel(w)); }
+// A linking word: a builder tile, or a word in a group that leads somewhere. These read in small
+// letters everywhere - on tiles and in the bar, in menu mode and builder mode.
+let linkWordCache = null;
+function isLinkWord(w) {
+  if (!linkWordCache) {
+    linkWordCache = new Set();
+    const b = state.builder;
+    if (b) {
+      const walk = n => { const k = normaliseWord(n.label || ''); if (k) linkWordCache.add(k); (n.kids || []).forEach(walk); };
+      (b.kids || []).forEach(walk);
+      const ok = id => { const x = id ? catById(id) : null; return !!x && !x.hidden; };
+      Object.keys(b.words || {}).forEach(k => {
+        const n = b.words[k];
+        (n.kids || []).forEach(walk);
+        if (ok(n.go) || (n.kids || []).length || (n.cats || []).some(ok)) linkWordCache.add(k);
+      });
+    }
+  }
+  return linkWordCache.has(w);
+}   // small words stay small
 // A sentence: the first word starts with a capital, the rest read as they would mid-sentence
 function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : bankLabel(w)); }
 // How a word reads in the middle of a sentence: small letters, unless it is a name
@@ -5960,6 +5981,7 @@ function commitTypedWord() {
 }
 
 function renderHome(reset) {
+  linkWordCache = null;
   const grid = document.getElementById('homeGrid');
   const cat = currentCat();
   if (reset) {
@@ -6555,7 +6577,11 @@ function renderBuilder(grid) {
         () => openFolderEdit(sub));
       count++;
     });
-    const words = (Array.isArray(c.slots) ? c.slots.filter(Boolean) : (c.words || []))
+    // the same words, in the same order, as the folder shows in menu mode - including ones added
+    // since it was last arranged there
+    const inCat = c.words || [];
+    const placed = Array.isArray(c.slots) ? c.slots.filter(w => w && inCat.includes(w)) : [];
+    const words = placed.concat(inCat.filter(w => !placed.includes(w)))
       .filter(w => !state.hiddenWords[w]);
     words.forEach(w => {
       // stays on this page so more can be added; enter (or the X) goes back to the start
