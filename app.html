@@ -2177,7 +2177,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 165 - 3 Oct';
+const BUILD = 'build 166 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5724,6 +5724,8 @@ document.getElementById('pbGo').addEventListener('click', () => {
 // Enter on home: in speak mode the tiles in the bar are read aloud and the bar
 // clears; otherwise they go to the spelling page
 function homeEnter() {
+  // menu mode: the sentence is done, so a sub-folder steps back up to the page of folders it came from
+  if (!state.builderMode && homePhrase.length && homePath.length > 1) homePath = homePath.slice(0, -1);
   if (state.builderMode && homePhrase.length) {
     builderPath = [];                       // the sentence is done: back to the first page
     // and it joins the transcript under the first page, newest at the top
@@ -5746,7 +5748,7 @@ function homeEnter() {
   hideMagic();
   save();
   renderPhraseBar();
-  if (state.builderMode) renderHome(true);
+  renderHome(true);
 }
 function renderSpeakBtn() {
   const b = document.getElementById('homeSpeakBtn');
@@ -6026,7 +6028,11 @@ function renderHome(reset) {
     renderBuilderBar();
     // The arrow houses only the settings gear. The sandwich sits on the right with
     // the other switches and shows or hides the folder menu.
-    document.getElementById('homeSettingsBtn').style.display = state.homeModesOpen ? '' : 'none';
+    // In the builder the arrow (and the gear it opens) is only on the first page; further in,
+    // that space holds just the back arrow and the plus.
+    const deep = state.builderMode && builderPath.length > 0;
+    document.getElementById('homeModesToggle').style.display = deep ? 'none' : '';
+    document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && !deep) ? '' : 'none';
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
@@ -7432,8 +7438,7 @@ function renderSlotGrid(grid, cat, folders) {
       speakWord(w, 0.95);
       renderPhraseBar();
       renderMagic(w);
-      // picked from a sub-folder: step back up to the page of folders it came from
-      if (homePath.length > 1) { homePath = homePath.slice(0, -1); renderHome(true); }
+      // the page stays put so more words can be added from it; enter (or the folder menu) moves on
     });
     attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, bankLabel(w));
