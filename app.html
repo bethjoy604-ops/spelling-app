@@ -434,7 +434,7 @@
   }
   .home-card.folder-card .hw { color: var(--ink); }
   .home-card.folder-card::after {
-    content: '\u203A'; position: absolute; top: 4px; right: 12px;
+    content: '\203A'; position: absolute; top: 4px; right: 12px;
     font-size: 0.9em; font-weight: 900; color: var(--muted); line-height: 1;
   }
   .cc-btn.on { background: var(--ink); color: #fff; }
@@ -2036,7 +2036,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 94 - 3 Oct';
+const BUILD = 'build 95 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2179,6 +2179,7 @@ const state = {
   syncRestoredAt: 0,          // when a rollback was last made, so devices follow it
   groupOrder: 0,              // which arrangement of the standard groups is in use
   settingsTidied: false,      // the one-time clean-up of retired defaults
+  groupsV2: false,            // the one-time move to the Categories layout
   wordCase: {},               // how each title was written, for reading back
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
   revives: { word: {}, cat: {}, catWord: {} }, // and deliberate re-adds, which undo them
@@ -2317,6 +2318,7 @@ async function load() {
         syncRestoredAt: saved.syncRestoredAt || 0,
         groupOrder: saved.groupOrder ?? 0,
         settingsTidied: saved.settingsTidied ?? false,
+        groupsV2: saved.groupsV2 ?? false,
         wordCase: saved.wordCase || {},
         tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
         revives: saved.revives || { word: {}, cat: {}, catWord: {} },
@@ -2370,6 +2372,14 @@ async function load() {
   // The starter words are always available alongside whatever has been added,
   // rather than only appearing in an empty bank. Anything deliberately deleted
   // stays deleted — they are topped up, not forced back.
+  // One-time move to the Recents / Chat / Categories / My Stuff layout: Eat becomes
+  // Food and Action becomes Activities, both inside Categories with People,
+  // Places and the new Things. Every word stays where it was.
+  if (!state.groupsV2) {
+    state.groupsV2 = true;
+    if (state.categories.length) applyDefaultGroups();
+    save();
+  }
   if (state.categories.length === 0) applyDefaultGroups();
   mergeStarterWords();
   // First run after the search feature arrived: seed history from the existing bank
@@ -2458,6 +2468,7 @@ async function save() {
       syncRestoredAt: state.syncRestoredAt,
       groupOrder: state.groupOrder,
       settingsTidied: state.settingsTidied,
+      groupsV2: state.groupsV2,
       wordCase: state.wordCase,
       tombs: state.tombs,
       revives: state.revives,
@@ -4868,19 +4879,21 @@ function deleteCategory(id) {
 }
 // The standard starting set. Safe to run on a bank that already has groups:
 // nothing is deleted, words are kept, Conversation becomes Chat.
-const DEFAULT_GROUPS = ['Chat', 'Eat', 'My Stuff', 'Action', 'People', 'Places'];
+const DEFAULT_GROUPS = ['Chat', 'Categories', 'My Stuff'];
+const CATEGORY_SUBS = ['Food', 'Activities', 'People', 'Places', 'Things'];
 const DEFAULT_COLORS = {
-  Chat: 'blue', Eat: 'green', Action: 'purple', People: 'pink', Places: 'teal', 'My Stuff': 'orange',
+  Chat: 'blue', Categories: 'green', 'My Stuff': 'orange',
+  Food: 'green', Activities: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
 };
 const MY_STUFF_SUBS = ['Songs', 'Videos', 'TV Shows', 'Movies', 'Characters'];
 // The starter vocabulary, so a fresh device opens with the words already in place
-const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nEat: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\nAction: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\nPeople:\nPlaces:\nMy Stuff: truck, bear\n  Songs:\n  Videos:\n  TV Shows: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Characters: peppa, george\n';
+const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nCategories:\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\n  Activities: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\n  People:\n  Places:\n  Things: truck, bear\nMy Stuff:\n  Songs:\n  Videos:\n  TV Shows: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Characters: peppa, george\n';
 // Older names map onto the current set so nobody ends up with both
 const GROUP_ALIASES = {
   'conversation': 'Chat', 'social': 'Chat',
-  'food': 'Eat',
-  'activities': 'Action', 'activity': 'Action',
-  'things': 'My Stuff', 'labels': 'My Stuff', 'stuff': 'My Stuff',
+  'eat': 'Food',
+  'action': 'Activities', 'activity': 'Activities',
+  'labels': 'My Stuff', 'stuff': 'My Stuff',
   'shows': 'TV Shows', 'tv': 'TV Shows', 'music': 'Songs', 'youtube': 'Videos',
 };
 function mergeGroups(fromCat, toCat) {
@@ -4904,7 +4917,7 @@ function applyDefaultGroups() {
     if (!c) addCategory(n, null, DEFAULT_COLORS[n]);
     else { c.color = DEFAULT_COLORS[n]; c.parent = null; }   // standard groups sit at the top level
   });
-  // My Stuff holds the media sub-groups, and People belongs in there too
+  // My Stuff holds the media sub-groups
   const mine = byName('My Stuff');
   if (mine) {
     if (mine.phrases === undefined) mine.phrases = true;   // full titles live in here
@@ -4913,6 +4926,24 @@ function applyDefaultGroups() {
       if (!existing) { const c = addCategory(n, mine.id); c.order = i; }
       else { existing.parent = mine.id; existing.order = i; }
     });
+  }
+  // Categories holds the everyday folders: Food, Activities, People, Places, Things
+  const cats = byName('Categories');
+  if (cats) {
+    CATEGORY_SUBS.forEach((n, i) => {
+      const existing = byName(n);
+      if (!existing) { const c = addCategory(n, cats.id, DEFAULT_COLORS[n]); c.order = i; }
+      else { existing.parent = cats.id; existing.order = i; existing.color = DEFAULT_COLORS[n] || existing.color; }
+    });
+    // everyday nouns that used to sit loose in My Stuff belong in Things
+    const things = byName('Things');
+    if (mine && things) {
+      ['TRUCK', 'BEAR'].forEach(w => {
+        if (!(mine.words || []).includes(w)) return;
+        mine.words = mine.words.filter(x => x !== w);
+        if (!things.words.includes(w)) things.words.push(w);
+      });
+    }
   }
   DEFAULT_GROUPS.forEach((n, i) => { const c = byName(n); if (c) c.order = i; });
   save();
