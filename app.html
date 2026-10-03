@@ -2107,7 +2107,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 115 - 3 Oct';
+const BUILD = 'build 116 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2265,6 +2265,7 @@ const state = {
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
   builderMode: false,         // home shows the sentence builder's pages instead of the menu and tiles
   builder: null,              // the builder's tree of pages; made from the defaults the first time
+  builderV2: false,           // the one-time rename of All Done to Stop
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2414,6 +2415,7 @@ async function load() {
         speakMode: saved.speakMode ?? false,
         builderMode: saved.builderMode ?? false,
         builder: saved.builder || null,
+        builderV2: saved.builderV2 ?? false,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2500,6 +2502,12 @@ async function load() {
     state.builder = defaultBuilder();
     state.wordCase = state.wordCase || {};
     if (!state.wordCase['I']) state.wordCase['I'] = 'I';
+    save();
+  }
+  // One-time: the builder's first page says Stop where it used to say All Done
+  if (!state.builderV2) {
+    state.builderV2 = true;
+    ((state.builder && state.builder.kids) || []).forEach(k => { if (k.label === 'All Done') k.label = 'Stop'; });
     save();
   }
   // One-time: inside Categories, Activities comes first, then Food, People, Places, Things
@@ -2614,6 +2622,7 @@ async function save() {
       speakMode: state.speakMode,
       builderMode: state.builderMode,
       builder: state.builder,
+      builderV2: state.builderV2,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5868,7 +5877,7 @@ function defaultBuilder() {
     ]),
     node('Go', [], cats('Places')),
     node('More', [], cats('Food', 'Things', 'Actions')),
-    node('All Done'),
+    node('Stop'),
   ], cats: [] };
 }
 function builderHere() {
