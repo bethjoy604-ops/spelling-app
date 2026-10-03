@@ -2103,7 +2103,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 111 - 3 Oct';
+const BUILD = 'build 112 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2260,7 +2260,7 @@ const state = {
   recentsHidden: {},          // words taken off the Recents / Popular page only
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
   homeModesOpen: false,       // the fold-down options row on home
-  railOpen: false,            // the folder strip on home: folded until opened, then it stays open
+  railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
@@ -2372,8 +2372,8 @@ async function load() {
         homeEnabled: saved.homeEnabled ?? true,
         practiceMode: saved.practiceMode ?? true,
         homeMode: 'tiles',          // the only layout now; Words and Folders were retired
-        // saves from before the strip was folded by default start folded once
-        railOpen: saved.barV2 ? (saved.railOpen ?? false) : false,
+        // saves from before the menu was shown by default start with it showing once
+        railOpen: saved.barV3 ? (saved.railOpen ?? true) : true,
         barV2: true,
         kbRailOpen: saved.kbRailOpen ?? false,
         settingsOrder: saved.settingsOrder || [],
@@ -2566,6 +2566,7 @@ async function save() {
       homeMode: state.homeMode,
       railOpen: state.railOpen,
       barV2: true,
+      barV3: true,
       kbRailOpen: state.kbRailOpen,
       settingsOrder: state.settingsOrder,
       bankSort: state.bankSort,
