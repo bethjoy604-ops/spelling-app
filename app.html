@@ -2036,7 +2036,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 93 - 3 Oct';
+const BUILD = 'build 94 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5308,7 +5308,8 @@ function renderCatTiles(containerId, rerender) {
     if (level === 0) {
       const all = document.createElement('button');
       all.className = 'cat-tile plain' + (homePath.length === 0 ? ' selected' : '');
-      all.textContent = 'All';
+      // named for what it shows: the latest words, or the most used ones
+      all.textContent = state.bankSort === 'used' ? 'Popular' : 'Recents';
       all.addEventListener('click', () => { homePath = []; again(); });
       row.appendChild(all);
     }
