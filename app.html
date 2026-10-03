@@ -1401,6 +1401,9 @@
   </div>
 
   <div class="controls-row home-row">
+    <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
+      <span class="chevron" id="homeChevron">&#9662;</span>
+    </button>
     <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <button class="ctl icon" id="railToggle" aria-label="Folders">&#9776;</button>
     <div class="folder-strip" id="catTiles"></div>
@@ -2032,7 +2035,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 89 - 3 Oct';
+const BUILD = 'build 90 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5515,15 +5518,22 @@ function renderHome(reset) {
     document.getElementById('folderView').style.display = useFolders ? '' : 'none';
     grid.style.display = useFolders ? 'none' : '';
     if (useFolders) {
+      // no folder strip in this layout: the arrow just shows or hides the gear
+      document.getElementById('homeSettingsBtn').style.display = state.homeModesOpen ? '' : 'none';
+      document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
       document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
       document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
       renderFolders();
       return;
     }
-    // the gear is always on the bar; the sandwich beside it unfolds the folder strip
+    // Three states, to keep the bar bare: just the arrow; the arrow with the gear
+    // and the sandwich; or the arrow with the folder strip the sandwich opened.
     const rail = document.getElementById('catTiles');
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
-    document.getElementById('railToggle').classList.toggle('open', state.railOpen);
+    const iconsOut = state.homeModesOpen && !state.railOpen;
+    document.getElementById('homeSettingsBtn').style.display = iconsOut ? '' : 'none';
+    document.getElementById('railToggle').style.display = iconsOut ? '' : 'none';
+    document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen || state.railOpen);
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
@@ -5584,7 +5594,14 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
   }
 });
 document.getElementById('railToggle').addEventListener('click', () => {
-  state.railOpen = !state.railOpen;
+  state.railOpen = true;       // the folder strip takes the icons' place
+  save(); renderHome(true);
+});
+document.getElementById('homeModesToggle').addEventListener('click', () => {
+  // from the folder strip the arrow steps back to the two icons; otherwise it
+  // shows or hides them
+  if (state.railOpen && !foldersMode()) { state.railOpen = false; state.homeModesOpen = true; }
+  else state.homeModesOpen = !state.homeModesOpen;
   save(); renderHome(true);
 });
 document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
