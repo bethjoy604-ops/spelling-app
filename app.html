@@ -458,6 +458,24 @@
   .slot-empty { border-radius: 16px; }
   .home-grid.arranging .slot-empty { outline: 3px dashed rgba(255,255,255,0.75); outline-offset: -3px; }
   .home-grid.arranging .slot-empty.drop-here { background: var(--green); outline-color: var(--green); opacity: 0.85; }
+  /* held on Recents: the tile lights up where it is */
+  .home-card.held { outline: 6px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
+  /* removed with a puff */
+  .home-card.poofing { animation: poofOut 0.5s ease-out forwards; pointer-events: none; }
+  @keyframes poofOut {
+    0% { transform: scale(1); opacity: 1; filter: blur(0); }
+    35% { transform: scale(1.12); opacity: 0.9; filter: blur(1px); }
+    100% { transform: scale(0.2); opacity: 0; filter: blur(8px); }
+  }
+  .poof-puff {
+    position: fixed; z-index: 600; pointer-events: none; font-size: 64px; line-height: 1;
+    transform: translate(-50%, -50%); animation: puffUp 0.52s ease-out forwards;
+  }
+  @keyframes puffUp {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    30% { transform: translate(-50%, -55%) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -110%) scale(2.2); opacity: 0; }
+  }
   /* picked up and ready to move */
   .home-card.drag-ghost { outline: 6px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   [data-cat-id].drop-into { outline: 5px solid var(--green) !important; outline-offset: 2px; opacity: 1 !important; }
@@ -2073,7 +2091,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 103 - 3 Oct';
+const BUILD = 'build 104 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2226,6 +2244,7 @@ const state = {
   bankLimit: 0,               // no cap: the layout grows instead of hiding words
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
+  recentsHidden: {},          // words taken off the Recents / Popular page only
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: false,            // the folder strip on home: folded until opened, then it stays open
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2370,6 +2389,7 @@ async function load() {
         bankLimit: 0,
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
+        recentsHidden: saved.recentsHidden || {},
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2556,6 +2576,7 @@ async function save() {
       revives: state.revives,
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
+      recentsHidden: state.recentsHidden,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5675,7 +5696,8 @@ function renderHome(reset) {
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
     // Top level shows the words used most recently; a group shows all of its words
-    homeRows = (cat ? categoryRows(cat) : bankRows()).filter(r => !state.hiddenWords[r.word]);
+    homeRows = (cat ? categoryRows(cat) : bankRows())
+      .filter(r => !state.hiddenWords[r.word] && (cat || !state.recentsHidden[r.word]));
     const folders = gridFolders();
     // A folder is a grid of fixed places: every tile stays where it was put
     // (Recents / Popular uses the same grid and type size, just without fixed places)
@@ -5874,7 +5896,7 @@ function renderSlotGrid(grid, cat, folders) {
       renderPhraseBar();
       renderMagic(w);
     });
-    if (arrange) attachWordHold(card, w, cat);
+    attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, bankLabel(w));
     place(card, head + i);
   }
@@ -5907,7 +5929,8 @@ function startWordDrag(card, word, cat, x, y) {
   ghost.style.left = r.left + 'px';
   ghost.style.top = r.top + 'px';
   document.body.appendChild(ghost);
-  card.classList.add('drag-src');
+  card.classList.add(cat ? 'drag-src' : 'held');   // on Recents the tile stays put and just lights up
+  if (!cat) ghost.style.display = 'none';
   suppressTileClick = true;
   buzz(15);
   wordDrag = { word, cat, card, ghost, ox: x - r.left, oy: y - r.top, sx: x, sy: y, x, y, moved: false, target: null };
@@ -5961,7 +5984,7 @@ function endWordDrag(cancelled) {
   if (!d) return;
   wordDrag = null;
   d.ghost.remove();
-  d.card.classList.remove('drag-src');
+  d.card.classList.remove('drag-src', 'held');
   document.getElementById('homeGrid').classList.remove('arranging');
   clearDropMarks();
   // the tap that would follow a hold is swallowed; if none comes, stop waiting for it
@@ -5981,7 +6004,7 @@ function endWordDrag(cancelled) {
     save(); renderHome(true);
   } else if (t.kind === 'folder') {
     const dest = catById(t.id);
-    if (dest && dest.id !== d.cat.id) openMovePicker(d.word, d.cat, dest);
+    if (dest && (!d.cat || dest.id !== d.cat.id)) openMovePicker(d.word, d.cat, dest);
   }
 }
 document.addEventListener('pointerup', () => endWordDrag(false));
@@ -6018,6 +6041,26 @@ function sheetTitle(body, text, word) {
   }
 }
 function openWordActions(word, cat) {
+  // On Recents / Popular: the word can be taken off the page, and one that has
+  // no folder yet can be filed into one
+  if (!cat) {
+    const page = state.bankSort === 'used' ? 'Popular' : 'Recents';
+    const filed = categoriesOf(word).length > 0;
+    openWordSheet(body => {
+      sheetTitle(body, 'This word', word);
+      body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
+      if (!filed) body.appendChild(sheetBtn('Move to a folder', '', () => openMovePicker(word, null, null)));
+      body.appendChild(sheetBtn(filed ? 'Remove from ' + page : 'Delete this word', 'danger', () => poofWord(word)));
+      body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+      const n = document.createElement('div');
+      n.className = 'help-note'; n.style.marginTop = '12px';
+      n.textContent = filed
+        ? 'It stays in its folder; it just no longer shows on ' + page + '.'
+        : 'This word is not in any folder, so removing it deletes it.';
+      body.appendChild(n);
+    });
+    return;
+  }
   openWordSheet(body => {
     sheetTitle(body, 'This word', word);
     body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
@@ -6028,6 +6071,27 @@ function openWordActions(word, cat) {
     n.textContent = 'To move it, hold the word until it turns green, then drag it to an empty place, or onto a folder to move it there.';
     body.appendChild(n);
   });
+}
+// Take a word off Recents / Popular with a puff; the other tiles close the gap
+function poofWord(word) {
+  closeWordSheet();
+  const finish = () => {
+    if (categoriesOf(word).length) state.recentsHidden[word] = true;
+    else deleteWordEverywhere(word);
+    save(); renderHome(true);
+  };
+  const tile = document.querySelector('#homeGrid .home-card[data-word="' + (window.CSS && CSS.escape ? CSS.escape(word) : word) + '"]');
+  if (!tile) { finish(); return; }
+  const r = tile.getBoundingClientRect();
+  const puff = document.createElement('div');
+  puff.className = 'poof-puff';
+  puff.textContent = '\uD83D\uDCA8';
+  puff.style.left = (r.left + r.width / 2) + 'px';
+  puff.style.top = (r.top + r.height / 2) + 'px';
+  document.body.appendChild(puff);
+  tile.classList.add('poofing');
+  buzz(20);
+  setTimeout(() => { puff.remove(); finish(); }, 520);
 }
 function openWordEdit(word) {
   openWordSheet(body => {
@@ -6081,6 +6145,7 @@ function renameWord(from, to) {
   if (a || b) state.wordHistory[to] = { n: ((a && a.n) || 0) + ((b && b.n) || 0), t: Math.max((a && a.t) || 0, (b && b.t) || 0) };
   delete state.wordHistory[from];
   if (state.hiddenWords[from]) { state.hiddenWords[to] = true; delete state.hiddenWords[from]; }
+  if (state.recentsHidden[from]) { state.recentsHidden[to] = true; delete state.recentsHidden[from]; }
   if (state.wordCase) delete state.wordCase[from];
   // prompt fading is counted letter by letter, so it starts again for the new spelling
   delete state.wordFadeLevels[from];
@@ -6104,8 +6169,8 @@ function openMovePicker(word, fromCat, root) {
     const move = sheetBtn('Move', 'primary', () => {
       const dest = catById(chosen);
       if (!dest) return;
-      if (dest.id !== fromCat.id) {
-        fromCat.words = (fromCat.words || []).filter(w => w !== word);
+      if (!fromCat || dest.id !== fromCat.id) {
+        if (fromCat) fromCat.words = (fromCat.words || []).filter(w => w !== word);
         if (!dest.words.includes(word)) dest.words.push(word);
         save();
       }
@@ -6121,7 +6186,7 @@ function openMovePicker(word, fromCat, root) {
       b.className = 'pick-row';
       b.dataset.id = c.id;
       b.style.marginLeft = (depth * 18) + 'px';
-      b.textContent = c.name + (c.id === fromCat.id ? '  (it is here now)' : '');
+      b.textContent = c.name + (fromCat && c.id === fromCat.id ? '  (it is here now)' : '');
       b.addEventListener('click', () => { chosen = c.id; paint(); });
       list.appendChild(b);
     };
@@ -6966,7 +7031,7 @@ function renderSettings() {
     v => { state.tileMode = v; save(); renderSettings();
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
-  const hiddenN = Object.keys(state.hiddenWords || {}).length;
+  const hiddenN = Object.keys(Object.assign({}, state.hiddenWords || {}, state.recentsHidden || {})).length;
   const ub = document.getElementById('unhideWordsBtn');
   ub.textContent = hiddenN ? ('Show ' + hiddenN + ' hidden word' + (hiddenN === 1 ? '' : 's')) : 'No hidden words';
   ub.style.opacity = hiddenN ? '1' : '0.5';
@@ -7281,6 +7346,7 @@ document.getElementById('toggleMagic').addEventListener('click', () => {
 });
 document.getElementById('unhideWordsBtn').addEventListener('click', () => {
   state.hiddenWords = {};
+  state.recentsHidden = {};
   save(); renderSettings();
   if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
   if (kbBankOpen) renderKbBank();
