@@ -2155,7 +2155,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 134 - 3 Oct';
+const BUILD = 'build 135 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2319,6 +2319,7 @@ const state = {
   starterDone: false,         // the starter folders and words have been added once
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
+  layoutV9: false,            // the one-time addition of the New folder
   smallRow: null,             // the small words shown in the row above the tiles, in order
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
@@ -2475,6 +2476,7 @@ async function load() {
         starterDone: saved.starterDone ?? false,
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
+        layoutV9: saved.layoutV9 ?? false,
         smallRow: Array.isArray(saved.smallRow) ? saved.smallRow : null,
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
@@ -2579,6 +2581,15 @@ async function load() {
   if (!state.layoutV7) {
     state.layoutV7 = true;
     migrateLayoutV7();
+    save();
+  }
+  // One-time: a New folder on the menu bar, after the others
+  if (!state.layoutV9) {
+    state.layoutV9 = true;
+    if (!state.categories.some(c => !c.parent && c.name.toLowerCase() === 'new')) {
+      const made = addCategory('New', null, 'teal');
+      made.order = Math.max(-1, ...state.categories.filter(c => !c.parent && c !== made).map(c => c.order || 0)) + 1;
+    }
     save();
   }
   // One-time: the small-words folder goes back to being called Chat, and Feelings
@@ -2713,6 +2724,7 @@ async function save() {
       starterDone: state.starterDone,
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
+      layoutV9: state.layoutV9,
       smallRow: state.smallRow,
       magicType: state.magicType,
       categories: state.categories,
@@ -5997,6 +6009,13 @@ function renderHome(reset) {
 // with. Taken from the layout exported on 3 Oct 2026; replace this one line to
 // change what a fresh install looks like.
 const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANK YOU","MORE","ALL DONE","AGAIN","I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO"],"small":true},{"id":2,"name":"Food","parent":12,"order":1,"color":"green","words":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"]},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"phrases":true},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN"]},{"id":5,"name":"People","parent":12,"order":3,"color":"pink","words":[]},{"id":6,"name":"Places","parent":12,"order":4,"color":"teal","words":["PARK","BENCH"]},{"id":7,"name":"Music","parent":3,"order":0,"color":"yellow","words":[]},{"id":9,"name":"TV","parent":3,"order":1,"color":"blue","words":["PEPPA PIG"]},{"id":10,"name":"Movies","parent":3,"order":2,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"]},{"id":11,"name":"Characters","parent":3,"order":5,"color":"purple","words":["PEPPA","GEORGE"]},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"strip":true},{"id":13,"name":"Things","parent":12,"order":2,"color":"yellow","words":["TRUCK","BEAR","FLICKER","VIDEO","MUSIC","YOUTUBE"]},{"id":14,"name":"Books","parent":3,"order":3,"color":"orange","words":[]},{"id":15,"name":"Games","parent":3,"order":4,"color":"pink","words":["PUZZLE"]},{"id":16,"name":"Body","parent":12,"order":5,"color":"red","words":["WATER"]},{"id":20,"name":"Feelings","parent":12,"order":6,"color":"teal","words":[],"nopop":true},{"id":21,"name":"Activities","parent":12,"order":7,"color":"red","words":["DANCING","SINGING"]},{"id":22,"name":"Toys","parent":3,"order":6,"color":"blue","words":["FLICKER"]},{"id":23,"name":"Opposites","parent":12,"order":8,"color":"purple","words":["UP","DOWN","COLD","QUIET","HOT"]}],"wordCase":{"PEPPA":"Peppa","GEORGE":"George","CARS":"Cars","FINDING NEMO":"Finding Nemo","COCO":"Coco","I":"I","LIKE":"like","LOVE":"love","SEE":"see","HEAR":"hear"},"smallRow":["I","MY","THE","A","MORE","NOT"],"builder":{"kids":[{"label":"I","kids":[{"label":"want","kids":[],"cats":[2,13,5,4,6,3]},{"label":"need","kids":[],"cats":[2,13,5,4,3,6,16]},{"label":"feel","kids":[],"cats":[20]},{"label":"like","kids":[],"cats":[]},{"label":"love","kids":[],"cats":[]},{"label":"see","kids":[],"cats":[]},{"label":"hear","kids":[],"cats":[]}],"cats":[]},{"label":"More","kids":[],"cats":[2,13,4,3,5,6]},{"label":"Stop","kids":[],"cats":[21,4,5]}],"cats":[]}}');
+// Additions to the built-in layout since that export
+if (!DEFAULT_LAYOUT.categories.some(c => !c.parent && c.name === 'New')) {
+  DEFAULT_LAYOUT.categories.push({
+    id: Math.max(...DEFAULT_LAYOUT.categories.map(c => c.id)) + 1,
+    name: 'New', parent: null, order: 3, color: 'teal', words: [],
+  });
+}
 function applyDefaultLayout() {
   const L = DEFAULT_LAYOUT;
   state.categories = L.categories.map(c => Object.assign(
@@ -6017,7 +6036,7 @@ function applyDefaultLayout() {
   state.bankSort = L.bankSort;
   // none of the step-by-step changes that older installs went through apply
   ['starterDone', 'groupsV2', 'groupsV3', 'groupsV4', 'groupsV5', 'groupsV6',
-   'layoutV7', 'layoutV8', 'builderV2'].forEach(k => { state[k] = true; });
+   'layoutV7', 'layoutV8', 'layoutV9', 'builderV2'].forEach(k => { state[k] = true; });
 }
 
 // Put back any built-in folder that is missing (deleted by accident, say), with
