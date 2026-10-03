@@ -478,8 +478,8 @@
     100% { transform: translate(-50%, -110%) scale(2.2); opacity: 0; }
   }
   /* a carried folder about to land before / after another */
-  .home-card.drop-before { box-shadow: -10px 0 0 var(--green), var(--shadow); }
-  .home-card.drop-after  { box-shadow: 10px 0 0 var(--green), var(--shadow); }
+  .home-card.drop-before { box-shadow: inset 14px 0 0 var(--green), var(--shadow); }
+  .home-card.drop-after  { box-shadow: inset -14px 0 0 var(--green), var(--shadow); }
   /* picked up and ready to move */
   .home-card.drag-ghost { outline: 6px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .home-card.drag-ghost { transition: transform 0.12s ease, opacity 0.12s ease; }
