@@ -2175,7 +2175,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 156 - 3 Oct';
+const BUILD = 'build 157 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6321,15 +6321,22 @@ function makeSmallStrip(rowH, base, owner) {
   if (!words.length) mk('+ small words', edit).classList.add('empty');
   return strip;
 }
+// Whose row: a folder has its own (until it is changed it shows the starting row), a builder page
+// has its own, and with no owner it is the starting row itself
+function isCatOwner(o) { return !!o && Array.isArray(o.words) && 'id' in o; }
+function smallRowList(owner) {
+  if (isCatOwner(owner)) return Array.isArray(owner.row) ? owner.row : (state.smallRow || []);
+  return (owner ? owner.small : state.smallRow) || [];
+}
 function smallRows(owner) {
   const rows = [[]];
-  ((owner ? owner.small : state.smallRow) || []).forEach(w => { if (w === '\n') rows.push([]); else rows[rows.length - 1].push(w); });
+  smallRowList(owner).forEach(w => { if (w === '\n') rows.push([]); else rows[rows.length - 1].push(w); });
   return rows.filter(r => r.length);
 }
 function setSmallRows(owner, rows) {
   const flat = [];
   rows.filter(r => r.length).forEach((r, i) => { if (i) flat.push('\n'); flat.push(...r); });
-  if (owner) owner.small = flat; else state.smallRow = flat;
+  if (isCatOwner(owner)) owner.row = flat; else if (owner) owner.small = flat; else state.smallRow = flat;
 }
 function openSmallRowPicker(owner, rowIndex) {
   // the shared rows above the Categories folders, or one builder page's own rows
@@ -6337,7 +6344,7 @@ function openSmallRowPicker(owner, rowIndex) {
   const at = Math.min(rowIndex || 0, rows.length);
   let picked = (rows[at] || []).slice();
   openWordSheet(body => {
-    sheetTitle(body, at >= rows.length && rows.length ? 'New row of small words' : (owner ? 'Small words on this page' : 'Small words row'));
+    sheetTitle(body, at >= rows.length && rows.length ? 'New row of small words' : (isCatOwner(owner) ? 'Small words for ' + owner.name : owner ? 'Small words on this page' : 'Small words row'));
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '6px';
     n.textContent = 'Tap the words for this row. Six fit across. The list comes from the Chat folder.';
@@ -6465,7 +6472,7 @@ function exportLayout() {
     categories: state.categories.map(c => ({
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
-      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, linkers: !!c.linkers, strip: !!c.strip, nopop: !!c.nopop,
+      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, strip: !!c.strip, nopop: !!c.nopop,
       phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
@@ -6546,7 +6553,7 @@ function renderBuilder(grid) {
   grid.style.gridAutoRows = 'auto';
   grid.style.gridTemplateRows = '';
   if ('cat' in here && hasSmallStrip(catById(here.cat))) {
-    const el = makeSmallStrip(rowH, base);
+    const el = makeSmallStrip(rowH, base, catById(here.cat));   // the folder's own row, the same one menu mode shows
     el.style.gridColumn = '1 / -1';
     grid.appendChild(el);
   } else if (!('cat' in here) && (here.small || []).length) {
@@ -6838,7 +6845,7 @@ function openFolderAdd(cat) {
       walk(null, 0);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    if (hasSmallStrip(cat)) body.appendChild(sheetBtn('Choose the small words row', '', () => openSmallRowPicker()));
+    if (hasSmallStrip(cat)) body.appendChild(sheetBtn('Choose the small words row', '', () => openSmallRowPicker(cat, 0)));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -7299,7 +7306,7 @@ function renderSlotGrid(grid, cat, folders) {
     bar.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
     bar.addEventListener('click', () => { state.rowOpen = !state.rowOpen; buzz(10); save(); renderHome(false); });
     el.appendChild(bar);
-    if (state.rowOpen) el.appendChild(makeSmallStrip(rowH, base));
+    if (state.rowOpen) el.appendChild(makeSmallStrip(rowH, base, cat));
     grid.appendChild(el);
   }
   const place = (el, cell) => {
