@@ -2175,7 +2175,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 158 - 3 Oct';
+const BUILD = 'build 159 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2340,6 +2340,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  caseV3: false,              // the one-time clearing of accidental first capitals
   linkV1: false,              // the one-time marking of Actions as a folder of linking words
   smallV3: false,            // the one-time creation of the Small words folder inside Chat
   rowOpen: false,             // whether the small words row above a folder's tiles is opened out (menu mode)
@@ -2504,6 +2505,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        caseV3: saved.caseV3 ?? false,
         linkV1: saved.linkV1 ?? false,
         smallV3: saved.smallV3 ?? false,
         rowOpen: !!saved.rowOpen,
@@ -2621,6 +2623,16 @@ async function load() {
   if (!state.smallV2) {
     state.smallV2 = true;
     seedSmallSet();
+    save();
+  }
+  // One-time: words that only kept a first capital because of how they were typed go back to small
+  // letters; names in People are left alone
+  if (!state.caseV3) {
+    state.caseV3 = true;
+    const named = w => categoriesOf(w).some(c => c.name.toLowerCase() === 'people');
+    Object.keys(state.wordCase || {}).forEach(k => {
+      if (k !== 'I' && state.wordCase[k] === titleCase(k) && !named(k)) delete state.wordCase[k];
+    });
     save();
   }
   // One-time: Actions holds linking words (verbs), which read in small letters
@@ -2791,6 +2803,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      caseV3: state.caseV3,
       linkV1: state.linkV1,
       smallV3: state.smallV3,
       rowOpen: state.rowOpen,
@@ -5487,6 +5500,9 @@ function rememberCase(raw, key) {
   if (!text || text === key) return;               // nothing worth keeping
   // an all-lower-case word is just the ordinary way words already read
   if (text === text.toLowerCase()) return;
+  // a plain first capital is usually the keyboard's doing, not a name: tiles read in small letters
+  // by default. A real name is given its capital with "Edit spelling or capitals".
+  if (key !== 'I' && text === titleCase(key)) return;
   state.wordCase = state.wordCase || {};
   state.wordCase[key] = text;
 }
@@ -6151,6 +6167,7 @@ function applyDefaultLayout() {
   state.smallV3 = true;
   ensureSmallFolder();
   state.linkV1 = true;
+  state.caseV3 = true;
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
 
@@ -7357,7 +7374,7 @@ function renderSlotGrid(grid, cat, folders) {
     t.className = 'hw';
     // on Recents / Popular every tile starts with a capital
     const label = bankLabel(w);
-    t.textContent = arrange ? label : label.charAt(0).toUpperCase() + label.slice(1);
+    t.textContent = label;     // small letters on every page, Recents / Popular included
     card.appendChild(t);
     card.addEventListener('click', () => {
       if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
