@@ -2103,7 +2103,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 112 - 3 Oct';
+const BUILD = 'build 113 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5941,6 +5941,8 @@ function renderSlotGrid(grid, cat, folders) {
       speakWord(w, 0.95);
       renderPhraseBar();
       renderMagic(w);
+      // picked from a sub-folder: step back up to the page of folders it came from
+      if (homePath.length > 1) { homePath = homePath.slice(0, -1); renderHome(true); }
     });
     attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, bankLabel(w));
