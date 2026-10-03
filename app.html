@@ -2066,7 +2066,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 99 - 3 Oct';
+const BUILD = 'build 100 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2211,6 +2211,7 @@ const state = {
   settingsTidied: false,      // the one-time clean-up of retired defaults
   groupsV2: false,            // the one-time move to the Categories layout
   groupsV3: false,            // the one-time reorder inside Categories
+  groupsV4: false,            // the one-time change to My Stuff's folders
   wordCase: {},               // how each title was written, for reading back
   tombs: { word: {}, cat: {}, catWord: {} },   // deletions, so they stay deleted
   revives: { word: {}, cat: {}, catWord: {} }, // and deliberate re-adds, which undo them
@@ -2351,6 +2352,7 @@ async function load() {
         settingsTidied: saved.settingsTidied ?? false,
         groupsV2: saved.groupsV2 ?? false,
         groupsV3: saved.groupsV3 ?? false,
+        groupsV4: saved.groupsV4 ?? false,
         wordCase: saved.wordCase || {},
         tombs: saved.tombs || { word: {}, cat: {}, catWord: {} },
         revives: saved.revives || { word: {}, cat: {}, catWord: {} },
@@ -2410,6 +2412,21 @@ async function load() {
   if (!state.groupsV2) {
     state.groupsV2 = true;
     if (state.categories.length) applyDefaultGroups();
+    save();
+  }
+  // One-time: My Stuff holds Music (was Songs), TV (was TV Shows), Movies, Books,
+  // Games and Characters. Videos is dropped if it is empty, otherwise kept last.
+  if (!state.groupsV4) {
+    state.groupsV4 = true;
+    if (state.categories.length) {
+      applyDefaultGroups();
+      const mine = state.categories.find(c => !c.parent && c.name.toLowerCase() === 'my stuff');
+      const vids = mine && state.categories.find(c => c.parent === mine.id && c.name.toLowerCase() === 'videos');
+      if (vids) {
+        if (!(vids.words || []).length && !childrenOf(vids.id, true).length) deleteCategory(vids.id);
+        else vids.order = 99;
+      }
+    }
     save();
   }
   if (state.categories.length === 0) applyDefaultGroups();
@@ -2512,6 +2529,7 @@ async function save() {
       settingsTidied: state.settingsTidied,
       groupsV2: state.groupsV2,
       groupsV3: state.groupsV3,
+      groupsV4: state.groupsV4,
       wordCase: state.wordCase,
       tombs: state.tombs,
       revives: state.revives,
@@ -4944,16 +4962,16 @@ const DEFAULT_COLORS = {
   Chat: 'blue', Categories: 'green', 'My Stuff': 'orange',
   Food: 'green', Activities: 'purple', People: 'pink', Places: 'teal', Things: 'yellow',
 };
-const MY_STUFF_SUBS = ['Songs', 'Videos', 'TV Shows', 'Movies', 'Characters'];
+const MY_STUFF_SUBS = ['Music', 'TV', 'Movies', 'Books', 'Games', 'Characters'];
 // The starter vocabulary, so a fresh device opens with the words already in place
-const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nCategories:\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\n  Activities: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\n  People:\n  Places:\n  Things: truck, bear\nMy Stuff:\n  Songs:\n  Videos:\n  TV Shows: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Characters: peppa, george\n';
+const STARTER_WORDS = 'Chat: hi, bye, help, more, open, play, fix, again, yes, no, stop, quiet, water, go, read, watch, flicker\nCategories:\n  Food: peach, plum, apple, strawberries, cherry, chicken, lollipop, swedish fish, cookies, popsicles\n  Activities: dance, music, walk, park, bench, spin, spray, video, youtube, puzzle, swing, read\n  People:\n  Places:\n  Things: truck, bear\nMy Stuff:\n  Music:\n  TV: peppa pig\n  Movies: cars, kpop demon hunters, nemo, coco\n  Books:\n  Games:\n  Characters: peppa, george\n';
 // Older names map onto the current set so nobody ends up with both
 const GROUP_ALIASES = {
   'conversation': 'Chat', 'social': 'Chat',
   'eat': 'Food',
   'action': 'Activities', 'activity': 'Activities',
   'labels': 'My Stuff', 'stuff': 'My Stuff',
-  'shows': 'TV Shows', 'tv': 'TV Shows', 'music': 'Songs', 'youtube': 'Videos',
+  'tv shows': 'TV', 'shows': 'TV', 'songs': 'Music',
 };
 function mergeGroups(fromCat, toCat) {
   if (!fromCat || !toCat || fromCat.id === toCat.id) return;
