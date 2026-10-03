@@ -2173,7 +2173,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 152 - 3 Oct';
+const BUILD = 'build 153 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2338,6 +2338,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  linkV1: false,              // the one-time marking of Actions as a folder of linking words
   smallV3: false,            // the one-time creation of the Small words folder inside Chat
   smallOpen: false,           // whether the Small words row in Chat is opened out
   smallV2: false,            // the one-time marking of which Chat words are small words
@@ -2500,6 +2501,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        linkV1: saved.linkV1 ?? false,
         smallV3: saved.smallV3 ?? false,
         smallOpen: !!saved.smallOpen,
         smallV2: saved.smallV2 ?? false,
@@ -2615,6 +2617,12 @@ async function load() {
   if (!state.smallV2) {
     state.smallV2 = true;
     seedSmallSet();
+    save();
+  }
+  // One-time: Actions holds linking words (verbs), which read in small letters
+  if (!state.linkV1) {
+    state.linkV1 = true;
+    state.categories.forEach(c => { if (c.name.toLowerCase() === 'actions') c.linkers = true; });
     save();
   }
   // One-time: the small words become a real folder inside Chat, so it can be linked like any other
@@ -2779,6 +2787,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      linkV1: state.linkV1,
       smallV3: state.smallV3,
       smallOpen: state.smallOpen,
       smallV2: state.smallV2,
@@ -5491,7 +5500,7 @@ function capFirst(t) {
 function bankLabel(w) { return (isSmallWord(w) || isLinkWord(w)) ? sentenceLabel(w) : capFirst(sentenceLabel(w)); }
 // A linking word: a builder tile, or a word in a group that leads somewhere. These read in small
 // letters everywhere - on tiles and in the bar, in menu mode and builder mode.
-let linkWordCache = null;
+var linkWordCache = null;
 function isLinkWord(w) {
   if (!linkWordCache) {
     linkWordCache = new Set();
@@ -5499,6 +5508,8 @@ function isLinkWord(w) {
     if (b) {
       const walk = n => { const k = normaliseWord(n.label || ''); if (k) linkWordCache.add(k); (n.kids || []).forEach(walk); };
       (b.kids || []).forEach(walk);
+      // every word in a folder marked as linking words (Actions) counts too
+      state.categories.forEach(c => { if (c.linkers) (c.words || []).forEach(w => linkWordCache.add(w)); });
       const ok = id => { const x = id ? catById(id) : null; return !!x && !x.hidden; };
       Object.keys(b.words || {}).forEach(k => {
         const n = b.words[k];
@@ -5515,6 +5526,8 @@ function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) 
 function sentenceLabel(w) {
   const key = w || '';
   const kept = (state.wordCase || {})[key];
+  // a linking word is small letters even if it was once saved with a first capital ("Go")
+  if (kept && key !== 'I' && isLinkWord(key) && kept.slice(1) === kept.slice(1).toLowerCase()) return kept.toLowerCase();
   if (kept) return kept;
   if (key === 'I' || key.startsWith("I'")) return 'I' + key.slice(1).toLowerCase();
   // anything in My Stuff is a name or a title, so it reads with capitals
@@ -6131,6 +6144,8 @@ function applyDefaultLayout() {
   if (L.smallWords) L.smallWords.forEach(w => { state.smallSet[w] = true; }); else seedSmallSet();
   state.smallV3 = true;
   ensureSmallFolder();
+  state.linkV1 = true;
+  state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
 
 // Put back any built-in folder that is missing (deleted by accident, say), with
@@ -6445,7 +6460,7 @@ function exportLayout() {
     categories: state.categories.map(c => ({
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
-      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, strip: !!c.strip, nopop: !!c.nopop,
+      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, linkers: !!c.linkers, strip: !!c.strip, nopop: !!c.nopop,
       phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
@@ -6912,6 +6927,16 @@ function openFolderEdit(c, extra) {
       walk(null, 1);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
+    {
+      const lb = sheetBtn('', '', () => { c.linkers = !c.linkers; save(); paintL(); renderHome(false); });
+      const paintL = () => {
+        lb.textContent = c.linkers ? '\u2713  Linking words: lowercase (tap to turn off)' : 'Make these linking words (lowercase)';
+        lb.style.background = c.linkers ? 'var(--green)' : '';
+        lb.style.color = c.linkers ? '#fff' : '';
+      };
+      paintL();
+      body.appendChild(lb);
+    }
     // hidden, not deleted: it and everything in it can be brought back from settings
     body.appendChild(sheetBtn('Hide folder', 'danger', () => {
       c.hidden = true;
