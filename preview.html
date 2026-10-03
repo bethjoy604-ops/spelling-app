@@ -846,18 +846,18 @@
   /* the row of small words above a folder's tiles */
   .small-strip {
     display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
-    padding: 10px; border-radius: 16px; background: rgba(255,255,255,0.32);
+    padding: 10px; border-radius: 16px; background: #4a4d52;
+    justify-self: start; max-width: 100%; box-sizing: border-box;
   }
   .small-section { display: flex; flex-direction: column; gap: 14px; padding-top: 6px; }
-  .small-strip.plain { background: none; padding: 0; }
   .small-tile {
-    border: none; border-radius: 12px; background: var(--blue-soft); color: var(--ink);
+    border: none; border-radius: 12px; background: #fff; color: var(--ink);
     font-family: inherit; font-weight: 900; cursor: pointer; min-width: 0; padding: 0 6px;
     overflow: hidden; white-space: nowrap; -webkit-touch-callout: none;
   }
   .small-tile:active { transform: scale(0.96); }
   .small-tile.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
-  .small-tile.empty { grid-column: 1 / -1; background: rgba(255,255,255,0.5); color: rgba(0,0,0,0.5); }
+  .small-tile.empty { grid-column: 1 / -1; background: rgba(255,255,255,0.85); color: rgba(0,0,0,0.5); padding: 0 18px; }
   .small-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .small-pick .pick-row { text-align: center; }
   /* the builder's transcript, under its first page */
@@ -2163,7 +2163,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 143 - 3 Oct';
+const BUILD = 'build 144 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6224,6 +6224,12 @@ function makeSmallStrip(rowH, base, owner) {
     if (i === 0) b.style.gridColumnStart = 1;     // each row starts on its own line
   }));
   edit = () => openSmallRowPicker(owner, 0);
+  // the panel is only as wide as its longest row (six across at most), so it ends after the last word
+  const across = Math.min(6, Math.max(1, ...shown.map(r => r.length)));
+  const gridW = document.getElementById('homeGrid').clientWidth;
+  const colW = Math.floor((gridW - 20 - 50) / 6);
+  if (words.length) strip.style.gridTemplateColumns = 'repeat(' + across + ', ' + colW + 'px)';
+  else strip.style.gridTemplateColumns = 'auto';
   if (!words.length) mk('+ small words', edit).classList.add('empty');
   return strip;
 }
@@ -7118,7 +7124,8 @@ function renderSlotGrid(grid, cat, folders) {
     line.className = 'bl-line'; line.style.flex = 'none';
     sec.appendChild(line);
     const box = document.createElement('div');
-    box.className = 'small-strip plain';
+    box.className = 'small-strip';
+    box.style.justifySelf = 'stretch';
     const h = Math.max(48, Math.round(rowH / 2));
     smalls.forEach(w => {
       const b = document.createElement('button');
