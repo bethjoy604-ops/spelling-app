@@ -2030,7 +2030,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 85 - 3 Oct';
+const BUILD = 'build 86 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3589,7 +3589,11 @@ function casedText(w) {
   const key = w || '';
   const kept = (state.wordCase || {})[key];
   if (kept && kept.toUpperCase() === key) return kept;
-  if (key.includes(' ')) return key.split(' ').map(casedText).join(' ');
+  if (key.includes(' ')) {
+    // a title in a phrase folder reads as a title, the same as it does on its tile
+    if (categoriesOf(key).some(catAllowsPhrases)) return titleCase(key);
+    return key.split(' ').map(casedText).join(' ');
+  }
   return key.toLowerCase();
 }
 function usesShift() { return state.caseMode === 2 || state.caseMode === 3; }
