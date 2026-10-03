@@ -2103,7 +2103,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 113 - 3 Oct';
+const BUILD = 'build 114 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4226,7 +4226,11 @@ function render() {
     r.className = 'row';
     if (ri === 2) {
       // the up arrow sits above 123; on the 123 page an empty slot keeps the row lined up
-      const shiftKey = makeSpecialKey('\u21E7', 'shift', 'side shift');
+      const shiftKey = makeSpecialKey('', 'shift', 'side shift');
+      shiftKey.setAttribute('aria-label', 'Capital letter');
+      // a solid arrow, drawn here so it looks the same on every device
+      shiftKey.innerHTML = '<svg viewBox="0 0 24 24" width="1.25em" height="1.25em" aria-hidden="true">' +
+        '<polygon points="12,2.5 22.5,13 16,13 16,21.5 8,21.5 8,13 1.5,13" fill="currentColor"/></svg>';
       if (kbNumbers) shiftKey.classList.add('hidden');
       else {
         if (!usesShift()) shiftKey.classList.add('disabled');
