@@ -829,6 +829,14 @@
     padding: 0; display: flex; align-items: center; justify-content: center;
     font-size: 22px;
   }
+  /* settings: hidden folders */
+  .hf-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .hf-name { flex: 1; min-width: 0; font-weight: 800; font-size: 15px; }
+  .hf-btn {
+    border: none; border-radius: 10px; padding: 8px 14px; font-family: inherit; font-weight: 800; font-size: 14px;
+    background: var(--green-soft); color: #1a6c1a; cursor: pointer;
+  }
+  .hf-btn.danger { background: var(--red-soft); color: #c0392b; }
   /* the row of small words above a folder's tiles */
   .small-strip {
     display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px;
@@ -1997,6 +2005,10 @@
         <div class="seg-row" id="segGridFill"></div>
         <div class="help-note">Every tile uses the same size of type; each one is only as wide as its word, and the rows fill the width neatly. This number sets how big that type is — pick 6 for big tiles, 12 for smaller ones. More words than that simply carry on below, so nothing is ever hidden.</div>
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
+        <div class="sublabel" style="margin-top:14px;">Hidden folders</div>
+        <div id="hiddenFolders"></div>
+        <button class="mbtn action" id="restoreFoldersBtn" style="width:100%; margin-top:8px;">Bring back missing default folders</button>
+        <div class="help-note">Puts back any built-in folder that has been deleted, such as Chat, with its original words. Folders that are still there are left exactly as they are.</div>
         <button class="mbtn action" id="exportLayoutBtn" style="width:100%; margin-top:8px;">Export my layout</button>
         <div class="help-note">Saves the folders, the words and their places, the builder pages and the small-words rows as one file, so the layout on this device can be made the built-in default.</div>
         <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
@@ -2143,7 +2155,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 131 - 3 Oct';
+const BUILD = 'build 132 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6008,6 +6020,42 @@ function applyDefaultLayout() {
    'layoutV7', 'layoutV8', 'builderV2'].forEach(k => { state[k] = true; });
 }
 
+// Put back any built-in folder that is missing (deleted by accident, say), with
+// the words it starts with. Folders that still exist are not touched.
+function restoreDefaultFolders() {
+  const made = [];
+  const real = {};                       // built-in id -> the folder on this device
+  const todo = DEFAULT_LAYOUT.categories.slice();
+  let guard = 0;
+  while (todo.length && guard++ < 500) {
+    const d = todo.shift();
+    if (d.parent && !(d.parent in real)) { todo.push(d); continue; }   // its parent comes first
+    const parentId = d.parent ? real[d.parent].id : null;
+    let c = state.categories.find(x => (x.parent || null) === parentId && x.name.toLowerCase() === d.name.toLowerCase());
+    if (!c) {
+      c = addCategory(d.name, parentId, d.color);
+      c.order = d.order;
+      ['small', 'strip', 'nopop', 'phrases'].forEach(k => { if (d[k] !== undefined) c[k] = d[k]; });
+      d.words.forEach(w => {
+        c.words.push(w);
+        if (!state.words.includes(w)) state.words.push(w);
+        if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+        if (w.includes(' ') && !catAllowsPhrases(c)) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[w] = true; }
+        if (DEFAULT_LAYOUT.wordCase[w] && !(state.wordCase || {})[w]) { state.wordCase = state.wordCase || {}; state.wordCase[w] = DEFAULT_LAYOUT.wordCase[w]; }
+      });
+      made.push(d.name);
+    }
+    real[d.id] = c;
+  }
+  return made;
+}
+document.getElementById('restoreFoldersBtn').addEventListener('click', () => {
+  const made = restoreDefaultFolders();
+  save(); renderSettings();
+  if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+  alert(made.length ? 'Brought back: ' + made.join(', ') + '.' : 'Nothing was missing. All the built-in folders are already there.');
+});
+
 // ===== Small words =====
 // Words in the Small Words folder (articles, pronouns and the like) are kept
 // off Recents / Popular, and a row of them sits above the tiles in each folder
@@ -6115,6 +6163,8 @@ function smallWordsFolder() {
 function offPopular(w) {
   const cats = categoriesOf(w);
   if (cats.some(isSmallCat)) return true;
+  const gone = c => { let x = c, g = 0; while (x && g++ < 20) { if (x.hidden) return true; x = x.parent ? catById(x.parent) : null; } return false; };
+  if (cats.length && cats.every(gone)) return true;      // only in hidden folders
   const flagged = c => { let x = c, g = 0; while (x && g++ < 20) { if (x.nopop) return true; x = x.parent ? catById(x.parent) : null; } return false; };
   return cats.length > 0 && cats.every(flagged);
 }
@@ -6347,7 +6397,7 @@ function renderBuilder(grid) {
     });
     here.cats.forEach(cid => {
       const c = catById(cid);
-      if (!c) return;
+      if (!c || c.hidden) return;
       holdable(tile(c.name, true), () => { builderPath.push({ cat: cid }); renderHome(true); },
         () => openBuilderLink(here, cid));
       count++;
@@ -6537,7 +6587,51 @@ function openFolderAdd(cat) {
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
-// Rename, move or delete any folder, the default ones included
+// Settings: the folders that have been hidden, each with a way back
+function renderHiddenFolders() {
+  const box = document.getElementById('hiddenFolders');
+  if (!box) return;
+  box.innerHTML = '';
+  const hidden = state.categories.filter(c => c.hidden);
+  if (!hidden.length) {
+    const n = document.createElement('div');
+    n.className = 'help-note';
+    n.textContent = 'No hidden folders. To hide one, hold it and choose Hide folder.';
+    box.appendChild(n);
+    return;
+  }
+  hidden.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'hf-row';
+    const name = document.createElement('span');
+    name.className = 'hf-name';
+    const where = pathTo(c.id).slice(0, -1).map(id => (catById(id) || {}).name).filter(Boolean).join(' \u203A ');
+    const n = (c.words || []).length;
+    name.textContent = c.name + (where ? '  (in ' + where + ')' : '') + '  \u00b7 ' + n + (n === 1 ? ' word' : ' words');
+    row.appendChild(name);
+    const show = document.createElement('button');
+    show.className = 'hf-btn';
+    show.textContent = 'Show';
+    show.addEventListener('click', () => {
+      c.hidden = false;
+      save(); renderSettings();
+      if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+    });
+    row.appendChild(show);
+    const del = document.createElement('button');
+    del.className = 'hf-btn danger';
+    del.textContent = 'Delete';
+    del.addEventListener('click', () => {
+      if (!confirm('Delete "' + c.name + '" for good, with any folders inside it? Its words stay in the word bank.')) return;
+      deleteCategory(c.id);
+      save(); renderSettings();
+      if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+    });
+    row.appendChild(del);
+    box.appendChild(row);
+  });
+}
+// Rename, move or hide any folder, the default ones included
 function openFolderEdit(c, extra) {
   if (!c) return;
   const done = () => { save(); closeWordSheet(); renderHome(true); };
@@ -6583,16 +6677,17 @@ function openFolderEdit(c, extra) {
       walk(null, 1);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    body.appendChild(sheetBtn('Delete folder', 'danger', () => {
-      const kids = childrenOf(c.id, true).length;
-      const msg = 'Delete the folder "' + c.name + '"' + (kids ? ' and the folders inside it' : '') +
-                  '? Its words stay in the word bank but will not be in this folder.';
-      if (!confirm(msg)) return;
+    // hidden, not deleted: it and everything in it can be brought back from settings
+    body.appendChild(sheetBtn('Hide folder', 'danger', () => {
+      c.hidden = true;
       if (homePath.includes(c.id)) homePath = homePath.slice(0, homePath.indexOf(c.id));
-      builderPath = builderPath.filter(x => !('cat' in x) || (x.cat !== c.id && catById(x.cat)));
-      deleteCategory(c.id);
+      builderPath = builderPath.filter(x => !('cat' in x) || x.cat !== c.id);
       done();
     }));
+    const hn = document.createElement('div');
+    hn.className = 'help-note'; hn.style.marginTop = '10px';
+    hn.textContent = 'A hidden folder keeps its words and sub-folders. Bring it back under Settings, Hidden folders.';
+    body.appendChild(hn);
     if (extra) extra(body);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
@@ -8035,6 +8130,7 @@ function renderSettings() {
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
   const hiddenN = Object.keys(Object.assign({}, state.hiddenWords || {}, state.recentsHidden || {})).length;
+  renderHiddenFolders();
   const ub = document.getElementById('unhideWordsBtn');
   ub.textContent = hiddenN ? ('Show ' + hiddenN + ' hidden word' + (hiddenN === 1 ? '' : 's')) : 'No hidden words';
   ub.style.opacity = hiddenN ? '1' : '0.5';
