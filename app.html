@@ -2163,7 +2163,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 142 - 3 Oct';
+const BUILD = 'build 143 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6538,9 +6538,12 @@ function renderBuilder(grid) {
     here.kids.forEach(k => {
       const key = normaliseWord(k.label);
       const kt = tile(k.label, false);
-      if (k.kids.length || k.cats.length) kt.classList.add('link-word');
+      const goCat = () => { const c = k.go ? catById(k.go) : null; return (c && !c.hidden) ? c : null; };
+      if (k.kids.length || k.cats.length || goCat()) kt.classList.add('link-word');
       movable(kt, here.kids, k, 'kids', () => {
         if (key) builderSay(key);
+        // linked straight to a folder of words: open its words right away
+        if (goCat()) { builderPath.push({ cat: k.go, via: key }); renderHome(true); return; }
         // a tile with nothing after it leaves the page as it is, so more can be added
         if (k.kids.length || k.cats.length) { builderPath.push(k); renderHome(true); }
       }, () => openBuilderTile(here, k));
@@ -6917,6 +6920,39 @@ function openBuilderAddTo(here, heading) {
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
     body.appendChild(sheetBtn('A choice board', '', () => openChoiceBoardPicker(here)));
+    if (here !== state.builder) body.appendChild(sheetBtn('A folder of words', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Open which folder?');
+      const n = document.createElement('div');
+      n.className = 'help-note'; n.style.marginTop = '6px';
+      n.textContent = 'After "' + here.label + '" is tapped, this folder\'s words open straight away. Tap the green one to take the link off.';
+      b2.appendChild(n);
+      const list = document.createElement('div');
+      list.className = 'pick-list';
+      b2.appendChild(list);
+      let chosen = here.go || null;
+      const rows = [];
+      const walk = (parent, depth) => childrenOf(parent).forEach(c => {
+        const r = document.createElement('button');
+        r.className = 'pick-row';
+        r.style.marginLeft = (depth * 18) + 'px';
+        r.textContent = c.name;
+        r.addEventListener('click', () => { chosen = chosen === c.id ? null : c.id; paint(); });
+        rows.push([r, c]);
+        list.appendChild(r);
+        walk(c.id, depth + 1);
+      });
+      const paint = () => rows.forEach(([r, c]) => {
+        r.classList.toggle('on', chosen === c.id);
+        r.textContent = (chosen === c.id ? '\u2713  ' : '') + c.name;
+      });
+      walk(null, 0);
+      paint();
+      b2.appendChild(sheetBtn('Done', 'primary', () => {
+        if (chosen) here.go = chosen; else delete here.go;
+        save(); closeWordSheet(); renderHome(true);
+      }));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
     body.appendChild(sheetBtn('Small words', '', () => openSmallRowPicker(here)));
     body.appendChild(sheetBtn('A new choice board', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Name the new choice board');
@@ -6987,6 +7023,7 @@ document.getElementById('homeBuilderBtn').addEventListener('click', () => {
 document.getElementById('builderBackBtn').addEventListener('click', () => {
   const left = builderPath.pop();
   // stepping back over a word takes that word out of the bar again
+  if (left && 'cat' in left && left.via && homePhrase[homePhrase.length - 1] === left.via) homePhrase.pop();
   if (left && !('cat' in left)) {
     const key = normaliseWord(left.label);
     if (key && homePhrase[homePhrase.length - 1] === key) homePhrase.pop();
