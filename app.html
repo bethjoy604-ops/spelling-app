@@ -319,6 +319,7 @@
   .chat-words .pb-chip { font-size: 1em; }
   .chat-words .chat-typing { color: var(--ink); }
   .chat-row { flex: none; min-height: 52px; }
+  .chat-group { display: flex; flex-direction: column; gap: 8px; padding: 6px 0 10px; }
   .chat-suggest { flex: 1; min-width: 0; display: flex; gap: 8px; overflow-x: auto; align-items: center; }
   .chat-suggest button {
     flex: none; border: none; border-radius: 14px; background: var(--surface); color: var(--ink);
@@ -1599,7 +1600,6 @@
     <button class="key enter home-enter" id="chatSend" aria-label="Send reply">&#9166;</button>
   </div>
   <div class="controls-row chat-row">
-    <button class="ctl icon" id="chatHomeBtn" aria-label="Home">&#127968;</button>
     <div class="chat-suggest" id="chatSuggest"></div>
   </div>
   <div class="keyboard chat-keys" id="chatKeys"></div>
@@ -2223,7 +2223,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 168 - 3 Oct';
+const BUILD = 'build 169 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2378,6 +2378,7 @@ const state = {
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
   recentsHidden: {},          // words taken off the Recents / Popular page only
+  chatLog: [],                // the conversation: { text, replies: [], t } per message, oldest first
   chatMode: false,            // home enter key: on = open the chat page with the message on top
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
   builderMode: false,         // home shows the sentence builder's pages instead of the menu and tiles
@@ -2544,6 +2545,7 @@ async function load() {
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
         recentsHidden: saved.recentsHidden || {},
+        chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [],
         chatMode: saved.chatMode ?? false,
         speakMode: saved.speakMode ?? false,
         builderMode: saved.builderMode ?? false,
@@ -2843,6 +2845,7 @@ async function save() {
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
       recentsHidden: state.recentsHidden,
+      chatLog: state.chatLog,
       chatMode: state.chatMode,
       speakMode: state.speakMode,
       builderMode: state.builderMode,
@@ -5801,7 +5804,7 @@ function homeEnter() {
   renderHome(true);
 }
 // ===== Chat mode: enter opens a page with the message on top and a bar to answer in =====
-let chatThread = [];        // { from: 'me' | 'reply', text }
+let chatNow = null;         // the message on the chat page: { text, replies: [], t }, also kept in state.chatLog
 let chatReply = [];         // the answer so far: { key, text } per word
 let chatPrefix = '';        // letters typed for the next word
 function chatSay(text) { if (state.speakMode && text) { warmSpeech(); speakWord(text, 0.95); } }
@@ -5812,7 +5815,8 @@ function openChatWith(words) {
   words.forEach(w => { const h = state.wordHistory[w] || { n: 0, t: 0 }; h.n++; h.t = now; state.wordHistory[w] = h; });
   homePhrase = [];
   hideMagic();
-  chatThread = [{ from: 'me', text }];
+  chatNow = { text, replies: [], t: now };
+  state.chatLog = (state.chatLog || []).concat([chatNow]).slice(-200);
   chatReply = []; chatPrefix = '';
   save();
   buzz(15);
@@ -5828,12 +5832,7 @@ function chatCommitPrefix() {
 function renderChat() {
   const th = document.getElementById('chatThread');
   th.innerHTML = '';
-  chatThread.forEach(m => {
-    const d = document.createElement('div');
-    d.className = 'chat-bubble' + (m.from === 'reply' ? ' reply' : '');
-    d.textContent = m.text;
-    th.appendChild(d);
-  });
+  if (chatNow) chatBubbles(chatNow).forEach(d => th.appendChild(d));
   th.scrollTop = th.scrollHeight;
   const box = document.getElementById('chatWords');
   box.innerHTML = '';
@@ -5856,12 +5855,6 @@ function renderChat() {
   sg.innerHTML = '';
   const q = chatPrefix.toUpperCase();
   const hits = q ? searchWords(q).filter(r => r.word.startsWith(q) && !state.hiddenWords[r.word]).slice(0, 12) : [];
-  if (!hits.length) {
-    const n = document.createElement('span');
-    n.className = 'hint';
-    n.textContent = q ? 'keep typing, then space or \u23ce' : 'tap letters to find a word';
-    sg.appendChild(n);
-  }
   hits.forEach(r => {
     const b = document.createElement('button');
     b.textContent = sentenceLabel(r.word);
@@ -5875,15 +5868,45 @@ function renderChat() {
     sg.appendChild(b);
   });
 }
+function chatBubbles(m) {
+  const mk = (text, reply) => {
+    const d = document.createElement('div');
+    d.className = 'chat-bubble' + (reply ? ' reply' : '');
+    d.textContent = text;
+    return d;
+  };
+  return [mk(m.text, false)].concat((m.replies || []).map(r => mk(r, true)));
+}
+// The green enter on the chat page: any reply is added to the conversation, then back home
 function chatSendReply() {
   chatCommitPrefix();
-  if (!chatReply.length) { renderChat(); return; }
-  const text = chatReply.map(w => w.text).join(' ').replace(/ \?/g, '?');
-  chatThread.push({ from: 'reply', text });
-  chatSay(chatReply.map(w => w.key).join(' '));
-  chatReply = [];
+  if (chatReply.length && chatNow) {
+    chatNow.replies.push(chatReply.map(w => w.text).join(' ').replace(/ \?/g, '?'));
+    chatSay(chatReply.map(w => w.key).join(' '));
+  }
+  chatReply = []; chatPrefix = '';
   buzz(15);
-  renderChat();
+  save();
+  showHome();
+}
+// On the builder's first page, chat mode shows the conversation where the transcript usually is:
+// the newest message first, each with its replies under it
+function renderChatLog(grid, tileType) {
+  const box = document.createElement('div');
+  box.className = 'builder-log chat-log';
+  const head = document.createElement('div');
+  head.className = 'bl-head';
+  const line = document.createElement('div');
+  line.className = 'bl-line';
+  head.appendChild(line);
+  box.appendChild(head);
+  (state.chatLog || []).slice(-30).reverse().forEach(m => {
+    const g = document.createElement('div');
+    g.className = 'chat-group';
+    chatBubbles(m).forEach(d => { d.style.fontSize = Math.round(tileType * 0.85) + 'px'; g.appendChild(d); });
+    box.appendChild(g);
+  });
+  grid.appendChild(box);
 }
 (function buildChatKeys() {
   const kb = document.getElementById('chatKeys');
@@ -5908,12 +5931,11 @@ function chatSendReply() {
   kb.appendChild(last);
   document.getElementById('chatSend').addEventListener('click', chatSendReply);
   document.getElementById('chatClear').addEventListener('click', () => { chatReply = []; chatPrefix = ''; renderChat(); });
-  document.getElementById('chatHomeBtn').addEventListener('click', () => { chatReply = []; chatPrefix = ''; showHome(); });
 })();
 document.getElementById('homeChatBtn').addEventListener('click', () => {
   state.chatMode = !state.chatMode;
   buzz(10);
-  save(); renderSpeakBtn();
+  save(); renderHome(true);
 });
 function renderSpeakBtn() {
   const cb = document.getElementById('homeChatBtn');
@@ -6913,7 +6935,7 @@ function renderBuilder(grid) {
     n.textContent = ('cat' in here) ? 'This folder is empty.' : 'Nothing here yet — use + to add a word or a choice board.';
     grid.appendChild(n);
   }
-  if (!builderPath.length) renderBuilderLog(grid, base);
+  if (!builderPath.length) { if (state.chatMode) renderChatLog(grid, base); else renderBuilderLog(grid, base); }
 }
 // Under the first page: a line, then what has been said, newest first
 function renderBuilderLog(grid, tileType) {
