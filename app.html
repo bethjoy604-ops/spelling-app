@@ -827,6 +827,20 @@
     padding: 0; display: flex; align-items: center; justify-content: center;
     font-size: 22px;
   }
+  /* the builder's transcript, under its first page */
+  .builder-log { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
+  .bl-head { display: flex; align-items: center; gap: 12px; min-height: 30px; margin-top: 6px; }
+  .bl-line { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.75); }
+  .bl-clear {
+    border: none; background: none; font-family: inherit; font-size: 14px; font-weight: 800;
+    color: rgba(0,0,0,0.5); cursor: pointer; padding: 4px 6px;
+  }
+  .bl-row {
+    text-align: left; border: none; border-radius: 14px; background: rgba(255,255,255,0.6);
+    padding: 14px 20px; font-family: inherit; font-size: clamp(20px, 3.2vmin, 30px); font-weight: 900;
+    color: var(--ink); cursor: pointer;
+  }
+  .bl-row:first-of-type { background: var(--surface); box-shadow: var(--shadow); }
   /* speak mode / builder switched off: the icon is greyed out */
   #homeSpeakBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
   #builderBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
@@ -2109,7 +2123,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 120 - 3 Oct';
+const BUILD = 'build 121 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2268,6 +2282,7 @@ const state = {
   builderMode: false,         // home shows the sentence builder's pages instead of the menu and tiles
   builder: null,              // the builder's tree of pages; made from the defaults the first time
   builderV2: false,           // the one-time rename of All Done to Stop
+  builderLog: [],             // sentences built in the builder, newest first
   homeModesOpen: false,       // the fold-down options row on home
   railOpen: true,             // the folder menu on home: showing by default, the arrow folds it away
   barV2: true,                // marks saves made since the strip became folded by default
@@ -2418,6 +2433,7 @@ async function load() {
         builderMode: saved.builderMode ?? false,
         builder: saved.builder || null,
         builderV2: saved.builderV2 ?? false,
+        builderLog: Array.isArray(saved.builderLog) ? saved.builderLog : [],
         magicType: saved.magicType ?? true,
         categories: saved.categories || [],
         catSeq: saved.catSeq || 1,
@@ -2625,6 +2641,7 @@ async function save() {
       builderMode: state.builderMode,
       builder: state.builder,
       builderV2: state.builderV2,
+      builderLog: state.builderLog,
       magicType: state.magicType,
       categories: state.categories,
       catSeq: state.catSeq,
@@ -5461,7 +5478,11 @@ document.getElementById('pbGo').addEventListener('click', () => {
 // Enter on home: in speak mode the tiles in the bar are read aloud and the bar
 // clears; otherwise they go to the spelling page
 function homeEnter() {
-  if (state.builderMode && homePhrase.length) builderPath = [];   // the sentence is done: back to the first page
+  if (state.builderMode && homePhrase.length) {
+    builderPath = [];                       // the sentence is done: back to the first page
+    // and it joins the transcript under the first page, newest at the top
+    state.builderLog = [{ words: homePhrase.slice(), t: Date.now() }].concat(state.builderLog || []).slice(0, 60);
+  }
   if (!state.speakMode) { startPhraseFromHome(); return; }
   if (!homePhrase.length) return;
   warmSpeech();
@@ -5915,11 +5936,12 @@ function renderBuilder(grid) {
   grid.innerHTML = '';
   grid.scrollTop = 0;
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
-  grid.style.gridAutoRows = rowH + 'px';
+  grid.style.gridAutoRows = 'auto';
 
   const tile = (label, folder) => {
     const card = document.createElement('button');
     card.className = 'home-card' + (folder ? ' folder-card' : '');
+    card.style.height = rowH + 'px';   // tiles carry their own height so the transcript rows can be slimmer
     const t = document.createElement('span');
     t.className = 'hw';
     t.textContent = label;
@@ -5990,6 +6012,45 @@ function renderBuilder(grid) {
     n.textContent = ('cat' in here) ? 'This folder is empty.' : 'Nothing here yet — use + to add a word or a folder.';
     grid.appendChild(n);
   }
+  if (!builderPath.length) renderBuilderLog(grid);
+}
+// Under the first page: a line, then what has been said, newest first
+function renderBuilderLog(grid) {
+  const log = state.builderLog || [];
+  const box = document.createElement('div');
+  box.className = 'builder-log';
+  const head = document.createElement('div');
+  head.className = 'bl-head';
+  const line = document.createElement('div');
+  line.className = 'bl-line';
+  head.appendChild(line);
+  if (log.length) {
+    const clear = document.createElement('button');
+    clear.className = 'bl-clear';
+    clear.textContent = 'Clear';
+    clear.addEventListener('click', () => {
+      if (!confirm('Clear the list of sentences?')) return;
+      state.builderLog = [];
+      save(); renderHome(true);
+    });
+    head.appendChild(clear);
+  }
+  box.appendChild(head);
+  log.forEach(entry => {
+    const row = document.createElement('button');
+    row.className = 'bl-row';
+    const text = entry.words.map(bankLabel).join(' ');
+    row.textContent = text.charAt(0).toUpperCase() + text.slice(1);   // reads as a sentence
+    // tapping a sentence puts it back in the bar, ready to say or spell again
+    row.addEventListener('click', () => {
+      homePhrase = entry.words.slice();
+      warmSpeech();
+      speakWord(homePhrase.join(' '), 0.95);
+      renderPhraseBar();
+    });
+    box.appendChild(row);
+  });
+  grid.appendChild(box);
 }
 // ---- editing the builder ----
 function builderInput(body, value) {
