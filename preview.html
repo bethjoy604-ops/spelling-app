@@ -2175,7 +2175,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 157 - 3 Oct';
+const BUILD = 'build 158 - 3 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5502,7 +5502,8 @@ function capFirst(t) {
   t = String(t || '');
   return t === t.toLowerCase() ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
-function bankLabel(w) { return (isSmallWord(w) || isLinkWord(w)) ? sentenceLabel(w) : capFirst(sentenceLabel(w)); }
+// Word tiles read in small letters by default; names (My Stuff, or a word edited to have capitals) and I keep theirs
+function bankLabel(w) { return sentenceLabel(w); }
 // A linking word: a builder tile, or a word in a group that leads somewhere. These read in small
 // letters everywhere - on tiles and in the bar, in menu mode and builder mode.
 var linkWordCache = null;
