@@ -2293,7 +2293,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 207 - 4 Oct';
+const BUILD = 'build 208 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2838,6 +2838,18 @@ async function load() {
     addSmallPunct();
     save();
   }
+  // a device that skipped straight past the New folder could end up with both it and the targets
+  // tab: fold the stray New into targets (its words are kept)
+  {
+    const tgt = state.categories.find(c => !c.parent && c.target);
+    const stray = tgt ? state.categories.filter(c => !c.parent && !c.target && c.name.trim().toLowerCase() === 'new') : [];
+    stray.forEach(x => {
+      (x.words || []).forEach(w => { if (!tgt.words.includes(w)) tgt.words.push(w); });
+      state.categories.forEach(c => { if (c.parent === x.id) c.parent = tgt.id; if (c.links) c.links = c.links.filter(id => id !== x.id); });
+      state.categories = state.categories.filter(c => c !== x);
+    });
+    if (stray.length) save();
+  }
   // and every time the app opens: the folders in My Stuff never keep sub-folders
   if (flattenMyStuff()) save();
   // One-time: Actions holds linking words (verbs), which read in small letters
@@ -2868,7 +2880,7 @@ async function load() {
   // One-time: a New folder on the menu bar, after the others
   if (!state.layoutV9) {
     state.layoutV9 = true;
-    if (!state.categories.some(c => !c.parent && c.name.toLowerCase() === 'new')) {
+    if (!state.categories.some(c => !c.parent && (c.target || c.name.toLowerCase() === 'new'))) {
       const made = addCategory('New', null, 'teal');
       made.order = Math.max(-1, ...state.categories.filter(c => !c.parent && c !== made).map(c => c.order || 0)) + 1;
     }
