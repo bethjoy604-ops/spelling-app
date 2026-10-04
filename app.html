@@ -2293,7 +2293,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 205 - 4 Oct';
+const BUILD = 'build 206 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7443,7 +7443,7 @@ function openFolderAdd(cat) {
       rememberCase(typed, key);
     })));
     if (usesGroups(cat) && !state.builderMode) body.appendChild(sheetBtn('A group heading', '', () => addGroupHeading(cat)));
-    const flat = catAllowsPhrases(cat) && !!cat.parent;      // folders in My Stuff hold titles and groups, never sub-folders
+    const flat = (catAllowsPhrases(cat) && !!cat.parent) || !!cat.target;      // folders in My Stuff hold titles and groups, never sub-folders
     if (!flat) body.appendChild(sheetBtn('A new folder', '', () => ask('New folder in ' + cat.name, 'Create', typed => {
       const name = String(typed || '').replace(/\s+/g, ' ').trim();
       if (!name) return false;
@@ -7932,16 +7932,27 @@ function tidyMyStuff() {
 // A folder inside My Stuff always has at least one heading; My Stuff itself only once it holds words.
 // A page that shows folder tiles never has headings: they belong inside the folders, on the pages of titles.
 function usesGroups(cat) {
+  if (cat && cat.target) return true;        // the targets page is a list with groups too
   if (!cat || !catAllowsPhrases(cat) || !cat.parent) return false;
   return foldersShownIn(cat).length === 0;
 }
 function listGroups(cat) {
+  // the targets page starts with three groups; a word added to targets lands in New
+  if (cat.target && !Array.isArray(cat.groups)) {
+    const was = state.targetState || {};
+    const pick = v => (cat.words || []).filter(w => was[w] === v);
+    cat.groups = [
+      { id: 1, name: 'Established', words: pick('independent'), open: true },
+      { id: 2, name: 'Emerging', words: pick('prompted'), open: true },
+      { id: 3, name: 'New', words: pick('waiting'), open: true },
+    ];
+  }
   // no headings until one is added: titles start out ungrouped
   if (!Array.isArray(cat.groups)) cat.groups = [];
   const inCat = cat.words || [];
   const seen = new Set();
   cat.groups.forEach(g => { g.words = (g.words || []).filter(w => inCat.includes(w) && !seen.has(w) && (seen.add(w), true)); });
-  // a title under no heading simply stays ungrouped, listed above the groups
+  // a title or target under no heading simply stays unsorted, listed above the groups
   return cat.groups;
 }
 function addTitleTo(cat, group, typed) {
@@ -7999,8 +8010,9 @@ function openGroupHead(cat, group) {
 // Hold a title in My Stuff: edit it, or choose its group. Nothing else applies to a title.
 function openTitleActions(word, cat, extra) {
   openWordSheet(body => {
-    sheetTitle(body, 'This title', word);
-    body.appendChild(sheetBtn('Edit the title or its capitals', '', () => openWordEdit(word)));
+    const noun = cat.target ? 'target' : 'title';
+    sheetTitle(body, 'This ' + noun, word);
+    body.appendChild(sheetBtn(cat.target ? 'Edit spelling or capitals' : 'Edit the title or its capitals', '', () => openWordEdit(word)));
     if (extra) extra(body);
     const groups = usesGroups(cat) ? listGroups(cat) : [];
     if (groups.length) {
@@ -8039,7 +8051,7 @@ function openTitleActions(word, cat, extra) {
         listGroups(cat).push({ id: 1, name, words: [word], open: true });
       })));
     }
-    if (usesGroups(cat)) body.appendChild(sheetBtn('Change it to a group', '', () => {
+    if (usesGroups(cat) && !cat.target) body.appendChild(sheetBtn('Change it to a group', '', () => {
       // the title becomes a group heading with the same name; as a title it leaves the list
       const gs = listGroups(cat);
       gs.forEach(g => { g.words = g.words.filter(w => w !== word); });
@@ -8048,7 +8060,7 @@ function openTitleActions(word, cat, extra) {
       if (!categoriesOf(word).length) deleteWordEverywhere(word);
       save(); closeWordSheet(); renderHome(true);
     }));
-    body.appendChild(sheetBtn('Remove this title', 'danger', () => {
+    body.appendChild(sheetBtn(cat.target ? 'Take it out of targets' : 'Remove this title', 'danger', () => {
       if (!confirm('Remove "' + bankLabel(word) + '" from ' + cat.name + '?')) return;
       cat.words = (cat.words || []).filter(w => w !== word);
       (cat.groups || []).forEach(g => { g.words = (g.words || []).filter(w => w !== word); });
@@ -8115,7 +8127,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const add = makeListRow('', rowH, base);
     add.classList.add('add-row');
     add.removeAttribute('data-word');
-    add.querySelector('.hw').textContent = '+ add a title';
+    add.querySelector('.hw').textContent = cat.target ? '+ add a word' : '+ add a title';
     add.addEventListener('click', () => askText(g ? 'New title under ' + g.name : 'New title in ' + cat.name, 'Add', '', typed => addTitleTo(cat, g, typed)));
     return add;
   };
@@ -8137,12 +8149,19 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     put(head);
     if (!open) return;
     listWords.filter(w => g.words.includes(w)).forEach(w => put(wordRow(w)));
-    put(addRow(g));      // at the end of every group: add a title to that group
+    // at the end of every group: add a title to that group (on targets the last group leaves it to
+    // the 'add a target' row right below, so there are never two grey rows together)
+    if (!(cat.target && g === groupsNow[groupsNow.length - 1])) put(addRow(g));
   });
   // at the bottom of the whole list: add a title (ungrouped), then start a new group
   // (when the last group is open its own add row is already the last thing, so one is enough)
   const lastG = groupsNow[groupsNow.length - 1];
-  if (!lastG || lastG.open === false) put(addRow(null));
+  if (cat.target) {
+    // targets always end with the two prompts: a new target (unsorted, it shows at the top) and a new group
+    const at = addRow(null);
+    at.querySelector('.hw').textContent = '+ add a target';
+    put(at);
+  } else if (!lastG || lastG.open === false) put(addRow(null));
   const ng = document.createElement('button');
   ng.className = 'small-head group-head add-group';
   ng.innerHTML = '<span>+ add a group</span>';
@@ -8177,7 +8196,6 @@ function makeListRow(w, rowH, base) {
   return row;
 }
 function renderSlotGrid(grid, cat, folders) {
-  if (cat && cat.target) { renderTargets(grid, cat); return; }
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
   const W = grid.clientWidth, H = grid.clientHeight;
@@ -8192,7 +8210,7 @@ function renderSlotGrid(grid, cat, folders) {
   if (sec) folders = folders.filter(f => f !== sec);
   const smalls = sec ? punctLast((sec.words || []).filter(w => !state.hiddenWords[w])) : [];
   // My Stuff: titles are long, so its words are a list - one to a row, A to Z, as many as there are
-  const listMode = arrange && !sec && catAllowsPhrases(cat);
+  const listMode = arrange && !sec && (catAllowsPhrases(cat) || !!cat.target);
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
   // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
   const alpha = arrange && !listMode && hasSmallStrip(cat);
