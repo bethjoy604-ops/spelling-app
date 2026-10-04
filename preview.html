@@ -2267,7 +2267,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 198 - 4 Oct';
+const BUILD = 'build 199 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7054,9 +7054,21 @@ function renderBuilder(grid) {
   if ('cat' in here) {
     // a folder reached from the builder: its sub-folders, then its words
     const c = catById(here.cat);
-    foldersShownIn(c).forEach(sub => {
-      holdable(tile(sub.name, true), () => { builderPath.push({ cat: sub.id }); renderHome(true); },
-        () => openFolderEdit(sub));
+    // folder tiles on a choice board can be held and dragged to a new place; the order is the
+    // folder's own, so menu mode shows the same
+    const subs = foldersShownIn(c);
+    subs.forEach(sub => {
+      const card = tile(sub.name, true);
+      card.dataset.bidx = subs.indexOf(sub);
+      card.dataset.blist = 'subs';
+      attachWordHold(card, null, null, null, {
+        list: subs, item: sub, onHold: () => openFolderEdit(sub),
+        onDrop: l => l.forEach((x, i) => { x.order = i; }),
+      });
+      card.addEventListener('click', () => {
+        if (suppressTileClick) { suppressTileClick = false; return; }
+        builderPath.push({ cat: sub.id }); renderHome(true);
+      });
       count++;
     });
     // the same words, in the same order, as the folder shows in menu mode - including ones added
@@ -8438,6 +8450,7 @@ function endWordDrag(cancelled) {
     let at = list.indexOf(dest);
     if (t.after) at++;
     list.splice(at, 0, item);
+    if (d.builder.onDrop) d.builder.onDrop(list);
     save(); renderHome(true);
     return;
   }
