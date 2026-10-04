@@ -2148,6 +2148,8 @@
         <button class="mbtn action" id="restoreFoldersBtn" style="width:100%; margin-top:8px;">Bring back missing default folders</button>
         <div class="help-note">Puts back any built-in folder that has been deleted, such as Chat, with its original words. Folders that are still there are left exactly as they are.</div>
         <button class="mbtn action" id="exportLayoutBtn" style="width:100%; margin-top:8px;">Export my layout</button>
+        <button class="mbtn action" id="importLayoutBtn" style="width:100%; margin-top:8px;">Import a layout file</button>
+        <input type="file" id="importLayoutFile" accept=".json,application/json" style="display:none">
         <div class="help-note">Saves the folders, the words and their places, the builder pages and the small-words rows as one file, so the layout on this device can be made the built-in default.</div>
         <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
         <div class="help-note">Saves every sentence built in the builder, with its date and time, as a file that opens in Numbers or Excel. The builder page itself shows the latest 30.</div>
@@ -2293,7 +2295,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 208b - 4 Oct';
+const BUILD = 'build 210 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6588,7 +6590,7 @@ function renderHome(reset) {
 // The folders, words, builder pages and small-words row a new device starts
 // with. Taken from the layout exported on 3 Oct 2026; replace this one line to
 // change what a fresh install looks like.
-const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANK YOU","MORE","ALL DONE","AGAIN","I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO"],"small":true},{"id":2,"name":"Food","parent":12,"order":1,"color":"green","words":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"]},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"phrases":true},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN"]},{"id":5,"name":"People","parent":12,"order":3,"color":"pink","words":[]},{"id":6,"name":"Places","parent":12,"order":4,"color":"teal","words":["PARK","BENCH"]},{"id":7,"name":"Music","parent":3,"order":0,"color":"yellow","words":[]},{"id":9,"name":"TV","parent":3,"order":1,"color":"blue","words":["PEPPA PIG"]},{"id":10,"name":"Movies","parent":3,"order":2,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"]},{"id":11,"name":"Characters","parent":3,"order":5,"color":"purple","words":["PEPPA","GEORGE"]},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"strip":true},{"id":13,"name":"Things","parent":12,"order":2,"color":"yellow","words":["TRUCK","BEAR","FLICKER","VIDEO","MUSIC","YOUTUBE"]},{"id":14,"name":"Books","parent":3,"order":3,"color":"orange","words":[]},{"id":15,"name":"Games","parent":3,"order":4,"color":"pink","words":["PUZZLE"]},{"id":16,"name":"Body","parent":12,"order":5,"color":"red","words":["WATER"]},{"id":20,"name":"Feelings","parent":12,"order":6,"color":"teal","words":[],"nopop":true},{"id":21,"name":"Activities","parent":12,"order":7,"color":"red","words":["DANCING","SINGING"]},{"id":22,"name":"Toys","parent":3,"order":6,"color":"blue","words":["FLICKER"]},{"id":23,"name":"Opposites","parent":12,"order":8,"color":"purple","words":["UP","DOWN","COLD","QUIET","HOT"]}],"wordCase":{"PEPPA":"Peppa","GEORGE":"George","CARS":"Cars","FINDING NEMO":"Finding Nemo","COCO":"Coco","I":"I","LIKE":"like","LOVE":"love","SEE":"see","HEAR":"hear"},"smallRow":["I","MY","THE","A","MORE","NOT"],"builder":{"kids":[{"label":"I","kids":[{"label":"want","kids":[],"cats":[2,13,5,4,6,3]},{"label":"need","kids":[],"cats":[2,13,5,4,3,6,16]},{"label":"feel","kids":[],"cats":[20]},{"label":"like","kids":[],"cats":[]},{"label":"love","kids":[],"cats":[]},{"label":"see","kids":[],"cats":[]},{"label":"hear","kids":[],"cats":[]}],"cats":[]},{"label":"More","kids":[],"cats":[2,13,4,3,5,6]},{"label":"Stop","kids":[],"cats":[21,4,5]}],"cats":[]}}');
+const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slots":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slotCols":3,"small":true},{"id":2,"name":"Food","parent":12,"order":1,"color":"green","words":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"],"slots":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"],"slotCols":3},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"phrases":true},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT","MAKE","WARM"],"slots":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT"],"slotCols":3,"linkers":true,"row":["MORE","ALL DONE","AND","NOW","YES","NO"]},{"id":5,"name":"People","parent":12,"order":3,"color":"pink","words":["MOM","DAD"]},{"id":6,"name":"Places","parent":12,"order":4,"color":"teal","words":["PARK","BENCH","OUTSIDE","HOME","ROOM","WINDOW","BATHROOM","TABLE"],"slots":["PARK","BENCH","OUTSIDE","HOME"],"slotCols":3,"row":["TO","THE","PLEASE","AGAIN","NOW","."]},{"id":7,"name":"Music","parent":3,"order":0,"color":"yellow","words":["GOLDEN","FREE","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"groups":[{"id":1,"name":"K POP Demon Hunters","words":["GOLDEN","FREE","SODA POP","YOUR IDOL"],"open":false},{"id":2,"name":"Moana","words":["WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"open":false}]},{"id":9,"name":"TV","parent":3,"order":1,"color":"blue","words":["PEPPA PIG"],"groups":[]},{"id":10,"name":"Movies","parent":3,"order":2,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slots":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slotCols":3,"groups":[]},{"id":11,"name":"Characters","parent":3,"order":5,"color":"purple","words":["PEPPA","GEORGE"],"slots":["PEPPA","GEORGE"],"slotCols":3,"groups":[]},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"strip":true},{"id":13,"name":"Things","parent":12,"order":2,"color":"yellow","words":[]},{"id":14,"name":"Books","parent":3,"order":3,"color":"orange","words":[],"groups":[]},{"id":15,"name":"Games","parent":3,"order":4,"color":"pink","words":["PUZZLE"],"slots":["PUZZLE"],"slotCols":3,"groups":[]},{"id":16,"name":"Health","parent":12,"order":8,"color":"red","words":["WATER"]},{"id":20,"name":"Feelings","parent":12,"order":6,"color":"teal","words":[],"nopop":true},{"id":21,"name":"Activities","parent":12,"order":5,"color":"red","words":["DANCING","SINGING"]},{"id":22,"name":"Things","parent":3,"order":6,"color":"blue","words":["FLICKER"],"slots":["FLICKER"],"slotCols":3,"groups":[]},{"id":23,"name":"Choices","parent":12,"order":7,"color":"purple","words":["UP","DOWN","COLD","HOT","NOW","LATER","QUIET","LOUD"],"slots":["UP","DOWN",null,"COLD","HOT",null,"NOW","LATER",null,"QUIET","LOUD"],"slotCols":3},{"id":24,"name":"🎯","parent":null,"order":3,"color":"teal","words":["CARS","CUT"],"slots":["CARS","CUT"],"slotCols":3,"target":true,"groups":[{"id":1,"name":"Established","words":[],"open":false},{"id":2,"name":"Emerging","words":[],"open":false},{"id":3,"name":"New","words":[],"open":false}]},{"id":25,"name":"Small words","parent":1,"order":0,"color":"blue","words":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM","NOW",".","SOME","?","!","LATER"],"smallSec":true},{"id":32,"name":"Places","parent":3,"order":7,"color":"purple","words":[],"groups":[]},{"id":34,"name":"Food","parent":3,"order":8,"color":"orange","words":[],"groups":[]},{"id":35,"name":"Music","parent":13,"order":0,"color":"pink","words":["MUSIC","VIDEO"]},{"id":36,"name":"Animals","parent":13,"order":1,"color":"yellow","words":["BEAR"]},{"id":37,"name":"Toys","parent":13,"order":5,"color":"red","words":["FLICKER"]},{"id":38,"name":"Sports","parent":36,"order":0,"color":"green","words":[]},{"id":39,"name":"Apps","parent":13,"order":3,"color":"orange","words":["YOUTUBE"]},{"id":40,"name":"Games","parent":13,"order":7,"color":"pink","words":[],"hidden":true},{"id":41,"name":"Clothes","parent":13,"order":8,"color":"teal","words":[]},{"id":42,"name":"Vehicles","parent":13,"order":4,"color":"yellow","words":["TRUCK"]},{"id":43,"name":"TV","parent":13,"order":2,"color":"red","words":[]},{"id":44,"name":"Sports","parent":13,"order":6,"color":"blue","words":[]}],"looseWords":["WANT"],"wordCase":{"I":"I","AM":"am","THANKS":"thanks","ALL DONE":"all done","WHERE YOU ARE":"Where you are","YOU\'RE WELCOME":"You\'re welcome","HOW FAR I\'LL GO":"How far I\'ll go"},"keptPhrases":["THANK YOU","ALL DONE","SWEDISH FISH","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"recentsHidden":["COOKIE"],"smallRow":["TO","THE","PLEASE","AGAIN"],"builder":{"kids":[{"label":"I","kids":[{"label":"want","kids":[],"cats":[3,12],"small":[]},{"label":"need","kids":[],"cats":[3,12]},{"label":"feel","kids":[],"cats":[],"go":20},{"label":"like","kids":[],"cats":[],"small":[],"go":25},{"label":"love","kids":[],"cats":[]},{"label":"see","kids":[],"cats":[]},{"label":"hear","kids":[],"cats":[12,3]}],"cats":[]},{"label":"Go","kids":[],"cats":[6],"go":6},{"label":"More","kids":[],"cats":[2,4,21,7,9,10,14,15,11,22]},{"label":"Stop","kids":[],"cats":[21,5]}],"cats":[],"words":{"OPEN":{"label":"Open","kids":[],"cats":[2,13,5,6,16,7,9,10,14,15,22,11,21],"small":["IT","THAT","THE","MORE"]},"GO":{"label":"Go","kids":[],"cats":[6,4,21,23],"small":["AGAIN","TO","THE"]}}}}');
 // Additions to the built-in layout since that export
 if (!DEFAULT_LAYOUT.categories.some(c => !c.parent && c.name === 'New')) {
   DEFAULT_LAYOUT.categories.push({
@@ -6596,29 +6598,44 @@ if (!DEFAULT_LAYOUT.categories.some(c => !c.parent && c.name === 'New')) {
     name: 'New', parent: null, order: 3, color: 'teal', words: [],
   });
 }
-function applyDefaultLayout() {
-  const L = DEFAULT_LAYOUT;
+function applyDefaultLayout() { applyLayout(DEFAULT_LAYOUT, false); }
+// Put a layout (the built-in one, or one exported from another device) onto this device.
+// keep = true is an import: this device's own words and their history stay.
+function applyLayout(L, keep) {
+  const had = keep ? (state.words || []).slice() : [];
   state.categories = L.categories.map(c => Object.assign(
-    { rule: null, hidden: false }, JSON.parse(JSON.stringify(c)), { words: c.words.slice(), links: (c.links || []).slice() }));
+    { rule: null, hidden: false }, JSON.parse(JSON.stringify(c)), { words: (c.words || []).slice(), links: (c.links || []).slice() }));
+  state.categories.forEach(c => { if (c.rule === undefined || c.rule === null) c.rule = null; if (c.phrases === null) delete c.phrases; if (c.row === null) delete c.row; if (c.groups === null) delete c.groups; if (c.slots === null) { delete c.slots; delete c.slotCols; } });
   state.catSeq = Math.max(...L.categories.map(c => c.id)) + 1;
   state.words = [];
   state.keptPhrases = {};
-  state.categories.forEach(c => c.words.forEach(w => {
+  state.wordHistory = state.wordHistory || {};
+  const know = w => {
     if (!state.words.includes(w)) state.words.push(w);
     if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+  };
+  state.categories.forEach(c => c.words.forEach(w => {
+    know(w);
     // a phrase outside My Stuff stays one tile rather than being split or hidden
     if (w.includes(' ') && !catAllowsPhrases(c)) state.keptPhrases[w] = true;
   }));
-  state.wordCase = Object.assign({}, L.wordCase);
-  state.smallRow = L.smallRow.slice();
-  state.builder = JSON.parse(JSON.stringify(L.builder));
-  state.gridFill = L.gridFill;
-  state.bankSort = L.bankSort;
+  (L.looseWords || []).forEach(know);
+  had.forEach(know);
+  (L.keptPhrases || []).forEach(w => { state.keptPhrases[w] = true; });
+  state.wordCase = Object.assign(keep ? (state.wordCase || {}) : {}, L.wordCase || {});
+  state.recentsHidden = Object.assign(keep ? (state.recentsHidden || {}) : {}, ...(L.recentsHidden || []).map(w => ({ [w]: true })));
+  if (L.hiddenWords) { state.hiddenWords = keep ? (state.hiddenWords || {}) : {}; L.hiddenWords.forEach(w => { state.hiddenWords[w] = true; }); }
+  if (L.targetState) state.targetState = Object.assign({}, L.targetState);
+  state.smallRow = (L.smallRow || []).slice();
+  state.builder = JSON.parse(JSON.stringify(L.builder || { kids: [], cats: [] }));
+  if (L.gridFill) state.gridFill = L.gridFill;
+  if (L.bankSort) state.bankSort = L.bankSort;
+  state.rowOpenBy = {};
   // none of the step-by-step changes that older installs went through apply
   ['starterDone', 'groupsV2', 'groupsV3', 'groupsV4', 'groupsV5', 'groupsV6',
    'layoutV7', 'layoutV8', 'layoutV9', 'caseV2', 'smallV2', 'builderV2'].forEach(k => { state[k] = true; });
   state.smallSet = {};
-  if (L.smallWords) L.smallWords.forEach(w => { state.smallSet[w] = true; }); else seedSmallSet();
+  if (L.smallWords) L.smallWords.forEach(w => { state.smallSet[w] = true; }); else if (!state.categories.some(c => c.smallSec)) seedSmallSet();
   state.smallV3 = true;
   ensureSmallFolder();
   state.linkV1 = true;
@@ -6634,6 +6651,26 @@ function applyDefaultLayout() {
   ensureTargets();
   flattenMyStuff();
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
+  linkWordCache = null;
+}
+// Settings: bring in a layout file exported from another device (or from the preview)
+function importLayoutFile(file) {
+  const r = new FileReader();
+  r.onload = () => {
+    let L = null;
+    try { L = JSON.parse(String(r.result)); } catch (e) {}
+    if (!L || L.kind !== 'spelling-app-layout' || !Array.isArray(L.categories) || !L.categories.length) {
+      alert('That file is not a layout exported from this app.');
+      return;
+    }
+    if (!confirm('Replace the folders, groups, small words rows and builder pages on this device with the ones in this file?\n\nWords already on this device are kept. This cannot be undone.')) return;
+    applyLayout(L, true);
+    homePath = []; builderPath = [];
+    save();
+    showHome();
+    alert('Layout imported.');
+  };
+  r.readAsText(file);
 }
 
 // Put back any built-in folder that is missing (deleted by accident, say), with
@@ -6651,13 +6688,13 @@ function restoreDefaultFolders() {
     if (!c) {
       c = addCategory(d.name, parentId, d.color);
       c.order = d.order;
-      ['small', 'strip', 'nopop', 'phrases'].forEach(k => { if (d[k] !== undefined) c[k] = d[k]; });
+      ['small', 'strip', 'nopop', 'phrases', 'smallSec', 'target', 'linkers', 'hidden'].forEach(k => { if (d[k] !== undefined) c[k] = d[k]; });
       d.words.forEach(w => {
         c.words.push(w);
         if (!state.words.includes(w)) state.words.push(w);
         if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
         if (w.includes(' ') && !catAllowsPhrases(c)) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[w] = true; }
-        if (DEFAULT_LAYOUT.wordCase[w] && !(state.wordCase || {})[w]) { state.wordCase = state.wordCase || {}; state.wordCase[w] = DEFAULT_LAYOUT.wordCase[w]; }
+        if ((DEFAULT_LAYOUT.wordCase || {})[w] && !(state.wordCase || {})[w]) { state.wordCase = state.wordCase || {}; state.wordCase[w] = DEFAULT_LAYOUT.wordCase[w]; }
       });
       made.push(d.name);
     }
@@ -7050,6 +7087,12 @@ function exportLayout() {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 document.getElementById('exportLayoutBtn').addEventListener('click', exportLayout);
+document.getElementById('importLayoutBtn').addEventListener('click', () => document.getElementById('importLayoutFile').click());
+document.getElementById('importLayoutFile').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (f) importLayoutFile(f);
+});
 
 // ===== Builder mode: a sentence built page by page =====
 // The pages form a tree. Each tile says its word and opens the page of things
