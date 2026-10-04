@@ -2258,7 +2258,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 193 - 4 Oct';
+const BUILD = 'build 194 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7056,9 +7056,13 @@ function renderBuilder(grid) {
         else if (n) { builderPath.push(n); renderHome(true); }
       }, () => asList
         ? openTitleActions(w, c, body => body.appendChild(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"'))))
-        : openWordActions(w, c, body => {
-        body.insertBefore(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')), body.lastChild.previousSibling);
-      }));
+        : openWordSheet(body => {
+          // in the builder a word tile has just two options: fix the word, or say what follows it
+          sheetTitle(body, 'This word', w);
+          body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(w)));
+          body.appendChild(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')));
+          body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+        }));
       count++;
     });
   } else {
