@@ -980,7 +980,7 @@
   .bl-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .bl-note { font-size: 0.62em; font-weight: 700; color: var(--muted); }
   /* speak mode / builder switched off: the icon is greyed out */
-  #homeSpeakBtn.off, #homeChatBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
+  #homeSpeakBtn.off, #homeChatBtn.off, #homeSoundBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
   #builderBackBtn, #homeBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
   .modes-wrap {
     display: flex; gap: 8px;
@@ -1643,6 +1643,7 @@
     <button class="ctl icon" id="homeChatBtn" aria-label="Chat mode" aria-pressed="false">&#128172;</button>
     <button class="ctl icon" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
     <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
+    <button class="ctl icon" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
@@ -2292,7 +2293,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 204 - 4 Oct';
+const BUILD = 'build 205 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2447,6 +2448,7 @@ const state = {
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
   recentsHidden: {},          // words taken off the Recents / Popular page only
+  soundOn: true,              // the speaker icon: off = nothing is said aloud, anywhere
   chatLog: [],                // the conversation: { text, replies: [], t } per message, oldest first
   chatMode: false,            // home enter key: on = open the chat page with the message on top
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
@@ -2622,6 +2624,7 @@ async function load() {
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
         recentsHidden: saved.recentsHidden || {},
+        soundOn: saved.soundOn ?? true,
         chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [],
         chatMode: saved.chatMode ?? false,
         speakMode: saved.speakMode ?? false,
@@ -2995,6 +2998,7 @@ async function save() {
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
       recentsHidden: state.recentsHidden,
+      soundOn: state.soundOn,
       chatLog: state.chatLog,
       chatMode: state.chatMode,
       speakMode: state.speakMode,
@@ -4108,6 +4112,7 @@ document.addEventListener('visibilitychange', () => {
 let currentAudio = null;
 function playClip(dataURL) {
   if (!dataURL) return false;
+  if (state.soundOn === false) return true;      // sound is switched off: nothing is played or spoken
   try {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     if (currentAudio) { try { currentAudio.pause(); } catch(e){} }
@@ -4275,6 +4280,7 @@ function getVoice() {
   return availableVoices.find(v => v.name === state.voiceName) || null;
 }
 function speak(text, rate = 1) {
+  if (state.soundOn === false) return;           // sound is switched off: no word labels, no spoken prompts
   if (!text || !('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
@@ -6134,7 +6140,19 @@ document.getElementById('homeChatBtn').addEventListener('click', () => {
   buzz(10);
   save(); renderHome(true);
 });
+document.getElementById('homeSoundBtn').addEventListener('click', () => {
+  state.soundOn = state.soundOn === false;
+  if (!state.soundOn) {
+    try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) {}
+    try { if (currentAudio) currentAudio.pause(); } catch (e) {}
+  }
+  buzz(10);
+  save(); renderSpeakBtn();
+});
 function renderSpeakBtn() {
+  const sb = document.getElementById('homeSoundBtn');
+  sb.classList.toggle('off', state.soundOn === false);
+  sb.setAttribute('aria-pressed', state.soundOn === false ? 'false' : 'true');
   const cb = document.getElementById('homeChatBtn');
   cb.classList.toggle('off', !state.chatMode);
   cb.setAttribute('aria-pressed', state.chatMode ? 'true' : 'false');
