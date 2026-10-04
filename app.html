@@ -2254,7 +2254,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 189 - 4 Oct';
+const BUILD = 'build 190 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6051,6 +6051,12 @@ function renderCatTiles(containerId, rerender) {
     b.className = 'cat-tile' + (homePath[level] === c.id ? ' selected' : '');
     b.dataset.catId = c.id;
     b.textContent = c.name;
+    // inside one of its folders the tab names the folder that is open (Actions); tapping it goes
+    // back to the page of folders, and the tab reads Categories again
+    if (homePath[level] === c.id && homePath.length > level + 1) {
+      const open = catById(homePath[homePath.length - 1]);
+      if (open) b.textContent = open.name;
+    }
     b.addEventListener('pointerdown', () => {
       longPressed = false;
       tileTimer = setTimeout(() => {
