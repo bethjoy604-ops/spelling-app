@@ -2267,7 +2267,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 196 - 4 Oct';
+const BUILD = 'build 197 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7074,6 +7074,15 @@ function renderBuilder(grid) {
           const prev = builderPath.length > 1 ? builderPath[builderPath.length - 2] : null;
           const owner = prev ? ('cat' in prev ? catById(prev.cat) : prev) : null;
           if (owner && isBoardMenu(owner)) { builderPath.pop(); renderHome(true); }
+          else {
+            // opened straight from a linking word, with no choice board behind it: switch to the
+            // board this folder belongs to (Categories: Actions, Food ...)
+            const up = c.parent ? catById(c.parent) : null;
+            if (up && !up.hidden && isBoardMenu(up)) {
+              builderPath[builderPath.length - 1] = { cat: up.id };
+              renderHome(true);
+            }
+          }
         }
       }, () => asList
         ? openTitleActions(w, c, body => body.appendChild(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"'))))
