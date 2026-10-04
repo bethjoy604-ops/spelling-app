@@ -944,7 +944,7 @@
   .bl-note { font-size: 0.62em; font-weight: 700; color: var(--muted); }
   /* speak mode / builder switched off: the icon is greyed out */
   #homeSpeakBtn.off, #homeChatBtn.off, #homeBuilderBtn.off, #railToggle.off { filter: grayscale(1); opacity: 0.4; }
-  #builderBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
+  #builderBackBtn, #homeBackBtn { font-size: 34px; font-weight: 900; line-height: 1; padding-bottom: 6px; }
   .modes-wrap {
     display: flex; gap: 8px;
     overflow: hidden;
@@ -1592,6 +1592,7 @@
       <span class="chevron" id="homeChevron">&#9660;</span>
     </button>
     <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
+    <button class="ctl icon" id="homeBackBtn" aria-label="Back" style="display:none">&#8249;</button>
     <div class="folder-strip" id="catTiles"></div>
     <button class="ctl icon" id="homeAddFolderBtn" aria-label="New folder" style="display:none">+</button>
     <button class="ctl icon" id="builderBackBtn" aria-label="Back" style="display:none">&#8249;</button>
@@ -2252,7 +2253,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 182 - 4 Oct';
+const BUILD = 'build 183 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6279,7 +6280,10 @@ function renderHome(reset) {
     // the other switches and shows or hides the folder menu.
     // In the builder the arrow (and the gear it opens) is only on the first page; further in,
     // that space holds just the back arrow and the plus.
-    const deep = state.builderMode && builderPath.length > 0;
+    // Menu mode does the same inside a sub-folder: the back arrow takes the settings arrow's place.
+    const inSub = !state.builderMode && homePath.length > 1;
+    document.getElementById('homeBackBtn').style.display = inSub ? '' : 'none';
+    const deep = (state.builderMode && builderPath.length > 0) || inSub;
     document.getElementById('homeModesToggle').style.display = deep ? 'none' : '';
     document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && !deep) ? '' : 'none';
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
@@ -6306,7 +6310,7 @@ function renderHome(reset) {
     grid.style.display = useFolders ? 'none' : '';
     if (useFolders) {
       // no folder strip in this layout: the arrow just shows or hides the gear
-      document.getElementById('homeSettingsBtn').style.display = state.homeModesOpen ? '' : 'none';
+      document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && homePath.length <= 1) ? '' : 'none';
       document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
       document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
       document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
@@ -7541,6 +7545,12 @@ document.getElementById('builderBackBtn').addEventListener('click', () => {
   renderHome(true);
 });
 document.getElementById('builderAddBtn').addEventListener('click', openBuilderAdd);
+// menu mode: back up one folder
+document.getElementById('homeBackBtn').addEventListener('click', () => {
+  if (homePath.length > 1) homePath = homePath.slice(0, -1);
+  buzz(10);
+  renderHome(true);
+});
 
 // ===== Arranging a folder: hold a word to edit it, drag it to move it =====
 let suppressTileClick = false;
