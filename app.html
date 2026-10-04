@@ -2274,7 +2274,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 201 - 4 Oct';
+const BUILD = 'build 202 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5732,6 +5732,11 @@ function sentenceLabel(w) {
   const kept = (state.wordCase || {})[key];
   // a linking word is small letters even if it was once saved with a first capital ("Go")
   if (kept && key !== 'I' && isLinkWord(key) && kept.slice(1) === kept.slice(1).toLowerCase()) return kept.toLowerCase();
+  // a title in My Stuff gets a capital on every word, however it was typed ("How far I'll go");
+  // only unusual capitals given by hand (iPad, KPOP) are left as they are
+  if (kept && categoriesOf(key).some(catAllowsPhrases)) {
+    return kept.split(' ').map(x => x.slice(1) === x.slice(1).toLowerCase() ? x.charAt(0).toUpperCase() + x.slice(1) : x).join(' ');
+  }
   if (kept) return kept;
   if (key === 'I' || key.startsWith("I'")) return 'I' + key.slice(1).toLowerCase();
   // anything in My Stuff is a name or a title, so it reads with capitals
