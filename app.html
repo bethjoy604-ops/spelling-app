@@ -493,6 +493,7 @@
     min-width: 0; min-height: 0; padding: 0 !important;
   }
   .home-card.add-folder .hw { color: rgba(0,0,0,0.42); }
+  .home-card.ghost-tile { padding: 8px 18px !important; }
   .home-card.drag-src { opacity: 0.3; }
   .home-card.drag-ghost {
     position: fixed; z-index: 500; pointer-events: none; margin: 0;
@@ -2257,7 +2258,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 192 - 4 Oct';
+const BUILD = 'build 193 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2424,6 +2425,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  drinksV1: false,            // the one-time removal of the Drinks folder from Food
   stuffV2done: false,
   stuffV2: false,             // the one-time flattening of My Stuff: no sub-folders, no automatic group
   stuffV1: false,             // the one-time tidy of My Stuff: one Characters folder, and a Places folder
@@ -2595,6 +2597,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        drinksV1: saved.drinksV1 ?? false,
         stuffV2done: saved.stuffV2done ?? false,
         stuffV2: saved.stuffV2 ?? false,
         stuffV1: saved.stuffV1 ?? false,
@@ -2757,6 +2760,27 @@ async function load() {
   if (!state.stuffV2) {
     state.stuffV2 = true;
     flattenMyStuff();
+    save();
+  }
+  // One-time: the Drinks folder comes out of Food; its words stay, as ordinary Food words
+  if (!state.drinksV1) {
+    state.drinksV1 = true;
+    state.categories.filter(c => c.name.trim().toLowerCase() === 'drinks').forEach(d => {
+      const par = d.parent ? catById(d.parent) : null;
+      if (!par || par.name.trim().toLowerCase() !== 'food') return;
+      (d.words || []).forEach(w => { if (!par.words.includes(w)) par.words.push(w); });
+      state.categories.forEach(c => {
+        if (c.parent === d.id) c.parent = par.id;
+        if (c.links) c.links = c.links.filter(id => id !== d.id);
+      });
+      const swap = n => {
+        if (n.cats) n.cats = n.cats.map(id => id === d.id ? par.id : id).filter((id, i, a) => a.indexOf(id) === i);
+        if (n.go === d.id) n.go = par.id;
+        (n.kids || []).forEach(swap);
+      };
+      if (state.builder) { swap(state.builder); Object.values(state.builder.words || {}).forEach(swap); }
+      state.categories = state.categories.filter(c => c !== d);
+    });
     save();
   }
   // and every time the app opens: the folders in My Stuff never keep sub-folders
@@ -2931,6 +2955,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      drinksV1: state.drinksV1,
       stuffV2done: state.stuffV2done,
       stuffV2: state.stuffV2,
       stuffV1: state.stuffV1,
@@ -6492,6 +6517,7 @@ function applyDefaultLayout() {
   state.stuffV1 = true;
   tidyMyStuff();
   state.stuffV2 = true;
+  state.drinksV1 = true;
   flattenMyStuff();
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
@@ -7990,7 +8016,10 @@ function renderSlotGrid(grid, cat, folders) {
   const alpha = arrange && !listMode && hasSmallStrip(cat);
   const slots = listMode ? [] : alpha ? words.slice().sort(byLabel) : arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
-  const lastRow = Math.ceil((head + slots.length) / cols);
+  // Categories folders: group tiles (and the ghost tile to add one) sit in their own rows at the top,
+  // and the words start on the row after, so there is a clear divide between the two
+  const off = (alpha && head) ? Math.ceil((head + 1) / cols) * cols : head;
+  const lastRow = Math.ceil((off + slots.length + (alpha ? (head ? 1 : 2) : 0)) / cols);
   const grouped = listMode && usesGroups(cat);
   const totalRows = listMode ? (head ? Math.ceil(head / cols) : ((listWords.length || grouped) ? 0 : 1))
                   : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
@@ -8124,10 +8153,39 @@ function renderSlotGrid(grid, cat, folders) {
     fit(card, c.name);
     place(card, i);
   });
-  for (let i = 0; head + i < totalRows * cols; i++) {
+  // ghost tiles in a Categories folder: greyed-out prompts to add a word or a group
+  const ghost = (text, fn) => {
+    const g = document.createElement('button');
+    g.className = 'home-card add-folder ghost-tile';
+    const t = document.createElement('span');
+    t.className = 'hw';
+    t.style.fontSize = Math.round(base * 0.8) + 'px';
+    t.textContent = text;
+    g.appendChild(t);
+    g.addEventListener('click', fn);
+    return g;
+  };
+  const ghostWord = () => ghost('+ word', () => askText('New word in ' + cat.name, 'Add', '', typed => {
+    const key = normaliseWord(typed);
+    if (!key) return false;
+    if (!cat.words.includes(key)) cat.words.push(key);
+    if (!state.words.includes(key)) state.words.push(key);
+    if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+    if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
+    rememberCase(typed, key);
+  }));
+  const ghostGroup = () => ghost('+ group', () => askText('New group in ' + cat.name, 'Add', '', typed => {
+    const name = String(typed || '').replace(/\s+/g, ' ').trim();
+    if (!name) return false;
+    addCategory(name, cat.id);
+  }));
+  if (alpha && head) place(ghostGroup(), head);
+  for (let i = 0; off + i < totalRows * cols; i++) {
     const w = slots[i];
+    if (alpha && i === slots.length) { place(ghostWord(), off + i); continue; }
+    if (alpha && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
-    if (!w && i === 0 && arrange && head === 0 && !slots.some(Boolean)) {
+    if (!w && i === 0 && arrange && !alpha && head === 0 && !slots.some(Boolean)) {
       const add = document.createElement('button');
       add.className = 'home-card add-folder';
       add.setAttribute('aria-label', 'Add a tile');
@@ -8144,7 +8202,7 @@ function renderSlotGrid(grid, cat, folders) {
       const hole = document.createElement('div');
       hole.className = 'slot-empty';
       hole.dataset.slot = i;
-      place(hole, head + i);
+      place(hole, off + i);
       continue;
     }
     const card = document.createElement('button');
@@ -8169,7 +8227,7 @@ function renderSlotGrid(grid, cat, folders) {
     });
     attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, label);
-    place(card, head + i);
+    place(card, off + i);
   }
   if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
