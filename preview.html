@@ -912,6 +912,11 @@
   .small-strip .empty-note { grid-column: 1 / -1; }
   .small-section.top .small-head { align-self: stretch; }
   .small-section.top { gap: 12px; }
+  .small-strip.with-toggle { position: relative; padding-left: 32px; }
+  .strip-toggle {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 32px; border: none; background: none; cursor: pointer;
+    font-size: 13px; color: var(--page); padding: 0; display: flex; align-items: center; justify-content: center;
+  }
   .small-head {
     display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 40px;
     border: none; border-radius: 16px; background: #bfd8ff; color: var(--ink);
@@ -2269,7 +2274,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 200 - 4 Oct';
+const BUILD = 'build 201 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6666,7 +6671,17 @@ function hasSmallStrip(cat) {
   return false;
 }
 // (owner: a builder page with its own row of small words; without one it is the shared row)
-function makeSmallStrip(rowH, base, owner) {
+// When the small words are opened out, the bar is gone: a small arrow in the panel's left edge folds them away
+function addStripToggle(strip, onClose) {
+  strip.classList.add('with-toggle');
+  const t = document.createElement('button');
+  t.className = 'strip-toggle';
+  t.setAttribute('aria-label', 'Hide small words');
+  t.textContent = '\u25BC';
+  t.addEventListener('click', e => { e.stopPropagation(); onClose(); });
+  strip.appendChild(t);
+}
+function makeSmallStrip(rowH, base, owner, gutter) {
   // rows are kept in one list, with '\n' marking where a new row starts
   const rows = smallRows(owner);
   const editRow = r => openWordSheet(body => {
@@ -6718,7 +6733,7 @@ function makeSmallStrip(rowH, base, owner) {
   // the panel is only as wide as its longest row (six across at most), so it ends after the last word
   const across = Math.min(6, Math.max(1, ...shown.map(r => r.length)));
   const gridW = document.getElementById('homeGrid').clientWidth;
-  const colW = Math.floor((gridW - 20 - 50) / 6);
+  const colW = Math.floor((gridW - 20 - 50 - (gutter ? 22 : 0)) / 6);
   if (words.length) strip.style.gridTemplateColumns = 'repeat(' + across + ', ' + colW + 'px)';
   else strip.style.gridTemplateColumns = 'auto';
   if (!words.length) mk('+ small words', edit).classList.add('empty');
@@ -8164,12 +8179,13 @@ function renderSlotGrid(grid, cat, folders) {
       state.smallOpen = !state.smallOpen;
       buzz(10); save(); renderHome(false);
     });
-    wrap.appendChild(head);
+    if (!state.smallOpen) wrap.appendChild(head);
     if (state.smallOpen) {
     const box = document.createElement('div');
     // the same blue panel as the rows on the other pages, only as wide as its tiles
     box.className = 'small-strip';
-    const colW = Math.floor((grid.clientWidth - 20 - 50) / 6);
+    const colW = Math.floor((grid.clientWidth - 20 - 50 - 22) / 6);
+    addStripToggle(box, () => head.click());
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = Math.max(48, Math.round(rowH / 2));
     smalls.forEach(w => {
@@ -8226,8 +8242,12 @@ function renderSlotGrid(grid, cat, folders) {
       if (isOpen) delete state.rowOpenBy[cat.id]; else state.rowOpenBy[cat.id] = true;
       buzz(10); save(); renderHome(false);
     });
-    el.appendChild(bar);
-    if (isOpen) el.appendChild(makeSmallStrip(rowH, base, cat));
+    if (!isOpen) el.appendChild(bar);
+    if (isOpen) {
+      const strip = makeSmallStrip(rowH, base, cat, true);
+      addStripToggle(strip, () => bar.click());
+      el.appendChild(strip);
+    }
     grid.appendChild(el);
   }
   const place = (el, cell) => {
