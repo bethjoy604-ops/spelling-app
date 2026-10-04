@@ -495,6 +495,8 @@
   .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
   .group-head { grid-column: 1 / -1; justify-content: flex-start; gap: 14px; height: auto; min-height: 48px; padding: 0 22px; font-size: 22px; }
   .group-head.add-group { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; color: rgba(0,0,0,0.42); margin-top: 6px; }
+  .next-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 8px; border-radius: 14px; background: var(--bg); font-weight: 900; text-align: left; }
+  .next-remove { flex: none; border: none; border-radius: 10px; background: var(--red-soft); color: #c0392b; font-family: inherit; font-weight: 900; font-size: 14px; padding: 8px 14px; cursor: pointer; }
   .group-head.held { outline: 5px solid var(--green); outline-offset: -2px; }
   .home-card.list-row .hw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: left; }
   .home-card.list-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
@@ -2267,7 +2269,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 199 - 4 Oct';
+const BUILD = 'build 200 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7121,12 +7123,12 @@ function renderBuilder(grid) {
           }
         }
       }, () => asList
-        ? openTitleActions(w, c, body => body.appendChild(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"'))))
+        ? openTitleActions(w, c, body => body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"'))))
         : openWordSheet(body => {
           // in the builder a word tile has just two options: fix the word, or say what follows it
           sheetTitle(body, 'This word', w);
           body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(w)));
-          body.appendChild(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')));
+          body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')));
           body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
         }));
       count++;
@@ -7580,6 +7582,41 @@ function openChoiceBoardPicker(here) {
 function openBuilderAddTo(here, heading) {
   openWordSheet(body => {
     sheetTitle(body, heading);
+    // what already comes next, each with a way to take it off
+    if (here !== state.builder) {
+      const now = [];
+      const again = () => { save(); renderHome(true); openBuilderAddTo(here, heading); };
+      (here.kids || []).forEach(k => now.push(['Word: ' + k.label, () => {
+        if ((k.kids.length || k.cats.length) && !confirm('Remove "' + k.label + '" and everything that follows it?')) return false;
+        here.kids = here.kids.filter(x => x !== k);
+      }]));
+      const g = here.go ? catById(here.go) : null;
+      if (g) now.push(['Folder of words: ' + g.name, () => { delete here.go; }]);
+      (here.cats || []).forEach(id => { const c = catById(id); if (c && !c.hidden) now.push(['Choice board: ' + c.name, () => { here.cats = here.cats.filter(x => x !== id); }]); });
+      if ((here.small || []).length) now.push(['Small words row', () => { here.small = []; }]);
+      if (now.length) {
+        const h = document.createElement('div');
+        h.className = 'help-note'; h.style.margin = '6px 0';
+        h.textContent = 'Comes next now';
+        body.appendChild(h);
+        now.forEach(([label, drop]) => {
+          const row = document.createElement('div');
+          row.className = 'next-row';
+          const t = document.createElement('span');
+          t.textContent = label;
+          const x = document.createElement('button');
+          x.className = 'next-remove';
+          x.textContent = 'Remove';
+          x.addEventListener('click', () => { if (drop() !== false) again(); });
+          row.appendChild(t); row.appendChild(x);
+          body.appendChild(row);
+        });
+        const h2 = document.createElement('div');
+        h2.className = 'help-note'; h2.style.margin = '14px 0 6px';
+        h2.textContent = 'Add';
+        body.appendChild(h2);
+      }
+    }
     body.appendChild(sheetBtn('A word', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'New word');
       const inp = builderInput(b2, '');
@@ -7654,7 +7691,7 @@ function openBuilderTile(parent, node) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = node.label;
     body.appendChild(p);
-    body.appendChild(sheetBtn('Add what comes next', '', () =>
+    body.appendChild(sheetBtn('Edit what comes next', '', () =>
       openBuilderAddTo(node, 'After "' + node.label + '"')));
     body.appendChild(sheetBtn('Change the word', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Change the word');
