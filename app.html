@@ -483,6 +483,7 @@
   .home-card.list-row.add-row { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; }
   .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
   .group-head { grid-column: 1 / -1; justify-content: flex-start; gap: 14px; height: auto; min-height: 48px; padding: 0 22px; font-size: 22px; }
+  .group-head.add-group { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; color: rgba(0,0,0,0.42); margin-top: 6px; }
   .group-head.held { outline: 5px solid var(--green); outline-offset: -2px; }
   .home-card.list-row .hw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: left; }
   .home-card.list-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
@@ -2253,7 +2254,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 183 - 4 Oct';
+const BUILD = 'build 184 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7630,12 +7631,12 @@ function usesGroups(cat) {
   return foldersShownIn(cat).length === 0;
 }
 function listGroups(cat) {
-  if (!Array.isArray(cat.groups) || !cat.groups.length) cat.groups = [{ id: 1, name: 'Group 1', words: [], open: true }];
+  // a folder starts with one heading; after that the headings are whatever has been set up (even none)
+  if (!Array.isArray(cat.groups)) cat.groups = [{ id: 1, name: 'Group 1', words: [], open: true }];
   const inCat = cat.words || [];
   const seen = new Set();
   cat.groups.forEach(g => { g.words = (g.words || []).filter(w => inCat.includes(w) && !seen.has(w) && (seen.add(w), true)); });
-  // a title with no heading yet goes under the first one
-  inCat.forEach(w => { if (!seen.has(w)) cat.groups[0].words.push(w); });
+  // a title under no heading simply stays ungrouped, listed above the groups
   return cat.groups;
 }
 function addTitleTo(cat, group, typed) {
@@ -7647,7 +7648,7 @@ function addTitleTo(cat, group, typed) {
   if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
   rememberCase(typed, key);
   listGroups(cat).forEach(g => { g.words = g.words.filter(w => w !== key); });
-  group.words.push(key);
+  if (group) group.words.push(key);       // no group: it stays ungrouped
   return true;
 }
 function askText(title, btn, value, done) {
@@ -7682,10 +7683,9 @@ function openGroupHead(cat, group) {
     })));
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
-    if (groups.length > 1) body.appendChild(sheetBtn('Remove this heading', 'danger', () => {
-      // its titles are kept: they move under the first heading that is left
+    body.appendChild(sheetBtn('Remove this heading', 'danger', () => {
+      // its titles are kept: they go back to being ungrouped, above the groups
       cat.groups = groups.filter(g => g !== group);
-      cat.groups[0].words = cat.groups[0].words.concat(group.words);
       save(); closeWordSheet(); renderHome(true);
     }));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
@@ -7694,17 +7694,18 @@ function openGroupHead(cat, group) {
 function openGroupPicker(cat, word) {
   const groups = listGroups(cat);
   openWordSheet(body => {
-    sheetTitle(body, 'Move under which heading?', word);
+    sheetTitle(body, 'Which group?', word);
     const list = document.createElement('div');
     list.className = 'pick-list';
     body.appendChild(list);
-    groups.forEach(g => {
+    const none = !groups.some(g => g.words.includes(word));
+    [null].concat(groups).forEach(g => {
       const r = document.createElement('button');
-      r.className = 'pick-row' + (g.words.includes(word) ? ' on' : '');
-      r.textContent = g.name;
+      r.className = 'pick-row' + ((g ? g.words.includes(word) : none) ? ' on' : '');
+      r.textContent = g ? g.name : 'No group (ungrouped)';
       r.addEventListener('click', () => {
         groups.forEach(x => { x.words = x.words.filter(w => w !== word); });
-        g.words.push(word);
+        if (g) g.words.push(word);
         save(); closeWordSheet(); renderHome(true);
       });
       list.appendChild(r);
@@ -7739,13 +7740,27 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       renderPhraseBar();
       renderMagic(w);
     }, () => openWordActions(w, cat, body => {
-      if (usesGroups(cat) && listGroups(cat).length > 1)
-        body.insertBefore(sheetBtn('Move under another heading', '', () => openGroupPicker(cat, w)), body.lastChild.previousSibling);
+      if (usesGroups(cat) && listGroups(cat).length > 0)
+        body.insertBefore(sheetBtn('Move to a group', '', () => openGroupPicker(cat, w)), body.lastChild.previousSibling);
     }));
     return row;
   };
   if (!usesGroups(cat)) { listWords.forEach(w => put(wordRow(w))); return; }
-  listGroups(cat).forEach(g => {
+  const addRow = (g) => {
+    // a greyed-out row: tap it to add a title here
+    const add = makeListRow('', rowH, base);
+    add.classList.add('add-row');
+    add.removeAttribute('data-word');
+    add.querySelector('.hw').textContent = '+ add a title';
+    add.addEventListener('click', () => askText(g ? 'New title under ' + g.name : 'New title in ' + cat.name, 'Add', '', typed => addTitleTo(cat, g, typed)));
+    return add;
+  };
+  // titles under no heading come first
+  const groupsNow = listGroups(cat);
+  const grouped = new Set([].concat(...groupsNow.map(g => g.words)));
+  listWords.filter(w => !grouped.has(w)).forEach(w => put(wordRow(w)));
+  put(addRow(null));
+  groupsNow.forEach(g => {
     const open = g.open !== false;
     const head = document.createElement('button');
     head.className = 'small-head group-head';
@@ -7759,14 +7774,16 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     put(head);
     if (!open) return;
     listWords.filter(w => g.words.includes(w)).forEach(w => put(wordRow(w)));
-    // the greyed-out row at the end of every group: tap it to add a title there
-    const add = makeListRow('', rowH, base);
-    add.classList.add('add-row');
-    add.removeAttribute('data-word');
-    add.querySelector('.hw').textContent = '+ add a title';
-    add.addEventListener('click', () => askText('New title under ' + g.name, 'Add', '', typed => addTitleTo(cat, g, typed)));
-    put(add);
+    put(addRow(g));      // at the end of every group: add a title to that group
   });
+  // after the last group: a greyed-out heading to start a new group
+  const ng = document.createElement('button');
+  ng.className = 'small-head group-head add-group';
+  ng.innerHTML = '<span>+ add a group</span>';
+  ng.style.fontSize = Math.max(18, Math.round(base * 0.7)) + 'px';
+  ng.style.minHeight = Math.max(48, Math.round(rowH * 0.36)) + 'px';
+  ng.addEventListener('click', () => addGroupHeading(cat));
+  put(ng);
 }
 function byLabel(a, b) { return bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' }); }
 // One word of a My Stuff folder as a full-width row
