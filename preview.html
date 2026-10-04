@@ -319,6 +319,7 @@
   .chat-words .pb-chip { font-size: 1em; }
   .chat-words .chat-typing { color: var(--ink); }
   .chat-row { flex: none; min-height: 52px; }
+  .chat-suggest.type-suggest { flex: 0 0 auto; min-height: 52px; }
   .chat-group { display: flex; flex-direction: column; gap: 8px; padding: 6px 0 10px; }
   .chat-suggest { flex: 1; min-width: 0; display: flex; gap: 8px; overflow-x: auto; align-items: center; }
   .chat-suggest button {
@@ -1608,6 +1609,8 @@
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
+  <div class="chat-suggest type-suggest" id="typeSuggest" style="display:none"></div>
+
   <div class="magic-box" id="magicBox">
     <div class="magic-row" id="magicRow"></div>
     <button class="mbtn action" id="magicSkip">Skip</button>
@@ -2254,7 +2257,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 190 - 4 Oct';
+const BUILD = 'build 191 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5811,7 +5814,7 @@ function renderPhraseBar() {
   const box = document.getElementById('pbWords');
   // Same size settings as the keyboard's typing bar
   bar.className = 'display phrase-bar ds-' + state.displaySize;
-  bar.classList.toggle('has-text', homePhrase.length > 0);
+  bar.classList.toggle('has-text', homePhrase.length > 0 || !!document.getElementById('pbInput').value);
   box.innerHTML = '';
   homePhrase.forEach((w, i) => {
     const c = document.createElement('span');
@@ -5845,6 +5848,34 @@ document.getElementById('homeRootBtn').addEventListener('click', () => {
 document.getElementById('pbInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); if (!commitTypedWord()) homeEnter(); }
 });
+// Typing in the bar brings up the words that start with what has been typed, most recently used first
+function renderTypeSuggest() {
+  const box = document.getElementById('typeSuggest');
+  const inp = document.getElementById('pbInput');
+  const q = normaliseWord(inp.value);
+  box.innerHTML = '';
+  const hits = q ? searchWords(q).filter(r => r.word.startsWith(q) && !state.hiddenWords[r.word])
+    .sort((a, b) => (b.t || 0) - (a.t || 0) || (b.n || 0) - (a.n || 0) || a.word.localeCompare(b.word)).slice(0, 12) : [];
+  box.style.display = hits.length ? '' : 'none';
+  hits.forEach(r => {
+    const b = document.createElement('button');
+    b.textContent = sentenceLabel(r.word);
+    // pointerdown keeps the keyboard up: the bar never loses the cursor
+    b.addEventListener('pointerdown', e => e.preventDefault());
+    b.addEventListener('click', () => {
+      inp.value = '';
+      homePhrase.push(r.word);
+      buzz(10);
+      warmSpeech();
+      speakWord(r.word, 0.95);
+      renderPhraseBar();
+      renderTypeSuggest();
+      inp.focus();
+    });
+    box.appendChild(b);
+  });
+}
+document.getElementById('pbInput').addEventListener('input', () => { renderTypeSuggest(); renderPhraseBar(); });
 document.getElementById('pbGo').addEventListener('click', () => {
   if (!commitTypedWord()) homeEnter();
 });
@@ -6026,11 +6057,16 @@ document.getElementById('homeSpeakBtn').addEventListener('click', () => {
   buzz(10);
   save(); renderSpeakBtn();
 });
+// The X takes away one thing at a time: what is being typed first, then the last word in the bar
 document.getElementById('pbClear').addEventListener('click', () => {
-  homePhrase = [];
+  const inp = document.getElementById('pbInput');
+  if (inp.value) inp.value = '';
+  else homePhrase.pop();
+  renderTypeSuggest();
   renderPhraseBar();
   hideMagic();
-  if (state.builderMode) { builderPath = []; renderHome(true); }   // start the sentence again
+  // builder: once the bar is empty the sentence starts again from the first page
+  if (state.builderMode && !homePhrase.length) { builderPath = []; renderHome(true); }
 });
 
 // ---- Category tiles: one line above the bank ----
@@ -6280,6 +6316,7 @@ function commitTypedWord() {
   if (!raw) return false;
   rememberCase(typed, raw);
   inp.value = '';
+  renderTypeSuggest();
   if (!state.words.includes(raw)) state.words.push(raw);
   if (!state.wordHistory[raw]) state.wordHistory[raw] = { n: 0, t: 0 };
   homePhrase.push(raw);
