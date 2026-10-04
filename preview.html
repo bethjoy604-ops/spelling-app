@@ -2254,7 +2254,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 186 - 4 Oct';
+const BUILD = 'build 187 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7829,7 +7829,9 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     put(addRow(g));      // at the end of every group: add a title to that group
   });
   // at the bottom of the whole list: add a title (ungrouped), then start a new group
-  put(addRow(null));
+  // (when the last group is open its own add row is already the last thing, so one is enough)
+  const lastG = groupsNow[groupsNow.length - 1];
+  if (!lastG || lastG.open === false) put(addRow(null));
   const ng = document.createElement('button');
   ng.className = 'small-head group-head add-group';
   ng.innerHTML = '<span>+ add a group</span>';
