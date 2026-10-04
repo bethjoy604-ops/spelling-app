@@ -2248,7 +2248,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 177 - 4 Oct';
+const BUILD = 'build 178 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2415,6 +2415,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  booksV1: false,             // the one-time removal of Characters from inside Books
   caseV3: false,              // the one-time clearing of accidental first capitals
   linkV1: false,              // the one-time marking of Actions as a folder of linking words
   smallV3: false,            // the one-time creation of the Small words folder inside Chat
@@ -2582,6 +2583,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        booksV1: saved.booksV1 ?? false,
         caseV3: saved.caseV3 ?? false,
         linkV1: saved.linkV1 ?? false,
         smallV3: saved.smallV3 ?? false,
@@ -2709,6 +2711,22 @@ async function load() {
     const named = w => categoriesOf(w).some(c => c.name.toLowerCase() === 'people');
     Object.keys(state.wordCase || {}).forEach(k => {
       if (k !== 'I' && state.wordCase[k] === titleCase(k) && !named(k)) delete state.wordCase[k];
+    });
+    save();
+  }
+  // One-time: Characters no longer shows inside Books. If it was only shown there it comes off;
+  // if it had been moved in there it goes back beside Books. The folder and its words are kept.
+  if (!state.booksV1) {
+    state.booksV1 = true;
+    state.categories.filter(b => b.name.toLowerCase() === 'books').forEach(b => {
+      const isChar = c => !!c && c.name.toLowerCase() === 'characters';
+      b.links = (b.links || []).filter(id => !isChar(catById(id)));
+      state.categories.forEach(c => {
+        if (isChar(c) && c.parent === b.id) {
+          c.parent = b.parent || null;
+          c.order = childrenOf(c.parent, true).filter(x => x.id !== c.id).length;
+        }
+      });
     });
     save();
   }
@@ -2882,6 +2900,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      booksV1: state.booksV1,
       caseV3: state.caseV3,
       linkV1: state.linkV1,
       smallV3: state.smallV3,
@@ -6392,6 +6411,7 @@ function applyDefaultLayout() {
   ensureSmallFolder();
   state.linkV1 = true;
   state.caseV3 = true;
+  state.booksV1 = true;
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
 
