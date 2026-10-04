@@ -2254,7 +2254,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 188 - 4 Oct';
+const BUILD = 'build 189 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6969,7 +6969,7 @@ function renderBuilder(grid) {
         const ok = id => { const x = id ? catById(id) : null; return !!x && !x.hidden; };
         return (n && (ok(n.go) || n.kids.length || n.cats.some(ok))) ? n : null;
       };
-      const wt = tile(leads() ? sentenceLabel(w) : bankLabel(w), false);
+      const wt = tile(hasSmallStrip(c) ? plainLabel(w) : leads() ? sentenceLabel(w) : bankLabel(w), false);
       if (asList) {
         wt.classList.add('list-row');
         wt.style.gridColumn = '1 / -1';
@@ -7892,6 +7892,16 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
   ng.addEventListener('click', () => addGroupHeading(cat));
   put(ng);
 }
+// A word as it reads in a Categories folder: small letters. Only capitals given by hand ("iPad",
+// a person's name) are kept - being a title in My Stuff does not capitalise it here.
+function plainLabel(w) {
+  const key = w || '';
+  const kept = (state.wordCase || {})[key];
+  if (kept && kept !== titleCase(key)) return kept;
+  if (kept && categoriesOf(key).some(c => c.name.toLowerCase() === 'people')) return kept;
+  if (key === 'I' || key.startsWith("I'")) return 'I' + key.slice(1).toLowerCase();
+  return key.toLowerCase();
+}
 function byLabel(a, b) { return bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' }); }
 // One word of a My Stuff folder as a full-width row
 function makeListRow(w, rowH, base) {
@@ -8092,7 +8102,8 @@ function renderSlotGrid(grid, cat, folders) {
     const t = document.createElement('span');
     t.className = 'hw';
     // on Recents / Popular every tile starts with a capital
-    const label = bankLabel(w);
+    // in a Categories folder a word reads in small letters even if it is also a title in My Stuff
+    const label = alpha ? plainLabel(w) : bankLabel(w);
     t.textContent = label;     // small letters on every page, Recents / Popular included
     card.appendChild(t);
     card.addEventListener('click', () => {
@@ -8105,7 +8116,7 @@ function renderSlotGrid(grid, cat, folders) {
       // the page stays put so more words can be added from it; enter (or the folder menu) moves on
     });
     attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
-    fit(card, bankLabel(w));
+    fit(card, label);
     place(card, head + i);
   }
   if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
