@@ -2254,7 +2254,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 185 - 4 Oct';
+const BUILD = 'build 186 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2421,6 +2421,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  stuffV2done: false,
   stuffV2: false,             // the one-time flattening of My Stuff: no sub-folders, no automatic group
   stuffV1: false,             // the one-time tidy of My Stuff: one Characters folder, and a Places folder
   booksV1: false,             // the one-time removal of Characters from inside Books
@@ -2591,6 +2592,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        stuffV2done: saved.stuffV2done ?? false,
         stuffV2: saved.stuffV2 ?? false,
         stuffV1: saved.stuffV1 ?? false,
         booksV1: saved.booksV1 ?? false,
@@ -2754,6 +2756,8 @@ async function load() {
     flattenMyStuff();
     save();
   }
+  // and every time the app opens: the folders in My Stuff never keep sub-folders
+  if (flattenMyStuff()) save();
   // One-time: Actions holds linking words (verbs), which read in small letters
   if (!state.linkV1) {
     state.linkV1 = true;
@@ -2924,6 +2928,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      stuffV2done: state.stuffV2done,
       stuffV2: state.stuffV2,
       stuffV1: state.stuffV1,
       booksV1: state.booksV1,
@@ -7613,10 +7618,13 @@ function slotsFor(cat, words, cols) {
 }
 function flattenMyStuff() {
   const auto = g => String(g.name || '').trim().toLowerCase() === 'group 1';
-  state.categories.filter(c => !c.parent && c.phrases).forEach(stuff => {
+  let changed = false;
+  state.categories.filter(c => !c.parent && (c.phrases || c.name.trim().toLowerCase() === 'my stuff')).forEach(stuff => {
+    if (!stuff.phrases) { stuff.phrases = true; changed = true; }     // My Stuff is always the folder of names and titles
     state.categories.filter(f => f.parent === stuff.id).forEach(folder => {
-      folder.groups = (Array.isArray(folder.groups) ? folder.groups : []).filter(g => !auto(g));
-      folder.links = [];
+      if (!state.stuffV2done) folder.groups = (Array.isArray(folder.groups) ? folder.groups : []).filter(g => !auto(g));
+      if (!Array.isArray(folder.groups)) folder.groups = [];
+      if ((folder.links || []).length) { folder.links = []; changed = true; }
       // everything inside it, however deep (hidden sub-folders are left alone)
       const inside = [];
       const walk = id => state.categories.filter(c => c.parent === id && !c.hidden).forEach(c => { inside.push(c); walk(c.id); });
@@ -7635,10 +7643,13 @@ function flattenMyStuff() {
         };
         if (state.builder) { swap(state.builder); Object.values(state.builder.words || {}).forEach(swap); }
       });
+      if (inside.length) changed = true;
       state.categories = state.categories.filter(c => !inside.includes(c));
     });
   });
+  state.stuffV2done = true;      // the automatic "Group 1" is only cleared the first time
   if (typeof homePath !== 'undefined') homePath = homePath.filter(id => !!catById(id));
+  return changed;
 }
 function tidyMyStuff() {
   state.categories.filter(c => !c.parent && c.phrases).forEach(stuff => {
@@ -7801,7 +7812,6 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
   const groupsNow = listGroups(cat);
   const grouped = new Set([].concat(...groupsNow.map(g => g.words)));
   listWords.filter(w => !grouped.has(w)).forEach(w => put(wordRow(w)));
-  put(addRow(null));
   groupsNow.forEach(g => {
     const open = g.open !== false;
     const head = document.createElement('button');
@@ -7818,7 +7828,8 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     listWords.filter(w => g.words.includes(w)).forEach(w => put(wordRow(w)));
     put(addRow(g));      // at the end of every group: add a title to that group
   });
-  // after the last group: a greyed-out heading to start a new group
+  // at the bottom of the whole list: add a title (ungrouped), then start a new group
+  put(addRow(null));
   const ng = document.createElement('button');
   ng.className = 'small-head group-head add-group';
   ng.innerHTML = '<span>+ add a group</span>';
