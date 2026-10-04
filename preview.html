@@ -479,6 +479,9 @@
   .cc-btn.on { background: var(--ink); color: #fff; }
   /* arranging a folder */
   .home-card { -webkit-touch-callout: none; }
+  .home-card.list-row { flex-direction: row; align-items: center; justify-content: flex-start; padding: 0 26px; border-radius: 18px; }
+  .home-card.list-row .hw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: left; }
+  .home-card.list-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .home-card.add-folder {
     background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset;
     min-width: 0; min-height: 0; padding: 0 !important;
@@ -2245,7 +2248,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 176 - 4 Oct';
+const BUILD = 'build 177 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6895,8 +6898,11 @@ function renderBuilder(grid) {
     // since it was last arranged there
     const inCat = c.words || [];
     const placed = Array.isArray(c.slots) ? c.slots.filter(w => w && inCat.includes(w)) : [];
-    const words = placed.concat(inCat.filter(w => !placed.includes(w)))
+    let words = placed.concat(inCat.filter(w => !placed.includes(w)))
       .filter(w => !state.hiddenWords[w]);
+    // My Stuff: a list, one title to a row, A to Z - the same as menu mode shows it
+    const asList = catAllowsPhrases(c);
+    if (asList) words = words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' }));
     words.forEach(w => {
       // stays on this page so more can be added; enter (or the X) goes back to the start
       // a linking word: it goes into the sentence, then opens the choice boards linked to it
@@ -6906,6 +6912,14 @@ function renderBuilder(grid) {
         return (n && (ok(n.go) || n.kids.length || n.cats.some(ok))) ? n : null;
       };
       const wt = tile(leads() ? sentenceLabel(w) : bankLabel(w), false);
+      if (asList) {
+        wt.classList.add('list-row');
+        wt.style.gridColumn = '1 / -1';
+        wt.style.height = Math.max(56, Math.round(rowH * 0.45)) + 'px';
+        const hw = wt.querySelector('.hw');
+        hw.style.fontSize = Math.max(18, Math.round(base * 0.8)) + 'px';
+        hw.style.whiteSpace = 'nowrap';
+      }
       if (leads()) wt.classList.add('link-word');
       holdable(wt, () => {
         builderSay(w);
@@ -7536,6 +7550,20 @@ function slotsFor(cat, words, cols) {
   cat.words = placed.concat((cat.words || []).filter(w => !placed.includes(w)));
   return slots;
 }
+// One word of a My Stuff folder as a full-width row
+function makeListRow(w, rowH, base) {
+  const row = document.createElement('button');
+  row.className = 'home-card list-row';
+  row.dataset.word = w;
+  row.style.gridColumn = '1 / -1';
+  row.style.height = Math.max(56, Math.round(rowH * 0.45)) + 'px';
+  const t = document.createElement('span');
+  t.className = 'hw';
+  t.style.fontSize = Math.max(18, Math.round(base * 0.8)) + 'px';
+  t.textContent = bankLabel(w);
+  row.appendChild(t);
+  return row;
+}
 function renderSlotGrid(grid, cat, folders) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
@@ -7550,10 +7578,14 @@ function renderSlotGrid(grid, cat, folders) {
   const sec = arrange ? folders.find(f => f.smallSec) : null;
   if (sec) folders = folders.filter(f => f !== sec);
   const smalls = sec ? (sec.words || []).filter(w => !state.hiddenWords[w]) : [];
-  const slots = arrange ? slotsFor(cat, words, cols) : words;
+  // My Stuff: titles are long, so its words are a list - one to a row, A to Z, as many as there are
+  const listMode = arrange && !sec && catAllowsPhrases(cat);
+  const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
+  const slots = listMode ? [] : arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   const lastRow = Math.ceil((head + slots.length) / cols);
-  const totalRows = arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
+  const totalRows = listMode ? (head ? Math.ceil(head / cols) : (listWords.length ? 0 : 1))
+                  : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
   grid.scrollTop = 0;
@@ -7568,6 +7600,10 @@ function renderSlotGrid(grid, cat, folders) {
   const strip = arrange && !sec && hasSmallStrip(cat) && !isBoardMenu(cat);
   const topRow = !!(strip || sec);    // the small words bar takes the first row, above the tiles
   grid.style.gridTemplateRows = topRow ? 'auto' : '';
+  if (listMode) {
+    grid.style.gridTemplateRows = [topRow ? 'auto' : '', totalRows ? 'repeat(' + totalRows + ', ' + rowH + 'px)' : ''].filter(Boolean).join(' ');
+    grid.style.gridAutoRows = 'auto';
+  }
   if (sec) {
     const wrap = document.createElement('div');
     wrap.className = 'small-section top';
@@ -7726,6 +7762,30 @@ function renderSlotGrid(grid, cat, folders) {
     fit(card, bankLabel(w));
     place(card, head + i);
   }
+  listWords.forEach((w, k) => {
+    const row = makeListRow(w, rowH, base);
+    row.style.gridRow = String((topRow ? 1 : 0) + totalRows + k + 1);
+    // tap adds it to the sentence; hold for its options
+    let timer = null, held = false;
+    row.addEventListener('pointerdown', () => {
+      held = false;
+      timer = setTimeout(() => { timer = null; held = true; buzz(15); row.classList.add('held'); }, 520);
+    });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    row.addEventListener('pointerup', stop);
+    ['pointercancel', 'pointerleave'].forEach(ev => row.addEventListener(ev, () => { stop(); held = false; row.classList.remove('held'); }));
+    row.addEventListener('contextmenu', e => e.preventDefault());
+    row.addEventListener('click', () => {
+      row.classList.remove('held');
+      if (held) { held = false; openWordActions(w, cat); return; }
+      homePhrase.push(w);
+      warmSpeech();
+      speakWord(w, 0.95);
+      renderPhraseBar();
+      renderMagic(w);
+    });
+    grid.appendChild(row);
+  });
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
   if (!arrange && state.chatMode) {
     grid.style.gridTemplateRows = 'repeat(' + Math.max(1, totalRows) + ', ' + rowH + 'px) auto';
