@@ -2295,7 +2295,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 211 - 4 Oct';
+const BUILD = 'build 212 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2920,16 +2920,24 @@ async function load() {
     if (!had) chat.order = Math.min(0, ...state.categories.filter(c => !c.parent && c !== chat).map(c => c.order || 0)) - 1;
     ensureSmallFolder();
     const sf = smallFolder();
+    const know = w => {
+      if (!state.words.includes(w)) state.words.push(w);
+      if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+    };
+    const start = f => ((DEFAULT_LAYOUT.categories || []).find(f) || {}).words || [];
     if (sf) {
       sf.hidden = false;
       if (!(sf.words || []).some(w => !isPunct(w))) {
-        SMALL_STARTERS.forEach(w => {
-          if (!sf.words.includes(w)) sf.words.push(w);
-          if (!state.words.includes(w)) state.words.push(w);
-          if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
-        });
+        start(c => c.smallSec).forEach(w => { if (!sf.words.includes(w)) sf.words.push(w); know(w); });
         chat.words = (chat.words || []).filter(w => !sf.words.includes(w));
       }
+    }
+    // an empty Chat gets its starting tiles back (hi, bye, please...)
+    if (!(chat.words || []).length) {
+      start(c => c.small).forEach(w => { if (!sf || !sf.words.includes(w)) { chat.words.push(w); know(w); } });
+      delete chat.slots;
+    }
+    if (sf) {
       addSmallPunct();
     }
     save();
