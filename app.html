@@ -2267,7 +2267,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 197 - 4 Oct';
+const BUILD = 'build 198 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2434,6 +2434,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  punctV1: false,             // the one-time addition of . ? ! to the small words
   drinksV1: false,            // the one-time removal of the Drinks folder from Food
   stuffV2done: false,
   stuffV2: false,             // the one-time flattening of My Stuff: no sub-folders, no automatic group
@@ -2606,6 +2607,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        punctV1: saved.punctV1 ?? false,
         drinksV1: saved.drinksV1 ?? false,
         stuffV2done: saved.stuffV2done ?? false,
         stuffV2: saved.stuffV2 ?? false,
@@ -2792,6 +2794,12 @@ async function load() {
     });
     save();
   }
+  // One-time: the small words gain the punctuation marks . ? !
+  if (!state.punctV1) {
+    state.punctV1 = true;
+    addSmallPunct();
+    save();
+  }
   // and every time the app opens: the folders in My Stuff never keep sub-folders
   if (flattenMyStuff()) save();
   // One-time: Actions holds linking words (verbs), which read in small letters
@@ -2964,6 +2972,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      punctV1: state.punctV1,
       drinksV1: state.drinksV1,
       stuffV2done: state.stuffV2done,
       stuffV2: state.stuffV2,
@@ -6532,6 +6541,8 @@ function applyDefaultLayout() {
   tidyMyStuff();
   state.stuffV2 = true;
   state.drinksV1 = true;
+  state.punctV1 = true;
+  addSmallPunct();
   flattenMyStuff();
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
@@ -6629,10 +6640,22 @@ function smallWordBtn(word) {
   paint();
   return b;
 }
+// punctuation marks count as small words, and always come after the real words
+function addSmallPunct() {
+  const sf = smallFolder();
+  if (!sf) return;
+  ['.', '?', '!'].forEach(m => {
+    if (!sf.words.includes(m)) sf.words.push(m);
+    if (!state.words.includes(m)) state.words.push(m);
+    if (!state.wordHistory[m]) state.wordHistory[m] = { n: 0, t: 0 };
+  });
+}
+function isPunct(w) { return !/[A-Z0-9]/.test(w || ''); }
+function punctLast(list) { return list.filter(w => !isPunct(w)).concat(list.filter(isPunct)); }
 function allSmallWords() {
   const out = [];
   state.categories.filter(isSmallCat).forEach(c => (c.words || []).forEach(w => { if (!out.includes(w)) out.push(w); }));
-  return out;
+  return punctLast(out);
 }
 // Does this folder sit inside one that gives its sub-folders the small-words row?
 function hasSmallStrip(cat) {
@@ -6721,6 +6744,7 @@ function smallRows(owner) {
   const rows = [[]];
   // one list that fills six across and then carries on underneath (older saved row breaks are dropped)
   smallRowList(owner).forEach(w => { if (w !== '\n' && !rows[0].includes(w)) rows[0].push(w); });
+  rows[0] = punctLast(rows[0]);
   return rows.filter(r => r.length);
 }
 function setSmallRows(owner, rows) {
@@ -8042,7 +8066,7 @@ function renderSlotGrid(grid, cat, folders) {
   // in Chat the Small words folder is not a tile: it is a row that opens out into small tiles
   const sec = arrange ? folders.find(f => f.smallSec) : null;
   if (sec) folders = folders.filter(f => f !== sec);
-  const smalls = sec ? (sec.words || []).filter(w => !state.hiddenWords[w]) : [];
+  const smalls = sec ? punctLast((sec.words || []).filter(w => !state.hiddenWords[w])) : [];
   // My Stuff: titles are long, so its words are a list - one to a row, A to Z, as many as there are
   const listMode = arrange && !sec && catAllowsPhrases(cat);
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
