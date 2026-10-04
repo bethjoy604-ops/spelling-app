@@ -497,6 +497,10 @@
   .group-head.add-group { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; color: rgba(0,0,0,0.42); margin-top: 6px; }
   .next-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 8px; border-radius: 14px; background: var(--bg); font-weight: 900; text-align: left; }
   .next-remove { flex: none; border: none; border-radius: 10px; background: var(--red-soft); color: #c0392b; font-family: inherit; font-weight: 900; font-size: 14px; padding: 8px 14px; cursor: pointer; }
+  .target-head { margin-top: 2px; }
+  .target-head span { flex: none; font-weight: 900; color: var(--ink); }
+  .target-empty { padding: 4px 6px 10px; text-align: left; }
+  .home-card.held { outline: 5px solid var(--green); outline-offset: -2px; }
   .group-head.held { outline: 5px solid var(--green); outline-offset: -2px; }
   .home-card.list-row .hw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: left; }
   .home-card.list-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
@@ -2274,7 +2278,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 202 - 4 Oct';
+const BUILD = 'build 203 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2441,6 +2445,8 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  targetState: {},            // each target word's section: independent, prompted or waiting
+  targetV1: false,            // the one-time renaming of New to the targets tab
   punctV1: false,             // the one-time addition of . ? ! to the small words
   drinksV1: false,            // the one-time removal of the Drinks folder from Food
   stuffV2done: false,
@@ -2614,6 +2620,8 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        targetState: saved.targetState || {},
+        targetV1: saved.targetV1 ?? false,
         punctV1: saved.punctV1 ?? false,
         drinksV1: saved.drinksV1 ?? false,
         stuffV2done: saved.stuffV2done ?? false,
@@ -2801,6 +2809,12 @@ async function load() {
     });
     save();
   }
+  // One-time: the New folder becomes the targets tab (a dart-board), with its three sections
+  if (!state.targetV1) {
+    state.targetV1 = true;
+    ensureTargets();
+    save();
+  }
   // One-time: the small words gain the punctuation marks . ? !
   if (!state.punctV1) {
     state.punctV1 = true;
@@ -2979,6 +2993,8 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      targetState: state.targetState,
+      targetV1: state.targetV1,
       punctV1: state.punctV1,
       drinksV1: state.drinksV1,
       stuffV2done: state.stuffV2done,
@@ -6555,6 +6571,8 @@ function applyDefaultLayout() {
   state.drinksV1 = true;
   state.punctV1 = true;
   addSmallPunct();
+  state.targetV1 = true;
+  ensureTargets();
   flattenMyStuff();
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
@@ -6949,7 +6967,7 @@ function exportLayout() {
     categories: state.categories.map(c => ({
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
-      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, groups: Array.isArray(c.groups) ? c.groups : null, strip: !!c.strip, nopop: !!c.nopop,
+      links: c.links || [], small: !!c.small, target: !!c.target, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, groups: Array.isArray(c.groups) ? c.groups : null, strip: !!c.strip, nopop: !!c.nopop,
       phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
@@ -6959,6 +6977,7 @@ function exportLayout() {
     recentsHidden: Object.keys(state.recentsHidden || {}),
     smallRow: state.smallRow || [],
     smallWords: state.words.filter(isSmallWord),
+    targetState: state.targetState || {},
     builder: state.builder,
   };
   const text = JSON.stringify(layout, null, 1);
@@ -8123,6 +8142,7 @@ function makeListRow(w, rowH, base) {
   return row;
 }
 function renderSlotGrid(grid, cat, folders) {
+  if (cat && cat.target) { renderTargets(grid, cat); return; }
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
   const W = grid.clientWidth, H = grid.clientHeight;
@@ -8584,8 +8604,121 @@ function sheetTitle(body, text, word) {
   }
 }
 // The New folder: the list of target words for spelling practice
+// The targets folder (the dart-board tab): words to practise, sorted into Independent, Prompted
+// and Waiting. A word starts in Waiting.
+const TARGET_STATES = [['independent', 'Independent'], ['prompted', 'Prompted'], ['waiting', 'Waiting']];
+function ensureTargets() {
+  let t = state.categories.find(c => !c.parent && (c.target || c.name.toLowerCase() === 'new'));
+  if (!t) {
+    t = addCategory('\uD83C\uDFAF', null, 'teal');
+    t.order = Math.max(-1, ...state.categories.filter(c => !c.parent && c !== t).map(c => c.order || 0)) + 1;
+  }
+  t.target = true;
+  if (t.name.toLowerCase() === 'new') t.name = '\uD83C\uDFAF';
+  state.targetState = state.targetState || {};
+}
+function targetStateOf(w) { const v = (state.targetState || {})[w]; return TARGET_STATES.some(x => x[0] === v) ? v : 'waiting'; }
+function openTargetWord(word, cat) {
+  openWordSheet(body => {
+    sheetTitle(body, 'This target', word);
+    const paint = [];
+    TARGET_STATES.forEach(([id, name]) => {
+      const b = sheetBtn(name, '', () => {
+        state.targetState = state.targetState || {};
+        state.targetState[word] = id;
+        save(); paint.forEach(f => f()); renderHome(false);
+        document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+      });
+      paint.push(() => {
+        const on = targetStateOf(word) === id;
+        b.textContent = (on ? '\u2713  ' : '') + name;
+        b.style.background = on ? 'var(--green)' : '';
+        b.style.color = on ? '#fff' : '';
+      });
+      body.appendChild(b);
+    });
+    paint.forEach(f => f());
+    body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
+    body.appendChild(sheetBtn('Take it out of targets', 'danger', () => {
+      cat.words = (cat.words || []).filter(w => w !== word);
+      if (state.targetState) delete state.targetState[word];
+      if (!categoriesOf(word).length) deleteWordEverywhere(word);
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
+function renderTargets(grid, cat) {
+  const { cols, rows: screenRows } = slotShape();
+  const gap = 16;
+  const W = grid.clientWidth, H = grid.clientHeight;
+  const cellW = Math.max(60, (W - gap * (cols - 1)) / cols);
+  const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
+  const room = cellW - 30;
+  const base = Math.min(rowH * 0.4, room / (12 * 0.62));
+  grid.innerHTML = '';
+  grid.scrollTop = 0;
+  grid.classList.add('slot-grid');
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+  grid.style.gridTemplateRows = '';
+  grid.style.gridAutoRows = 'auto';
+  const words = (cat.words || []).filter(w => !state.hiddenWords[w]);
+  TARGET_STATES.forEach(([id, name]) => {
+    // a page break for each: the name, then a line
+    const head = document.createElement('div');
+    head.className = 'bl-head target-head';
+    head.style.gridColumn = '1 / -1';
+    const lab = document.createElement('span');
+    lab.textContent = name;
+    lab.style.fontSize = Math.max(16, Math.round(base * 0.55)) + 'px';
+    const line = document.createElement('div');
+    line.className = 'bl-line';
+    head.appendChild(lab); head.appendChild(line);
+    grid.appendChild(head);
+    const mine = words.filter(w => targetStateOf(w) === id).sort(byLabel);
+    if (!mine.length) {
+      const n = document.createElement('div');
+      n.className = 'empty-note target-empty';
+      n.style.gridColumn = '1 / -1';
+      n.textContent = 'Nothing here yet.';
+      grid.appendChild(n);
+    }
+    mine.forEach(w => {
+      const card = document.createElement('button');
+      card.className = 'home-card';
+      card.dataset.word = w;
+      card.style.height = rowH + 'px';
+      const t = document.createElement('span');
+      t.className = 'hw';
+      const label = bankLabel(w);
+      t.textContent = label;
+      const longest = Math.max(...label.split(' ').map(x => x.length));
+      if (label.includes(' ') && room / (label.length * 0.62) < base) t.style.whiteSpace = 'normal';
+      t.style.fontSize = Math.min(base, room / (Math.max(1, label.includes(' ') ? longest : label.length) * 0.62)) + 'px';
+      card.appendChild(t);
+      let timer = null, held = false;
+      card.addEventListener('pointerdown', () => {
+        held = false;
+        timer = setTimeout(() => { timer = null; held = true; buzz(15); card.classList.add('held'); }, 520);
+      });
+      const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+      card.addEventListener('pointerup', stop);
+      ['pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, () => { stop(); held = false; card.classList.remove('held'); }));
+      card.addEventListener('contextmenu', e => e.preventDefault());
+      card.addEventListener('click', () => {
+        card.classList.remove('held');
+        if (held) { held = false; openTargetWord(w, cat); return; }
+        homePhrase.push(w);
+        warmSpeech();
+        speakWord(w, 0.95);
+        renderPhraseBar();
+      });
+      grid.appendChild(card);
+    });
+  });
+}
 function newFolder() {
-  return state.categories.find(c => !c.parent && !c.hidden && c.name.toLowerCase() === 'new') || null;
+  return state.categories.find(c => !c.parent && !c.hidden && (c.target || c.name.toLowerCase() === 'new')) || null;
 }
 // A switch in a word's hold menu: put it on the New list too (it stays where it is), or take it off
 function newListBtn(word) {
@@ -8600,7 +8733,7 @@ function newListBtn(word) {
   });
   const paint = () => {
     const on = nf.words.includes(word);
-    b.textContent = on ? '\u2713  In New (tap to take it out)' : 'Add to New';
+    b.textContent = on ? '\u2713  In targets \uD83C\uDFAF (tap to take it out)' : 'Add to targets \uD83C\uDFAF';
     b.style.background = on ? 'var(--green)' : '';
     b.style.color = on ? '#fff' : '';
   };
