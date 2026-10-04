@@ -2295,7 +2295,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 210 - 4 Oct';
+const BUILD = 'build 212 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2466,6 +2466,7 @@ const state = {
   caseV2: false,
   targetState: {},            // each target word's section: independent, prompted or waiting
   targetV1: false,            // the one-time renaming of New to the targets tab
+  chatV1: false,             // the one-time check that Chat and its Small words folder are there
   punctV1: false,             // the one-time addition of . ? ! to the small words
   drinksV1: false,            // the one-time removal of the Drinks folder from Food
   stuffV2done: false,
@@ -2643,6 +2644,7 @@ async function load() {
         caseV2: saved.caseV2 ?? false,
         targetState: saved.targetState || {},
         targetV1: saved.targetV1 ?? false,
+        chatV1: saved.chatV1 ?? false,
         punctV1: saved.punctV1 ?? false,
         drinksV1: saved.drinksV1 ?? false,
         stuffV2done: saved.stuffV2done ?? false,
@@ -2908,6 +2910,38 @@ async function load() {
     state.categories.filter(c => c.name.toLowerCase() === 'feelings').forEach(c => { c.nopop = true; });
     save();
   }
+  // One-time: a device whose Chat tab was missing or hidden (or that updated across several
+  // builds at once) gets Chat back as the first tab, with its Small words folder inside
+  if (!state.chatV1) {
+    state.chatV1 = true;
+    const had = state.categories.find(c => !c.parent && (c.small || c.name.trim().toLowerCase() === 'chat'));
+    const chat = smallWordsFolder();
+    chat.hidden = false;
+    if (!had) chat.order = Math.min(0, ...state.categories.filter(c => !c.parent && c !== chat).map(c => c.order || 0)) - 1;
+    ensureSmallFolder();
+    const sf = smallFolder();
+    const know = w => {
+      if (!state.words.includes(w)) state.words.push(w);
+      if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+    };
+    const start = f => ((DEFAULT_LAYOUT.categories || []).find(f) || {}).words || [];
+    if (sf) {
+      sf.hidden = false;
+      if (!(sf.words || []).some(w => !isPunct(w))) {
+        start(c => c.smallSec).forEach(w => { if (!sf.words.includes(w)) sf.words.push(w); know(w); });
+        chat.words = (chat.words || []).filter(w => !sf.words.includes(w));
+      }
+    }
+    // an empty Chat gets its starting tiles back (hi, bye, please...)
+    if (!(chat.words || []).length) {
+      start(c => c.small).forEach(w => { if (!sf || !sf.words.includes(w)) { chat.words.push(w); know(w); } });
+      delete chat.slots;
+    }
+    if (sf) {
+      addSmallPunct();
+    }
+    save();
+  }
   // One-time: the builder's first page says Stop where it used to say All Done
   if (!state.builderV2) {
     state.builderV2 = true;
@@ -3040,6 +3074,7 @@ async function save() {
       caseV2: state.caseV2,
       targetState: state.targetState,
       targetV1: state.targetV1,
+      chatV1: state.chatV1,
       punctV1: state.punctV1,
       drinksV1: state.drinksV1,
       stuffV2done: state.stuffV2done,
@@ -6646,6 +6681,7 @@ function applyLayout(L, keep) {
   state.stuffV2 = true;
   state.drinksV1 = true;
   state.punctV1 = true;
+  state.chatV1 = true;
   addSmallPunct();
   state.targetV1 = true;
   ensureTargets();
