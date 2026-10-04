@@ -2254,7 +2254,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 187 - 4 Oct';
+const BUILD = 'build 188 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6985,7 +6985,9 @@ function renderBuilder(grid) {
         const g = n && n.go ? catById(n.go) : null;
         if (g && !g.hidden) { builderPath.push({ cat: n.go, via: w }); renderHome(true); }
         else if (n) { builderPath.push(n); renderHome(true); }
-      }, () => openWordActions(w, c, body => {
+      }, () => asList
+        ? openTitleActions(w, c, body => body.appendChild(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"'))))
+        : openWordActions(w, c, body => {
         body.insertBefore(sheetBtn('Add what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')), body.lastChild.previousSibling);
       }));
       count++;
@@ -7744,6 +7746,59 @@ function openGroupHead(cat, group) {
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
+// Hold a title in My Stuff: edit it, or choose its group. Nothing else applies to a title.
+function openTitleActions(word, cat, extra) {
+  openWordSheet(body => {
+    sheetTitle(body, 'This title', word);
+    body.appendChild(sheetBtn('Edit the title or its capitals', '', () => openWordEdit(word)));
+    if (extra) extra(body);
+    const groups = usesGroups(cat) ? listGroups(cat) : [];
+    if (groups.length) {
+      const h = document.createElement('div');
+      h.className = 'help-note'; h.style.margin = '14px 0 6px';
+      h.textContent = 'Add to a group';
+      body.appendChild(h);
+      const list = document.createElement('div');
+      list.className = 'pick-list';
+      body.appendChild(list);
+      const paint = () => {
+        const none = !groups.some(g => g.words.includes(word));
+        [...list.children].forEach((r, i) => {
+          const g = groups[i];
+          const on = g ? g.words.includes(word) : none;
+          r.classList.toggle('on', on);
+          r.textContent = (on ? '\u2713  ' : '') + (g ? g.name : 'No group');
+        });
+      };
+      groups.concat([null]).forEach(g => {
+        const r = document.createElement('button');
+        r.className = 'pick-row';
+        r.addEventListener('click', () => {
+          groups.forEach(x => { x.words = x.words.filter(w => w !== word); });
+          if (g) g.words.push(word);
+          save(); paint(); renderHome(false);
+          document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+        });
+        list.appendChild(r);
+      });
+      paint();
+    } else if (usesGroups(cat)) {
+      body.appendChild(sheetBtn('Add to a new group', '', () => askText('New group in ' + cat.name, 'Add', '', typed => {
+        const name = String(typed || '').replace(/\s+/g, ' ').trim();
+        if (!name) return false;
+        listGroups(cat).push({ id: 1, name, words: [word], open: true });
+      })));
+    }
+    body.appendChild(sheetBtn('Remove this title', 'danger', () => {
+      if (!confirm('Remove "' + bankLabel(word) + '" from ' + cat.name + '?')) return;
+      cat.words = (cat.words || []).filter(w => w !== word);
+      (cat.groups || []).forEach(g => { g.words = (g.words || []).filter(w => w !== word); });
+      if (!categoriesOf(word).length) deleteWordEverywhere(word);     // it is not kept anywhere else
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
 function openGroupPicker(cat, word) {
   const groups = listGroups(cat);
   openWordSheet(body => {
@@ -7792,10 +7847,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       speakWord(w, 0.95);
       renderPhraseBar();
       renderMagic(w);
-    }, () => openWordActions(w, cat, body => {
-      if (usesGroups(cat) && listGroups(cat).length > 0)
-        body.insertBefore(sheetBtn('Move to a group', '', () => openGroupPicker(cat, w)), body.lastChild.previousSibling);
-    }));
+    }, () => openTitleActions(w, cat));
     return row;
   };
   if (!usesGroups(cat)) { listWords.forEach(w => put(wordRow(w))); return; }
