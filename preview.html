@@ -903,7 +903,7 @@
     border: none; border-radius: 16px; background: #bfd8ff; color: var(--ink);
     font-family: inherit; font-weight: 900; font-size: 20px; padding: 0 20px; cursor: pointer;
   }
-  .small-head .sh-arrow { font-size: 20px; color: #fff; }
+  .small-head .sh-arrow { font-size: 20px; color: var(--page); }
   .small-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
   .small-list .empty-note { grid-column: 1 / -1; }
   .small-list .small-tile { box-shadow: var(--shadow); border-radius: 14px; }
@@ -2254,7 +2254,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 184 - 4 Oct';
+const BUILD = 'build 185 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2421,6 +2421,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  stuffV2: false,             // the one-time flattening of My Stuff: no sub-folders, no automatic group
   stuffV1: false,             // the one-time tidy of My Stuff: one Characters folder, and a Places folder
   booksV1: false,             // the one-time removal of Characters from inside Books
   caseV3: false,              // the one-time clearing of accidental first capitals
@@ -2590,6 +2591,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        stuffV2: saved.stuffV2 ?? false,
         stuffV1: saved.stuffV1 ?? false,
         booksV1: saved.booksV1 ?? false,
         caseV3: saved.caseV3 ?? false,
@@ -2743,6 +2745,13 @@ async function load() {
   if (!state.stuffV1) {
     state.stuffV1 = true;
     tidyMyStuff();
+    save();
+  }
+  // One-time: folders in My Stuff lose their sub-folders (the titles move up into the folder) and
+  // the automatic "Group 1" heading, so existing titles are simply listed, ungrouped
+  if (!state.stuffV2) {
+    state.stuffV2 = true;
+    flattenMyStuff();
     save();
   }
   // One-time: Actions holds linking words (verbs), which read in small letters
@@ -2915,6 +2924,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      stuffV2: state.stuffV2,
       stuffV1: state.stuffV1,
       booksV1: state.booksV1,
       caseV3: state.caseV3,
@@ -6433,6 +6443,8 @@ function applyDefaultLayout() {
   state.booksV1 = true;
   state.stuffV1 = true;
   tidyMyStuff();
+  state.stuffV2 = true;
+  flattenMyStuff();
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
 
@@ -7210,12 +7222,13 @@ function openFolderAdd(cat) {
       rememberCase(typed, key);
     })));
     if (usesGroups(cat) && !state.builderMode) body.appendChild(sheetBtn('A group heading', '', () => addGroupHeading(cat)));
-    body.appendChild(sheetBtn('A new folder', '', () => ask('New folder in ' + cat.name, 'Create', typed => {
+    const flat = catAllowsPhrases(cat) && !!cat.parent;      // folders in My Stuff hold titles and groups, never sub-folders
+    if (!flat) body.appendChild(sheetBtn('A new folder', '', () => ask('New folder in ' + cat.name, 'Create', typed => {
       const name = String(typed || '').replace(/\s+/g, ' ').trim();
       if (!name) return false;
       addCategory(name, cat.id);
     })));
-    body.appendChild(sheetBtn('An existing folder', '', () => openWordSheet(b2 => {
+    if (!flat) body.appendChild(sheetBtn('An existing folder', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Show which folder in ' + cat.name + '?');
       const n = document.createElement('div');
       n.className = 'help-note'; n.style.marginTop = '6px';
@@ -7598,6 +7611,35 @@ function slotsFor(cat, words, cols) {
   cat.words = placed.concat((cat.words || []).filter(w => !placed.includes(w)));
   return slots;
 }
+function flattenMyStuff() {
+  const auto = g => String(g.name || '').trim().toLowerCase() === 'group 1';
+  state.categories.filter(c => !c.parent && c.phrases).forEach(stuff => {
+    state.categories.filter(f => f.parent === stuff.id).forEach(folder => {
+      folder.groups = (Array.isArray(folder.groups) ? folder.groups : []).filter(g => !auto(g));
+      folder.links = [];
+      // everything inside it, however deep (hidden sub-folders are left alone)
+      const inside = [];
+      const walk = id => state.categories.filter(c => c.parent === id && !c.hidden).forEach(c => { inside.push(c); walk(c.id); });
+      walk(folder.id);
+      inside.forEach(sub => {
+        (sub.words || []).forEach(w => { if (!folder.words.includes(w)) folder.words.push(w); });
+        // headings that were named by hand come along with their titles
+        (sub.groups || []).filter(g => !auto(g)).forEach(g => {
+          folder.groups.push({ id: Math.max(0, ...folder.groups.map(x => x.id || 0)) + 1, name: g.name, words: (g.words || []).slice(), open: g.open !== false });
+        });
+        state.categories.forEach(c => { if (c.links) c.links = c.links.filter(id => id !== sub.id); });
+        const swap = n => {
+          if (n.cats) n.cats = n.cats.map(id => id === sub.id ? folder.id : id).filter((id, i, a) => a.indexOf(id) === i);
+          if (n.go === sub.id) n.go = folder.id;
+          (n.kids || []).forEach(swap);
+        };
+        if (state.builder) { swap(state.builder); Object.values(state.builder.words || {}).forEach(swap); }
+      });
+      state.categories = state.categories.filter(c => !inside.includes(c));
+    });
+  });
+  if (typeof homePath !== 'undefined') homePath = homePath.filter(id => !!catById(id));
+}
 function tidyMyStuff() {
   state.categories.filter(c => !c.parent && c.phrases).forEach(stuff => {
     const kids = state.categories.filter(c => c.parent === stuff.id).sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -7631,8 +7673,8 @@ function usesGroups(cat) {
   return foldersShownIn(cat).length === 0;
 }
 function listGroups(cat) {
-  // a folder starts with one heading; after that the headings are whatever has been set up (even none)
-  if (!Array.isArray(cat.groups)) cat.groups = [{ id: 1, name: 'Group 1', words: [], open: true }];
+  // no headings until one is added: titles start out ungrouped
+  if (!Array.isArray(cat.groups)) cat.groups = [];
   const inCat = cat.words || [];
   const seen = new Set();
   cat.groups.forEach(g => { g.words = (g.words || []).filter(w => inCat.includes(w) && !seen.has(w) && (seen.add(w), true)); });
