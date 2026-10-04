@@ -479,7 +479,11 @@
   .cc-btn.on { background: var(--ink); color: #fff; }
   /* arranging a folder */
   .home-card { -webkit-touch-callout: none; }
-  .home-card.list-row { flex-direction: row; align-items: center; justify-content: flex-start; padding: 0 26px; border-radius: 18px; }
+  .home-card.list-row { flex-direction: row; align-items: center; justify-content: flex-start; padding: 0 34px !important; border-radius: 18px; }
+  .home-card.list-row.add-row { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; }
+  .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
+  .group-head { grid-column: 1 / -1; justify-content: flex-start; gap: 14px; height: auto; min-height: 48px; padding: 0 22px; font-size: 22px; }
+  .group-head.held { outline: 5px solid var(--green); outline-offset: -2px; }
   .home-card.list-row .hw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: left; }
   .home-card.list-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .home-card.add-folder {
@@ -2248,7 +2252,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 178 - 4 Oct';
+const BUILD = 'build 179 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2415,6 +2419,7 @@ const state = {
   layoutV7: false,            // the one-time move to Small Words, Body, Feelings, Activities and Toys
   layoutV8: false,            // the one-time rename back to Chat, and Feelings kept off Popular
   caseV2: false,
+  stuffV1: false,             // the one-time tidy of My Stuff: one Characters folder, and a Places folder
   booksV1: false,             // the one-time removal of Characters from inside Books
   caseV3: false,              // the one-time clearing of accidental first capitals
   linkV1: false,              // the one-time marking of Actions as a folder of linking words
@@ -2583,6 +2588,7 @@ async function load() {
         layoutV7: saved.layoutV7 ?? false,
         layoutV8: saved.layoutV8 ?? false,
         caseV2: saved.caseV2 ?? false,
+        stuffV1: saved.stuffV1 ?? false,
         booksV1: saved.booksV1 ?? false,
         caseV3: saved.caseV3 ?? false,
         linkV1: saved.linkV1 ?? false,
@@ -2728,6 +2734,13 @@ async function load() {
         }
       });
     });
+    save();
+  }
+  // One-time: My Stuff keeps a single Characters folder (a second one is folded into the first,
+  // words and all) and gains a Places folder
+  if (!state.stuffV1) {
+    state.stuffV1 = true;
+    tidyMyStuff();
     save();
   }
   // One-time: Actions holds linking words (verbs), which read in small letters
@@ -2900,6 +2913,7 @@ async function save() {
       layoutV7: state.layoutV7,
       layoutV8: state.layoutV8,
       caseV2: state.caseV2,
+      stuffV1: state.stuffV1,
       booksV1: state.booksV1,
       caseV3: state.caseV3,
       linkV1: state.linkV1,
@@ -6412,6 +6426,8 @@ function applyDefaultLayout() {
   state.linkV1 = true;
   state.caseV3 = true;
   state.booksV1 = true;
+  state.stuffV1 = true;
+  tidyMyStuff();
   state.categories.forEach(c => { if (c.linkers === undefined && c.name.toLowerCase() === 'actions') c.linkers = true; });
 }
 
@@ -6782,7 +6798,7 @@ function exportLayout() {
     categories: state.categories.map(c => ({
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
-      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, strip: !!c.strip, nopop: !!c.nopop,
+      links: c.links || [], small: !!c.small, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, groups: Array.isArray(c.groups) ? c.groups : null, strip: !!c.strip, nopop: !!c.nopop,
       phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
@@ -7188,6 +7204,7 @@ function openFolderAdd(cat) {
       if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
       rememberCase(typed, key);
     })));
+    if (usesGroups(cat) && !state.builderMode) body.appendChild(sheetBtn('A group heading', '', () => addGroupHeading(cat)));
     body.appendChild(sheetBtn('A new folder', '', () => ask('New folder in ' + cat.name, 'Create', typed => {
       const name = String(typed || '').replace(/\s+/g, ' ').trim();
       if (!name) return false;
@@ -7570,6 +7587,175 @@ function slotsFor(cat, words, cols) {
   cat.words = placed.concat((cat.words || []).filter(w => !placed.includes(w)));
   return slots;
 }
+function tidyMyStuff() {
+  state.categories.filter(c => !c.parent && c.phrases).forEach(stuff => {
+    const kids = state.categories.filter(c => c.parent === stuff.id).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const chars = kids.filter(c => c.name.toLowerCase() === 'characters');
+    const keep = chars[0];
+    chars.slice(1).forEach(extra => {
+      (extra.words || []).forEach(w => { if (!keep.words.includes(w)) keep.words.push(w); });
+      if (extra.hidden === false) keep.hidden = false;
+      state.categories.forEach(c => {
+        if (c.parent === extra.id) c.parent = keep.id;
+        if (c.links) c.links = c.links.map(id => id === extra.id ? keep.id : id).filter((id, i, a) => a.indexOf(id) === i && id !== c.id);
+      });
+      const swap = n => {
+        if (n.cats) n.cats = n.cats.map(id => id === extra.id ? keep.id : id).filter((id, i, a) => a.indexOf(id) === i);
+        if (n.go === extra.id) n.go = keep.id;
+        (n.kids || []).forEach(swap);
+      };
+      if (state.builder) { swap(state.builder); Object.values(state.builder.words || {}).forEach(swap); }
+      state.categories = state.categories.filter(c => c !== extra);
+    });
+    if (!state.categories.some(c => c.parent === stuff.id && c.name.toLowerCase() === 'places')) {
+      addCategory('Places', stuff.id);
+    }
+  });
+}
+// ---- My Stuff lists: titles sit under group headings that open and close ----
+// A folder inside My Stuff always has at least one heading; My Stuff itself only once it holds words.
+function usesGroups(cat) {
+  return !!cat && catAllowsPhrases(cat) && (!!cat.parent || (cat.words || []).length > 0 || (cat.groups || []).length > 0);
+}
+function listGroups(cat) {
+  if (!Array.isArray(cat.groups) || !cat.groups.length) cat.groups = [{ id: 1, name: 'Group 1', words: [], open: true }];
+  const inCat = cat.words || [];
+  const seen = new Set();
+  cat.groups.forEach(g => { g.words = (g.words || []).filter(w => inCat.includes(w) && !seen.has(w) && (seen.add(w), true)); });
+  // a title with no heading yet goes under the first one
+  inCat.forEach(w => { if (!seen.has(w)) cat.groups[0].words.push(w); });
+  return cat.groups;
+}
+function addTitleTo(cat, group, typed) {
+  const key = normaliseWord(typed);
+  if (!key) return false;
+  if (!cat.words.includes(key)) cat.words.push(key);
+  if (!state.words.includes(key)) state.words.push(key);
+  if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+  if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
+  rememberCase(typed, key);
+  listGroups(cat).forEach(g => { g.words = g.words.filter(w => w !== key); });
+  group.words.push(key);
+  return true;
+}
+function askText(title, btn, value, done) {
+  openWordSheet(b2 => {
+    sheetTitle(b2, title);
+    const inp = builderInput(b2, value || '');
+    const ok = () => { if (done(inp.value) !== false) { save(); closeWordSheet(); renderHome(true); } };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    b2.appendChild(sheetBtn(btn, 'primary', ok));
+    b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+  });
+}
+function addGroupHeading(cat) {
+  askText('New group heading in ' + cat.name, 'Add', '', typed => {
+    const name = String(typed || '').replace(/\s+/g, ' ').trim();
+    if (!name) return false;
+    const groups = listGroups(cat);
+    groups.push({ id: Math.max(0, ...groups.map(g => g.id || 0)) + 1, name, words: [], open: true });
+  });
+}
+function openGroupHead(cat, group) {
+  const groups = listGroups(cat);
+  openWordSheet(body => {
+    sheetTitle(body, 'This heading');
+    const p = document.createElement('div');
+    p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = group.name;
+    body.appendChild(p);
+    body.appendChild(sheetBtn('Rename', '', () => askText('Rename heading', 'Save', group.name, typed => {
+      const name = String(typed || '').replace(/\s+/g, ' ').trim();
+      if (!name) return false;
+      group.name = name;
+    })));
+    body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
+    body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
+    if (groups.length > 1) body.appendChild(sheetBtn('Remove this heading', 'danger', () => {
+      // its titles are kept: they move under the first heading that is left
+      cat.groups = groups.filter(g => g !== group);
+      cat.groups[0].words = cat.groups[0].words.concat(group.words);
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
+function openGroupPicker(cat, word) {
+  const groups = listGroups(cat);
+  openWordSheet(body => {
+    sheetTitle(body, 'Move under which heading?', word);
+    const list = document.createElement('div');
+    list.className = 'pick-list';
+    body.appendChild(list);
+    groups.forEach(g => {
+      const r = document.createElement('button');
+      r.className = 'pick-row' + (g.words.includes(word) ? ' on' : '');
+      r.textContent = g.name;
+      r.addEventListener('click', () => {
+        groups.forEach(x => { x.words = x.words.filter(w => w !== word); });
+        g.words.push(word);
+        save(); closeWordSheet(); renderHome(true);
+      });
+      list.appendChild(r);
+    });
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
+function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
+  let r = rowStart;
+  const put = el => { el.style.gridRow = String(r++); grid.appendChild(el); };
+  const holdTap = (el, onTap, onHold) => {
+    let timer = null, held = false;
+    el.addEventListener('pointerdown', () => {
+      held = false;
+      timer = setTimeout(() => { timer = null; held = true; buzz(15); el.classList.add('held'); }, 520);
+    });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    el.addEventListener('pointerup', stop);
+    ['pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => { stop(); held = false; el.classList.remove('held'); }));
+    el.addEventListener('contextmenu', e => e.preventDefault());
+    el.addEventListener('click', () => {
+      el.classList.remove('held');
+      if (held) { held = false; onHold(); } else onTap();
+    });
+  };
+  const wordRow = w => {
+    const row = makeListRow(w, rowH, base);
+    holdTap(row, () => {
+      homePhrase.push(w);
+      warmSpeech();
+      speakWord(w, 0.95);
+      renderPhraseBar();
+      renderMagic(w);
+    }, () => openWordActions(w, cat, body => {
+      if (usesGroups(cat) && listGroups(cat).length > 1)
+        body.insertBefore(sheetBtn('Move under another heading', '', () => openGroupPicker(cat, w)), body.lastChild.previousSibling);
+    }));
+    return row;
+  };
+  if (!usesGroups(cat)) { listWords.forEach(w => put(wordRow(w))); return; }
+  listGroups(cat).forEach(g => {
+    const open = g.open !== false;
+    const head = document.createElement('button');
+    head.className = 'small-head group-head';
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    head.innerHTML = '<span class="sh-arrow">\u25BC</span><span></span>';
+    head.lastChild.textContent = g.name;
+    head.style.fontSize = Math.max(18, Math.round(base * 0.7)) + 'px';
+    head.style.minHeight = Math.max(48, Math.round(rowH * 0.36)) + 'px';
+    holdTap(head, () => { g.open = !open; buzz(10); save(); const top = grid.scrollTop; renderHome(false); grid.scrollTop = top; },
+      () => openGroupHead(cat, g));
+    put(head);
+    if (!open) return;
+    listWords.filter(w => g.words.includes(w)).forEach(w => put(wordRow(w)));
+    // the greyed-out row at the end of every group: tap it to add a title there
+    const add = makeListRow('', rowH, base);
+    add.classList.add('add-row');
+    add.removeAttribute('data-word');
+    add.querySelector('.hw').textContent = '+ add a title';
+    add.addEventListener('click', () => askText('New title under ' + g.name, 'Add', '', typed => addTitleTo(cat, g, typed)));
+    put(add);
+  });
+}
 // One word of a My Stuff folder as a full-width row
 function makeListRow(w, rowH, base) {
   const row = document.createElement('button');
@@ -7604,7 +7790,8 @@ function renderSlotGrid(grid, cat, folders) {
   const slots = listMode ? [] : arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   const lastRow = Math.ceil((head + slots.length) / cols);
-  const totalRows = listMode ? (head ? Math.ceil(head / cols) : (listWords.length ? 0 : 1))
+  const grouped = listMode && usesGroups(cat);
+  const totalRows = listMode ? (head ? Math.ceil(head / cols) : ((listWords.length || grouped) ? 0 : 1))
                   : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
@@ -7782,30 +7969,7 @@ function renderSlotGrid(grid, cat, folders) {
     fit(card, bankLabel(w));
     place(card, head + i);
   }
-  listWords.forEach((w, k) => {
-    const row = makeListRow(w, rowH, base);
-    row.style.gridRow = String((topRow ? 1 : 0) + totalRows + k + 1);
-    // tap adds it to the sentence; hold for its options
-    let timer = null, held = false;
-    row.addEventListener('pointerdown', () => {
-      held = false;
-      timer = setTimeout(() => { timer = null; held = true; buzz(15); row.classList.add('held'); }, 520);
-    });
-    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
-    row.addEventListener('pointerup', stop);
-    ['pointercancel', 'pointerleave'].forEach(ev => row.addEventListener(ev, () => { stop(); held = false; row.classList.remove('held'); }));
-    row.addEventListener('contextmenu', e => e.preventDefault());
-    row.addEventListener('click', () => {
-      row.classList.remove('held');
-      if (held) { held = false; openWordActions(w, cat); return; }
-      homePhrase.push(w);
-      warmSpeech();
-      speakWord(w, 0.95);
-      renderPhraseBar();
-      renderMagic(w);
-    });
-    grid.appendChild(row);
-  });
+  if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
   if (!arrange && state.chatMode) {
     grid.style.gridTemplateRows = 'repeat(' + Math.max(1, totalRows) + ', ' + rowH + 'px) auto';
