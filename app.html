@@ -2293,7 +2293,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 208 - 4 Oct';
+const BUILD = 'build 208b - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2450,6 +2450,7 @@ const state = {
   recentsHidden: {},          // words taken off the Recents / Popular page only
   soundOn: true,              // the speaker icon: off = nothing is said aloud, anywhere
   chatLog: [],                // the conversation: { text, replies: [], t } per message, oldest first
+  modesV1: false,             // the one-time return to the starting switches: menu on; builder, speak and chat off
   chatMode: false,            // home enter key: on = open the chat page with the message on top
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
   builderMode: false,         // home shows the sentence builder's pages instead of the menu and tiles
@@ -2626,6 +2627,7 @@ async function load() {
         recentsHidden: saved.recentsHidden || {},
         soundOn: saved.soundOn ?? true,
         chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [],
+        modesV1: saved.modesV1 ?? false,
         chatMode: saved.chatMode ?? false,
         speakMode: saved.speakMode ?? false,
         builderMode: saved.builderMode ?? false,
@@ -2827,6 +2829,16 @@ async function load() {
     save();
   }
   // One-time: the New folder becomes the targets tab (a dart-board), with its three sections
+  // One-time: every device goes back to the starting switches - the menu showing, and builder,
+  // speak and chat modes off. They can be switched on again from the icons as before.
+  if (!state.modesV1) {
+    state.modesV1 = true;
+    state.builderMode = false;
+    state.speakMode = false;
+    state.chatMode = false;
+    state.railOpen = true;
+    save();
+  }
   if (!state.targetV1) {
     state.targetV1 = true;
     ensureTargets();
@@ -3012,6 +3024,7 @@ async function save() {
       recentsHidden: state.recentsHidden,
       soundOn: state.soundOn,
       chatLog: state.chatLog,
+      modesV1: state.modesV1,
       chatMode: state.chatMode,
       speakMode: state.speakMode,
       builderMode: state.builderMode,
