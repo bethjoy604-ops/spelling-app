@@ -2252,7 +2252,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 180 - 4 Oct';
+const BUILD = 'build 181 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6938,7 +6938,7 @@ function renderBuilder(grid) {
       .filter(w => !state.hiddenWords[w]);
     // My Stuff: a list, one title to a row, A to Z - the same as menu mode shows it
     const asList = catAllowsPhrases(c);
-    if (asList) words = words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' }));
+    if (asList || hasSmallStrip(c)) words = words.slice().sort(byLabel);     // Categories folders are A to Z too
     words.forEach(w => {
       // stays on this page so more can be added; enter (or the X) goes back to the start
       // a linking word: it goes into the sentence, then opens the choice boards linked to it
@@ -7756,6 +7756,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     put(add);
   });
 }
+function byLabel(a, b) { return bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' }); }
 // One word of a My Stuff folder as a full-width row
 function makeListRow(w, rowH, base) {
   const row = document.createElement('button');
@@ -7787,7 +7788,9 @@ function renderSlotGrid(grid, cat, folders) {
   // My Stuff: titles are long, so its words are a list - one to a row, A to Z, as many as there are
   const listMode = arrange && !sec && catAllowsPhrases(cat);
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
-  const slots = listMode ? [] : arrange ? slotsFor(cat, words, cols) : words;
+  // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
+  const alpha = arrange && !listMode && hasSmallStrip(cat);
+  const slots = listMode ? [] : alpha ? words.slice().sort(byLabel) : arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   const lastRow = Math.ceil((head + slots.length) / cols);
   const grouped = listMode && usesGroups(cat);
