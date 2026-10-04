@@ -2252,7 +2252,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 181 - 4 Oct';
+const BUILD = 'build 182 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7614,8 +7614,10 @@ function tidyMyStuff() {
 }
 // ---- My Stuff lists: titles sit under group headings that open and close ----
 // A folder inside My Stuff always has at least one heading; My Stuff itself only once it holds words.
+// A page that shows folder tiles never has headings: they belong inside the folders, on the pages of titles.
 function usesGroups(cat) {
-  return !!cat && catAllowsPhrases(cat) && (!!cat.parent || (cat.words || []).length > 0 || (cat.groups || []).length > 0);
+  if (!cat || !catAllowsPhrases(cat) || !cat.parent) return false;
+  return foldersShownIn(cat).length === 0;
 }
 function listGroups(cat) {
   if (!Array.isArray(cat.groups) || !cat.groups.length) cat.groups = [{ id: 1, name: 'Group 1', words: [], open: true }];
