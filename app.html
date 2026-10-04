@@ -501,6 +501,19 @@
   .target-head span { flex: none; font-weight: 900; color: var(--ink); }
   .target-empty { padding: 4px 6px 10px; text-align: left; }
   .home-card.held { outline: 5px solid var(--green); outline-offset: -2px; }
+  .tset-head { display: flex; align-items: center; justify-content: space-between; width: 100%; border: none; border-radius: 14px; background: #bfd8ff; color: var(--ink); font-family: inherit; font-weight: 900; font-size: 18px; padding: 14px 18px; margin-top: 8px; cursor: pointer; }
+  .tset-arrow { font-size: 13px; transform: rotate(-90deg); transition: transform 0.2s ease; color: var(--page); }
+  .tset-head.open .tset-arrow { transform: rotate(0deg); }
+  .tset-box { padding: 6px 4px 8px; }
+  .tset-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 6px; border-bottom: 1px solid var(--border); font-weight: 800; text-align: left; }
+  .tset-row.stack { flex-direction: column; align-items: stretch; }
+  .tset-toggle { flex: none; min-width: 64px; border: none; border-radius: 999px; background: var(--bg); color: var(--muted); font-family: inherit; font-weight: 900; font-size: 15px; padding: 8px 14px; cursor: pointer; }
+  .tset-toggle.on { background: var(--green); color: #fff; }
+  .tset-step { flex: none; display: flex; align-items: center; gap: 10px; font-weight: 900; }
+  .tset-step button { width: 40px; height: 40px; border: none; border-radius: 12px; background: var(--bg); font-family: inherit; font-weight: 900; font-size: 20px; cursor: pointer; }
+  .tset-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tset-seg button { flex: 1 1 auto; border: none; border-radius: 12px; background: var(--bg); color: var(--ink); font-family: inherit; font-weight: 800; font-size: 14px; padding: 10px 12px; cursor: pointer; }
+  .tset-seg button.on { background: var(--green); color: #fff; }
   .group-head.held { outline: 5px solid var(--green); outline-offset: -2px; }
   .home-card.list-row .hw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: left; }
   .home-card.list-row.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
@@ -1620,6 +1633,7 @@
     <button class="ctl icon" id="homeBackBtn" aria-label="Back" style="display:none">&#8249;</button>
     <div class="folder-strip" id="catTiles"></div>
     <button class="ctl icon" id="homeAddFolderBtn" aria-label="New folder" style="display:none">+</button>
+    <button class="ctl icon" id="targetGearBtn" aria-label="Prompting settings" style="display:none">&#9881;</button>
     <button class="ctl icon" id="builderBackBtn" aria-label="Back" style="display:none">&#8249;</button>
     <button class="ctl icon" id="builderAddBtn" aria-label="Add an option" style="display:none">+</button>
     <div class="spacer"></div>
@@ -2278,7 +2292,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 203 - 4 Oct';
+const BUILD = 'build 204 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6418,6 +6432,8 @@ function renderHome(reset) {
     // Menu mode does the same inside a sub-folder: the back arrow takes the settings arrow's place.
     const inSub = !state.builderMode && homePath.length > 1;
     document.getElementById('homeBackBtn').style.display = inSub ? '' : 'none';
+    // on the targets page a gear sits beside the plus: the prompting options for practising them
+    document.getElementById('targetGearBtn').style.display = (!state.builderMode && cat && cat.target) ? '' : 'none';
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
     document.getElementById('homeModesToggle').style.display = deep ? 'none' : '';
     document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && !deep) ? '' : 'none';
@@ -7781,6 +7797,7 @@ document.getElementById('builderBackBtn').addEventListener('click', () => {
   renderHome(true);
 });
 document.getElementById('builderAddBtn').addEventListener('click', openBuilderAdd);
+document.getElementById('targetGearBtn').addEventListener('click', () => { targetSetOpen = 'when'; openTargetSettings(); });
 // menu mode: back up one folder
 document.getElementById('homeBackBtn').addEventListener('click', () => {
   if (homePath.length > 1) homePath = homePath.slice(0, -1);
@@ -8646,6 +8663,98 @@ function openTargetWord(word, cat) {
       save(); closeWordSheet(); renderHome(true);
     }));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
+// The gear on the targets page: prompting options, gathered under a few headings that open and close
+let targetSetOpen = 'when';
+function openTargetSettings() {
+  const changed = () => {
+    save();
+    try { applyPromptTheme(); render(); renderSettings(); } catch (e) {}
+    openTargetSettings();
+  };
+  const SECTIONS = [
+    ['when', 'When to prompt', b => {
+      toggle(b, 'Only when the star is pressed', state.helpMode, () => { state.helpMode = !state.helpMode; state.showHelpBtn = state.helpMode; helpRequested = false; });
+      stepper(b, 'Wait before a prompt', state.promptDelaySec, 0, 10, v => { state.promptDelaySec = v; });
+      stepper(b, 'After the star, wait between letters', state.helpDelaySec, 0, 10, v => { state.helpDelaySec = v; });
+    }],
+    ['look', 'How the prompt looks', b => {
+      toggle(b, 'Colour the next letter', state.promptColorOn, () => { state.promptColorOn = !state.promptColorOn; });
+      seg(b, 'Colour strength', Object.entries(INTENSITY_LABELS), state.promptIntensity, v => { state.promptIntensity = v; state.promptColorOn = true; });
+      toggle(b, 'Pulse', state.promptPulseOn, () => { state.promptPulseOn = !state.promptPulseOn; });
+      toggle(b, 'Bigger key', state.promptSizeOn, () => { state.promptSizeOn = !state.promptSizeOn; });
+      toggle(b, 'Bigger letter in the target bar', state.promptTileOn, () => { state.promptTileOn = !state.promptTileOn; });
+    }],
+    ['sound', 'Sound', b => {
+      toggle(b, 'Say the next letter', state.promptVerbalOn, () => { state.promptVerbalOn = !state.promptVerbalOn; });
+      toggle(b, 'Say a wrong letter when it is typed', state.speakErrorLetter, () => { state.speakErrorLetter = !state.speakErrorLetter; });
+    }],
+    ['practice', 'Practice', b => {
+      toggle(b, 'Fade the prompts as spelling improves', state.fadeMode, () => { state.fadeMode = !state.fadeMode; });
+      seg(b, 'After a mistake', Object.entries(ERROR_ACTION_LABELS), state.errorPromptAction, v => { state.errorPromptAction = v; });
+      toggle(b, 'Capitals need the up arrow', state.requireCaps, () => { state.requireCaps = !state.requireCaps; });
+    }],
+  ];
+  const row = (b, label) => {
+    const r = document.createElement('div');
+    r.className = 'tset-row';
+    const t = document.createElement('span');
+    t.textContent = label;
+    r.appendChild(t);
+    b.appendChild(r);
+    return r;
+  };
+  function toggle(b, label, on, flip) {
+    const r = row(b, label);
+    const x = document.createElement('button');
+    x.className = 'tset-toggle' + (on ? ' on' : '');
+    x.textContent = on ? 'On' : 'Off';
+    x.addEventListener('click', () => { flip(); changed(); });
+    r.appendChild(x);
+  }
+  function stepper(b, label, value, min, max, set) {
+    const r = row(b, label);
+    const box = document.createElement('div');
+    box.className = 'tset-step';
+    const mk = (txt, d) => { const x = document.createElement('button'); x.textContent = txt; x.addEventListener('click', () => { set(Math.min(max, Math.max(min, value + d))); changed(); }); return x; };
+    const v = document.createElement('span');
+    v.textContent = value + ' s';
+    box.appendChild(mk('\u2212', -1)); box.appendChild(v); box.appendChild(mk('+', 1));
+    r.appendChild(box);
+  }
+  function seg(b, label, options, value, set) {
+    const r = row(b, label);
+    r.classList.add('stack');
+    const box = document.createElement('div');
+    box.className = 'tset-seg';
+    options.forEach(([val, name]) => {
+      const x = document.createElement('button');
+      x.className = val === value ? 'on' : '';
+      x.textContent = name;
+      x.addEventListener('click', () => { set(val); changed(); });
+      box.appendChild(x);
+    });
+    r.appendChild(box);
+  }
+  openWordSheet(body => {
+    sheetTitle(body, 'Prompting');
+    SECTIONS.forEach(([id, name, build]) => {
+      const open = targetSetOpen === id;
+      const h = document.createElement('button');
+      h.className = 'tset-head' + (open ? ' open' : '');
+      h.innerHTML = '<span></span><span class="tset-arrow">\u25BC</span>';
+      h.firstChild.textContent = name;
+      h.addEventListener('click', () => { targetSetOpen = open ? '' : id; openTargetSettings(); });
+      body.appendChild(h);
+      if (open) {
+        const box = document.createElement('div');
+        box.className = 'tset-box';
+        build(box);
+        body.appendChild(box);
+      }
+    });
+    body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
   });
 }
 function renderTargets(grid, cat) {
