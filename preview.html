@@ -2257,7 +2257,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 191 - 4 Oct';
+const BUILD = 'build 192 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7832,6 +7832,15 @@ function openTitleActions(word, cat, extra) {
         listGroups(cat).push({ id: 1, name, words: [word], open: true });
       })));
     }
+    if (usesGroups(cat)) body.appendChild(sheetBtn('Change it to a group', '', () => {
+      // the title becomes a group heading with the same name; as a title it leaves the list
+      const gs = listGroups(cat);
+      gs.forEach(g => { g.words = g.words.filter(w => w !== word); });
+      gs.push({ id: Math.max(0, ...gs.map(g => g.id || 0)) + 1, name: bankLabel(word), words: [], open: true });
+      cat.words = (cat.words || []).filter(w => w !== word);
+      if (!categoriesOf(word).length) deleteWordEverywhere(word);
+      save(); closeWordSheet(); renderHome(true);
+    }));
     body.appendChild(sheetBtn('Remove this title', 'danger', () => {
       if (!confirm('Remove "' + bankLabel(word) + '" from ' + cat.name + '?')) return;
       cat.words = (cat.words || []).filter(w => w !== word);
