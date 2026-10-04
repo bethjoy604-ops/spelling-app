@@ -377,6 +377,16 @@
     font-size: inherit; padding: 0; min-height: 1.2em;
   }
   .pb-input::placeholder { color: var(--border); }
+  /* find a word while typing: the matches follow the typing inside the bar, greyed out until tapped */
+  .phrase-bar.suggesting { flex-wrap: wrap; }
+  .phrase-bar.suggesting .pb-input { flex: 0 0 auto; min-width: 0; margin-right: auto; }
+  /* on their own line under the sentence, so several fit however long the sentence is */
+  .pb-suggest { order: 9; flex: 1 0 100%; min-width: 0; display: flex; align-items: center; gap: 10px; overflow-x: auto; scrollbar-width: none; margin-top: 8px; }
+  .pb-suggest::-webkit-scrollbar { display: none; }
+  .pb-suggest button {
+    flex: none; border: none; border-radius: 12px; background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.38);
+    font-family: inherit; font-weight: 900; font-size: 0.62em; line-height: 1.15; padding: 6px 14px; cursor: pointer; white-space: nowrap;
+  }
   .folder-view { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: clamp(10px, 1.4vmin, 18px); }
   .fv-crumbs { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; flex-wrap: wrap; }
   .fv-crumb {
@@ -1586,6 +1596,7 @@
     <input class="pb-input" id="pbInput" type="text" maxlength="80"
            autocomplete="off" autocapitalize="off" spellcheck="false"
            aria-label="Type a word">
+    <div class="pb-suggest" id="typeSuggest" style="display:none"></div>
     <button class="display-clear" id="pbClear" aria-label="Clear phrase">&times;</button>
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
@@ -1609,8 +1620,6 @@
     <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
   </div>
-
-  <div class="chat-suggest type-suggest" id="typeSuggest" style="display:none"></div>
 
   <div class="magic-box" id="magicBox">
     <div class="magic-row" id="magicRow"></div>
@@ -2258,7 +2267,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 195 - 4 Oct';
+const BUILD = 'build 196 - 4 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5839,6 +5848,7 @@ function renderPhraseBar() {
   const box = document.getElementById('pbWords');
   // Same size settings as the keyboard's typing bar
   bar.className = 'display phrase-bar ds-' + state.displaySize;
+  bar.classList.toggle('suggesting', document.getElementById('typeSuggest').style.display !== 'none');
   bar.classList.toggle('has-text', homePhrase.length > 0 || !!document.getElementById('pbInput').value);
   box.innerHTML = '';
   homePhrase.forEach((w, i) => {
@@ -5882,6 +5892,10 @@ function renderTypeSuggest() {
   const hits = q ? searchWords(q).filter(r => r.word.startsWith(q) && !state.hiddenWords[r.word])
     .sort((a, b) => (b.t || 0) - (a.t || 0) || (b.n || 0) - (a.n || 0) || a.word.localeCompare(b.word)).slice(0, 12) : [];
   box.style.display = hits.length ? '' : 'none';
+  // the typing takes only the room it needs, so the matches sit right after it in the bar
+  document.getElementById('phraseBar').classList.toggle('suggesting', hits.length > 0);
+  if (hits.length) { inp.style.width = '1px'; inp.style.width = (inp.scrollWidth + 8) + 'px'; }
+  else inp.style.width = '';
   hits.forEach(r => {
     const b = document.createElement('button');
     b.textContent = sentenceLabel(r.word);
