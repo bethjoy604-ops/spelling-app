@@ -378,10 +378,12 @@
   }
   .pb-input::placeholder { color: var(--border); }
   /* find a word while typing: the matches follow the typing inside the bar, greyed out until tapped */
-  .phrase-bar.suggesting { flex-wrap: wrap; }
-  .phrase-bar.suggesting .pb-input { flex: 0 0 auto; min-width: 0; margin-right: auto; }
+  /* the matches sit on the same line as the typing, and scroll sideways for more */
+  .phrase-bar.suggesting { flex-wrap: nowrap; }
+  .phrase-bar.suggesting .pb-input { flex: 0 0 auto; min-width: 0; }
+  .phrase-bar.suggesting .pb-words { flex: 0 1 auto; }
   /* on their own line under the sentence, so several fit however long the sentence is */
-  .pb-suggest { order: 9; flex: 1 0 100%; min-width: 0; display: flex; align-items: center; gap: 10px; overflow-x: auto; scrollbar-width: none; margin-top: 8px; }
+  .pb-suggest { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0 10px; }
   .pb-suggest::-webkit-scrollbar { display: none; }
   .pb-suggest button {
     flex: none; border: none; border-radius: 12px; background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.38);
@@ -2299,7 +2301,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 223 - 5 Oct';
+const BUILD = 'build 224 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6041,13 +6043,36 @@ document.getElementById('pbInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); if (!commitTypedWord()) homeEnter(); }
 });
 // Typing in the bar brings up the words that start with what has been typed, most recently used first
+// The words that belong to the page that is open: a folder's words and those of the folders inside
+// it; on a builder page, its tiles and the words of the choice boards on it. Popular has none.
+function pageWords() {
+  const out = new Set();
+  const take = (c, g) => {
+    if (!c || c.hidden || g > 20) return;
+    (c.words || []).forEach(w => out.add(w));
+    if (c.row) c.row.forEach(w => out.add(w));
+    state.categories.forEach(x => { if (x.parent === c.id) take(x, g + 1); });
+    (c.links || []).forEach(id => take(catById(id), g + 1));
+  };
+  if (state.builderMode) {
+    const here = builderHere();
+    if (here && 'cat' in here) take(catById(here.cat), 0);
+    else if (here) {
+      (here.kids || []).forEach(k => { const key = normaliseWord(k.label); if (key) out.add(key); });
+      (here.cats || []).forEach(id => take(catById(id), 0));
+      (here.small || []).forEach(w => out.add(w));
+    }
+  } else if (homePath.length) take(catById(homePath[homePath.length - 1]), 0);
+  return out;
+}
 function renderTypeSuggest() {
   const box = document.getElementById('typeSuggest');
   const inp = document.getElementById('pbInput');
   const q = normaliseWord(inp.value);
   box.innerHTML = '';
+  const onPage = q ? pageWords() : new Set();     // the open page's own words come first
   const hits = q ? searchWords(q).filter(r => r.word.startsWith(q) && !state.hiddenWords[r.word])
-    .sort((a, b) => (b.t || 0) - (a.t || 0) || (b.n || 0) - (a.n || 0) || a.word.localeCompare(b.word)).slice(0, 12) : [];
+    .sort((a, b) => (onPage.has(b.word) - onPage.has(a.word)) || (b.t || 0) - (a.t || 0) || (b.n || 0) - (a.n || 0) || a.word.localeCompare(b.word)).slice(0, 12) : [];
   box.style.display = hits.length ? '' : 'none';
   // the typing takes only the room it needs, so the matches sit right after it in the bar
   document.getElementById('phraseBar').classList.toggle('suggesting', hits.length > 0);
