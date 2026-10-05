@@ -998,6 +998,7 @@
     flex: none; min-width: 1.9em; padding: 0.15em 0.5em; border-radius: 999px; text-align: center;
     background: #bfd8ff; color: var(--ink); font-size: 0.75em; font-weight: 900;
   }
+  .chat-mini { flex: none; border: none; background: none; font-family: inherit; font-weight: 700; font-size: 15px; color: rgba(0,0,0,0.38); padding: 8px 6px; cursor: pointer; }
   .bl-more {
     align-self: flex-start; border: none; border-radius: 12px; background: rgba(255,255,255,0.6);
     font-family: inherit; font-weight: 800; font-size: 16px; color: var(--ink); padding: 10px 16px; cursor: pointer;
@@ -2337,7 +2338,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 244 - 5 Oct';
+const BUILD = 'build 245 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6216,7 +6217,7 @@ function openChatWith(words) {
   homePhrase = [];
   hideMagic();
   chatNow = { text, replies: [], t: now };
-  state.chatLog = (state.chatLog || []).concat([chatNow]).slice(-200);
+  state.chatLog = (state.chatLog || []).concat([chatNow]).slice(-5000);      // the whole conversation is kept, for export
   chatReply = []; chatPrefix = '';
   save();
   buzz(15);
@@ -6292,6 +6293,51 @@ function chatSendReply() {
 }
 // On the builder's first page, chat mode shows the conversation where the transcript usually is:
 // the newest message first, each with its replies under it
+// The chat on screen starts empty each time the app opens, and can be cleared at any time. The
+// messages themselves stay saved: 'history' lists them all and exports them as a file.
+let chatShownFrom = Date.now();
+function exportChatLog() {
+  const log = state.chatLog || [];
+  if (!log.length) { alert('There is nothing in the chat yet.'); return; }
+  const cell = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const pad = n => String(n).padStart(2, '0');
+  const lines = ['Date,Time,Message,Replies'];
+  log.forEach(m => {
+    const d = new Date(m.t || 0);
+    lines.push([
+      d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+      pad(d.getHours()) + ':' + pad(d.getMinutes()),
+      cell(m.text || ''), cell((m.replies || []).join(' | ')),
+    ].join(','));
+  });
+  const url = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'spelling-app-chat.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function openChatHistory() {
+  const log = (state.chatLog || []).slice().reverse();
+  const pad = n => String(n).padStart(2, '0');
+  openWordSheet(body => {
+    sheetTitle(body, 'Chat history');
+    const list = document.createElement('div');
+    list.className = 'pick-list';
+    list.style.maxHeight = '50vh'; list.style.overflowY = 'auto';
+    log.slice(0, 300).forEach(m => {
+      const d = new Date(m.t || 0);
+      const r = document.createElement('div');
+      r.className = 'pick-row'; r.style.cursor = 'default'; r.style.textAlign = 'left';
+      r.textContent = d.getDate() + '/' + (d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + '   ' + (m.text || '')
+        + ((m.replies || []).length ? '   \u2192 ' + m.replies.join(' / ') : '');
+      list.appendChild(r);
+    });
+    body.appendChild(list);
+    if (log.length > 300) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'Showing the latest 300 of ' + log.length + '. The export has them all.'; body.appendChild(n); }
+    body.appendChild(sheetBtn('Export as a file', '', exportChatLog));
+    body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
+  });
+}
 function renderChatLog(grid, tileType) {
   const box = document.createElement('div');
   box.className = 'builder-log chat-log';
@@ -6300,8 +6346,19 @@ function renderChatLog(grid, tileType) {
   const line = document.createElement('div');
   line.className = 'bl-line';
   head.appendChild(line);
+  // quiet controls at the end of the line: clear what is showing (nothing is deleted), and the
+  // whole conversation, which can be exported
+  const mini = (text, label, fn) => {
+    const b = document.createElement('button');
+    b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label);
+    b.addEventListener('click', fn);
+    head.appendChild(b);
+  };
+  const showing = (state.chatLog || []).filter(m => (m.t || 0) >= chatShownFrom);
+  if (showing.length) mini('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderHome(true); });
+  if ((state.chatLog || []).length) mini('history', 'The whole conversation', openChatHistory);
   box.appendChild(head);
-  (state.chatLog || []).slice(-30).reverse().forEach(m => {
+  showing.slice(-30).reverse().forEach(m => {
     const g = document.createElement('div');
     g.className = 'chat-group';
     chatBubbles(m).forEach(d => { d.style.fontSize = Math.round(tileType * 0.85) + 'px'; g.appendChild(d); });
