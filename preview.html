@@ -2299,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 216 - 5 Oct';
+const BUILD = 'build 217 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7316,6 +7316,20 @@ function renderBuilder(grid) {
       }
       if (leads()) wt.classList.add('link-word');
       holdable(wt, () => {
+        // a title that sits under a group heading in My Stuff brings the group's name with it:
+        // "Moana" then "How Far I'll Go"
+        const grp = asList && !c.target ? (c.groups || []).find(g => (g.words || []).includes(w)) : null;
+        const gk = grp ? normaliseWord(grp.name) : '';
+        if (gk && gk !== w && homePhrase[homePhrase.length - 1] !== gk) {
+          if (!state.words.includes(gk)) state.words.push(gk);
+          if (!state.wordHistory[gk]) state.wordHistory[gk] = { n: 0, t: 0 };
+          state.wordCase = state.wordCase || {};
+          if (!state.wordCase[gk]) state.wordCase[gk] = grp.name;
+          if (gk.includes(' ')) state.keptPhrases[gk] = true;
+          // a heading is not a tile of its own, so it stays off Popular unless it is also a word in a folder
+          if (!categoriesOf(gk).length) { state.recentsHidden = state.recentsHidden || {}; state.recentsHidden[gk] = true; }
+          homePhrase.push(gk);
+        }
         builderSay(w);
         const n = leads();
         const g = n && n.go ? catById(n.go) : null;
