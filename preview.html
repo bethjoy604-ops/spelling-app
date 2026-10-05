@@ -2299,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 221 - 5 Oct';
+const BUILD = 'build 222 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8457,7 +8457,7 @@ function sortWords(list, cols) {
     const out = [];
     pw.pairs.forEach(pr => { out.push(pr[0], pr[1]); for (let i = 2; i < n; i++) out.push(null); });
     const rest = pw.rest.concat(list.filter(isPunct)).sort(byLabel);
-    if (!rest.length) while (out.length && !out[out.length - 1]) out.pop();
+    // the last pair keeps its row to itself too: the grey add tiles start on the row after
     return out.concat(rest);
   }
   return list.slice().sort(byLabel);
