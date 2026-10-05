@@ -2349,7 +2349,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 257 - 5 Oct';
+const BUILD = 'build 258 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8780,7 +8780,13 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     add.classList.add('add-row');
     add.removeAttribute('data-word');
     add.querySelector('.hw').textContent = cat.target ? '+ word' : '+ title';
-    add.addEventListener('click', () => askText(g ? 'New title under ' + g.name : 'New title in ' + cat.name, 'Add', '', typed => addTitleTo(cat, g, typed)));
+    add.addEventListener('click', () => askText(g ? 'New title under ' + g.name : 'New title in ' + cat.name, 'Add', '', typed => {
+      const ok = addTitleTo(cat, g, typed);
+      // on a page that has groups, ask straight away which one the new title belongs in (or none)
+      const key = normaliseWord(typed);
+      if (ok !== false && !g && !cat.target && listGroups(cat).length) setTimeout(() => openGroupPicker(cat, key), 60);
+      return ok;
+    }));
     return add;
   };
   const groupsNow = listGroups(cat);
