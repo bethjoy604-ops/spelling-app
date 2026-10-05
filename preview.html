@@ -2352,7 +2352,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 266 - 5 Oct';
+const BUILD = 'build 267 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8182,6 +8182,8 @@ function openFolderEdit(c, extra) {
     hn.textContent = 'A hidden folder keeps its words and sub-folders. Bring it back under Settings, Hidden folders.';
     body.appendChild(hn);
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
+    // a folder of folders can open as one custom page of tiles picked from them (menu mode)
+    if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? 'Custom page: change the tiles' : 'Custom page: pick tiles from its folders', '', () => openFeedPicker(c)));
     // every folder on the page it sits on, at once: ticks to show or hide each
     if (state.builderMode) body.appendChild(builderEditBtn());
     { const host = !state.builderMode ? currentCat() : null;
@@ -9312,7 +9314,7 @@ function stackLabel(t, label, room, base) {
 // Choices can keep a short list of tiles picked from all its folders. While there are any, opening
 // Choices shows them together as one page; the Library tile at the end opens the folders.
 let libraryOpen = null;      // the Choices folder whose folders (its library) are showing in place of the feed
-function feedHost(cat) { return !!cat && !cat.target && cat.name.trim().toLowerCase() === 'choices' && childrenOf(cat.id).length > 0; }
+function feedHost(cat) { return !!cat && !cat.target && !!cat.parent && !catAllowsPhrases(cat) && childrenOf(cat.id).length > 0; }
 function feedFolders(cat) { const out = []; const walk = id => childrenOf(id).forEach(c => { out.push(c); walk(c.id); }); walk(cat.id); return out; }
 function feedWords(cat) {
   const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
@@ -9321,7 +9323,7 @@ function feedWords(cat) {
 function openFeedPicker(cat) {
   cat.feed = Array.isArray(cat.feed) ? cat.feed : [];
   openWordSheet(body => {
-    sheetTitle(body, 'My choices');
+    sheetTitle(body, 'Custom page for ' + cat.name);
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.margin = '4px 0 8px';
     n.textContent = 'Tick the tiles to show together when ' + cat.name + ' opens. They stay in their own folders too, which are kept under Library.';
@@ -9631,10 +9633,8 @@ function renderSlotGrid(grid, cat, folders) {
       place(lib, off + i);
       continue;
     }
-    if (feedMode && i === slots.length + 1) { place(ghost('edit choices', () => openFeedPicker(cat)), off + i); continue; }
-    if (feedMode && i > slots.length + 1) continue;
+    if (feedMode && i > slots.length) continue;
     // in the Library (and before any tiles have been picked) a grey tile leads to the picker
-    if (alpha && !editing && feedHost(cat) && i === slots.length + (head ? 1 : 2)) { place(ghost('my choices', () => openFeedPicker(cat)), off + i); continue; }
     if (alpha && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && !editing && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
