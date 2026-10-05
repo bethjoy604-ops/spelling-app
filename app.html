@@ -2337,7 +2337,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 243 - 5 Oct';
+const BUILD = 'build 244 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4101,10 +4101,11 @@ async function checkForUpdate() {
   const latest = await newestBuild();
   if (!latest || latest === BUILD) return;
 
-  // Reload on the spot when nothing would be lost, and only ever once per
-  // visit, so a bad deploy can never put the app in a loop.
+  // Reload on the spot when nothing would be lost. Each newer build is tried once: if a reload
+  // for this very build has already happened and the page is still behind, it stops and shows
+  // the bar instead, so a bad deploy can never put the app in a loop.
   const already = sessionStorage.getItem('kbd-self-updated');
-  if (!already && !busyWithAWord()) {
+  if (already !== latest && !busyWithAWord()) {
     try { sessionStorage.setItem('kbd-self-updated', latest); } catch (e) {}
     location.replace(location.pathname + '?v=' + Date.now());
     return;
@@ -4127,7 +4128,7 @@ setTimeout(checkForUpdate, 2500);
 // it is most likely to be out of date.
 window.addEventListener('pageshow', e => { if (e.persisted) checkForUpdate(); });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && Date.now() - lastUpdateLook > 300000) {
+  if (!document.hidden && Date.now() - lastUpdateLook > 60000) {
     lastUpdateLook = Date.now();
     checkForUpdate();
   }
