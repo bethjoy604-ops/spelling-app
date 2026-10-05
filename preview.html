@@ -2299,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 217 - 5 Oct';
+const BUILD = 'build 218 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2661,7 +2661,7 @@ async function load() {
         linkV1: saved.linkV1 ?? false,
         smallV3: saved.smallV3 ?? false,
         rowOpenBy: saved.rowOpenBy || {},
-        smallOpen: !!saved.smallOpen,
+        smallOpen: false,          // always starts closed when the app opens
         smallV2: saved.smallV2 ?? false,
         smallSet: saved.smallSet || {},
         layoutV9: saved.layoutV9 ?? false,
