@@ -505,6 +505,7 @@
   #pageEditBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 16px;
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
+  .home-card.group-tile { background: #bfd8ff; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
   .drop-before { box-shadow: 0 -7px 0 0 var(--green) !important; }
   .drop-after { box-shadow: 0 7px 0 0 var(--green) !important; }
@@ -2349,7 +2350,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 258 - 5 Oct';
+const BUILD = 'build 259 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6479,7 +6480,7 @@ function renderCatTiles(containerId, rerender) {
     // back to the page of folders, and the tab reads Categories again
     if (homePath[level] === c.id && homePath.length > level + 1) {
       const open = catById(homePath[homePath.length - 1]);
-      if (open) b.textContent = open.name;
+      if (open) b.textContent = (tileGroup && tileGroup.cat === open.id) ? tileGroup.group.name : open.name;
     }
     b.addEventListener('pointerdown', () => {
       longPressed = false;
@@ -6723,6 +6724,7 @@ function renderHome(reset) {
   const cat = currentCat();
   if (!cat || state.builderMode || cat.id !== listPageShown) listPageShown = null;     // that page of groups has been left
   syncPageEdit(cat);
+  if (tileGroup && (!cat || state.builderMode || cat.id !== tileGroup.cat)) tileGroup = null;
   if (reset) {
     renderPhraseBar();
     renderBuilderBar();
@@ -7459,7 +7461,7 @@ function exportLayout() {
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
       links: c.links || [], small: !!c.small, target: !!c.target, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, groups: Array.isArray(c.groups) ? c.groups : null, strip: !!c.strip, nopop: !!c.nopop,
-      phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
+      phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null, tiles: !!c.tiles,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
     wordCase: state.wordCase || {},
@@ -8077,6 +8079,7 @@ function openFolderEdit(c, extra) {
     hn.className = 'help-note'; hn.style.marginTop = '10px';
     hn.textContent = 'A hidden folder keeps its words and sub-folders. Bring it back under Settings, Hidden folders.';
     body.appendChild(hn);
+    if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
     // every folder on the page it sits on, at once: ticks to show or hide each
     { const host = !state.builderMode ? currentCat() : null;
       if (host && host.id !== c.id && !host.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = host.id; closeWordSheet(); renderHome(true); })); }
@@ -8350,7 +8353,8 @@ document.getElementById('builderAddBtn').addEventListener('click', openBuilderAd
 document.getElementById('targetGearBtn').addEventListener('click', () => { targetSetOpen = 'when'; openTargetSettings(); });
 // menu mode: back up one folder
 document.getElementById('homeBackBtn').addEventListener('click', () => {
-  if (homePath.length > 1) homePath = homePath.slice(0, -1);
+  if (tileGroup) tileGroup = null;                      // out of a group's page of tiles, back to the page of groups
+  else if (homePath.length > 1) homePath = homePath.slice(0, -1);
   buzz(10);
   renderHome(true);
 });
@@ -8518,6 +8522,76 @@ function addGroupHeading(cat) {
     groups.push({ id: Math.max(0, ...groups.map(g => g.id || 0)) + 1, name, words: [], open: true });
   });
 }
+// ---- My Stuff pages laid out as tiles ----
+// A My Stuff page can show as a list (group headings that open out into rows of titles) or as
+// tiles: each group is a blue tile that opens a page of its titles, and titles with no group are
+// tiles beside them. The page itself is the same either way; only the look changes.
+let tileGroup = null;      // { cat: id, group } - the group whose page is open on a tiles page
+function tilesPage(cat) { return !!cat && !!cat.tiles && !cat.target && usesGroups(cat); }
+function layoutSwitchBtn(cat) {
+  return sheetBtn(cat.tiles ? 'Show this page as a list' : 'Show this page as tiles', '', () => {
+    cat.tiles = !cat.tiles; tileGroup = null;
+    save(); closeWordSheet(); renderHome(true);
+  });
+}
+function renderTileBody(grid, cat, listWords, rowH, base, cols) {
+  grid.style.gridAutoRows = 'auto';
+  const groups = listGroups(cat);
+  const inGroup = tileGroup && tileGroup.cat === cat.id && groups.includes(tileGroup.group) ? tileGroup.group : null;
+  if (!inGroup) tileGroup = null;
+  let i = 0;
+  const cellW = (grid.clientWidth - 16 * (cols - 1)) / cols;
+  const put = card => { card.style.gridRow = String(Math.floor(i / cols) + 1); card.style.gridColumn = String(i % cols + 1); card.style.height = rowH + 'px'; grid.appendChild(card); i++; };
+  const mk = (label, cls) => {
+    const card = document.createElement('button');
+    card.className = 'home-card' + (cls ? ' ' + cls : '');
+    const t = document.createElement('span');
+    t.className = 'hw'; t.textContent = label;
+    const room = cellW - 30, longest = Math.max(...label.split(' ').map(x => x.length), 1);
+    const one = room / (Math.max(1, label.length) * 0.62);
+    if (label.includes(' ') && one < base) t.style.whiteSpace = 'normal';
+    t.style.fontSize = Math.max(14, Math.min(base, label.includes(' ') ? room / (longest * 0.62) : one)) + 'px';
+    card.appendChild(t);
+    return card;
+  };
+  // tap uses the tile, hold opens its options
+  const holdTap = (el, onTap, onHold) => {
+    let timer = null, held = false;
+    el.addEventListener('pointerdown', () => { held = false; timer = setTimeout(() => { timer = null; held = true; buzz(15); el.classList.add('held'); }, 520); });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    el.addEventListener('pointerup', stop);
+    ['pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => { stop(); held = false; el.classList.remove('held'); }));
+    el.addEventListener('contextmenu', e => e.preventDefault());
+    el.addEventListener('click', () => { el.classList.remove('held'); if (held) { held = false; onHold(); } else onTap(); });
+  };
+  const titleTile = w => {
+    const card = mk(bankLabel(w));
+    card.dataset.word = w;
+    holdTap(card, () => { homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w); }, () => openTitleActions(w, cat));
+    put(card);
+  };
+  const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
+  if (inGroup) {
+    // a group's own page: its titles as tiles, in the order they were put in
+    inGroup.words.filter(w => listWords.includes(w)).forEach(titleTile);
+    ghost('+ title', () => askText('New title in ' + inGroup.name, 'Add', '', typed => addTitleTo(cat, inGroup, typed)));
+    return;
+  }
+  groups.forEach(g => {
+    const card = mk(g.name, 'group-tile');
+    holdTap(card, () => { tileGroup = { cat: cat.id, group: g }; buzz(10); renderHome(true); }, () => openGroupHead(cat, g));
+    put(card);
+  });
+  const grouped = new Set([].concat(...groups.map(g => g.words)));
+  listWords.filter(w => !grouped.has(w)).forEach(titleTile);
+  ghost('+ title', () => askText('New title in ' + cat.name, 'Add', '', typed => {
+    const ok = addTitleTo(cat, null, typed);
+    const key = normaliseWord(typed);
+    if (ok !== false && listGroups(cat).length) setTimeout(() => openGroupPicker(cat, key), 60);
+    return ok;
+  }));
+  ghost('+ group', () => addGroupHeading(cat));
+}
 function openGroupHead(cat, group) {
   const groups = listGroups(cat);
   openWordSheet(body => {
@@ -8532,7 +8606,9 @@ function openGroupHead(cat, group) {
     })));
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
+    if (!cat.target) body.appendChild(layoutSwitchBtn(cat));
     body.appendChild(sheetBtn('Remove this heading', 'danger', () => {
+      if (tileGroup && tileGroup.group === group) tileGroup = null;
       // its titles are kept: they go back to being ungrouped, above the groups
       cat.groups = groups.filter(g => g !== group);
       save(); closeWordSheet(); renderHome(true);
@@ -8565,6 +8641,7 @@ function openTitleActions(word, cat, extra) {
     body.appendChild(sheetBtn(cat.target ? 'Edit spelling or capitals' : 'Edit the title or its capitals', '', () => openWordEdit(word)));
     if (cat.target) body.appendChild(targetPauseBtn(word));
     if (extra) extra(body);
+    if (!cat.target && usesGroups(cat) && !state.builderMode) body.appendChild(layoutSwitchBtn(cat));
     const groups = usesGroups(cat) ? listGroups(cat) : [];
     if (groups.length) {
       const h = document.createElement('div');
@@ -9396,7 +9473,8 @@ function renderSlotGrid(grid, cat, folders) {
     fit(card, label);
     place(card, off + i);
   }
-  if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
+  if (listMode && tilesPage(cat)) renderTileBody(grid, cat, listWords, rowH, base, cols);
+  else if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
   if (!arrange && state.chatMode) {
     grid.style.gridTemplateRows = 'repeat(' + Math.max(1, totalRows) + ', ' + rowH + 'px) auto';
