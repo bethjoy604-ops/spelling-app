@@ -2340,7 +2340,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 252 - 5 Oct';
+const BUILD = 'build 253 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8638,8 +8638,8 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         heads.forEach(h => { const r = h.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - lastY); if (d < bd) { bd = d; best = h; } });
         t = best;
         if (t) { const r = t.getBoundingClientRect(); after = lastY > (r.top + r.bottom) / 2; }
-        clear(); over = t;
-        if (over) over.classList.add(after ? 'drop-after' : 'drop-before');
+        const cls = after ? 'drop-after' : 'drop-before';
+        if (t !== over || !t || !t.classList.contains(cls)) { clear(); over = t; if (over) over.classList.add(cls); }
       } else if (t !== over) { clear(); over = t; if (over) over.classList.add('drop-on'); }
     };
     el.addEventListener('pointermove', e => {
@@ -8654,6 +8654,9 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         ghost._dy = sy - r.top;
         document.body.appendChild(ghost);
         grid.classList.add('list-dragging');
+        document.addEventListener('pointerup', release, true);
+        document.addEventListener('pointercancel', release, true);
+        window.addEventListener('blur', release);
       }
       lastX = e.clientX; lastY = e.clientY;
       hover();
@@ -8669,8 +8672,14 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         if (grid.scrollTop !== before) hover();
       }, 30);
     });
-    el.addEventListener('pointerup', () => {
+    // letting go ends the drag wherever the release is seen - on the row itself, or anywhere on the
+    // page if the row was redrawn or lost hold of the pointer meanwhile - so a drag can never be
+    // left hanging with the lifted row stuck on screen
+    const release = () => {
       stop(); mouseDown = false;
+      document.removeEventListener('pointerup', release, true);
+      document.removeEventListener('pointercancel', release, true);
+      window.removeEventListener('blur', release);
       if (ghost) {
         const to = over ? Number(over.dataset.gidx) : null;
         endDrag(); held = false; dropped = true; el.classList.remove('held');
@@ -8681,7 +8690,9 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         setTimeout(() => document.removeEventListener('click', eat, true), 350);
         if (to !== null) drag.drop(to, after);
       }
-    });
+    };
+    el.addEventListener('pointerup', release);
+    el.addEventListener('lostpointercapture', () => { if (ghost) release(); });
     ['pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => { if (ghost && ev === 'pointerleave') return; stop(); held = false; el.classList.remove('held'); endDrag(); }));
     el.addEventListener('contextmenu', e => e.preventDefault());
     el.addEventListener('click', () => {
@@ -8690,7 +8701,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       if (held) { held = false; onHold(); } else onTap();
     });
   };
-  const redraw = () => { save(); const top = grid.scrollTop; renderHome(false); grid.scrollTop = top; };
+  const redraw = () => { save(); const top = grid.scrollTop; renderHome(true); grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; }); };
   const wordRow = w => {
     const row = makeListRow(w, rowH, base);
     if (cat.target && (state.targetOff || {})[w]) row.classList.add('paused');
@@ -8735,7 +8746,17 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     head.lastChild.textContent = g.name;
     head.style.fontSize = Math.max(18, Math.round(base * 0.7)) + 'px';
     head.style.minHeight = Math.max(48, Math.round(rowH * 0.36)) + 'px';
-    holdTap(head, () => { g.open = !open; buzz(10); save(); const top = grid.scrollTop; renderHome(false); grid.scrollTop = top; },
+    holdTap(head, () => {
+      // one group open at a time: opening this one closes the others, and the heading that was
+      // tapped stays where it is on the screen
+      const was = head.getBoundingClientRect().top;
+      groupsNow.forEach(x => { x.open = (x === g) ? !open : false; });
+      buzz(10); save();
+      renderHome(true);
+      const now = [...grid.querySelectorAll('.group-head[data-gidx]')].find(h => h.dataset.gidx === String(gi));
+      const fix = () => { if (now && now.isConnected) grid.scrollTop += now.getBoundingClientRect().top - was; };
+      fix(); requestAnimationFrame(fix);
+    },
       () => openGroupHead(cat, g), { kind: 'group', drop: (to, below) => {
         const gs = listGroups(cat);
         if (to < 0 || to === gi || !gs[to]) return;
