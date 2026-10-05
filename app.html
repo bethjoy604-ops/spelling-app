@@ -2338,7 +2338,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 245 - 5 Oct';
+const BUILD = 'build 246 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7125,6 +7125,32 @@ function refreshSmallStrips() {
     old.replaceWith(nu);
   });
 }
+// The small words library in Chat, in a set order so each word keeps its place: the first row is
+// the six most common of them (I first), then the words by kind, each kind starting a row -
+// people words, helping verbs, pointing and amount words, joining words, place words, time
+// words - then anything else A to Z, and the punctuation marks last.
+const SMALL_COMMON = ['I', 'YOU', 'IT', 'THE', 'A', 'AND', 'TO', 'IS', 'MY', 'ME', 'WE', 'THAT', 'NOT', 'IN', 'ARE', 'FOR', 'ON', 'THIS', 'WITH', 'HAVE', 'BE', 'YOUR', 'AM', 'DO', 'CAN'];
+const SMALL_KINDS = [
+  ['I', 'YOU', 'WE', 'HE', 'SHE', 'IT', 'THEY', 'ME', 'US', 'HIM', 'HER', 'THEM', 'MY', 'YOUR', 'OUR', 'HIS', 'THEIR', 'MINE', 'YOURS', 'OURS', 'THEIRS', 'MYSELF', 'WHO', 'EVERYONE', 'SOMEONE'],
+  ['AM', 'IS', 'ARE', 'WAS', 'WERE', 'BE', 'BEEN', 'DO', 'DOES', 'DID', "DON'T", "DOESN'T", "DIDN'T", 'CAN', "CAN'T", 'COULD', 'WILL', "WON'T", 'WOULD', 'SHOULD', 'MIGHT', 'MUST', 'HAVE', 'HAS', 'HAD', 'NOT', "ISN'T", "AREN'T", "LET'S"],
+  ['THE', 'A', 'AN', 'THIS', 'THAT', 'THESE', 'THOSE', 'SOME', 'ANY', 'ALL', 'NO', 'NONE', 'MORE', 'MOST', 'EACH', 'EVERY', 'OTHER', 'ANOTHER', 'WHAT', 'WHICH'],
+  ['AND', 'OR', 'BUT', 'SO', 'BECAUSE', 'IF', 'THEN', 'THAN', 'AS', 'LIKE', 'WHEN', 'WHILE', 'UNTIL', 'WHY', 'HOW'],
+  ['TO', 'IN', 'ON', 'AT', 'FOR', 'WITH', 'OF', 'FROM', 'BY', 'UP', 'DOWN', 'OUT', 'OFF', 'OVER', 'UNDER', 'INTO', 'ABOUT', 'HERE', 'THERE', 'WHERE'],
+  ['NOW', 'SOON', 'LATER', 'AGAIN', 'BEFORE', 'AFTER', 'TODAY', 'ALWAYS', 'NEVER', 'TOO', 'VERY', 'JUST', 'ALSO', 'ONLY', 'MAYBE', 'PLEASE'],
+];
+function groupSmallWords(list) {
+  const real = list.filter(w => !isPunct(w));
+  const rank = w => { const i = SMALL_COMMON.indexOf(w); return i < 0 ? 999 : i; };
+  const top = real.filter(w => rank(w) < 999).sort((a, b) => rank(a) - rank(b)).slice(0, 6);
+  const rest = real.filter(w => !top.includes(w));
+  const groups = [top];
+  SMALL_KINDS.forEach(kind => groups.push(kind.filter(w => rest.includes(w))));
+  const known = new Set([].concat(...SMALL_KINDS));
+  groups.push(rest.filter(w => !known.has(w)).sort(byLabel));
+  groups.push(list.filter(isPunct));
+  const full = groups.filter(g => g.length);
+  return { words: [].concat(...full), starts: new Set(full.slice(1).map(g => g[0])) };
+}
 function addStripToggle(strip, onClose) {
   strip.classList.add('with-toggle');
   strip._onClose = onClose;
@@ -8987,9 +9013,11 @@ function renderSlotGrid(grid, cat, folders) {
     addStripToggle(box, () => head.click());
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = Math.max(48, Math.round(rowH / 2));
-    smalls.forEach(w => {
+    const sg = groupSmallWords(smalls);
+    sg.words.forEach(w => {
       const b = document.createElement('button');
       b.className = 'small-tile';
+      if (sg.starts.has(w)) b.style.gridColumnStart = '1';      // each kind of word begins a row
       b.dataset.word = w;
       b.style.height = h + 'px';
       b.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
