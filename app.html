@@ -2354,7 +2354,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 269 - 5 Oct';
+const BUILD = 'build 270 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2696,6 +2696,7 @@ async function load() {
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
         builderHide: saved.builderHide || {},
+        capKeep: saved.capKeep || {},
         builderHideV1: saved.builderHideV1 ?? false,
         recentsHidden: saved.recentsHidden || {},
         suggestOn: saved.suggestOn ?? true,
@@ -3179,6 +3180,7 @@ async function save() {
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
       builderHide: state.builderHide,
+      capKeep: state.capKeep || {},
       builderHideV1: state.builderHideV1,
       recentsHidden: state.recentsHidden,
       suggestOn: state.suggestOn,
@@ -5956,6 +5958,12 @@ function isLinkWord(w) {
 // A sentence: the first word starts with a capital, the rest read as they would mid-sentence
 function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : bankLabel(w)); }
 // How a word reads in the middle of a sentence: small letters, unless it is a name
+const PLAIN_STUFF = ['food', 'places', 'things'];
+function plainStuff(c) {
+  let x = c, g = 0;
+  while (x && g++ < 20) { if (PLAIN_STUFF.includes(x.name.trim().toLowerCase())) return true; x = x.parent ? catById(x.parent) : null; }
+  return false;
+}
 function sentenceLabel(w) {
   const key = w || '';
   const kept = (state.wordCase || {})[key];
@@ -5963,6 +5971,14 @@ function sentenceLabel(w) {
   if (kept && key !== 'I' && isLinkWord(key) && kept.slice(1) === kept.slice(1).toLowerCase()) return kept.toLowerCase();
   // a title in My Stuff gets a capital on every word, however it was typed ("How far I'll go");
   // only unusual capitals given by hand (iPad, KPOP) are left as they are
+  // everyday words in My Stuff (Food, Places, Things) are not titles: they read in small letters,
+  // on tiles and in the bar ("go bathroom"). Capitals given by hand in the word's edit box stay.
+  const stuff = categoriesOf(key).filter(catAllowsPhrases);
+  if (stuff.length && stuff.every(plainStuff)) {
+    if (kept && ((state.capKeep || {})[key] || (kept !== titleCase(key) && kept !== kept.toLowerCase()))) return kept;
+    if (key === 'I' || key.startsWith("I'")) return 'I' + key.slice(1).toLowerCase();
+    return key.toLowerCase().replace(/\bi\b/g, 'I');
+  }
   if (kept && categoriesOf(key).some(catAllowsPhrases)) {
     return kept.split(' ').map(x => x.slice(1) === x.slice(1).toLowerCase() ? x.charAt(0).toUpperCase() + x.slice(1) : x).join(' ');
   }
@@ -6914,6 +6930,7 @@ function applyLayout(L, keep) {
   (L.keptPhrases || []).forEach(w => { state.keptPhrases[w] = true; });
   state.wordCase = Object.assign(keep ? (state.wordCase || {}) : {}, L.wordCase || {});
   state.recentsHidden = Object.assign(keep ? (state.recentsHidden || {}) : {}, ...(L.recentsHidden || []).map(w => ({ [w]: true })));
+  if (L.capKeep) state.capKeep = Object.assign({}, L.capKeep);
   if (L.builderHide) { state.builderHide = JSON.parse(JSON.stringify(L.builderHide)); state.builderHideV1 = true; }
   if (L.hiddenWords) { state.hiddenWords = keep ? (state.hiddenWords || {}) : {}; L.hiddenWords.forEach(w => { state.hiddenWords[w] = true; }); }
   if (L.targetState) state.targetState = Object.assign({}, L.targetState);
@@ -7498,6 +7515,7 @@ function exportLayout() {
     keptPhrases: Object.keys(state.keptPhrases || {}),
     hiddenWords: Object.keys(state.hiddenWords || {}),
     builderHide: (builderHidden(''), state.builderHide),
+    capKeep: state.capKeep || {},
     recentsHidden: Object.keys(state.recentsHidden || {}),
     smallRow: state.smallRow || [],
     smallWords: state.words.filter(isSmallWord),
@@ -10281,6 +10299,9 @@ function setWordCase(raw, key) {
   state.wordCase = state.wordCase || {};
   if (text.toUpperCase() === key) state.wordCase[key] = text;
   else delete state.wordCase[key];
+  // capitals typed in the edit box are meant: they stay even on pages that read in small letters
+  state.capKeep = state.capKeep || {};
+  if (text.toUpperCase() === key && text !== text.toLowerCase()) state.capKeep[key] = 1; else delete state.capKeep[key];
 }
 // Change a word's spelling everywhere it appears, keeping its place and its history
 function renameWord(from, to) {
