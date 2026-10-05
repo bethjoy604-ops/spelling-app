@@ -507,6 +507,7 @@
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: #bfd8ff; }
+  .home-card.library-tile { background: #e6e7ea; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
   .drop-before { box-shadow: 0 -7px 0 0 var(--green) !important; }
   .drop-after { box-shadow: 0 7px 0 0 var(--green) !important; }
@@ -2351,7 +2352,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 263 - 5 Oct';
+const BUILD = 'build 264 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6504,6 +6505,8 @@ function renderCatTiles(containerId, rerender) {
       const mine = homePath[level] === c.id;
       const twice = mine && lastTabTap.id === c.id && now - lastTabTap.t < 450;
       lastTabTap = { id: c.id, t: now };
+      const lastId = homePath[homePath.length - 1];
+      if (mine && !twice && libraryOpen && libraryOpen === lastId && !tileGroup) { libraryOpen = null; again(); return; }
       if (mine && !twice && (tileGroup || homePath.length > level + 1)) {
         if (tileGroup) tileGroup = null; else homePath = homePath.slice(0, -1);
         again();
@@ -6741,6 +6744,7 @@ function renderHome(reset) {
   if (!cat || state.builderMode || cat.id !== listPageShown) listPageShown = null;     // that page of groups has been left
   syncPageEdit(cat);
   if (tileGroup && (!cat || state.builderMode || cat.id !== tileGroup.cat)) tileGroup = null;
+  if (libraryOpen && (state.builderMode || !homePath.includes(libraryOpen))) libraryOpen = null;
   if (reset) {
     renderPhraseBar();
     renderBuilderBar();
@@ -7477,7 +7481,7 @@ function exportLayout() {
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
       links: c.links || [], small: !!c.small, target: !!c.target, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, groups: Array.isArray(c.groups) ? c.groups : null, strip: !!c.strip, nopop: !!c.nopop,
-      phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null, tiles: !!c.tiles,
+      phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null, tiles: !!c.tiles, feed: Array.isArray(c.feed) ? c.feed : null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
     wordCase: state.wordCase || {},
@@ -8370,7 +8374,9 @@ document.getElementById('builderAddBtn').addEventListener('click', openBuilderAd
 document.getElementById('targetGearBtn').addEventListener('click', () => { targetSetOpen = 'when'; openTargetSettings(); });
 // menu mode: back up one folder
 document.getElementById('homeBackBtn').addEventListener('click', () => {
+  const here0 = currentCat();
   if (tileGroup) tileGroup = null;                      // out of a group's page of tiles, back to the page of groups
+  else if (libraryOpen && here0 && here0.id === libraryOpen) libraryOpen = null;      // out of the Library, back to the feed
   else if (homePath.length > 1) homePath = homePath.slice(0, -1);
   buzz(10);
   renderHome(true);
@@ -9216,6 +9222,49 @@ function stackLabel(t, label, room, base) {
   t.style.fontSize = Math.max(14, Math.min(base, room / (bestLen * 0.62))) + 'px';
   return true;
 }
+// ---- The Choices feed ----
+// Choices can keep a short list of tiles picked from all its folders. While there are any, opening
+// Choices shows them together as one page; the Library tile at the end opens the folders.
+let libraryOpen = null;      // the Choices folder whose folders (its library) are showing in place of the feed
+function feedHost(cat) { return !!cat && !cat.target && cat.name.trim().toLowerCase() === 'choices' && childrenOf(cat.id).length > 0; }
+function feedFolders(cat) { const out = []; const walk = id => childrenOf(id).forEach(c => { out.push(c); walk(c.id); }); walk(cat.id); return out; }
+function feedWords(cat) {
+  const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
+  return (cat.feed || []).filter(w => have.has(w) && !state.hiddenWords[w]);
+}
+function openFeedPicker(cat) {
+  cat.feed = Array.isArray(cat.feed) ? cat.feed : [];
+  openWordSheet(body => {
+    sheetTitle(body, 'My choices');
+    const n = document.createElement('div');
+    n.className = 'help-note'; n.style.margin = '4px 0 8px';
+    n.textContent = 'Tick the tiles to show together when ' + cat.name + ' opens. They stay in their own folders too, which are kept under Library.';
+    body.appendChild(n);
+    const list = document.createElement('div');
+    list.className = 'pick-list';
+    list.style.maxHeight = '52vh'; list.style.overflowY = 'auto';
+    body.appendChild(list);
+    feedFolders(cat).forEach(f => {
+      const ws = sortWords((f.words || []).filter(w => !state.hiddenWords[w]), 3, true).filter(Boolean);
+      if (!ws.length) return;
+      const h = document.createElement('div');
+      h.className = 'help-note'; h.style.margin = '12px 0 4px'; h.style.fontWeight = '900'; h.textContent = f.name;
+      list.appendChild(h);
+      ws.forEach(w => {
+        const r = document.createElement('button');
+        r.className = 'pick-row';
+        const paint = () => { const on = cat.feed.includes(w); r.classList.toggle('on', on); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w); };
+        r.addEventListener('click', () => {
+          if (cat.feed.includes(w)) cat.feed = cat.feed.filter(x => x !== w); else cat.feed.push(w);
+          save(); paint();
+        });
+        paint();
+        list.appendChild(r);
+      });
+    });
+    body.appendChild(sheetBtn('Done', 'primary', () => { libraryOpen = null; closeWordSheet(); renderHome(true); }));
+  });
+}
 function renderSlotGrid(grid, cat, folders) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
@@ -9235,6 +9284,10 @@ function renderSlotGrid(grid, cat, folders) {
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
   // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
   const alpha = arrange && !listMode && hasSmallStrip(cat);
+  // Choices: once tiles have been picked for it, the page opens as that short feed of tiles from
+  // across its folders; a Library tile at the end opens the folders themselves
+  const feedMode = alpha && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && feedWords(cat).length > 0;
+  if (feedMode) { words = feedWords(cat); folders = []; }
   const slots = listMode ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
   // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
   // are showing (which close up, still in their order) and stays there, greyed, to be ticked again.
@@ -9482,6 +9535,20 @@ function renderSlotGrid(grid, cat, folders) {
     const w = slots[i];
     if (boardOnly && i === 0) continue;       // that place holds the grey add tile
     if (chatAdd && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
+    if (feedMode && i === slots.length) {
+      const lib = document.createElement('button');
+      lib.className = 'home-card folder-card library-tile';
+      const lt = document.createElement('span'); lt.className = 'hw'; lt.textContent = 'Library';
+      lib.appendChild(lt);
+      lib.addEventListener('click', () => { libraryOpen = cat.id; buzz(10); renderHome(true); });
+      fit(lib, 'Library');
+      place(lib, off + i);
+      continue;
+    }
+    if (feedMode && i === slots.length + 1) { place(ghost('edit choices', () => openFeedPicker(cat)), off + i); continue; }
+    if (feedMode && i > slots.length + 1) continue;
+    // in the Library (and before any tiles have been picked) a grey tile leads to the picker
+    if (alpha && !editing && feedHost(cat) && i === slots.length + (head ? 1 : 2)) { place(ghost('my choices', () => openFeedPicker(cat)), off + i); continue; }
     if (alpha && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && !editing && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
@@ -9545,7 +9612,7 @@ function renderSlotGrid(grid, cat, folders) {
       renderMagic(w);
       // the page stays put so more words can be added from it; enter (or the folder menu) moves on
     });
-    attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
+    attachWordHold(card, w, feedMode ? (categoriesOf(w).find(x => inChoices(x) && !x.target) || cat) : arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, label);
     place(card, off + i);
   }
