@@ -2351,7 +2351,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 261 - 5 Oct';
+const BUILD = 'build 262 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7584,6 +7584,7 @@ function renderBuilder(grid) {
     if (label.includes(' ') && one < base) t.style.whiteSpace = 'normal';
     const longest = Math.max(...label.split(' ').map(x => x.length));
     t.style.fontSize = Math.min(base, label.includes(' ') ? room / (longest * 0.62) : one) + 'px';
+    stackLabel(t, label, room, base);
     card.appendChild(t);
     grid.appendChild(card);
     return card;
@@ -8585,6 +8586,7 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
     const one = room / (Math.max(1, label.length) * 0.62);
     if (label.includes(' ') && one < base) t.style.whiteSpace = 'normal';
     t.style.fontSize = Math.max(14, Math.min(base, label.includes(' ') ? room / (longest * 0.62) : one)) + 'px';
+    stackLabel(t, label, room, base);
     card.appendChild(t);
     return card;
   };
@@ -9195,6 +9197,23 @@ function syncPageEdit(cat) {
   const n = (cat.words || []).filter(w => state.hiddenWords[w]).length + childrenOf(cat.id, true).filter(c => c.hidden && !c.smallSec).length;
   bar.firstChild.textContent = 'Tap a tile to show or hide it' + (n ? '  \u00b7  ' + n + ' hidden' : '');
 }
+// A tile whose label is more than one word is set on two lines, split where the two lines come out
+// most even ("Chicken / Tenders", "Sweet Potato / Fries"), at the largest size that fits the tile.
+function stackLabel(t, label, room, base) {
+  const parts = String(label).split(' ').filter(Boolean);
+  if (parts.length < 2 || label.charAt(0) === '+') return false;
+  let best = 1, bestLen = 1e9;
+  for (let k = 1; k < parts.length; k++) {
+    const len = Math.max(parts.slice(0, k).join(' ').length, parts.slice(k).join(' ').length);
+    if (len < bestLen) { bestLen = len; best = k; }
+  }
+  t.textContent = parts.slice(0, best).join(' ') + '\n' + parts.slice(best).join(' ');
+  t.style.whiteSpace = 'pre-line';
+  t.style.lineHeight = '1.12';
+  t.style.textAlign = 'center';
+  t.style.fontSize = Math.max(14, Math.min(base, room / (bestLen * 0.62))) + 'px';
+  return true;
+}
 function renderSlotGrid(grid, cat, folders) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
@@ -9375,6 +9394,7 @@ function renderSlotGrid(grid, cat, folders) {
   };
   const fit = (card, label) => {
     const t = card.querySelector('.hw');
+    if (stackLabel(t, label, room, base)) return;
     const one = room / (Math.max(1, label.length) * 0.62);
     if (!label.includes(' ') || one >= base) { t.style.fontSize = Math.min(base, one) + 'px'; return; }
     // a long title wraps onto lines instead of shrinking away
