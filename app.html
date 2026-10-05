@@ -2340,7 +2340,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 253 - 5 Oct';
+const BUILD = 'build 254 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2514,6 +2514,7 @@ const state = {
   targetState: {},            // each target word's section: independent, prompted or waiting
   targetV1: false,            // the one-time renaming of New to the targets tab
   layoutV10: false,          // the one-time move of every device onto the built-in folders
+  groupOrderV1: false,       // the one-time A to Z sort of the titles inside each group (they now keep their own order)
   tabsV2: false,             // the one-time move of My Stuff back to the end of the menu bar, after Categories
   tabsV1: false,             // the one-time move of My Stuff ahead of Categories on the menu bar
   chatV1: false,             // the one-time check that Chat and its Small words folder are there
@@ -2698,6 +2699,7 @@ async function load() {
         targetState: saved.targetState || {},
         targetV1: saved.targetV1 ?? false,
         layoutV10: saved.layoutV10 ?? false,
+        groupOrderV1: saved.groupOrderV1 ?? false,
         tabsV2: saved.tabsV2 ?? false,
         tabsV1: saved.tabsV1 ?? false,
         chatV1: saved.chatV1 ?? false,
@@ -3027,6 +3029,13 @@ async function load() {
     }
     save();
   }
+  // One-time: titles inside a group now keep their own order; they start in the A to Z order they
+  // have been showing in, so nothing moves until one is dragged
+  if (!state.groupOrderV1) {
+    state.groupOrderV1 = true;
+    state.categories.forEach(c => (c.groups || []).forEach(g => { if (Array.isArray(g.words)) g.words.sort(byLabel); }));
+    save();
+  }
   // One-time: on the menu bar My Stuff sits at the end, after Categories (an earlier build had
   // moved it in front; this puts it back)
   if (!state.tabsV2) {
@@ -3171,6 +3180,7 @@ async function save() {
       targetState: state.targetState,
       targetV1: state.targetV1,
       layoutV10: state.layoutV10,
+      groupOrderV1: state.groupOrderV1,
       tabsV2: state.tabsV2,
       tabsV1: state.tabsV1,
       chatV1: state.chatV1,
@@ -8640,7 +8650,12 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         if (t) { const r = t.getBoundingClientRect(); after = lastY > (r.top + r.bottom) / 2; }
         const cls = after ? 'drop-after' : 'drop-before';
         if (t !== over || !t || !t.classList.contains(cls)) { clear(); over = t; if (over) over.classList.add(cls); }
-      } else if (t !== over) { clear(); over = t; if (over) over.classList.add('drop-on'); }
+      } else if (t && t.dataset.word && Number(t.dataset.gidx) >= 0) {
+        // over a title inside a group: a green line shows whether it lands above or below it
+        const r = t.getBoundingClientRect(); after = lastY > (r.top + r.bottom) / 2;
+        const cls = after ? 'drop-after' : 'drop-before';
+        if (t !== over || !t.classList.contains(cls)) { clear(); over = t; over.classList.add(cls); }
+      } else if (t !== over || (t && !t.classList.contains('drop-on'))) { clear(); over = t; if (over) over.classList.add('drop-on'); }
     };
     el.addEventListener('pointermove', e => {
       if (!held && mouseDown && Math.hypot(e.clientX - sx, e.clientY - sy) >= 10) { stop(); held = true; el.classList.add('held'); }
@@ -8682,13 +8697,14 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       window.removeEventListener('blur', release);
       if (ghost) {
         const to = over ? Number(over.dataset.gidx) : null;
+        const onWord = over ? (over.dataset.word || null) : null;
         endDrag(); held = false; dropped = true; el.classList.remove('held');
         // the list is redrawn under the finger: the click that follows the drop must not land on
         // whatever row is there now
         const eat = ev => { ev.stopPropagation(); ev.preventDefault(); };
         document.addEventListener('click', eat, true);
         setTimeout(() => document.removeEventListener('click', eat, true), 350);
-        if (to !== null) drag.drop(to, after);
+        if (to !== null) drag.drop(to, after, onWord);
       }
     };
     el.addEventListener('pointerup', release);
@@ -8711,10 +8727,15 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       speakWord(w, 0.95);
       renderPhraseBar();
       renderMagic(w);
-    }, () => openTitleActions(w, cat), usesGroups(cat) ? { kind: 'title', drop: to => {
+    }, () => openTitleActions(w, cat), usesGroups(cat) ? { kind: 'title', drop: (to, below, onWord) => {
       const gs = listGroups(cat);
       gs.forEach(x => { x.words = x.words.filter(v => v !== w); });
-      if (to >= 0 && gs[to]) { gs[to].words.push(w); gs[to].open = true; }
+      if (to >= 0 && gs[to]) {
+        // dropped on a title in the group: it goes just above or below that title; on the heading: at the end
+        const at = onWord ? gs[to].words.indexOf(onWord) : -1;
+        if (at >= 0) gs[to].words.splice(at + (below ? 1 : 0), 0, w); else gs[to].words.push(w);
+        gs.forEach(x => { x.open = x === gs[to]; });
+      }
       redraw();
     } } : null);
     return row;
@@ -8767,10 +8788,8 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       } });
     put(mark(head, gi));
     if (!open) return;
-    listWords.filter(w => g.words.includes(w)).forEach(w => put(mark(wordRow(w), gi)));
-    // at the end of every group: add a title to that group (on targets the last group leaves it to
-    // the 'add a target' row right below, so there are never two grey rows together)
-    if (!(cat.target && g === groupsNow[groupsNow.length - 1])) put(mark(addRow(g), gi));
+    // inside a group the titles keep the order they were put in (drag one to move it)
+    g.words.filter(w => listWords.includes(w)).forEach(w => put(mark(wordRow(w), gi)));
   });
   if (!cat.target) loose();
   // at the bottom of the whole list: add a title (ungrouped), then start a new group
@@ -8781,7 +8800,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const at = addRow(null);
     at.querySelector('.hw').textContent = '+ target';
     put(mark(at, -1));
-  } else if (!lastG || lastG.open === false || listWords.some(w => !grouped.has(w))) put(mark(addRow(null), -1));
+  } else put(mark(addRow(null), -1));      // one add row for the whole page, at the very end
   const ng = document.createElement('button');
   ng.className = 'small-head group-head add-group';
   ng.innerHTML = '<span>+ group</span>';
