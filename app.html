@@ -999,7 +999,8 @@
   }
   /* the mode switches stay tucked away until the arrow at the end of the bar is tapped */
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
-  .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn { display: none !important; }
+  .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn { display: none !important; }
+  #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
   #homeIconsToggle { font-size: 22px; color: #3a3a3a; }
   .chevron { transition: transform 0.25s ease; display: inline-block; }
   .chevron.open { transform: rotate(180deg); }
@@ -2306,7 +2307,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 228 - 5 Oct';
+const BUILD = 'build 229 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2461,6 +2462,7 @@ const state = {
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
   recentsHidden: {},          // words taken off the Recents / Popular page only
+  suggestOn: true,            // the magnifying glass: off = typing in the bar brings up no matching words
   soundOn: true,              // the speaker icon: off = nothing is said aloud, anywhere
   chatLog: [],                // the conversation: { text, replies: [], t } per message, oldest first
   modesV1: false,             // the one-time return to the starting switches: menu on; builder, speak and chat off
@@ -2641,6 +2643,7 @@ async function load() {
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
         recentsHidden: saved.recentsHidden || {},
+        suggestOn: saved.suggestOn ?? true,
         soundOn: saved.soundOn ?? true,
         chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [],
         modesV1: saved.modesV1 ?? false,
@@ -3101,6 +3104,7 @@ async function save() {
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
       recentsHidden: state.recentsHidden,
+      suggestOn: state.suggestOn,
       soundOn: state.soundOn,
       chatLog: state.chatLog,
       modesV1: state.modesV1,
@@ -6077,7 +6081,7 @@ function renderTypeSuggest() {
   const q = normaliseWord(inp.value);
   box.innerHTML = '';
   const onPage = q ? pageWords() : new Set();     // the open page's own words come first
-  const hits = q ? searchWords(q).filter(r => r.word.startsWith(q) && !state.hiddenWords[r.word])
+  const hits = (q && state.suggestOn !== false) ? searchWords(q).filter(r => r.word.startsWith(q) && !state.hiddenWords[r.word])
     .sort((a, b) => (onPage.has(b.word) - onPage.has(a.word)) || (b.t || 0) - (a.t || 0) || (b.n || 0) - (a.n || 0) || a.word.localeCompare(b.word)).slice(0, 12) : [];
   box.style.display = hits.length ? '' : 'none';
   // the typing takes only the room it needs, so the matches sit right after it in the bar
@@ -6590,6 +6594,7 @@ function renderHome(reset) {
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
     document.querySelector('.home-row').classList.toggle('tools', !!state.homeModesOpen);
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
+    { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
     { const it = document.getElementById('homeIconsToggle'); it.textContent = state.iconsOpen ? '\u25B6' : '\u25C0'; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
@@ -9561,7 +9566,11 @@ document.getElementById('homeModesToggle').addEventListener('click', () => {
   if (!state.homeModesOpen && homePath.length) { const top = catById(homePath[0]); if (top && top.target) homePath = []; }
   save(); renderHome(true);
 });
-document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
+// the magnifying glass switches the matching words in the key bar on and off
+document.getElementById('homeSearchBtn').addEventListener('click', () => {
+  state.suggestOn = state.suggestOn === false;
+  buzz(10); save(); renderHome(true); renderTypeSuggest();
+});
 document.getElementById('homeHelpBtn').addEventListener('click', () => {
   // On home the star takes you to the keys with help already granted
   showKeyboard();
