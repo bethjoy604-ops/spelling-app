@@ -495,6 +495,17 @@
   .home-card.list-row { flex-direction: row; align-items: center; justify-content: flex-start; padding: 0 34px !important; border-radius: 18px; }
   .home-card.list-row.add-row { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; }
   .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
+  /* the grey prompts for adding things stay in the background: slim, pale, small quiet lettering */
+  .home-card.list-row.add-row, .group-head.add-group {
+    height: 46px !important; min-height: 46px !important; padding: 0 22px !important; margin-top: 4px;
+    background: rgba(255,255,255,0.16); box-shadow: 0 0 0 2px rgba(0,0,0,0.07) inset;
+    justify-content: flex-start;
+  }
+  .home-card.list-row.add-row .hw, .group-head.add-group, .group-head.add-group span {
+    font-size: 17px !important; font-weight: 700; color: rgba(0,0,0,0.3);
+  }
+  .home-card.ghost-tile { background: rgba(255,255,255,0.16) !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.07) inset !important; }
+  .home-card.ghost-tile .hw { font-size: 20px !important; font-weight: 700; color: rgba(0,0,0,0.3); }
   .group-head { grid-column: 1 / -1; justify-content: flex-start; gap: 14px; height: auto; min-height: 48px; padding: 0 22px; font-size: 22px; }
   .group-head.add-group { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; color: rgba(0,0,0,0.42); margin-top: 6px; }
   .next-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 8px; border-radius: 14px; background: var(--bg); font-weight: 900; text-align: left; }
@@ -2312,7 +2323,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 233 - 5 Oct';
+const BUILD = 'build 234 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8469,7 +8480,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const add = makeListRow('', rowH, base);
     add.classList.add('add-row');
     add.removeAttribute('data-word');
-    add.querySelector('.hw').textContent = cat.target ? '+ add a word' : '+ add a title';
+    add.querySelector('.hw').textContent = cat.target ? '+ word' : '+ title';
     add.addEventListener('click', () => askText(g ? 'New title under ' + g.name : 'New title in ' + cat.name, 'Add', '', typed => addTitleTo(cat, g, typed)));
     return add;
   };
@@ -8501,12 +8512,12 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
   if (cat.target) {
     // targets always end with the two prompts: a new target (unsorted, it shows at the top) and a new group
     const at = addRow(null);
-    at.querySelector('.hw').textContent = '+ add a target';
+    at.querySelector('.hw').textContent = '+ target';
     put(at);
   } else if (!lastG || lastG.open === false) put(addRow(null));
   const ng = document.createElement('button');
   ng.className = 'small-head group-head add-group';
-  ng.innerHTML = '<span>+ add a group</span>';
+  ng.innerHTML = '<span>+ group</span>';
   ng.style.fontSize = Math.max(18, Math.round(base * 0.7)) + 'px';
   ng.style.minHeight = Math.max(48, Math.round(rowH * 0.36)) + 'px';
   ng.addEventListener('click', () => addGroupHeading(cat));
