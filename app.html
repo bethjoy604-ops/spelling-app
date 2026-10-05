@@ -2299,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 215 - 5 Oct';
+const BUILD = 'build 216 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7735,6 +7735,31 @@ function openFolderEdit(c, extra) {
     hn.className = 'help-note'; hn.style.marginTop = '10px';
     hn.textContent = 'A hidden folder keeps its words and sub-folders. Bring it back under Settings, Hidden folders.';
     body.appendChild(hn);
+    // deleted for good, sub-folders and all (not for Chat, Small words or the targets tab, which
+    // the app relies on). The words themselves stay on the device and in any other folder.
+    if (!c.small && !c.smallSec && !c.target) {
+      const subs = []; const walk = id => childrenOf(id, true).forEach(x => { subs.push(x); walk(x.id); }); walk(c.id);
+      const db = sheetBtn('Delete folder', 'danger', () => {
+        const n = (c.words || []).length;
+        if (!confirm('Delete "' + c.name + '"' + (subs.length ? ' and the ' + subs.length + ' folder' + (subs.length > 1 ? 's' : '') + ' inside it' : '') + '?\n\n'
+          + (n ? 'Its ' + n + ' word' + (n > 1 ? 's stay' : ' stays') + ' on this device (found with search) but no longer in this folder. ' : '') + 'This cannot be undone.')) return;
+        const gone = [c.id, ...subs.map(x => x.id)];
+        if (homePath.some(id => gone.includes(id))) homePath = homePath.slice(0, homePath.findIndex(id => gone.includes(id)));
+        builderPath = builderPath.filter(x => !('cat' in x) || !gone.includes(x.cat));
+        deleteCategory(c.id);
+        state.categories.forEach(x => { if (x.links) x.links = x.links.filter(id => !gone.includes(id)); });
+        const clean = n2 => {
+          if (n2.cats) n2.cats = n2.cats.filter(id => !gone.includes(id));
+          if (gone.includes(n2.go)) delete n2.go;
+          (n2.kids || []).forEach(clean);
+        };
+        if (state.builder) { clean(state.builder); Object.values(state.builder.words || {}).forEach(clean); }
+        linkWordCache = null;
+        done();
+      });
+      db.style.marginTop = '10px';
+      body.appendChild(db);
+    }
     if (extra) extra(body);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
