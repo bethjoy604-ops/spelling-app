@@ -2338,7 +2338,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 248 - 5 Oct';
+const BUILD = 'build 249 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8973,7 +8973,9 @@ function renderSlotGrid(grid, cat, folders) {
   // arriving on a page of groups, every group starts closed; one opened here stays open until the page is left
   if (grouped && listPageShown !== cat.id) listGroups(cat).forEach(g => { g.open = false; });
   listPageShown = grouped ? cat.id : null;
-  const totalRows = listMode ? (head ? Math.ceil(head / cols) : ((listWords.length || grouped) ? 0 : 1))
+  // a page that is only folder tiles (My Stuff, Categories) ends with a grey tile for adding one more
+  const boardOnly = head > 0 && !alpha && !words.length && !cat.target && !cat.small;
+  const totalRows = listMode ? (head ? Math.ceil((head + (boardOnly ? 1 : 0)) / cols) : ((listWords.length || grouped) ? 0 : 1))
                   : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
@@ -9161,9 +9163,15 @@ function renderSlotGrid(grid, cat, folders) {
     if (!name) return false;
     addCategory(name, cat.id);
   }));
-  if (alpha && head) place(ghostGroup(), head);
+  if (alpha && head) { const gf = ghostGroup(); gf.querySelector('.hw').textContent = '+ folder'; place(gf, head); }     // beside folder tiles it reads the same on every choice board
+  if (boardOnly) {
+    const gf = ghostGroup();
+    gf.querySelector('.hw').textContent = '+ folder';
+    place(gf, head);
+  }
   for (let i = 0; off + i < totalRows * cols; i++) {
     const w = slots[i];
+    if (boardOnly && i === 0) continue;       // that place holds the grey add tile
     if (alpha && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
