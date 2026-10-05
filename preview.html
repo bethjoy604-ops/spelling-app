@@ -2328,7 +2328,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 236 - 5 Oct';
+const BUILD = 'build 237 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6685,7 +6685,7 @@ function renderHome(reset) {
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     // the plus ends the menu bar while a folder is open: it makes a new folder inside it
     document.getElementById('homeAddFolderBtn').style.display =
-      (state.iconsOpen && state.railOpen && cat && !cat.rule) ? '' : 'none';
+      ((state.iconsOpen || homePath.length > 1) && state.railOpen && cat && !cat.rule) ? '' : 'none';     // always there beside the back arrow
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
@@ -7407,7 +7407,7 @@ function renderBuilderBar() {
   const here = builderHere();
   document.getElementById('builderBackBtn').style.display = (on && builderPath.length) ? '' : 'none';
   // every page has the plus: a builder page takes words and folder links, a folder takes words and sub-folders
-  document.getElementById('builderAddBtn').style.display = (on && here && state.iconsOpen) ? '' : 'none';
+  document.getElementById('builderAddBtn').style.display = (on && here && (state.iconsOpen || builderPath.length > 0)) ? '' : 'none';
 }
 function renderBuilder(grid) {
   if (!state.builder) state.builder = defaultBuilder();
