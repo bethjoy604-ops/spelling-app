@@ -2352,7 +2352,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 264 - 5 Oct';
+const BUILD = 'build 265 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2506,6 +2506,8 @@ const state = {
   bankLimit: 0,               // no cap: the layout grows instead of hiding words
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
+  builderHide: {},            // builder mode's own hidden tiles, page by page (menu mode is not touched)
+  builderHideV1: false,
   recentsHidden: {},          // words taken off the Recents / Popular page only
   suggestOn: true,            // the magnifying glass: off = typing in the bar brings up no matching words
   soundOn: true,              // the speaker icon: off = nothing is said aloud, anywhere
@@ -2691,6 +2693,8 @@ async function load() {
         bankLimit: 0,
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
+        builderHide: saved.builderHide || {},
+        builderHideV1: saved.builderHideV1 ?? false,
         recentsHidden: saved.recentsHidden || {},
         suggestOn: saved.suggestOn ?? true,
         soundOn: saved.soundOn ?? true,
@@ -3172,6 +3176,8 @@ async function save() {
       revives: state.revives,
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
+      builderHide: state.builderHide,
+      builderHideV1: state.builderHideV1,
       recentsHidden: state.recentsHidden,
       suggestOn: state.suggestOn,
       soundOn: state.soundOn,
@@ -6906,6 +6912,7 @@ function applyLayout(L, keep) {
   (L.keptPhrases || []).forEach(w => { state.keptPhrases[w] = true; });
   state.wordCase = Object.assign(keep ? (state.wordCase || {}) : {}, L.wordCase || {});
   state.recentsHidden = Object.assign(keep ? (state.recentsHidden || {}) : {}, ...(L.recentsHidden || []).map(w => ({ [w]: true })));
+  if (L.builderHide) { state.builderHide = JSON.parse(JSON.stringify(L.builderHide)); state.builderHideV1 = true; }
   if (L.hiddenWords) { state.hiddenWords = keep ? (state.hiddenWords || {}) : {}; L.hiddenWords.forEach(w => { state.hiddenWords[w] = true; }); }
   if (L.targetState) state.targetState = Object.assign({}, L.targetState);
   if (Array.isArray(L.pairs)) state.pairs = L.pairs.map(x => x.slice(0, 2));
@@ -7225,10 +7232,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   let shown = rows.map(row => row.filter(w => state.words.includes(w)));
   strip._args = [rowH, base, owner, gutter];
   // with a word in the bar, the row turns to the words most likely to come after it
-  const after = homePhrase.length ? followWords(homePhrase[homePhrase.length - 1], [].concat(...shown)) : null;
+  // (builder mode shows only the words chosen for the row from the small words library)
+  const after = state.builderMode ? null : homePhrase.length ? followWords(homePhrase[homePhrase.length - 1], [].concat(...shown)) : null;
   if (after && after.length) shown = [after];
   // a Categories folder with no row chosen for it starts with the words that suit its kind of page
-  else if (!homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row) && PAGE_START[kindOfCat(owner)]) shown = [startWords(owner, [].concat(...shown))];
+  else if (!state.builderMode && !homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row) && PAGE_START[kindOfCat(owner)]) shown = [startWords(owner, [].concat(...shown))];
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
     const hold = edit;
@@ -7487,6 +7495,7 @@ function exportLayout() {
     wordCase: state.wordCase || {},
     keptPhrases: Object.keys(state.keptPhrases || {}),
     hiddenWords: Object.keys(state.hiddenWords || {}),
+    builderHide: (builderHidden(''), state.builderHide),
     recentsHidden: Object.keys(state.recentsHidden || {}),
     smallRow: state.smallRow || [],
     smallWords: state.words.filter(isSmallWord),
@@ -7535,6 +7544,30 @@ function defaultBuilder() {
 function builderHere() {
   return builderPath.length ? builderPath[builderPath.length - 1] : state.builder;
 }
+// Builder mode keeps its own list of hidden tiles for each page, so hiding a tile here leaves
+// menu mode alone (and the other way round). The words and folders themselves are shared.
+let builderEdit = null;
+function builderPageKey() {
+  const here = builderHere();
+  if (here && 'cat' in here) return 'c' + here.cat;
+  return 'n:' + builderPath.map(p => 'cat' in p ? 'c' + p.cat : p.label).join('/');
+}
+function builderHidden(key) {
+  if (!state.builderHide) state.builderHide = {};
+  if (!state.builderHideV1) {
+    // the first time: start from what menu mode hides today, so nothing suddenly appears
+    state.builderHideV1 = true;
+    state.categories.forEach(c => {
+      const h = {};
+      (c.words || []).forEach(w => { if (state.hiddenWords[w]) h['w:' + w] = 1; });
+      childrenOf(c.id, true).forEach(x => { if (x.hidden && !x.smallSec) h['f:' + x.id] = 1; });
+      if (Object.keys(h).length) state.builderHide['c' + c.id] = Object.assign(h, state.builderHide['c' + c.id] || {});
+    });
+  }
+  return state.builderHide[key] || {};
+}
+function startBuilderEdit() { builderEdit = builderPageKey(); closeWordSheet(); buzz(10); renderHome(true); }
+function builderEditBtn() { return sheetBtn('Edit this page (show or hide tiles)', '', startBuilderEdit); }
 function builderSay(word) {
   homePhrase.push(word);
   warmSpeech();
@@ -7555,6 +7588,19 @@ function renderBuilder(grid) {
   if (!state.builder) state.builder = defaultBuilder();
   let here = builderHere();
   if (here && 'cat' in here && !catById(here.cat)) { builderPath = []; here = state.builder; }
+  const bKey = builderPageKey();
+  if (builderEdit !== bKey) builderEdit = null;
+  const editing = builderEdit === bKey;
+  const hid = builderHidden(bKey);
+  let hiddenN = 0;
+  const bToggle = (card, id) => {
+    const on = !hid[id];
+    if (!on) hiddenN++;
+    editToggle(grid, card, null, on, () => {
+      const h = state.builderHide[bKey] || (state.builderHide[bKey] = {});
+      if (on) h[id] = 1; else delete h[id];
+    });
+  };
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
   const W = grid.clientWidth, H = grid.clientHeight;
@@ -7568,15 +7614,35 @@ function renderBuilder(grid) {
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
   grid.style.gridAutoRows = 'auto';
   grid.style.gridTemplateRows = '';
-  if ('cat' in here && hasSmallStrip(catById(here.cat)) && !isBoardMenu(catById(here.cat))) {
-    const el = makeSmallStrip(rowH, base, catById(here.cat));   // the folder's own row, the same one menu mode shows
-    el.style.gridColumn = '1 / -1';
-    grid.appendChild(el);
-  } else if (!('cat' in here) && (here.small || []).length && !isBoardMenu(here)) {
-    // a builder page can carry its own row of small words
-    const el = makeSmallStrip(rowH, base, here);
-    el.style.gridColumn = '1 / -1';
-    grid.appendChild(el);
+  {
+    // the row of small words: a blue bar that opens out when it is tapped, as in menu mode.
+    // A folder brings its own row; a builder page can carry one too.
+    const owner = 'cat' in here ? (hasSmallStrip(catById(here.cat)) ? catById(here.cat) : null) : ((here.small || []).length ? here : null);
+    if (owner && !isBoardMenu(owner)) {
+      const okey = 'b:' + builderPageKey();
+      const isOpen = !!(state.rowOpenBy || {})[okey];
+      const el = document.createElement('div');
+      el.className = 'small-section top';
+      el.style.gridColumn = '1 / -1';
+      const flip = () => {
+        state.rowOpenBy = state.rowOpenBy || {};
+        if (isOpen) delete state.rowOpenBy[okey]; else state.rowOpenBy[okey] = true;
+        buzz(10); save(); renderHome(true);
+      };
+      if (!isOpen) {
+        const bar = document.createElement('button');
+        bar.className = 'small-head';
+        bar.setAttribute('aria-expanded', 'false');
+        bar.setAttribute('aria-label', 'Small words');
+        bar.addEventListener('click', flip);
+        el.appendChild(bar);
+      } else {
+        const strip = makeSmallStrip(rowH, base, owner);
+        addStripToggle(strip, flip);
+        el.appendChild(strip);
+      }
+      grid.appendChild(el);
+    }
   }
 
   const tile = (label, folder) => {
@@ -7618,9 +7684,12 @@ function renderBuilder(grid) {
     const c = catById(here.cat);
     // folder tiles on a choice board can be held and dragged to a new place; the order is the
     // folder's own, so menu mode shows the same
-    const subs = foldersShownIn(c);
+    const shownSubs = foldersShownIn(c);
+    const subs = shownSubs.concat(childrenOf(c.id, true).filter(x => x.hidden && !x.smallSec && !shownSubs.includes(x)))
+      .filter(x => editing || !hid['f:' + x.id]);
     subs.forEach(sub => {
       const card = tile(sub.name, true);
+      if (editing) { bToggle(card, 'f:' + sub.id); count++; return; }
       card.dataset.bidx = subs.indexOf(sub);
       card.dataset.blist = 'subs';
       attachWordHold(card, null, null, null, {
@@ -7638,7 +7707,7 @@ function renderBuilder(grid) {
     const inCat = c.words || [];
     const placed = Array.isArray(c.slots) ? c.slots.filter(w => w && inCat.includes(w)) : [];
     let words = placed.concat(inCat.filter(w => !placed.includes(w)))
-      .filter(w => !state.hiddenWords[w]);
+      .filter(w => editing || !hid['w:' + w]);
     // My Stuff: a list, one title to a row, A to Z - the same as menu mode shows it
     const asList = catAllowsPhrases(c);
     if (asList || hasSmallStrip(c)) words = asList ? words.slice().sort(byLabel) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3, inChoices(c));     // Categories folders are A to Z too
@@ -7666,6 +7735,7 @@ function renderBuilder(grid) {
         hw.style.whiteSpace = 'nowrap';
       }
       if (leads()) wt.classList.add('link-word');
+      if (editing) { bToggle(wt, 'w:' + w); count++; return; }
       holdable(wt, () => {
         // a title that sits under a group heading in My Stuff brings the group's name with it:
         // "Moana" then "How Far I'll Go"
@@ -7709,6 +7779,7 @@ function renderBuilder(grid) {
           sheetTitle(body, 'This word', w);
           body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(w)));
           body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')));
+          body.appendChild(builderEditBtn());
           deleteWordBtns(body, w, c);
           body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
         }));
@@ -7726,10 +7797,12 @@ function renderBuilder(grid) {
       });
     };
     here.kids.forEach(k => {
+      if (!editing && hid['k:' + k.label]) return;
       const key = normaliseWord(k.label);
       const kt = tile(key ? sentenceLabel(key) : k.label, false);   // linking words read in small letters (I and names aside)
       const goCat = () => { const c = k.go ? catById(k.go) : null; return (c && !c.hidden) ? c : null; };
       if (k.kids.length || k.cats.length || goCat()) kt.classList.add('link-word');
+      if (editing) { bToggle(kt, 'k:' + k.label); count++; return; }
       movable(kt, here.kids, k, 'kids', () => {
         if (key) builderSay(key);
         // linked straight to a folder of words: open its words right away
@@ -7741,18 +7814,23 @@ function renderBuilder(grid) {
     });
     here.cats.forEach(cid => {
       const c = catById(cid);
-      if (!c || c.hidden) return;
-      movable(tile(c.name, true), here.cats, cid, 'cats', () => { builderPath.push({ cat: cid }); renderHome(true); },
+      if (!c || c.hidden || (!editing && hid['f:' + cid])) return;
+      const ft = tile(c.name, true);
+      if (editing) { bToggle(ft, 'f:' + cid); count++; return; }
+      movable(ft, here.cats, cid, 'cats', () => { builderPath.push({ cat: cid }); renderHome(true); },
         () => openBuilderLink(here, cid));
       count++;
     });
   }
-  {
-    // every builder page ends with a quiet grey tile for adding to it
+  if (!editing) {
+    // every builder page ends with a quiet grey tile for adding to it; held, it edits the page
     const add = tile('+ add', false);
     add.classList.add('add-folder', 'ghost-tile');
     add.setAttribute('aria-label', 'Add to this page');
-    add.addEventListener('click', openBuilderAdd);
+    holdable(add, openBuilderAdd, startBuilderEdit);
+  } else {
+    const bar = document.getElementById('pageEditBar');
+    if (bar) bar.firstChild.textContent = 'Tap a tile to show or hide it' + (hiddenN ? '  \u00b7  ' + hiddenN + ' hidden' : '');
   }
   if (!builderPath.length) { if (state.chatMode) renderChatLog(grid, base); else renderBuilderLog(grid, base); }
 }
@@ -8102,6 +8180,7 @@ function openFolderEdit(c, extra) {
     body.appendChild(hn);
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
     // every folder on the page it sits on, at once: ticks to show or hide each
+    if (state.builderMode) body.appendChild(builderEditBtn());
     { const host = !state.builderMode ? currentCat() : null;
       if (host && host.id !== c.id && !host.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = host.id; closeWordSheet(); renderHome(true); })); }
     // deleted for good, sub-folders and all (not for Chat, Small words or the targets tab, which
@@ -8322,6 +8401,7 @@ function openBuilderTile(parent, node) {
     body.appendChild(p);
     body.appendChild(sheetBtn('Edit what comes next', '', () =>
       openBuilderAddTo(node, 'After "' + node.label + '"')));
+    body.appendChild(builderEditBtn());
     body.appendChild(sheetBtn('Change the word', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Change the word');
       const inp = builderInput(b2, node.label);
@@ -8562,7 +8642,7 @@ function editTitles(cat) {
   const all = (cat.words || []).slice().sort(byLabel);
   return all.filter(w => !state.hiddenWords[w]).map(w => [w, true]).concat(all.filter(w => state.hiddenWords[w]).map(w => [w, false]));
 }
-function editToggle(grid, card, w, on) {
+function editToggle(grid, card, w, on, fn) {
   card.classList.add('edit-tile');
   if (!on) card.classList.add('edit-off');
   card.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -8570,7 +8650,7 @@ function editToggle(grid, card, w, on) {
   tick.className = 'edit-tick'; tick.textContent = on ? '\u2713' : '';
   card.appendChild(tick);
   card.addEventListener('click', () => {
-    if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
+    if (fn) fn(); else if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
     buzz(10); save();
     const top = grid.scrollTop;
     renderHome(true);
@@ -8698,6 +8778,7 @@ function openTitleActions(word, cat, extra) {
     if (extra) extra(body);
     if (!cat.target && usesGroups(cat) && !state.builderMode) body.appendChild(layoutSwitchBtn(cat));
     if (!cat.target && !state.builderMode) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; tileGroup = null; closeWordSheet(); renderHome(true); }));
+    if (!cat.target && state.builderMode) body.appendChild(builderEditBtn());
     const groups = usesGroups(cat) ? listGroups(cat) : [];
     if (groups.length) {
       const h = document.createElement('div');
@@ -9193,15 +9274,17 @@ function makeListRow(w, rowH, base) {
 let pageEdit = null;
 function syncPageEdit(cat) {
   if (pageEdit && (!cat || cat.id !== pageEdit || state.builderMode)) pageEdit = null;     // leaving the page ends it
+  if (builderEdit && (!state.builderMode || builderEdit !== builderPageKey())) builderEdit = null;
   let bar = document.getElementById('pageEditBar');
-  if (!pageEdit) { if (bar) bar.remove(); return; }
+  if (!pageEdit && !builderEdit) { if (bar) bar.remove(); return; }
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'pageEditBar';
     bar.innerHTML = '<span></span><button>Done</button>';
-    bar.querySelector('button').addEventListener('click', () => { pageEdit = null; buzz(10); renderHome(true); });
+    bar.querySelector('button').addEventListener('click', () => { pageEdit = null; builderEdit = null; buzz(10); renderHome(true); });
     document.body.appendChild(bar);
   }
+  if (builderEdit) return;      // the builder page fills in its own count
   const n = (cat.words || []).filter(w => state.hiddenWords[w]).length + childrenOf(cat.id, true).filter(c => c.hidden && !c.smallSec).length;
   bar.firstChild.textContent = 'Tap a tile to show or hide it' + (n ? '  \u00b7  ' + n + ' hidden' : '');
 }
