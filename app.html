@@ -508,6 +508,8 @@
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: #bfd8ff; }
   .home-card.library-tile { background: #e6e7ea; }
+  .library-dots { align-self: start; height: 44px; border: none; border-radius: 14px; background: rgba(255,255,255,0.35); color: rgba(0,0,0,0.45);
+    font-size: 22px; letter-spacing: 4px; cursor: pointer; font-family: inherit; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
   .drop-before { box-shadow: 0 -7px 0 0 var(--green) !important; }
   .drop-after { box-shadow: 0 7px 0 0 var(--green) !important; }
@@ -2352,7 +2354,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 268 - 5 Oct';
+const BUILD = 'build 269 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8115,6 +8117,12 @@ function renderHiddenFolders() {
   });
 }
 // Rename, move or hide any folder, the default ones included
+function halfBtn(c) {
+  return sheetBtn(c.half ? 'Word pair grid: on (switch back to large tiles)' : 'Word pair grid (smaller tiles, pairs side by side)', '', () => {
+    if (c.half) delete c.half; else c.half = true;
+    save(); closeWordSheet(); renderHome(true);
+  });
+}
 function openFolderEdit(c, extra) {
   if (!c) return;
   const done = () => { save(); closeWordSheet(); renderHome(true); };
@@ -8182,6 +8190,7 @@ function openFolderEdit(c, extra) {
     hn.textContent = 'A hidden folder keeps its words and sub-folders. Bring it back under Settings, Hidden folders.';
     body.appendChild(hn);
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
+    if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
     if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? 'Custom page: change the tiles' : 'Custom page: pick tiles from its folders', '', () => openFeedPicker(c)));
     // every folder on the page it sits on, at once: ticks to show or hide each
@@ -8479,6 +8488,9 @@ document.getElementById('homeAddFolderBtn').addEventListener('click', () => {
 
 // Columns and rows on a screen, from the "tiles on a screenful" setting
 function slotShape() {
+  // a page set to smaller tiles: four across and four down, so two pairs fit side by side
+  const hc = !state.builderMode ? currentCat() : null;
+  if (hc && hc.half) return { cols: 4, rows: 4 };
   if (state.gridFill === 6) return { cols: 3, rows: 2 };
   if (state.gridFill === 9) return { cols: 3, rows: 3 };
   return { cols: 4, rows: 3 };
@@ -9228,7 +9240,8 @@ function sortWords(list, cols, always) {
   const n = Math.max(2, cols || 3);
   const out = [];
   const newRow = () => { while (out.length % n) out.push(null); };
-  sets.forEach(set => { newRow(); set.forEach(w => out.push(w)); });
+  // four across: a second pair sits beside the first, in the other half of the row
+  sets.forEach(set => { if (!(n === 4 && set.length === 2 && out.length % 4 === 2)) newRow(); set.forEach(w => out.push(w)); });
   newRow();      // the grey add tiles, and any other words, start on the row after
   return out.concat(left.concat(list.filter(isPunct)).sort(byLabel));
 }
@@ -9623,17 +9636,7 @@ function renderSlotGrid(grid, cat, folders) {
     const w = slots[i];
     if (boardOnly && i === 0) continue;       // that place holds the grey add tile
     if (chatAdd && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
-    if (feedMode && i === slots.length) {
-      const lib = document.createElement('button');
-      lib.className = 'home-card folder-card library-tile';
-      const lt = document.createElement('span'); lt.className = 'hw'; lt.textContent = 'Library';
-      lib.appendChild(lt);
-      lib.addEventListener('click', () => { libraryOpen = cat.id; buzz(10); renderHome(true); });
-      fit(lib, 'Library');
-      place(lib, off + i);
-      continue;
-    }
-    if (feedMode && i > slots.length) continue;
+    if (feedMode && i >= slots.length) continue;
     // in the Library (and before any tiles have been picked) a grey tile leads to the picker
     if (alpha && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && !editing && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
@@ -9701,6 +9704,17 @@ function renderSlotGrid(grid, cat, folders) {
     attachWordHold(card, w, feedMode ? (categoriesOf(w).find(x => inChoices(x) && !x.target) || cat) : arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, label);
     place(card, off + i);
+  }
+  if (feedMode) {
+    // under the picked tiles: a quiet row of three dots that opens the folders they came from
+    const lib = document.createElement('button');
+    lib.className = 'library-dots';
+    lib.textContent = '\u2022 \u2022 \u2022';
+    lib.setAttribute('aria-label', 'Library: all the folders');
+    lib.style.gridColumn = '1 / -1';
+    lib.style.gridRow = String((topRow ? 1 : 0) + Math.ceil(slots.length / cols) + 1);
+    lib.addEventListener('click', () => { libraryOpen = cat.id; buzz(10); renderHome(true); });
+    grid.appendChild(lib);
   }
   if (listMode && tilesPage(cat)) renderTileBody(grid, cat, listWords, rowH, base, cols);
   else if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
