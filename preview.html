@@ -2340,7 +2340,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 251 - 5 Oct';
+const BUILD = 'build 252 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8609,7 +8609,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     let timer = null, held = false, pid = null, sx = 0, sy = 0, ghost = null, over = null, dropped = false, mouseDown = false;
     let after = false;
     const clear = () => { if (over) over.classList.remove('drop-on', 'drop-before', 'drop-after'); over = null; };
-    const endDrag = () => { if (ghost) ghost.remove(); ghost = null; clear(); grid.classList.remove('list-dragging'); };
+    const endDrag = () => { if (ghost) ghost.remove(); ghost = null; clear(); grid.classList.remove('list-dragging'); if (scroller) { clearInterval(scroller); scroller = null; } };
     el.addEventListener('pointerdown', e => {
       held = false; dropped = false; pid = e.pointerId; sx = e.clientX; sy = e.clientY;
       // with a mouse there is no need to wait: press and drag straight away (a finger still holds
@@ -8624,6 +8624,24 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
     // once it is held, a finger moving must drag the row rather than scroll the page
     el.addEventListener('touchmove', e => { if (held && drag) e.preventDefault(); }, { passive: false });
+    let lastX = 0, lastY = 0, scroller = null;
+    const hover = () => {
+      ghost.style.top = (lastY - ghost._dy) + 'px';
+      const under = document.elementFromPoint(lastX, lastY);
+      let t = under ? under.closest('[data-gidx]') : null;
+      if (t === el || (t && !grid.contains(t))) t = null;
+      if (drag.kind === 'group') {
+        // a heading goes above or below whichever other heading is nearest, so it need not be
+        // dropped exactly on one: a green line shows where it will land
+        const heads = [...grid.querySelectorAll('.group-head[data-gidx]')].filter(h => h !== el);
+        let best = null, bd = 1e9;
+        heads.forEach(h => { const r = h.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - lastY); if (d < bd) { bd = d; best = h; } });
+        t = best;
+        if (t) { const r = t.getBoundingClientRect(); after = lastY > (r.top + r.bottom) / 2; }
+        clear(); over = t;
+        if (over) over.classList.add(after ? 'drop-after' : 'drop-before');
+      } else if (t !== over) { clear(); over = t; if (over) over.classList.add('drop-on'); }
+    };
     el.addEventListener('pointermove', e => {
       if (!held && mouseDown && Math.hypot(e.clientX - sx, e.clientY - sy) >= 10) { stop(); held = true; el.classList.add('held'); }
       if (!held || !drag) return;
@@ -8637,24 +8655,19 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         document.body.appendChild(ghost);
         grid.classList.add('list-dragging');
       }
-      ghost.style.top = (e.clientY - ghost._dy) + 'px';
-      const under = document.elementFromPoint(e.clientX, e.clientY);
-      let t = under ? under.closest('[data-gidx]') : null;
-      if (t === el || (t && !grid.contains(t))) t = null;
-      if (drag.kind === 'group') {
-        // a heading goes above or below whichever other heading is nearest, so it need not be
-        // dropped exactly on one: a green line shows where it will land
-        const heads = [...grid.querySelectorAll('.group-head[data-gidx]')].filter(h => h !== el);
-        let best = null, bd = 1e9;
-        heads.forEach(h => { const r = h.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - e.clientY); if (d < bd) { bd = d; best = h; } });
-        t = best;
-        if (t) { const r = t.getBoundingClientRect(); after = e.clientY > (r.top + r.bottom) / 2; }
-        clear(); over = t;
-        if (over) over.classList.add(after ? 'drop-after' : 'drop-before');
-      } else if (t !== over) { clear(); over = t; if (over) over.classList.add('drop-on'); }
-      // near the top or bottom edge the list scrolls along
-      const gr = grid.getBoundingClientRect();
-      if (e.clientY < gr.top + 40) grid.scrollTop -= 14; else if (e.clientY > gr.bottom - 40) grid.scrollTop += 14;
+      lastX = e.clientX; lastY = e.clientY;
+      hover();
+      // held near the top or bottom edge, the list keeps scrolling by itself so a group that is
+      // off the screen can be reached
+      if (!scroller) scroller = setInterval(() => {
+        if (!ghost) return;
+        const gr = grid.getBoundingClientRect();
+        const before = grid.scrollTop;
+        // the closer to the edge, the faster it goes
+        const up = gr.top + 80 - lastY, down = lastY - (gr.bottom - 80);
+        if (up > 0) grid.scrollTop -= 10 + Math.min(40, up / 2); else if (down > 0) grid.scrollTop += 10 + Math.min(40, down / 2);
+        if (grid.scrollTop !== before) hover();
+      }, 30);
     });
     el.addEventListener('pointerup', () => {
       stop(); mouseDown = false;
