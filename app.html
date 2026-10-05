@@ -2351,7 +2351,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 262 - 5 Oct';
+const BUILD = 'build 263 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6489,7 +6489,9 @@ function renderCatTiles(containerId, rerender) {
       tileTimer = setTimeout(() => {
         longPressed = true;
         buzz(15);
-        openFolderEdit(c);
+        // the green tab carries the name of the page that is open, so its menu is that page's menu
+        const open = (homePath[level] === c.id && homePath.length > level + 1) ? catById(homePath[homePath.length - 1]) : null;
+        openFolderEdit(open || c);
       }, 650);
     });
     b.addEventListener('pointerup', () => {
