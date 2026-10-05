@@ -2295,7 +2295,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 213 - 5 Oct';
+const BUILD = 'build 214 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2466,6 +2466,7 @@ const state = {
   caseV2: false,
   targetState: {},            // each target word's section: independent, prompted or waiting
   targetV1: false,            // the one-time renaming of New to the targets tab
+  layoutV10: false,          // the one-time move of every device onto the built-in folders
   chatV1: false,             // the one-time check that Chat and its Small words folder are there
   punctV1: false,             // the one-time addition of . ? ! to the small words
   drinksV1: false,            // the one-time removal of the Drinks folder from Food
@@ -2644,6 +2645,7 @@ async function load() {
         caseV2: saved.caseV2 ?? false,
         targetState: saved.targetState || {},
         targetV1: saved.targetV1 ?? false,
+        layoutV10: saved.layoutV10 ?? false,
         chatV1: saved.chatV1 ?? false,
         punctV1: saved.punctV1 ?? false,
         drinksV1: saved.drinksV1 ?? false,
@@ -2942,6 +2944,34 @@ async function load() {
     }
     save();
   }
+  // One-time: every device moves onto the built-in folders, groups, small words rows and builder
+  // pages. The device's own words are kept, and go back into the folder of the same name where
+  // there is one. The preview site is where the built-in layout is put together, so it is left be.
+  if (!state.layoutV10) {
+    state.layoutV10 = true;
+    if (!/github\.io$/.test(location.hostname)) {
+      const where = {};
+      const spot = c => { const p = c.parent ? catById(c.parent) : null; return [(p ? p.name : '').trim().toLowerCase(), c.name.trim().toLowerCase(), !!c.target, !!c.smallSec]; };
+      state.categories.forEach(c => (c.words || []).forEach(w => { (where[w] = where[w] || []).push(spot(c)); }));
+      const modes = { builderMode: state.builderMode, speakMode: state.speakMode, chatMode: state.chatMode, railOpen: state.railOpen };
+      const tState = state.targetState;
+      applyLayout(DEFAULT_LAYOUT, true);
+      Object.assign(state, modes);
+      if (tState) state.targetState = tState;
+      Object.keys(where).forEach(w => {
+        if (!state.words.includes(w) || categoriesOf(w).length) return;
+        where[w].forEach(([pn, n, tgt, sm]) => {
+          const to = state.categories.find(c => tgt ? c.target : sm ? c.smallSec
+            : (c.name.trim().toLowerCase() === n && !c.target && !c.smallSec && spot(c)[0] === pn));
+          if (!to || to.words.includes(w)) return;
+          to.words.push(w);
+          if (w.includes(' ') && !catAllowsPhrases(to)) state.keptPhrases[w] = true;
+        });
+      });
+      linkWordCache = null;
+    }
+    save();
+  }
   // One-time: the builder's first page says Stop where it used to say All Done
   if (!state.builderV2) {
     state.builderV2 = true;
@@ -3074,6 +3104,7 @@ async function save() {
       caseV2: state.caseV2,
       targetState: state.targetState,
       targetV1: state.targetV1,
+      layoutV10: state.layoutV10,
       chatV1: state.chatV1,
       punctV1: state.punctV1,
       drinksV1: state.drinksV1,
@@ -6302,7 +6333,8 @@ function renderCatTiles(containerId, rerender) {
       all.addEventListener('click', () => { homePath = []; again(); });
       row.appendChild(all);
     }
-    kids.forEach(c => row.appendChild(makeTile(c, level)));
+    // the targets tab only shows while the settings arrow is open
+    kids.filter(c => !c.target || state.homeModesOpen).forEach(c => row.appendChild(makeTile(c, level)));
 
     host.appendChild(row);
   });
@@ -6513,7 +6545,7 @@ function renderHome(reset) {
     const inSub = !state.builderMode && homePath.length > 1;
     document.getElementById('homeBackBtn').style.display = inSub ? '' : 'none';
     // on the targets page a gear sits beside the plus: the prompting options for practising them
-    document.getElementById('targetGearBtn').style.display = (!state.builderMode && cat && cat.target) ? '' : 'none';
+    document.getElementById('targetGearBtn').style.display = (state.homeModesOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
     document.getElementById('homeModesToggle').style.display = deep ? 'none' : '';
     document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && !deep) ? '' : 'none';
@@ -6553,7 +6585,7 @@ function renderHome(reset) {
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     // the plus ends the menu bar while a folder is open: it makes a new folder inside it
     document.getElementById('homeAddFolderBtn').style.display =
-      (state.railOpen && cat && !cat.rule) ? '' : 'none';
+      (state.homeModesOpen && state.railOpen && cat && !cat.rule) ? '' : 'none';
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
@@ -6627,7 +6659,7 @@ function renderHome(reset) {
 // change what a fresh install looks like.
 const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slots":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slotCols":3,"small":true},{"id":2,"name":"Food","parent":12,"order":1,"color":"green","words":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"],"slots":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"],"slotCols":3},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"phrases":true},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT","MAKE","WARM"],"slots":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT"],"slotCols":3,"linkers":true,"row":["MORE","ALL DONE","AND","NOW","YES","NO"]},{"id":5,"name":"People","parent":12,"order":3,"color":"pink","words":["MOM","DAD"]},{"id":6,"name":"Places","parent":12,"order":4,"color":"teal","words":["PARK","BENCH","OUTSIDE","HOME","ROOM","WINDOW","BATHROOM","TABLE"],"slots":["PARK","BENCH","OUTSIDE","HOME"],"slotCols":3,"row":["TO","THE","PLEASE","AGAIN","NOW","."]},{"id":7,"name":"Music","parent":3,"order":0,"color":"yellow","words":["GOLDEN","FREE","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"groups":[{"id":1,"name":"K POP Demon Hunters","words":["GOLDEN","FREE","SODA POP","YOUR IDOL"],"open":false},{"id":2,"name":"Moana","words":["WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"open":false}]},{"id":9,"name":"TV","parent":3,"order":1,"color":"blue","words":["PEPPA PIG"],"groups":[]},{"id":10,"name":"Movies","parent":3,"order":2,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slots":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slotCols":3,"groups":[]},{"id":11,"name":"Characters","parent":3,"order":5,"color":"purple","words":["PEPPA","GEORGE"],"slots":["PEPPA","GEORGE"],"slotCols":3,"groups":[]},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"strip":true},{"id":13,"name":"Things","parent":12,"order":2,"color":"yellow","words":[]},{"id":14,"name":"Books","parent":3,"order":3,"color":"orange","words":[],"groups":[]},{"id":15,"name":"Games","parent":3,"order":4,"color":"pink","words":["PUZZLE"],"slots":["PUZZLE"],"slotCols":3,"groups":[]},{"id":16,"name":"Health","parent":12,"order":8,"color":"red","words":["WATER"]},{"id":20,"name":"Feelings","parent":12,"order":6,"color":"teal","words":[],"nopop":true},{"id":21,"name":"Activities","parent":12,"order":5,"color":"red","words":["DANCING","SINGING"]},{"id":22,"name":"Things","parent":3,"order":6,"color":"blue","words":["FLICKER"],"slots":["FLICKER"],"slotCols":3,"groups":[]},{"id":23,"name":"Choices","parent":12,"order":7,"color":"purple","words":["UP","DOWN","COLD","HOT","NOW","LATER","QUIET","LOUD"],"slots":["UP","DOWN",null,"COLD","HOT",null,"NOW","LATER",null,"QUIET","LOUD"],"slotCols":3},{"id":24,"name":"🎯","parent":null,"order":3,"color":"teal","words":["CARS","CUT"],"slots":["CARS","CUT"],"slotCols":3,"target":true,"groups":[{"id":1,"name":"Established","words":[],"open":false},{"id":2,"name":"Emerging","words":[],"open":false},{"id":3,"name":"New","words":[],"open":false}]},{"id":25,"name":"Small words","parent":1,"order":0,"color":"blue","words":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM","NOW",".","SOME","?","!","LATER"],"smallSec":true},{"id":32,"name":"Places","parent":3,"order":7,"color":"purple","words":[],"groups":[]},{"id":34,"name":"Food","parent":3,"order":8,"color":"orange","words":[],"groups":[]},{"id":35,"name":"Music","parent":13,"order":0,"color":"pink","words":["MUSIC","VIDEO"]},{"id":36,"name":"Animals","parent":13,"order":1,"color":"yellow","words":["BEAR"]},{"id":37,"name":"Toys","parent":13,"order":5,"color":"red","words":["FLICKER"]},{"id":38,"name":"Sports","parent":36,"order":0,"color":"green","words":[]},{"id":39,"name":"Apps","parent":13,"order":3,"color":"orange","words":["YOUTUBE"]},{"id":41,"name":"Clothes","parent":13,"order":8,"color":"teal","words":[]},{"id":42,"name":"Vehicles","parent":13,"order":4,"color":"yellow","words":["TRUCK"]},{"id":43,"name":"TV","parent":13,"order":2,"color":"red","words":[]},{"id":44,"name":"Sports","parent":13,"order":6,"color":"blue","words":[]}],"looseWords":["WANT"],"wordCase":{"I":"I","AM":"am","THANKS":"thanks","ALL DONE":"all done","WHERE YOU ARE":"Where you are","YOU\'RE WELCOME":"You\'re welcome","HOW FAR I\'LL GO":"How far I\'ll go"},"keptPhrases":["THANK YOU","ALL DONE","SWEDISH FISH","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"recentsHidden":[],"smallRow":["TO","THE","PLEASE","AGAIN"],"builder":{"kids":[{"label":"I","kids":[{"label":"want","kids":[],"cats":[3,12],"small":[]},{"label":"need","kids":[],"cats":[3,12]},{"label":"feel","kids":[],"cats":[],"go":20},{"label":"like","kids":[],"cats":[],"small":[],"go":25},{"label":"love","kids":[],"cats":[]},{"label":"see","kids":[],"cats":[]},{"label":"hear","kids":[],"cats":[12,3]}],"cats":[]},{"label":"Go","kids":[],"cats":[6],"go":6},{"label":"More","kids":[],"cats":[2,4,21,7,9,10,14,15,11,22]},{"label":"Stop","kids":[],"cats":[21,5]}],"cats":[],"words":{"OPEN":{"label":"Open","kids":[],"cats":[2,13,5,6,16,7,9,10,14,15,22,11,21],"small":["IT","THAT","THE","MORE"]},"GO":{"label":"Go","kids":[],"cats":[6,4,21,23],"small":["AGAIN","TO","THE"]}}}}');
 // Additions to the built-in layout since that export
-if (!DEFAULT_LAYOUT.categories.some(c => !c.parent && c.name === 'New')) {
+if (!DEFAULT_LAYOUT.categories.some(c => !c.parent && (c.target || c.name === 'New'))) {
   DEFAULT_LAYOUT.categories.push({
     id: Math.max(...DEFAULT_LAYOUT.categories.map(c => c.id)) + 1,
     name: 'New', parent: null, order: 3, color: 'teal', words: [],
@@ -6682,6 +6714,7 @@ function applyLayout(L, keep) {
   state.drinksV1 = true;
   state.punctV1 = true;
   state.chatV1 = true;
+  state.layoutV10 = true;
   addSmallPunct();
   state.targetV1 = true;
   ensureTargets();
@@ -7167,7 +7200,7 @@ function renderBuilderBar() {
   const here = builderHere();
   document.getElementById('builderBackBtn').style.display = (on && builderPath.length) ? '' : 'none';
   // every page has the plus: a builder page takes words and folder links, a folder takes words and sub-folders
-  document.getElementById('builderAddBtn').style.display = (on && here) ? '' : 'none';
+  document.getElementById('builderAddBtn').style.display = (on && here && state.homeModesOpen) ? '' : 'none';
 }
 function renderBuilder(grid) {
   if (!state.builder) state.builder = defaultBuilder();
@@ -9173,7 +9206,9 @@ document.getElementById('railToggle').addEventListener('click', () => {
   save(); renderHome(true);
 });
 document.getElementById('homeModesToggle').addEventListener('click', () => {
-  state.homeModesOpen = !state.homeModesOpen;    // shows or hides the settings gear
+  // shows or hides the editing tools: the settings gear, the targets tab and the plus
+  state.homeModesOpen = !state.homeModesOpen;
+  if (!state.homeModesOpen && homePath.length) { const top = catById(homePath[0]); if (top && top.target) homePath = []; }
   save(); renderHome(true);
 });
 document.getElementById('homeSearchBtn').addEventListener('click', openLetterSearch);
