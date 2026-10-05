@@ -935,9 +935,9 @@
   .small-strip .empty-note { grid-column: 1 / -1; }
   .small-section.top .small-head { align-self: stretch; }
   .small-section.top { gap: 12px; }
-  .small-strip.with-toggle { position: relative; padding-left: 32px; }
+  .small-strip.with-toggle { position: relative; padding-right: 32px; }
   .strip-toggle {
-    position: absolute; left: 0; top: 0; bottom: 0; width: 32px; border: none; background: none; cursor: pointer;
+    position: absolute; right: 0; top: 0; bottom: 0; width: 32px; border: none; background: none; cursor: pointer;
     font-size: 13px; color: var(--page); padding: 0; display: flex; align-items: center; justify-content: center;
   }
   .small-head {
@@ -2301,7 +2301,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 224 - 5 Oct';
+const BUILD = 'build 225 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6003,6 +6003,7 @@ document.getElementById('magicSkip').addEventListener('click', hideMagic);
 // ---- Phrase bar ----
 function renderPhraseBar() {
   renderSpeakBtn();
+  refreshSmallStrips();
   const bar = document.getElementById('phraseBar');
   const box = document.getElementById('pbWords');
   // Same size settings as the keyboard's typing bar
@@ -6894,8 +6895,49 @@ function hasSmallStrip(cat) {
 }
 // (owner: a builder page with its own row of small words; without one it is the shared row)
 // When the small words are opened out, the bar is gone: a small arrow in the panel's left edge folds them away
+// The small words that best follow a word, six at most: the ones picked by hand for it in the
+// builder, then the words that have most often come next in past sentences, then a starting
+// set for its kind of word, and last the page's usual row to fill any places left.
+const FOLLOW_ACTION = ['IT', 'THAT', 'THIS', 'THE', 'MY', 'MORE', 'AGAIN', 'NOW', 'WITH', 'TO'];
+const FOLLOW_BY_WORD = {
+  I: ['WANT', 'AM', 'LIKE', 'NEED', 'CAN', 'SEE'], YOU: ['ARE', 'CAN', 'WANT', 'LIKE'], WE: ['ARE', 'CAN', 'WANT', 'GO'],
+  IT: ['IS', 'AGAIN', 'NOW', 'PLEASE', '.', '?'], THAT: ['IS', 'ONE', 'AGAIN', 'PLEASE', '.'], THIS: ['IS', 'ONE', 'AGAIN', 'PLEASE', '.'],
+  IS: ['IT', 'THAT', 'THE', 'MY', 'NOT', 'A'], AM: ['NOT', 'A', 'THE', 'ALL DONE'], ARE: ['YOU', 'WE', 'NOT', 'THE'],
+  WANT: ['TO', 'THE', 'MY', 'A', 'MORE', 'IT', 'THAT', 'SOME'], NEED: ['TO', 'THE', 'MY', 'A', 'MORE', 'IT', 'HELP'], LIKE: ['IT', 'THAT', 'THE', 'MY', 'TO', 'YOU'],
+  TO: ['THE', 'MY', 'GO', 'EAT', 'PLAY', 'SEE'], MORE: ['PLEASE', 'AGAIN', 'NOW', 'AND', '.'], NOT: ['NOW', 'THAT', 'IT', 'THE', 'MY'],
+  AND: ['THE', 'MY', 'A', 'I', 'YOU', 'MORE'],
+};
+const FOLLOW_END = ['AND', 'PLEASE', 'NOW', 'AGAIN', 'LATER', 'IS', '.', '?', '!'];
+function followWords(word, usual) {
+  const out = [];
+  const add = w => { if (w && w !== word && state.words.includes(w) && !state.hiddenWords[w] && !out.includes(w)) out.push(w); };
+  const node = state.builder && state.builder.words ? state.builder.words[word] : null;
+  ((node && node.small) || []).forEach(add);
+  // what has come next before, most often first (two times or more, so one-offs do not take over)
+  const seen = {};
+  (state.builderLog || []).forEach(e => (e.words || []).forEach((w, i) => { if (w === word && e.words[i + 1]) seen[e.words[i + 1]] = (seen[e.words[i + 1]] || 0) + 1; }));
+  Object.keys(seen).filter(w => seen[w] >= 2).sort((a, b) => seen[b] - seen[a]).slice(0, 4).forEach(add);
+  const isAction = categoriesOf(word).some(c => c.linkers);
+  (FOLLOW_BY_WORD[word] || (isAction ? FOLLOW_ACTION : isSmallWord(word) ? [] : FOLLOW_END)).forEach(add);
+  (usual || []).forEach(add);
+  return punctLast(out.slice(0, 6));
+}
+let followKey = null;
+function refreshSmallStrips() {
+  const key = homePhrase.length ? homePhrase[homePhrase.length - 1] : '';
+  if (key === followKey) return;
+  followKey = key;
+  document.querySelectorAll('#homeGrid .small-strip').forEach(old => {
+    if (!old._args) return;
+    const nu = makeSmallStrip(...old._args);
+    nu.style.gridColumn = old.style.gridColumn;
+    if (old._onClose) addStripToggle(nu, old._onClose);
+    old.replaceWith(nu);
+  });
+}
 function addStripToggle(strip, onClose) {
   strip.classList.add('with-toggle');
+  strip._onClose = onClose;
   const t = document.createElement('button');
   t.className = 'strip-toggle';
   t.setAttribute('aria-label', 'Hide small words');
@@ -6915,7 +6957,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   const strip = document.createElement('div');
   strip.className = 'small-strip';
   const h = Math.max(48, Math.round(rowH / 2));
-  const shown = rows.map(row => row.filter(w => state.words.includes(w)));
+  let shown = rows.map(row => row.filter(w => state.words.includes(w)));
+  strip._args = [rowH, base, owner, gutter];
+  // with a word in the bar, the row turns to the words most likely to come after it
+  const after = homePhrase.length ? followWords(homePhrase[homePhrase.length - 1], [].concat(...shown)) : null;
+  if (after && after.length) shown = [after];
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
     const hold = edit;
