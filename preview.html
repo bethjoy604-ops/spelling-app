@@ -2340,7 +2340,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 254 - 5 Oct';
+const BUILD = 'build 255 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8238,6 +8238,26 @@ function openBuilderAddTo(here, heading) {
     })));
     if (!isBoardMenu(here)) body.appendChild(sheetBtn('A small words row', '', () => openSmallRowPicker(here)));
     body.appendChild(sheetBtn('A choice board', '', () => openChoiceBoardPicker(here)));
+    if (here !== state.builder) body.appendChild(sheetBtn('A new folder of words', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Name the new folder of words');
+      const inp = builderInput(b2, '');
+      const ok = () => {
+        const name = inp.value.replace(/\s+/g, ' ').trim();
+        if (!name) return;
+        // it is made in Categories (or on the menu bar if that is gone) and opens straight after this tile
+        const home = state.categories.find(x => !x.parent && x.name.toLowerCase() === 'categories');
+        const made = addCategory(name, home ? home.id : null);
+        here.go = made.id;
+        save(); closeWordSheet(); renderHome(true);
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+      const n = document.createElement('div');
+      n.className = 'help-note'; n.style.marginTop = '6px';
+      n.textContent = 'An empty folder is made in Categories. After "' + here.label + '" is tapped it opens straight away, ready for its words.';
+      b2.appendChild(n);
+      b2.appendChild(sheetBtn('Create', 'primary', ok));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
     body.appendChild(sheetBtn('A new choice board', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Name the new choice board');
       const inp = builderInput(b2, '');
@@ -9861,7 +9881,25 @@ function renameWord(from, to) {
   state.categories.forEach(c => {
     c.words = swap(c.words);
     if (Array.isArray(c.slots)) c.slots = c.slots.map(w => w === from ? to : w);   // it keeps its place
+    // ... and its place in its group, and in any small words row it is part of
+    (c.groups || []).forEach(g => { g.words = swap(g.words); });
+    if (Array.isArray(c.row)) c.row = swap(c.row);
   });
+  state.smallRow = swap(state.smallRow);
+  state.pairs = (state.pairs || []).map(pr => pr.map(w => w === from ? to : w)).filter(pr => pr[0] !== pr[1]);
+  ['targetState', 'targetOff', 'keptPhrases', 'smallSet'].forEach(k => {
+    if (state[k] && state[k][from] !== undefined) { if (state[k][to] === undefined) state[k][to] = state[k][from]; delete state[k][from]; }
+  });
+  if (to.includes(' ') && categoriesOf(to).length) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; }
+  // what comes after it in the builder stays attached to it
+  if (state.builder) {
+    const fixRow = n => { if (Array.isArray(n.small)) n.small = swap(n.small); (n.kids || []).forEach(fixRow); };
+    fixRow(state.builder);
+    const bw = state.builder.words || {};
+    Object.values(bw).forEach(fixRow);
+    if (bw[from]) { if (!bw[to]) { bw[to] = bw[from]; bw[to].label = to; } delete bw[from]; }
+  }
+  linkWordCache = null;
   state.wordBank = (state.wordBank || []).map(w => w === from ? to : w);
   homePhrase = homePhrase.map(w => w === from ? to : w);
   const a = state.wordHistory[from], b = state.wordHistory[to];
