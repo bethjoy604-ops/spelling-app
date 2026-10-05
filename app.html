@@ -497,6 +497,8 @@
   .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
   .list-ghost { position: fixed; z-index: 500; pointer-events: none; opacity: 0.9; outline: 5px solid var(--green); outline-offset: -2px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin: 0 !important; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
+  .drop-before { box-shadow: 0 -7px 0 0 var(--green) !important; }
+  .drop-after { box-shadow: 0 7px 0 0 var(--green) !important; }
   /* the grey prompts for adding things stay in the background: slim, pale, small quiet lettering */
   .home-card.list-row.add-row, .group-head.add-group {
     height: 46px !important; min-height: 46px !important; padding: 0 22px !important; margin-top: 4px;
@@ -2338,7 +2340,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 250 - 5 Oct';
+const BUILD = 'build 251 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8605,7 +8607,8 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
   // group (or out, onto the titles with no group), a group heading to a new place among the groups
   const holdTap = (el, onTap, onHold, drag) => {
     let timer = null, held = false, pid = null, sx = 0, sy = 0, ghost = null, over = null, dropped = false, mouseDown = false;
-    const clear = () => { if (over) over.classList.remove('drop-on'); over = null; };
+    let after = false;
+    const clear = () => { if (over) over.classList.remove('drop-on', 'drop-before', 'drop-after'); over = null; };
     const endDrag = () => { if (ghost) ghost.remove(); ghost = null; clear(); grid.classList.remove('list-dragging'); };
     el.addEventListener('pointerdown', e => {
       held = false; dropped = false; pid = e.pointerId; sx = e.clientX; sy = e.clientY;
@@ -8638,8 +8641,17 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       const under = document.elementFromPoint(e.clientX, e.clientY);
       let t = under ? under.closest('[data-gidx]') : null;
       if (t === el || (t && !grid.contains(t))) t = null;
-      if (t && drag.kind === 'group' && t.dataset.gidx === '-1') t = null;      // a heading only moves among headings
-      if (t !== over) { clear(); over = t; if (over) over.classList.add('drop-on'); }
+      if (drag.kind === 'group') {
+        // a heading goes above or below whichever other heading is nearest, so it need not be
+        // dropped exactly on one: a green line shows where it will land
+        const heads = [...grid.querySelectorAll('.group-head[data-gidx]')].filter(h => h !== el);
+        let best = null, bd = 1e9;
+        heads.forEach(h => { const r = h.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - e.clientY); if (d < bd) { bd = d; best = h; } });
+        t = best;
+        if (t) { const r = t.getBoundingClientRect(); after = e.clientY > (r.top + r.bottom) / 2; }
+        clear(); over = t;
+        if (over) over.classList.add(after ? 'drop-after' : 'drop-before');
+      } else if (t !== over) { clear(); over = t; if (over) over.classList.add('drop-on'); }
       // near the top or bottom edge the list scrolls along
       const gr = grid.getBoundingClientRect();
       if (e.clientY < gr.top + 40) grid.scrollTop -= 14; else if (e.clientY > gr.bottom - 40) grid.scrollTop += 14;
@@ -8654,7 +8666,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         const eat = ev => { ev.stopPropagation(); ev.preventDefault(); };
         document.addEventListener('click', eat, true);
         setTimeout(() => document.removeEventListener('click', eat, true), 350);
-        if (to !== null) drag.drop(to);
+        if (to !== null) drag.drop(to, after);
       }
     });
     ['pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => { if (ghost && ev === 'pointerleave') return; stop(); held = false; el.classList.remove('held'); endDrag(); }));
@@ -8711,11 +8723,12 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     head.style.fontSize = Math.max(18, Math.round(base * 0.7)) + 'px';
     head.style.minHeight = Math.max(48, Math.round(rowH * 0.36)) + 'px';
     holdTap(head, () => { g.open = !open; buzz(10); save(); const top = grid.scrollTop; renderHome(false); grid.scrollTop = top; },
-      () => openGroupHead(cat, g), { kind: 'group', drop: to => {
+      () => openGroupHead(cat, g), { kind: 'group', drop: (to, below) => {
         const gs = listGroups(cat);
         if (to < 0 || to === gi || !gs[to]) return;
+        const target = gs[to];
         const [moved] = gs.splice(gi, 1);
-        gs.splice(to, 0, moved);        // it takes the place of the heading it was dropped on
+        gs.splice(gs.indexOf(target) + (below ? 1 : 0), 0, moved);        // just above or just below the heading it was nearest
         redraw();
       } });
     put(mark(head, gi));
