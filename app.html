@@ -935,10 +935,12 @@
   .small-strip .empty-note { grid-column: 1 / -1; }
   .small-section.top .small-head { align-self: stretch; }
   .small-section.top { gap: 12px; }
-  .small-strip.with-toggle { position: relative; padding-right: 32px; }
+  /* opened out: a band along the top holds the arrow (the whole band folds the row away), and the
+     blue edge round the tiles is the same on the other three sides */
+  .small-strip.with-toggle { position: relative; padding: 40px 14px 14px; }
   .strip-toggle {
-    position: absolute; right: 0; top: 0; bottom: 0; width: 32px; border: none; background: none; cursor: pointer;
-    font-size: 13px; color: var(--page); padding: 0; display: flex; align-items: center; justify-content: center;
+    position: absolute; left: 0; right: 0; top: 0; height: 40px; border: none; background: none; cursor: pointer;
+    font-size: 20px; color: var(--page); padding: 0 20px; display: flex; align-items: center; justify-content: flex-start;
   }
   .small-head {
     display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 40px;
@@ -2310,7 +2312,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 230 - 5 Oct';
+const BUILD = 'build 231 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7075,7 +7077,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // the panel is only as wide as its longest row (six across at most), so it ends after the last word
   const across = Math.min(6, Math.max(1, ...shown.map(r => r.length)));
   const gridW = document.getElementById('homeGrid').clientWidth;
-  const colW = Math.floor((gridW - 20 - 50 - (gutter ? 22 : 0)) / 6);
+  const colW = Math.floor((gridW - 28 - 50) / 6);
   if (words.length) strip.style.gridTemplateColumns = 'repeat(' + across + ', ' + colW + 'px)';
   else strip.style.gridTemplateColumns = 'auto';
   if (!words.length) mk('+ small words', edit).classList.add('empty');
@@ -8742,7 +8744,7 @@ function renderSlotGrid(grid, cat, folders) {
     const box = document.createElement('div');
     // the same blue panel as the rows on the other pages, only as wide as its tiles
     box.className = 'small-strip';
-    const colW = Math.floor((grid.clientWidth - 20 - 50 - 22) / 6);
+    const colW = Math.floor((grid.clientWidth - 28 - 50) / 6);
     addStripToggle(box, () => head.click());
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = Math.max(48, Math.round(rowH / 2));
