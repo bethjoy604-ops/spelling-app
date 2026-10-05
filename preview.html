@@ -997,6 +997,10 @@
   .modes-wrap.expanded {
     max-width: 1200px; opacity: 1;
   }
+  /* the mode switches stay tucked away until the arrow at the end of the bar is tapped */
+  .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
+  .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn { display: none !important; }
+  #homeIconsToggle { font-size: 22px; color: #3a3a3a; }
   .chevron { transition: transform 0.25s ease; display: inline-block; }
   .chevron.open { transform: rotate(180deg); }
   /* the settings arrow and the small words arrow match: same size, right when closed, down when open */
@@ -1651,6 +1655,7 @@
     <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
+    <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#9664;</button>
   </div>
 
   <div class="magic-box" id="magicBox">
@@ -2301,7 +2306,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 225 - 5 Oct';
+const BUILD = 'build 226 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6584,6 +6589,8 @@ function renderHome(reset) {
     document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && !deep) ? '' : 'none';
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
     document.querySelector('.home-row').classList.toggle('tools', !!state.homeModesOpen);
+    document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
+    { const it = document.getElementById('homeIconsToggle'); it.textContent = state.iconsOpen ? '\u25B6' : '\u25C0'; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
@@ -9485,6 +9492,10 @@ document.getElementById('railToggle').addEventListener('click', () => {
   else { state.builderMode = true; builderPath = []; }
   buzz(10);
   save(); renderHome(true);
+});
+document.getElementById('homeIconsToggle').addEventListener('click', () => {
+  state.iconsOpen = !state.iconsOpen;      // shows or hides the mode switches on the right
+  buzz(10); renderHome(true);
 });
 document.getElementById('homeModesToggle').addEventListener('click', () => {
   // shows or hides the editing tools: the settings gear, the targets tab and the plus
