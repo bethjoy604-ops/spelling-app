@@ -2337,7 +2337,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 242 - 5 Oct';
+const BUILD = 'build 243 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8692,7 +8692,7 @@ function numberValue(w) {
 const OPPOSITES = [['UP', 'DOWN'], ['LEFT', 'RIGHT'], ['IN', 'OUT'], ['ON', 'OFF'], ['HOT', 'COLD'], ['BIG', 'SMALL'], ['BIG', 'LITTLE'],
   ['OPEN', 'CLOSE'], ['OPEN', 'SHUT'], ['OPEN', 'CLOSED'], ['GO', 'STOP'], ['NOW', 'LATER'], ['LOUD', 'QUIET'], ['YES', 'NO'], ['FAST', 'SLOW'],
   ['MORE', 'LESS'], ['MORE', 'ALL DONE'], ['MANY', 'FEW'], ['A LOT', 'A LITTLE'], ['LOTS', 'A LITTLE'], ['MOST', 'LEAST'], ['EVERYTHING', 'NOTHING'], ['EVERYONE', 'NO ONE'],
-  ['ENOUGH', 'TOO MUCH'], ['ADD', 'TAKE AWAY'], ['PLUS', 'MINUS'], ['WHOLE', 'HALF'], ['SAME', 'OTHER'], ['THIS', 'THAT'], ['THESE', 'THOSE'], ['MORNING', 'NIGHT'],
+  ['ENOUGH', 'TOO MUCH'], ['ADD', 'TAKE AWAY'], ['PLUS', 'MINUS'], ['WHOLE', 'HALF'], ['THIS', 'THAT'], ['THESE', 'THOSE'], ['MORNING', 'NIGHT'],
   ['TODAY', 'TOMORROW'], ['WANT', "DON'T WANT"], ['LIKE', "DON'T LIKE"], ['CAN', "CAN'T"], ['DO', "DON'T"], ['WILL', "WON'T"], ['SMOOTH', 'ROUGH'], ['SWEET', 'SOUR'],
   ['NICE', 'MEAN'], ['YUMMY', 'YUCKY'], ['EASY', 'DIFFICULT'], ['QUICK', 'SLOW'], ['NOISY', 'QUIET'], ['BRIGHT', 'DARK'], ['STRAIGHT', 'CURVY'], ['ALONE', 'TOGETHER'], ['HAPPY', 'SAD'], ['GOOD', 'BAD'], ['DAY', 'NIGHT'], ['LIGHT', 'DARK'], ['WET', 'DRY'], ['FULL', 'EMPTY'],
   ['HARD', 'SOFT'], ['HARD', 'EASY'], ['HEAVY', 'LIGHT'], ['NEW', 'OLD'], ['YOUNG', 'OLD'], ['TALL', 'SHORT'], ['LONG', 'SHORT'], ['HIGH', 'LOW'],
@@ -8723,6 +8723,35 @@ const SEQUENCES = [
 function oppositeOf(w) {
   const pr = OPPOSITES.find(x => x.includes(w));
   return pr ? pr[pr[0] === w ? 1 : 0] : null;
+}
+function oppositesOf(w) {
+  const out = [];
+  OPPOSITES.forEach(x => { if (x.includes(w)) { const o = x[x[0] === w ? 1 : 0]; if (!out.includes(o)) out.push(o); } });
+  return out;
+}
+// After a word is added inside Choices: offer its opposite, in the app's own menu. The ones the
+// app knows are listed (same: different), and any other word can be typed in to pair with it.
+function openOppositeSheet(cat, word, options) {
+  const put = (typed, byHand) => {
+    const key = normaliseWord(typed);
+    if (!key || key === word) return false;
+    if (!cat.words.includes(key)) cat.words.push(key);
+    if (!state.words.includes(key)) state.words.push(key);
+    if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+    if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
+    if (byHand) {
+      rememberCase(typed, key);
+      state.pairs = (state.pairs || []).filter(x => !x.includes(word) && !x.includes(key));
+      state.pairs.push([word, key]);
+    }
+  };
+  openWordSheet(body => {
+    sheetTitle(body, 'Add its opposite?', word);
+    options.forEach(o => body.appendChild(sheetBtn(o.toLowerCase(), '', () => { put(o, options.indexOf(o) > 0); save(); closeWordSheet(); renderHome(true); })));
+    body.appendChild(sheetBtn(options.length ? 'A different word' : 'Type its opposite', '', () =>
+      askText('The opposite of "' + bankLabel(word) + '"', 'Add', '', typed => put(typed, true))));
+    body.appendChild(sheetBtn('No thanks', 'primary', closeWordSheet));
+  });
 }
 function inChoices(cat) {
   let x = cat, g = 0;
@@ -9032,14 +9061,9 @@ function renderSlotGrid(grid, cat, folders) {
     if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
     rememberCase(typed, key);
     // inside Choices a word usually comes with its opposite: offer to add that too
-    const opp = oppositeOf(key);
-    if (opp && inChoices(cat) && !cat.words.includes(opp)
-        && confirm('Add its opposite, "' + opp.toLowerCase() + '", as well?')) {
-      cat.words.push(opp);
-      if (!state.words.includes(opp)) state.words.push(opp);
-      if (!state.wordHistory[opp]) state.wordHistory[opp] = { n: 0, t: 0 };
-      if (opp.includes(' ')) state.keptPhrases[opp] = true;
-    }
+    const opps = oppositesOf(key);
+    const inRun = numberValue(key) !== null || SEQUENCES.some(q => q.includes(key));     // numbers, days and the like have no opposite to ask about
+    if (inChoices(cat) && (opps.length || !inRun) && !opps.some(o => cat.words.includes(o)) && !pairOf(key, cat.words)) setTimeout(() => openOppositeSheet(cat, key, opps), 60);
   }));
   const ghostGroup = () => ghost('+ group', () => askText('New group in ' + cat.name, 'Add', '', typed => {
     const name = String(typed || '').replace(/\s+/g, ' ').trim();
