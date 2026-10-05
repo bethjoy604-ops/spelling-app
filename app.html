@@ -648,6 +648,10 @@
     background: var(--green) !important; color: #fff !important;
     box-shadow: var(--shadow);
   }
+  /* with the editing tools out the bar is full: the tabs sit closer so every one still shows */
+  .home-row.tools .folder-strip-row { gap: 5px; }
+  .home-row.tools .folder-strip-row .cat-tile { padding: 0 8px; }
+  .home-row.tools { gap: 6px; }
   .folder-strip-row .cat-tile.plain { box-shadow: none; background: var(--surface); color: var(--ink); }
   .cat-tile {
     flex: 0 0 auto; border: none; border-radius: 14px;
@@ -1629,9 +1633,9 @@
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9660;</span>
     </button>
-    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <button class="ctl icon" id="homeBackBtn" aria-label="Back" style="display:none">&#8249;</button>
     <div class="folder-strip" id="catTiles"></div>
+    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <button class="ctl icon" id="targetGearBtn" aria-label="Prompting settings" style="display:none">&#9881;</button>
     <button class="ctl icon" id="homeAddFolderBtn" aria-label="New folder" style="display:none">+</button>
     <button class="ctl icon" id="builderBackBtn" aria-label="Back" style="display:none">&#8249;</button>
@@ -2295,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 214 - 5 Oct';
+const BUILD = 'build 215 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6550,6 +6554,7 @@ function renderHome(reset) {
     document.getElementById('homeModesToggle').style.display = deep ? 'none' : '';
     document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && !deep) ? '' : 'none';
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
+    document.querySelector('.home-row').classList.toggle('tools', !!state.homeModesOpen);
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
