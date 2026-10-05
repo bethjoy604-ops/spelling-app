@@ -496,6 +496,15 @@
   .home-card.list-row.add-row { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; }
   .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
   .list-ghost { position: fixed; z-index: 500; pointer-events: none; opacity: 0.9; outline: 5px solid var(--green); outline-offset: -2px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin: 0 !important; }
+  .home-card.edit-tile { position: relative; }
+  .edit-tick { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; background: var(--green); color: #fff;
+    font-size: 22px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+  .home-card.edit-off { background: rgba(255,255,255,0.35); box-shadow: none; }
+  .home-card.edit-off .hw { opacity: 0.4; }
+  .home-card.edit-off .edit-tick { background: rgba(255,255,255,0.7); box-shadow: 0 0 0 3px rgba(0,0,0,0.25) inset; }
+  #pageEditBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 16px;
+    background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
+  #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
   .drop-before { box-shadow: 0 -7px 0 0 var(--green) !important; }
   .drop-after { box-shadow: 0 7px 0 0 var(--green) !important; }
@@ -2340,7 +2349,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 255 - 5 Oct';
+const BUILD = 'build 256 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6713,6 +6722,7 @@ function renderHome(reset) {
   const grid = document.getElementById('homeGrid');
   const cat = currentCat();
   if (!cat || state.builderMode || cat.id !== listPageShown) listPageShown = null;     // that page of groups has been left
+  syncPageEdit(cat);
   if (reset) {
     renderPhraseBar();
     renderBuilderBar();
@@ -9029,6 +9039,22 @@ function makeListRow(w, rowH, base) {
   row.appendChild(t);
   return row;
 }
+// The folder whose page is being edited all at once (ticks on its tiles), if any
+let pageEdit = null;
+function syncPageEdit(cat) {
+  if (pageEdit && (!cat || cat.id !== pageEdit || state.builderMode)) pageEdit = null;     // leaving the page ends it
+  let bar = document.getElementById('pageEditBar');
+  if (!pageEdit) { if (bar) bar.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pageEditBar';
+    bar.innerHTML = '<span></span><button>Done</button>';
+    bar.querySelector('button').addEventListener('click', () => { pageEdit = null; buzz(10); renderHome(true); });
+    document.body.appendChild(bar);
+  }
+  const n = (cat.words || []).filter(w => state.hiddenWords[w]).length;
+  bar.firstChild.textContent = 'Tap a tile to show or hide it' + (n ? '  \u00b7  ' + n + ' hidden' : '');
+}
 function renderSlotGrid(grid, cat, folders) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
@@ -9049,6 +9075,11 @@ function renderSlotGrid(grid, cat, folders) {
   // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
   const alpha = arrange && !listMode && hasSmallStrip(cat);
   const slots = listMode ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
+  // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
+  // are showing (which close up, still in their order) and stays there, greyed, to be ticked again.
+  const editing = alpha && pageEdit === cat.id;
+  const offHere = editing ? (cat.words || []).filter(w => state.hiddenWords[w]).sort(byLabel) : [];
+  if (editing && offHere.length) { while (slots.length % cols) slots.push(null); offHere.forEach(w => slots.push(w)); }
   const head = folders.length;                      // sub-folders come first
   // Categories folders: group tiles (and the ghost tile to add one) sit in their own rows at the top,
   // and the words start on the row after, so there is a clear divide between the two
@@ -9259,8 +9290,8 @@ function renderSlotGrid(grid, cat, folders) {
     const w = slots[i];
     if (boardOnly && i === 0) continue;       // that place holds the grey add tile
     if (chatAdd && i === slots.length) { place(ghostWord(), off + i); continue; }
-    if (alpha && i === slots.length) { place(ghostWord(), off + i); continue; }
-    if (alpha && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
+    if (alpha && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
+    if (alpha && !editing && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
     if (!w && i === 0 && arrange && !alpha && head === 0 && !slots.some(Boolean)) {
       const add = document.createElement('button');
@@ -9293,6 +9324,26 @@ function renderSlotGrid(grid, cat, folders) {
     const label = alpha ? plainLabel(w) : bankLabel(w);
     t.textContent = label;     // small letters on every page, Recents / Popular included
     card.appendChild(t);
+    if (editing) {
+      const on = !state.hiddenWords[w];
+      card.classList.add('edit-tile');
+      if (!on) card.classList.add('edit-off');
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const tick = document.createElement('span');
+      tick.className = 'edit-tick';
+      tick.textContent = on ? '\u2713' : '';
+      card.appendChild(tick);
+      card.addEventListener('click', () => {
+        if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
+        buzz(10); save();
+        const top = grid.scrollTop;
+        renderHome(true);
+        grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
+      });
+      fit(card, label);
+      place(card, off + i);
+      continue;
+    }
     card.addEventListener('click', () => {
       if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
       homePhrase.push(w);
@@ -9806,6 +9857,7 @@ function openWordActions(word, cat, extra) {
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
     if (hasSmallStrip(cat) && !cat.smallSec) pairBtns(body, word, cat);
+    if (hasSmallStrip(cat) && !cat.smallSec) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; closeWordSheet(); renderHome(true); }));
     deleteWordBtns(body, word, cat);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
     const n = document.createElement('div');
