@@ -2352,7 +2352,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 267 - 5 Oct';
+const BUILD = 'build 268 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7742,7 +7742,7 @@ function renderBuilder(grid) {
       holdable(wt, () => {
         // a title that sits under a group heading in My Stuff brings the group's name with it:
         // "Moana" then "How Far I'll Go"
-        const grp = asList && !c.target ? (c.groups || []).find(g => (g.words || []).includes(w)) : null;
+        const grp = null;     // switched off: a title goes into the bar on its own, without its group's name
         const gk = grp ? normaliseWord(grp.name) : '';
         if (gk && gk !== w && homePhrase[homePhrase.length - 1] !== gk) {
           if (!state.words.includes(gk)) state.words.push(gk);
