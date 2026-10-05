@@ -998,6 +998,8 @@
     max-width: 1200px; opacity: 1;
   }
   /* the mode switches stay tucked away until the arrow at the end of the bar is tapped */
+  #homeTargetBtn.on { background: var(--green); }
+  .home-row:not(.icons-open) #homeSettingsBtn, .home-row:not(.icons-open) #homeTargetBtn,
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
   .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn { display: none !important; }
   #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
@@ -1642,7 +1644,6 @@
     </button>
     <button class="ctl icon" id="homeBackBtn" aria-label="Back" style="display:none">&#8249;</button>
     <div class="folder-strip" id="catTiles"></div>
-    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <button class="ctl icon" id="targetGearBtn" aria-label="Prompting settings" style="display:none">&#9881;</button>
     <button class="ctl icon" id="homeAddFolderBtn" aria-label="New folder" style="display:none">+</button>
     <button class="ctl icon" id="builderBackBtn" aria-label="Back" style="display:none">&#8249;</button>
@@ -1650,6 +1651,8 @@
     <div class="spacer"></div>
     <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#11088;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
+    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
+    <button class="ctl icon" id="homeTargetBtn" aria-label="Target words" aria-pressed="false">&#127919;</button>
     <button class="ctl icon" id="railToggle" aria-label="Folder menu">&#9776;</button>
     <button class="ctl icon" id="homeChatBtn" aria-label="Chat mode" aria-pressed="false">&#128172;</button>
     <button class="ctl icon" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
@@ -2307,7 +2310,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 229 - 5 Oct';
+const BUILD = 'build 230 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6376,7 +6379,7 @@ function renderCatTiles(containerId, rerender) {
       row.appendChild(all);
     }
     // the targets tab only shows while the settings arrow is open
-    kids.filter(c => !c.target || state.homeModesOpen).forEach(c => row.appendChild(makeTile(c, level)));
+    kids.filter(c => !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
 
     host.appendChild(row);
   });
@@ -6590,9 +6593,10 @@ function renderHome(reset) {
     document.getElementById('targetGearBtn').style.display = (state.homeModesOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
     document.getElementById('homeModesToggle').style.display = deep ? 'none' : '';
-    document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && !deep) ? '' : 'none';
+    document.getElementById('homeSettingsBtn').style.display = '';     // it shows with the other switches, in the pop-out on the right
+    { const tb = document.getElementById('homeTargetBtn'); const on = !state.builderMode && !!cat && !!cat.target; tb.style.display = newFolder() ? '' : 'none'; tb.classList.toggle('on', on); tb.setAttribute('aria-pressed', on ? 'true' : 'false'); }
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
-    document.querySelector('.home-row').classList.toggle('tools', !!state.homeModesOpen);
+    document.querySelector('.home-row').classList.toggle('tools', !!state.iconsOpen);     // the tabs sit closer while the pop-out is open
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
     { const it = document.getElementById('homeIconsToggle'); it.textContent = state.iconsOpen ? '\u25B6' : '\u25C0'; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
@@ -6619,7 +6623,6 @@ function renderHome(reset) {
     grid.style.display = useFolders ? 'none' : '';
     if (useFolders) {
       // no folder strip in this layout: the arrow just shows or hides the gear
-      document.getElementById('homeSettingsBtn').style.display = (state.homeModesOpen && homePath.length <= 1) ? '' : 'none';
       document.getElementById('homeChevron').classList.toggle('open', state.homeModesOpen);
       document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
       document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
@@ -9556,14 +9559,24 @@ document.getElementById('railToggle').addEventListener('click', () => {
   buzz(10);
   save(); renderHome(true);
 });
+// the dart-board opens the page of target words (and closes it again)
+document.getElementById('homeTargetBtn').addEventListener('click', () => {
+  const t = newFolder();
+  if (!t) return;
+  const there = !state.builderMode && homePath[0] === t.id;
+  if (state.builderMode) { state.builderMode = false; builderPath = []; }
+  homePath = there ? [] : [t.id];
+  buzz(10); save(); renderHome(true);
+});
 document.getElementById('homeIconsToggle').addEventListener('click', () => {
   state.iconsOpen = !state.iconsOpen;      // shows or hides the mode switches on the right
+  // the targets page belongs to the pop-out: closing it leaves that page
+  if (!state.iconsOpen && homePath.length) { const top = catById(homePath[0]); if (top && top.target) homePath = []; }
   buzz(10); renderHome(true);
 });
 document.getElementById('homeModesToggle').addEventListener('click', () => {
   // shows or hides the editing tools: the settings gear, the targets tab and the plus
   state.homeModesOpen = !state.homeModesOpen;
-  if (!state.homeModesOpen && homePath.length) { const top = catById(homePath[0]); if (top && top.target) homePath = []; }
   save(); renderHome(true);
 });
 // the magnifying glass switches the matching words in the key bar on and off
