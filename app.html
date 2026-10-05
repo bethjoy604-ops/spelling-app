@@ -977,6 +977,7 @@
   }
   .small-tile:active { transform: scale(0.96); }
   .small-tile.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
+  .small-tile.add-small { background: rgba(255,255,255,0.35); box-shadow: none; color: rgba(0,0,0,0.35); font-size: 17px !important; font-weight: 700; }
   .small-tile.empty { grid-column: 1 / -1; background: rgba(255,255,255,0.85); color: rgba(0,0,0,0.5); padding: 0 18px; }
   .small-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .small-pick .small-new { margin: 0; min-width: 0; width: 100%; box-sizing: border-box; font-size: 18px; text-align: center; }
@@ -2336,7 +2337,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 240 - 5 Oct';
+const BUILD = 'build 241 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8921,6 +8922,25 @@ function renderSlotGrid(grid, cat, folders) {
       });
       box.appendChild(b);
     });
+    {
+      // a quiet tile at the end adds a small word to the library
+      const add = document.createElement('button');
+      add.className = 'small-tile add-small';
+      add.style.height = h + 'px';
+      add.textContent = '+ word';
+      add.addEventListener('click', () => askText('New small word', 'Add', '', typed => {
+        const key = normaliseWord(typed);
+        if (!key) return false;
+        if (!sec.words.includes(key)) sec.words.push(key);
+        const chat = catById(sec.parent);
+        if (chat) chat.words = (chat.words || []).filter(w => w !== key);      // a small word is not also a big Chat tile
+        if (!state.words.includes(key)) state.words.push(key);
+        if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+        if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
+        rememberCase(typed, key);
+      }));
+      box.appendChild(add);
+    }
     if (!smalls.length) {
       const n = document.createElement('div');
       n.className = 'empty-note';
