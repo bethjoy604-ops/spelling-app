@@ -2338,7 +2338,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 249 - 5 Oct';
+const BUILD = 'build 250 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6756,7 +6756,7 @@ function renderHome(reset) {
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     // the plus ends the menu bar while a folder is open: it makes a new folder inside it
     document.getElementById('homeAddFolderBtn').style.display =
-      ((state.iconsOpen || homePath.length > 1) && state.railOpen && cat && !cat.rule) ? '' : 'none';     // always there beside the back arrow
+      'none';     // retired: every page has its own grey tiles for adding
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
@@ -7505,7 +7505,7 @@ function renderBuilderBar() {
   const here = builderHere();
   document.getElementById('builderBackBtn').style.display = (on && builderPath.length) ? '' : 'none';
   // every page has the plus: a builder page takes words and folder links, a folder takes words and sub-folders
-  document.getElementById('builderAddBtn').style.display = (on && here && (state.iconsOpen || builderPath.length > 0)) ? '' : 'none';
+  document.getElementById('builderAddBtn').style.display = 'none';     // retired: the grey tile at the end of the page adds things
 }
 function renderBuilder(grid) {
   if (!state.builder) state.builder = defaultBuilder();
@@ -7702,12 +7702,11 @@ function renderBuilder(grid) {
       count++;
     });
   }
-  if (!count) {
-    // an empty page: a greyed-out plus tile shows where things go and how to add them
-    const add = tile('+', false);
-    add.classList.add('add-folder');
-    add.setAttribute('aria-label', 'Add a tile');
-    add.querySelector('.hw').style.fontSize = Math.round(rowH * 0.4) + 'px';
+  {
+    // every builder page ends with a quiet grey tile for adding to it
+    const add = tile('+ add', false);
+    add.classList.add('add-folder', 'ghost-tile');
+    add.setAttribute('aria-label', 'Add to this page');
     add.addEventListener('click', openBuilderAdd);
   }
   if (!builderPath.length) { if (state.chatMode) renderChatLog(grid, base); else renderBuilderLog(grid, base); }
@@ -8974,7 +8973,7 @@ function renderSlotGrid(grid, cat, folders) {
   if (grouped && listPageShown !== cat.id) listGroups(cat).forEach(g => { g.open = false; });
   listPageShown = grouped ? cat.id : null;
   // a page that is only folder tiles (My Stuff, Categories) ends with a grey tile for adding one more
-  const boardOnly = head > 0 && !alpha && !words.length && !cat.target && !cat.small;
+  const boardOnly = !!cat && head > 0 && !alpha && !words.length && !cat.target && !cat.small;
   const totalRows = listMode ? (head ? Math.ceil((head + (boardOnly ? 1 : 0)) / cols) : ((listWords.length || grouped) ? 0 : 1))
                   : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
@@ -9165,13 +9164,15 @@ function renderSlotGrid(grid, cat, folders) {
   }));
   if (alpha && head) { const gf = ghostGroup(); gf.querySelector('.hw').textContent = '+ folder'; place(gf, head); }     // beside folder tiles it reads the same on every choice board
   if (boardOnly) {
-    const gf = ghostGroup();
-    gf.querySelector('.hw').textContent = '+ folder';
+    const gf = ghost('+ folder', () => openFolderAdd(cat));      // a new folder, one that exists already, or a word
     place(gf, head);
   }
+  // Chat: a grey tile after its last word
+  const chatAdd = !!cat && !!cat.small && !alpha && !listMode;
   for (let i = 0; off + i < totalRows * cols; i++) {
     const w = slots[i];
     if (boardOnly && i === 0) continue;       // that place holds the grey add tile
+    if (chatAdd && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
