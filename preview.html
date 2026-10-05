@@ -2350,7 +2350,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 259 - 5 Oct';
+const BUILD = 'build 260 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6464,6 +6464,7 @@ function tintFor(cat, amount) {
   const def = PROMPT_COLORS[(cat && cat.color) || 'blue'] || PROMPT_COLORS.blue;
   return mixHex(def.solid, '#ffffff', amount);
 }
+let lastTabTap = { id: null, t: 0 };
 function renderCatTiles(containerId, rerender) {
   const host = document.getElementById(containerId || 'catTiles');
   if (!host) return;
@@ -6494,6 +6495,18 @@ function renderCatTiles(containerId, rerender) {
       if (tileTimer) clearTimeout(tileTimer);
       if (wordDrag) return;      // a word is being dropped here, not a tap on the tab
       if (longPressed) return;
+      // the green tab of the page that is open: one tap steps back a page, a quick second tap goes
+      // all the way to that tab's main page. Any other tab opens its main page.
+      const now = Date.now();
+      const mine = homePath[level] === c.id;
+      const twice = mine && lastTabTap.id === c.id && now - lastTabTap.t < 450;
+      lastTabTap = { id: c.id, t: now };
+      if (mine && !twice && (tileGroup || homePath.length > level + 1)) {
+        if (tileGroup) tileGroup = null; else homePath = homePath.slice(0, -1);
+        again();
+        return;
+      }
+      tileGroup = null;
       // stay on the bar: pick at this level, drop anything deeper
       homePath = homePath.slice(0, level);
       homePath.push(c.id);
