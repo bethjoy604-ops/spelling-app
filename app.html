@@ -2330,7 +2330,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 238 - 5 Oct';
+const BUILD = 'build 239 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8509,11 +8509,15 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
   // tap uses the row; hold and let go opens its options; hold and drag moves it - a title into a
   // group (or out, onto the titles with no group), a group heading to a new place among the groups
   const holdTap = (el, onTap, onHold, drag) => {
-    let timer = null, held = false, pid = null, sx = 0, sy = 0, ghost = null, over = null, dropped = false;
+    let timer = null, held = false, pid = null, sx = 0, sy = 0, ghost = null, over = null, dropped = false, mouseDown = false;
     const clear = () => { if (over) over.classList.remove('drop-on'); over = null; };
     const endDrag = () => { if (ghost) ghost.remove(); ghost = null; clear(); grid.classList.remove('list-dragging'); };
     el.addEventListener('pointerdown', e => {
       held = false; dropped = false; pid = e.pointerId; sx = e.clientX; sy = e.clientY;
+      // with a mouse there is no need to wait: press and drag straight away (a finger still holds
+      // first, so that swiping the list scrolls it)
+      mouseDown = !!drag && e.pointerType === 'mouse' && e.button === 0;
+      if (mouseDown) { try { el.setPointerCapture(pid); } catch (err) {} }
       timer = setTimeout(() => {
         timer = null; held = true; buzz(15); el.classList.add('held');
         if (drag) { try { el.setPointerCapture(pid); } catch (err) {} }
@@ -8523,6 +8527,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     // once it is held, a finger moving must drag the row rather than scroll the page
     el.addEventListener('touchmove', e => { if (held && drag) e.preventDefault(); }, { passive: false });
     el.addEventListener('pointermove', e => {
+      if (!held && mouseDown && Math.hypot(e.clientX - sx, e.clientY - sy) >= 10) { stop(); held = true; el.classList.add('held'); }
       if (!held || !drag) return;
       if (!ghost) {
         if (Math.hypot(e.clientX - sx, e.clientY - sy) < 10) return;
@@ -8545,7 +8550,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       if (e.clientY < gr.top + 40) grid.scrollTop -= 14; else if (e.clientY > gr.bottom - 40) grid.scrollTop += 14;
     });
     el.addEventListener('pointerup', () => {
-      stop();
+      stop(); mouseDown = false;
       if (ghost) {
         const to = over ? Number(over.dataset.gidx) : null;
         endDrag(); held = false; dropped = true; el.classList.remove('held');
