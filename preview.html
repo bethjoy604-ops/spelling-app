@@ -2299,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 222 - 5 Oct';
+const BUILD = 'build 223 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8399,7 +8399,10 @@ function numberValue(w) {
 // A folder lays out this way when most of its words are in pairs, or a pair was made by hand.
 const OPPOSITES = [['UP', 'DOWN'], ['LEFT', 'RIGHT'], ['IN', 'OUT'], ['ON', 'OFF'], ['HOT', 'COLD'], ['BIG', 'SMALL'], ['BIG', 'LITTLE'],
   ['OPEN', 'CLOSE'], ['OPEN', 'SHUT'], ['OPEN', 'CLOSED'], ['GO', 'STOP'], ['NOW', 'LATER'], ['LOUD', 'QUIET'], ['YES', 'NO'], ['FAST', 'SLOW'],
-  ['MORE', 'LESS'], ['MORE', 'ALL DONE'], ['HAPPY', 'SAD'], ['GOOD', 'BAD'], ['DAY', 'NIGHT'], ['LIGHT', 'DARK'], ['WET', 'DRY'], ['FULL', 'EMPTY'],
+  ['MORE', 'LESS'], ['MORE', 'ALL DONE'], ['MANY', 'FEW'], ['A LOT', 'A LITTLE'], ['LOTS', 'A LITTLE'], ['MOST', 'LEAST'], ['EVERYTHING', 'NOTHING'], ['EVERYONE', 'NO ONE'],
+  ['ENOUGH', 'TOO MUCH'], ['ADD', 'TAKE AWAY'], ['PLUS', 'MINUS'], ['WHOLE', 'HALF'], ['SAME', 'OTHER'], ['THIS', 'THAT'], ['THESE', 'THOSE'], ['MORNING', 'NIGHT'],
+  ['TODAY', 'TOMORROW'], ['WANT', "DON'T WANT"], ['LIKE', "DON'T LIKE"], ['CAN', "CAN'T"], ['DO', "DON'T"], ['WILL', "WON'T"], ['SMOOTH', 'ROUGH'], ['SWEET', 'SOUR'],
+  ['NICE', 'MEAN'], ['YUMMY', 'YUCKY'], ['EASY', 'DIFFICULT'], ['QUICK', 'SLOW'], ['NOISY', 'QUIET'], ['BRIGHT', 'DARK'], ['STRAIGHT', 'CURVY'], ['ALONE', 'TOGETHER'], ['HAPPY', 'SAD'], ['GOOD', 'BAD'], ['DAY', 'NIGHT'], ['LIGHT', 'DARK'], ['WET', 'DRY'], ['FULL', 'EMPTY'],
   ['HARD', 'SOFT'], ['HARD', 'EASY'], ['HEAVY', 'LIGHT'], ['NEW', 'OLD'], ['YOUNG', 'OLD'], ['TALL', 'SHORT'], ['LONG', 'SHORT'], ['HIGH', 'LOW'],
   ['NEAR', 'FAR'], ['HERE', 'THERE'], ['FRONT', 'BACK'], ['TOP', 'BOTTOM'], ['OVER', 'UNDER'], ['ABOVE', 'BELOW'], ['INSIDE', 'OUTSIDE'],
   ['BEFORE', 'AFTER'], ['FIRST', 'LAST'], ['START', 'FINISH'], ['START', 'END'], ['BEGIN', 'END'], ['PUSH', 'PULL'], ['GIVE', 'TAKE'],
@@ -8423,6 +8426,15 @@ const SEQUENCES = [
   ['COLD', 'COOL', 'WARM', 'HOT'],
   ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'],
 ];
+function oppositeOf(w) {
+  const pr = OPPOSITES.find(x => x.includes(w));
+  return pr ? pr[pr[0] === w ? 1 : 0] : null;
+}
+function inChoices(cat) {
+  let x = cat, g = 0;
+  while (x && g++ < 20) { if (x.name.trim().toLowerCase() === 'choices') return true; x = x.parent ? catById(x.parent) : null; }
+  return false;
+}
 function wordPairs(list) {
   const left = list.filter(w => !isPunct(w));
   const out = [];
@@ -8439,28 +8451,42 @@ function pairOf(word, list) {
   const pr = wordPairs(list).pairs.find(x => x.includes(word));
   return pr ? pr[pr[0] === word ? 1 : 0] : null;
 }
+// A folder's words in the order they show. Mostly numbers: counting order. Otherwise the app looks
+// for sets - a run with an order of its own (none, some, all), a run of numbers, a pair of
+// opposites (more, less) - and when most of the folder is in sets, each set starts a row of its
+// own, in the order the sets were added; whatever is left follows, A to Z. Else plain A to Z.
 function sortWords(list, cols) {
   const real = list.filter(w => !isPunct(w));
-  const nums = list.filter(w => numberValue(w) !== null);
+  const nums = list.filter(w => numberValue(w) !== null).sort((a, b) => numberValue(a) - numberValue(b) || byLabel(a, b));
   if (nums.length && nums.length * 2 >= real.length) {
-    return nums.sort((a, b) => numberValue(a) - numberValue(b) || byLabel(a, b))
-      .concat(list.filter(w => numberValue(w) === null).sort(byLabel));
+    return nums.concat(list.filter(w => numberValue(w) === null).sort(byLabel));
   }
-  // words with a set order of their own (days, months, sizes ...) keep it
-  const seq = SEQUENCES.map(q => q.filter(w => list.includes(w))).sort((a, b) => b.length - a.length)[0];
-  if (seq && seq.length >= 3 && seq.length * 2 >= real.length) {
-    return seq.concat(list.filter(w => !seq.includes(w)).sort(byLabel));
+  let left = real.slice();
+  const sets = [];
+  const use = set => { sets.push(set); left = left.filter(w => !set.includes(w)); };
+  // pairs made by hand come first, so a run cannot take one of their words
+  const hand = (state.pairs || []).filter(([a, b]) => a !== b && left.includes(a) && left.includes(b));
+  const handSets = [];
+  hand.forEach(pr => { if (pr.every(w => left.includes(w))) { handSets.push(pr.slice(0, 2)); left = left.filter(w => !pr.includes(w)); } });
+  for (;;) {
+    const best = SEQUENCES.map(q => q.filter(w => left.includes(w))).sort((a, b) => b.length - a.length)[0];
+    if (!best || best.length < 3) break;
+    use(best);
   }
-  const pw = wordPairs(list);
-  if (pw.pairs.length && (pw.byHand || pw.pairs.length * 4 >= real.length)) {
-    const n = Math.max(2, cols || 3);
-    const out = [];
-    pw.pairs.forEach(pr => { out.push(pr[0], pr[1]); for (let i = 2; i < n; i++) out.push(null); });
-    const rest = pw.rest.concat(list.filter(isPunct)).sort(byLabel);
-    // the last pair keeps its row to itself too: the grey add tiles start on the row after
-    return out.concat(rest);
-  }
-  return list.slice().sort(byLabel);
+  const run = nums.filter(w => left.includes(w));
+  if (run.length >= 3) use(run);
+  OPPOSITES.forEach(([a, b]) => { if (left.includes(a) && left.includes(b)) use([a, b]); });
+  handSets.forEach(pr => sets.push(pr));
+  const inSets = sets.reduce((n, x) => n + x.length, 0);
+  if (!sets.length || !(handSets.length || inSets * 2 >= real.length)) return list.slice().sort(byLabel);
+  const at = set => Math.min(...set.map(w => list.indexOf(w)));
+  sets.sort((x, y) => at(x) - at(y));
+  const n = Math.max(2, cols || 3);
+  const out = [];
+  const newRow = () => { while (out.length % n) out.push(null); };
+  sets.forEach(set => { newRow(); set.forEach(w => out.push(w)); });
+  newRow();      // the grey add tiles, and any other words, start on the row after
+  return out.concat(left.concat(list.filter(isPunct)).sort(byLabel));
 }
 // In a word's menu: pair it with its opposite, or split a pair made by hand
 function pairBtns(body, word, cat) {
@@ -8688,6 +8714,15 @@ function renderSlotGrid(grid, cat, folders) {
     if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
     if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
     rememberCase(typed, key);
+    // inside Choices a word usually comes with its opposite: offer to add that too
+    const opp = oppositeOf(key);
+    if (opp && inChoices(cat) && !cat.words.includes(opp)
+        && confirm('Add its opposite, "' + opp.toLowerCase() + '", as well?')) {
+      cat.words.push(opp);
+      if (!state.words.includes(opp)) state.words.push(opp);
+      if (!state.wordHistory[opp]) state.wordHistory[opp] = { n: 0, t: 0 };
+      if (opp.includes(' ')) state.keptPhrases[opp] = true;
+    }
   }));
   const ghostGroup = () => ghost('+ group', () => askText('New group in ' + cat.name, 'Add', '', typed => {
     const name = String(typed || '').replace(/\s+/g, ' ').trim();
