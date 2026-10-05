@@ -2299,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 220 - 5 Oct';
+const BUILD = 'build 221 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2482,6 +2482,7 @@ const state = {
   linkV1: false,              // the one-time marking of Actions as a folder of linking words
   smallV3: false,            // the one-time creation of the Small words folder inside Chat
   rowOpenBy: {},              // which folders have their small words row opened out (menu mode), by folder id
+  pairs: [],                  // opposites paired by hand: [first, second]
   smallOpen: false,           // whether the Small words row in Chat is opened out
   smallV2: false,            // the one-time marking of which Chat words are small words
   smallSet: {},               // words marked as small words (the, a, my ...)
@@ -2661,6 +2662,7 @@ async function load() {
         linkV1: saved.linkV1 ?? false,
         smallV3: saved.smallV3 ?? false,
         rowOpenBy: saved.rowOpenBy || {},
+        pairs: Array.isArray(saved.pairs) ? saved.pairs : [],
         smallOpen: false,          // always starts closed when the app opens
         smallV2: saved.smallV2 ?? false,
         smallSet: saved.smallSet || {},
@@ -3120,6 +3122,7 @@ async function save() {
       linkV1: state.linkV1,
       smallV3: state.smallV3,
       rowOpenBy: state.rowOpenBy,
+      pairs: state.pairs,
       smallOpen: state.smallOpen,
       smallV2: state.smallV2,
       smallSet: state.smallSet,
@@ -6698,6 +6701,7 @@ function applyLayout(L, keep) {
   state.recentsHidden = Object.assign(keep ? (state.recentsHidden || {}) : {}, ...(L.recentsHidden || []).map(w => ({ [w]: true })));
   if (L.hiddenWords) { state.hiddenWords = keep ? (state.hiddenWords || {}) : {}; L.hiddenWords.forEach(w => { state.hiddenWords[w] = true; }); }
   if (L.targetState) state.targetState = Object.assign({}, L.targetState);
+  if (Array.isArray(L.pairs)) state.pairs = L.pairs.map(x => x.slice(0, 2));
   state.smallRow = (L.smallRow || []).slice();
   state.builder = JSON.parse(JSON.stringify(L.builder || { kids: [], cats: [] }));
   if (L.gridFill) state.gridFill = L.gridFill;
@@ -7148,6 +7152,7 @@ function exportLayout() {
     smallRow: state.smallRow || [],
     smallWords: state.words.filter(isSmallWord),
     targetState: state.targetState || {},
+    pairs: state.pairs || [],
     builder: state.builder,
   };
   const text = JSON.stringify(layout, null, 1);
@@ -7296,8 +7301,14 @@ function renderBuilder(grid) {
       .filter(w => !state.hiddenWords[w]);
     // My Stuff: a list, one title to a row, A to Z - the same as menu mode shows it
     const asList = catAllowsPhrases(c);
-    if (asList || hasSmallStrip(c)) words = sortWords(words);     // Categories folders are A to Z too
+    if (asList || hasSmallStrip(c)) words = asList ? words.slice().sort(byLabel) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3);     // Categories folders are A to Z too
     words.forEach(w => {
+      if (!w) {       // the empty place beside a pair of opposites
+        const gap = document.createElement('div');
+        gap.style.height = rowH + 'px';
+        grid.appendChild(gap);
+        return;
+      }
       // stays on this page so more can be added; enter (or the X) goes back to the start
       // a linking word: it goes into the sentence, then opens the choice boards linked to it
       const leads = () => {
@@ -8383,11 +8394,101 @@ function numberValue(w) {
   }
   return total + cur;
 }
-function sortWords(list) {
+// Opposites sit side by side, one pair to a row (up, down / left, right). The app knows the common
+// ones, first word of each pair first; any two words can also be paired by hand from a word's menu.
+// A folder lays out this way when most of its words are in pairs, or a pair was made by hand.
+const OPPOSITES = [['UP', 'DOWN'], ['LEFT', 'RIGHT'], ['IN', 'OUT'], ['ON', 'OFF'], ['HOT', 'COLD'], ['BIG', 'SMALL'], ['BIG', 'LITTLE'],
+  ['OPEN', 'CLOSE'], ['OPEN', 'SHUT'], ['OPEN', 'CLOSED'], ['GO', 'STOP'], ['NOW', 'LATER'], ['LOUD', 'QUIET'], ['YES', 'NO'], ['FAST', 'SLOW'],
+  ['MORE', 'LESS'], ['MORE', 'ALL DONE'], ['HAPPY', 'SAD'], ['GOOD', 'BAD'], ['DAY', 'NIGHT'], ['LIGHT', 'DARK'], ['WET', 'DRY'], ['FULL', 'EMPTY'],
+  ['HARD', 'SOFT'], ['HARD', 'EASY'], ['HEAVY', 'LIGHT'], ['NEW', 'OLD'], ['YOUNG', 'OLD'], ['TALL', 'SHORT'], ['LONG', 'SHORT'], ['HIGH', 'LOW'],
+  ['NEAR', 'FAR'], ['HERE', 'THERE'], ['FRONT', 'BACK'], ['TOP', 'BOTTOM'], ['OVER', 'UNDER'], ['ABOVE', 'BELOW'], ['INSIDE', 'OUTSIDE'],
+  ['BEFORE', 'AFTER'], ['FIRST', 'LAST'], ['START', 'FINISH'], ['START', 'END'], ['BEGIN', 'END'], ['PUSH', 'PULL'], ['GIVE', 'TAKE'],
+  ['COME', 'GO'], ['SIT', 'STAND'], ['ASLEEP', 'AWAKE'], ['SLEEP', 'WAKE'], ['CLEAN', 'DIRTY'], ['SAME', 'DIFFERENT'], ['RIGHT', 'WRONG'],
+  ['TRUE', 'FALSE'], ['EARLY', 'LATE'], ['WIN', 'LOSE'], ['LIKE', 'DISLIKE'], ['LOVE', 'HATE'], ['HELLO', 'GOODBYE'], ['HI', 'BYE'],
+  ['BOY', 'GIRL'], ['MINE', 'YOURS'], ['ALWAYS', 'NEVER'], ['ALL', 'NONE'], ['WITH', 'WITHOUT'], ['THICK', 'THIN'], ['WIDE', 'NARROW'],
+  ['STRONG', 'WEAK'], ['RICH', 'POOR'], ['SAFE', 'DANGEROUS'], ['HUNGRY', 'FULL'], ['SICK', 'WELL'], ['WARM', 'COOL'], ['TOGETHER', 'APART'],
+  ['FORWARD', 'BACKWARD'], ['FORWARDS', 'BACKWARDS'], ['NORTH', 'SOUTH'], ['EAST', 'WEST'], ['AWAY', 'BACK'], ['FIND', 'LOSE'], ['BUY', 'SELL']];
+const SEQUENCES = [
+  ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
+  ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'],
+  ['SPRING', 'SUMMER', 'FALL', 'AUTUMN', 'WINTER'],
+  ['MORNING', 'NOON', 'AFTERNOON', 'EVENING', 'NIGHT', 'MIDNIGHT'],
+  ['BREAKFAST', 'LUNCH', 'SNACK', 'DINNER', 'SUPPER', 'DESSERT'],
+  ['YESTERDAY', 'TODAY', 'TONIGHT', 'TOMORROW'],
+  ['BEFORE', 'NOW', 'SOON', 'LATER', 'AFTER'],
+  ['FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH', 'NINTH', 'TENTH', 'NEXT', 'THEN', 'LAST'],
+  ['TINY', 'SMALL', 'LITTLE', 'MEDIUM', 'BIG', 'LARGE', 'HUGE', 'GIANT'],
+  ['NONE', 'A LITTLE', 'SOME', 'A LOT', 'LOTS', 'MOST', 'ALL'],
+  ['NEVER', 'SOMETIMES', 'OFTEN', 'ALWAYS'],
+  ['COLD', 'COOL', 'WARM', 'HOT'],
+  ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'],
+];
+function wordPairs(list) {
+  const left = list.filter(w => !isPunct(w));
+  const out = [];
+  const take = (a, b) => { out.push([a, b]); [a, b].forEach(w => left.splice(left.indexOf(w), 1)); };
+  let byHand = false;
+  (state.pairs || []).forEach(([a, b]) => { if (left.includes(a) && left.includes(b) && a !== b) { take(a, b); byHand = true; } });
+  OPPOSITES.forEach(([a, b]) => { if (left.includes(a) && left.includes(b)) take(a, b); });
+  // pairs come in the order their words were added to the folder
+  const at = pr => Math.min(list.indexOf(pr[0]), list.indexOf(pr[1]));
+  out.sort((x, y) => at(x) - at(y));
+  return { pairs: out, rest: left, byHand };
+}
+function pairOf(word, list) {
+  const pr = wordPairs(list).pairs.find(x => x.includes(word));
+  return pr ? pr[pr[0] === word ? 1 : 0] : null;
+}
+function sortWords(list, cols) {
+  const real = list.filter(w => !isPunct(w));
   const nums = list.filter(w => numberValue(w) !== null);
-  if (!nums.length || nums.length * 2 < list.filter(w => !isPunct(w)).length) return list.slice().sort(byLabel);
-  return nums.sort((a, b) => numberValue(a) - numberValue(b) || byLabel(a, b))
-    .concat(list.filter(w => numberValue(w) === null).sort(byLabel));
+  if (nums.length && nums.length * 2 >= real.length) {
+    return nums.sort((a, b) => numberValue(a) - numberValue(b) || byLabel(a, b))
+      .concat(list.filter(w => numberValue(w) === null).sort(byLabel));
+  }
+  // words with a set order of their own (days, months, sizes ...) keep it
+  const seq = SEQUENCES.map(q => q.filter(w => list.includes(w))).sort((a, b) => b.length - a.length)[0];
+  if (seq && seq.length >= 3 && seq.length * 2 >= real.length) {
+    return seq.concat(list.filter(w => !seq.includes(w)).sort(byLabel));
+  }
+  const pw = wordPairs(list);
+  if (pw.pairs.length && (pw.byHand || pw.pairs.length * 4 >= real.length)) {
+    const n = Math.max(2, cols || 3);
+    const out = [];
+    pw.pairs.forEach(pr => { out.push(pr[0], pr[1]); for (let i = 2; i < n; i++) out.push(null); });
+    const rest = pw.rest.concat(list.filter(isPunct)).sort(byLabel);
+    if (!rest.length) while (out.length && !out[out.length - 1]) out.pop();
+    return out.concat(rest);
+  }
+  return list.slice().sort(byLabel);
+}
+// In a word's menu: pair it with its opposite, or split a pair made by hand
+function pairBtns(body, word, cat) {
+  const list = (cat.words || []).filter(w => !state.hiddenWords[w]);
+  const mate = pairOf(word, list);
+  const mine = (state.pairs || []).find(x => x.includes(word) && list.includes(x[0]) && list.includes(x[1]));
+  body.appendChild(sheetBtn(mate ? 'Paired with "' + bankLabel(mate) + '" (change)' : 'Pair with its opposite', '', () => openWordSheet(b2 => {
+    sheetTitle(b2, 'The opposite of "' + bankLabel(word) + '"');
+    const box = document.createElement('div');
+    box.className = 'pick-list';
+    b2.appendChild(box);
+    list.filter(w => w !== word && !isPunct(w)).sort(byLabel).forEach(w => {
+      const r = document.createElement('button');
+      r.className = 'pick-row' + (w === mate ? ' on' : '');
+      r.textContent = (w === mate ? '\u2713  ' : '') + bankLabel(w);
+      r.addEventListener('click', () => {
+        state.pairs = (state.pairs || []).filter(x => !x.includes(word) && !x.includes(w));
+        state.pairs.push([word, w]);
+        save(); closeWordSheet(); renderHome(true);
+      });
+      box.appendChild(r);
+    });
+    if (mine) b2.appendChild(sheetBtn('Unpair', 'danger', () => {
+      state.pairs = state.pairs.filter(x => x !== mine);
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    b2.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  })));
 }
 function byLabel(a, b) { return bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' }); }
 // One word of a My Stuff folder as a full-width row
@@ -8423,7 +8524,7 @@ function renderSlotGrid(grid, cat, folders) {
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
   // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
   const alpha = arrange && !listMode && hasSmallStrip(cat);
-  const slots = listMode ? [] : alpha ? sortWords(words) : arrange ? slotsFor(cat, words, cols) : words;
+  const slots = listMode ? [] : alpha ? sortWords(words, cols) : arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   // Categories folders: group tiles (and the ghost tile to add one) sit in their own rows at the top,
   // and the words start on the row after, so there is a clear divide between the two
@@ -9125,6 +9226,7 @@ function openWordActions(word, cat, extra) {
     const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
+    if (hasSmallStrip(cat) && !cat.smallSec) pairBtns(body, word, cat);
     deleteWordBtns(body, word, cat);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
     const n = document.createElement('div');
@@ -10300,6 +10402,7 @@ function wipeWord(word) {
     Object.values(state.builder.words || {}).forEach(clean);
     if (state.builder.words) delete state.builder.words[word];
   }
+  state.pairs = (state.pairs || []).filter(x => !x.includes(word));
   ['wordCase', 'keptPhrases', 'targetState', 'recentsHidden', 'smallSet'].forEach(k => { if (state[k]) delete state[k][word]; });
   for (let i = homePhrase.length - 1; i >= 0; i--) if (homePhrase[i] === word) homePhrase.splice(i, 1);
   deleteWordEverywhere(word);
