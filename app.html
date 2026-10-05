@@ -2312,7 +2312,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 232 - 5 Oct';
+const BUILD = 'build 233 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6581,6 +6581,7 @@ function renderHome(reset) {
   linkWordCache = null;
   const grid = document.getElementById('homeGrid');
   const cat = currentCat();
+  if (!cat || state.builderMode || cat.id !== listPageShown) listPageShown = null;     // that page of groups has been left
   if (reset) {
     renderPhraseBar();
     renderBuilderBar();
@@ -8271,6 +8272,7 @@ function tidyMyStuff() {
 // ---- My Stuff lists: titles sit under group headings that open and close ----
 // A folder inside My Stuff always has at least one heading; My Stuff itself only once it holds words.
 // A page that shows folder tiles never has headings: they belong inside the folders, on the pages of titles.
+let listPageShown = null;     // the page of groups on screen, so its groups are only closed on arrival
 function usesGroups(cat) {
   if (cat && cat.target) return true;        // the targets page is a list with groups too
   if (!cat || !catAllowsPhrases(cat) || !cat.parent) return false;
@@ -8703,6 +8705,9 @@ function renderSlotGrid(grid, cat, folders) {
   const off = (alpha && head) ? Math.ceil((head + 1) / cols) * cols : head;
   const lastRow = Math.ceil((off + slots.length + (alpha ? (head ? 1 : 2) : 0)) / cols);
   const grouped = listMode && usesGroups(cat);
+  // arriving on a page of groups, every group starts closed; one opened here stays open until the page is left
+  if (grouped && listPageShown !== cat.id) listGroups(cat).forEach(g => { g.open = false; });
+  listPageShown = grouped ? cat.id : null;
   const totalRows = listMode ? (head ? Math.ceil(head / cols) : ((listWords.length || grouped) ? 0 : 1))
                   : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
