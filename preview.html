@@ -2337,7 +2337,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 241 - 5 Oct';
+const BUILD = 'build 242 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7507,7 +7507,7 @@ function renderBuilder(grid) {
       .filter(w => !state.hiddenWords[w]);
     // My Stuff: a list, one title to a row, A to Z - the same as menu mode shows it
     const asList = catAllowsPhrases(c);
-    if (asList || hasSmallStrip(c)) words = asList ? words.slice().sort(byLabel) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3);     // Categories folders are A to Z too
+    if (asList || hasSmallStrip(c)) words = asList ? words.slice().sort(byLabel) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3, inChoices(c));     // Categories folders are A to Z too
     words.forEach(w => {
       if (!w) {       // the empty place beside a pair of opposites
         const gap = document.createElement('div');
@@ -8710,6 +8710,9 @@ const SEQUENCES = [
   ['MORNING', 'NOON', 'AFTERNOON', 'EVENING', 'NIGHT', 'MIDNIGHT'],
   ['BREAKFAST', 'LUNCH', 'SNACK', 'DINNER', 'SUPPER', 'DESSERT'],
   ['YESTERDAY', 'TODAY', 'TONIGHT', 'TOMORROW'],
+  ['LAST WEEK', 'THIS WEEK', 'NEXT WEEK'], ['LAST YEAR', 'THIS YEAR', 'NEXT YEAR'], ['PAST', 'PRESENT', 'FUTURE'],
+  ['BEGINNING', 'START', 'MIDDLE', 'END', 'FINISH'], ['EARLY', 'ON TIME', 'LATE'], ['DAYTIME', 'NIGHTTIME'], ['WEEKDAY', 'WEEKEND'],
+  ['ALREADY', 'NOT YET'], ['WAIT', 'READY'],
   ['BEFORE', 'NOW', 'SOON', 'LATER', 'AFTER'],
   ['FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH', 'NINTH', 'TENTH', 'NEXT', 'THEN', 'LAST'],
   ['TINY', 'SMALL', 'LITTLE', 'MEDIUM', 'BIG', 'LARGE', 'HUGE', 'GIANT'],
@@ -8746,7 +8749,7 @@ function pairOf(word, list) {
 // for sets - a run with an order of its own (none, some, all), a run of numbers, a pair of
 // opposites (more, less) - and when most of the folder is in sets, each set starts a row of its
 // own, in the order the sets were added; whatever is left follows, A to Z. Else plain A to Z.
-function sortWords(list, cols) {
+function sortWords(list, cols, always) {
   const real = list.filter(w => !isPunct(w));
   const nums = list.filter(w => numberValue(w) !== null).sort((a, b) => numberValue(a) - numberValue(b) || byLabel(a, b));
   if (nums.length && nums.length * 2 >= real.length) {
@@ -8761,15 +8764,16 @@ function sortWords(list, cols) {
   hand.forEach(pr => { if (pr.every(w => left.includes(w))) { handSets.push(pr.slice(0, 2)); left = left.filter(w => !pr.includes(w)); } });
   for (;;) {
     const best = SEQUENCES.map(q => q.filter(w => left.includes(w))).sort((a, b) => b.length - a.length)[0];
-    if (!best || best.length < 3) break;
+    if (!best || best.length < (always ? 2 : 3)) break;      // inside Choices two words of a run are enough
     use(best);
   }
   const run = nums.filter(w => left.includes(w));
-  if (run.length >= 3) use(run);
+  if (run.length >= (always ? 2 : 3)) use(run);
   OPPOSITES.forEach(([a, b]) => { if (left.includes(a) && left.includes(b)) use([a, b]); });
   handSets.forEach(pr => sets.push(pr));
   const inSets = sets.reduce((n, x) => n + x.length, 0);
-  if (!sets.length || !(handSets.length || inSets * 2 >= real.length)) return list.slice().sort(byLabel);
+  // inside Choices every folder is laid out by its sets, however few of its words are in one
+  if (!sets.length || !(always || handSets.length || inSets * 2 >= real.length)) return list.slice().sort(byLabel);
   const at = set => Math.min(...set.map(w => list.indexOf(w)));
   sets.sort((x, y) => at(x) - at(y));
   const n = Math.max(2, cols || 3);
@@ -8841,7 +8845,7 @@ function renderSlotGrid(grid, cat, folders) {
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
   // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
   const alpha = arrange && !listMode && hasSmallStrip(cat);
-  const slots = listMode ? [] : alpha ? sortWords(words, cols) : arrange ? slotsFor(cat, words, cols) : words;
+  const slots = listMode ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
   const head = folders.length;                      // sub-folders come first
   // Categories folders: group tiles (and the ghost tile to add one) sit in their own rows at the top,
   // and the words start on the row after, so there is a clear divide between the two
