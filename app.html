@@ -497,6 +497,7 @@
   .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
   .list-ghost { position: fixed; z-index: 500; pointer-events: none; opacity: 0.9; outline: 5px solid var(--green); outline-offset: -2px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin: 0 !important; }
   .home-card.edit-tile { position: relative; }
+  .home-card.list-row.edit-tile .edit-tick { top: 50%; transform: translateY(-50%); right: 20px; }
   .edit-tick { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; background: var(--green); color: #fff;
     font-size: 22px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
   .home-card.edit-off { background: rgba(255,255,255,0.35); box-shadow: none; }
@@ -2350,7 +2351,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 260 - 5 Oct';
+const BUILD = 'build 261 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8547,6 +8548,26 @@ function layoutSwitchBtn(cat) {
     save(); closeWordSheet(); renderHome(true);
   });
 }
+// Edit page on a My Stuff page (list or tiles): every title with its tick, the hidden ones below
+function editTitles(cat) {
+  const all = (cat.words || []).slice().sort(byLabel);
+  return all.filter(w => !state.hiddenWords[w]).map(w => [w, true]).concat(all.filter(w => state.hiddenWords[w]).map(w => [w, false]));
+}
+function editToggle(grid, card, w, on) {
+  card.classList.add('edit-tile');
+  if (!on) card.classList.add('edit-off');
+  card.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const tick = document.createElement('span');
+  tick.className = 'edit-tick'; tick.textContent = on ? '\u2713' : '';
+  card.appendChild(tick);
+  card.addEventListener('click', () => {
+    if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
+    buzz(10); save();
+    const top = grid.scrollTop;
+    renderHome(true);
+    grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
+  });
+}
 function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   grid.style.gridAutoRows = 'auto';
   const groups = listGroups(cat);
@@ -8584,6 +8605,16 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
     put(card);
   };
   const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
+  if (pageEdit === cat.id) {
+    let gap = false;
+    editTitles(cat).forEach(([w, on]) => {
+      if (!on && !gap) { gap = true; while (i % cols) i++; }      // the hidden ones start a row of their own
+      const card = mk(bankLabel(w));
+      editToggle(grid, card, w, on);
+      put(card);
+    });
+    return;
+  }
   if (inGroup) {
     // a group's own page: its titles as tiles, in the order they were put in
     inGroup.words.filter(w => listWords.includes(w)).forEach(titleTile);
@@ -8620,6 +8651,7 @@ function openGroupHead(cat, group) {
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
     if (!cat.target) body.appendChild(layoutSwitchBtn(cat));
+    if (!cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; tileGroup = null; closeWordSheet(); renderHome(true); }));
     body.appendChild(sheetBtn('Remove this heading', 'danger', () => {
       if (tileGroup && tileGroup.group === group) tileGroup = null;
       // its titles are kept: they go back to being ungrouped, above the groups
@@ -8655,6 +8687,7 @@ function openTitleActions(word, cat, extra) {
     if (cat.target) body.appendChild(targetPauseBtn(word));
     if (extra) extra(body);
     if (!cat.target && usesGroups(cat) && !state.builderMode) body.appendChild(layoutSwitchBtn(cat));
+    if (!cat.target && !state.builderMode) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; tileGroup = null; closeWordSheet(); renderHome(true); }));
     const groups = usesGroups(cat) ? listGroups(cat) : [];
     if (groups.length) {
       const h = document.createElement('div');
@@ -8863,6 +8896,14 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     } } : null);
     return row;
   };
+  if (pageEdit === cat.id) {
+    editTitles(cat).forEach(([w, on]) => {
+      const row = makeListRow(w, rowH, base);
+      editToggle(grid, row, w, on);
+      put(row);
+    });
+    return;
+  }
   if (!usesGroups(cat)) { listWords.forEach(w => put(wordRow(w))); return; }
   const addRow = (g) => {
     // a greyed-out row: tap it to add a title here
@@ -9177,7 +9218,7 @@ function renderSlotGrid(grid, cat, folders) {
   // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
   // are showing (which close up, still in their order) and stays there, greyed, to be ticked again.
   const editingF = !!cat && pageEdit === cat.id;
-  const editing = alpha && editingF;
+  const editing = (alpha || (!!cat && !!cat.small && !listMode)) && editingF;
   // the same for the folder tiles of a choice board: the hidden folders show again, greyed, on the
   // rows below the ones that are showing
   if (editingF) {
@@ -9418,7 +9459,7 @@ function renderSlotGrid(grid, cat, folders) {
   for (let i = 0; off + i < totalRows * cols; i++) {
     const w = slots[i];
     if (boardOnly && i === 0) continue;       // that place holds the grey add tile
-    if (chatAdd && i === slots.length) { place(ghostWord(), off + i); continue; }
+    if (chatAdd && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
     if (alpha && !editing && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
@@ -9987,7 +10028,7 @@ function openWordActions(word, cat, extra) {
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
     if (hasSmallStrip(cat) && !cat.smallSec) pairBtns(body, word, cat);
-    if (hasSmallStrip(cat) && !cat.smallSec) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; closeWordSheet(); renderHome(true); }));
+    if (!cat.smallSec && !cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; closeWordSheet(); renderHome(true); }));
     deleteWordBtns(body, word, cat);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
     const n = document.createElement('div');
