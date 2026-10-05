@@ -2352,7 +2352,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 265 - 5 Oct';
+const BUILD = 'build 266 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7549,8 +7549,10 @@ function builderHere() {
 let builderEdit = null;
 function builderPageKey() {
   const here = builderHere();
-  if (here && 'cat' in here) return 'c' + here.cat;
-  return 'n:' + builderPath.map(p => 'cat' in p ? 'c' + p.cat : p.label).join('/');
+  const step = p => 'cat' in p ? 'c' + p.cat + (p.via ? ':' + p.via : '') : p.label;
+  // a folder's page is told apart by how it was reached: Actions after "I" is not Actions after "you"
+  if (here && 'cat' in here) return 'c' + here.cat + '@' + builderPath.slice(0, -1).map(step).concat(here.via ? [here.via] : []).join('/');
+  return 'n:' + builderPath.map(step).join('/');
 }
 function builderHidden(key) {
   if (!state.builderHide) state.builderHide = {};
@@ -7564,7 +7566,8 @@ function builderHidden(key) {
       if (Object.keys(h).length) state.builderHide['c' + c.id] = Object.assign(h, state.builderHide['c' + c.id] || {});
     });
   }
-  return state.builderHide[key] || {};
+  // a page not edited yet starts from the folder's general list
+  return state.builderHide[key] || state.builderHide[key.split('@')[0]] || {};
 }
 function startBuilderEdit() { builderEdit = builderPageKey(); closeWordSheet(); buzz(10); renderHome(true); }
 function builderEditBtn() { return sheetBtn('Edit this page (show or hide tiles)', '', startBuilderEdit); }
@@ -7597,7 +7600,7 @@ function renderBuilder(grid) {
     const on = !hid[id];
     if (!on) hiddenN++;
     editToggle(grid, card, null, on, () => {
-      const h = state.builderHide[bKey] || (state.builderHide[bKey] = {});
+      const h = state.builderHide[bKey] || (state.builderHide[bKey] = Object.assign({}, hid));
       if (on) h[id] = 1; else delete h[id];
     });
   };
