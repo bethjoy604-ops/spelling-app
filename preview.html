@@ -2306,7 +2306,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 227 - 5 Oct';
+const BUILD = 'build 228 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6915,17 +6915,73 @@ const FOLLOW_BY_WORD = {
   AND: ['THE', 'MY', 'A', 'I', 'YOU', 'MORE'],
 };
 const FOLLOW_END = ['AND', 'PLEASE', 'NOW', 'AGAIN', 'LATER', 'IS', '.', '?', '!'];
+// What kind of words a folder holds, going by its name or the folder it sits in (Animals is in
+// Things, Direction is in Choices). The kind decides the small words offered with it.
+const KIND_NAMES = [
+  [/^(food|foods|drinks?|snacks?|meals?)$/, 'food'], [/^(people|family|friends|person)$/, 'people'], [/^places?$/, 'places'],
+  [/^feelings?$/, 'feelings'], [/^(health|body)$/, 'health'], [/^choices$/, 'describe'], [/^activit(y|ies)$/, 'activity'],
+  [/^things?$/, 'things'], [/^actions?$/, 'action'],
+];
+function kindOfCat(cat) {
+  let x = cat, g = 0;
+  while (x && g++ < 20) {
+    if (x.linkers) return 'action';
+    const n = x.name.trim().toLowerCase();
+    const hit = KIND_NAMES.find(k => k[0].test(n));
+    if (hit && !x.phrases) return hit[1];
+    if (x.phrases) return 'title';
+    x = x.parent ? catById(x.parent) : null;
+  }
+  return '';
+}
+function kindOfWord(w) {
+  const kinds = categoriesOf(w).filter(c => !c.target && !c.hidden).map(kindOfCat).filter(Boolean);
+  return kinds.includes('action') ? 'action' : (kinds.find(k => k !== 'title') || kinds[0] || '');
+}
+// after a word of each kind ...
+const FOLLOW_KIND = {
+  action: FOLLOW_ACTION,
+  food: ['PLEASE', 'AND', 'MORE', 'NOW', 'AGAIN', 'IS', '.'],
+  people: ['IS', 'AND', 'CAN', 'HELP', 'COME', 'LOOK', 'PLEASE', '.'],
+  places: ['PLEASE', 'NOW', 'AND', 'LATER', 'AGAIN', 'WITH', '.', '?'],
+  activity: ['PLEASE', 'NOW', 'AND', 'AGAIN', 'WITH', 'LATER', '.'],
+  feelings: ['AND', 'NOW', 'BECAUSE', 'ABOUT', 'TODAY', '.', '!'],
+  health: ['HURTS', 'IS', 'AND', 'PLEASE', 'NOW', 'HELP', '.'],
+  things: ['PLEASE', 'AND', 'IS', 'AGAIN', 'NOW', 'MORE', '.'],
+  describe: ['AND', 'PLEASE', 'NOW', 'AGAIN', 'ONE', '.'],
+  title: ['PLEASE', 'AGAIN', 'NOW', 'AND', 'MORE', '.'],
+};
+// ... and before anything is chosen, the words a sentence on that kind of page tends to start with
+const PAGE_START = {
+  action: ['I', 'WANT', 'TO', 'CAN', 'YOU', 'NOT'],
+  food: ['I', 'WANT', 'MORE', 'EAT', 'SOME', 'THE'],
+  people: ['I', 'WANT', 'MY', 'WITH', 'SEE', 'WHERE'],
+  places: ['I', 'WANT', 'GO', 'TO', 'THE', 'MY'],
+  activity: ['I', 'WANT', 'TO', 'GO', 'MORE', 'LIKE'],
+  feelings: ['I', 'AM', 'FEEL', 'NOT', 'VERY', 'SO'],
+  health: ['I', 'NEED', 'MY', 'HURTS', 'HELP', 'FEEL'],
+  things: ['I', 'WANT', 'MY', 'THE', 'THAT', 'MORE'],
+  describe: ['IT', 'IS', 'TOO', 'NOT', 'VERY', 'MORE'],
+};
+function startWords(cat, usual) {
+  const out = [];
+  (PAGE_START[kindOfCat(cat)] || []).concat(usual || []).forEach(w => { if (!state.hiddenWords[w] && !out.includes(w)) out.push(w); });
+  return punctLast(out.slice(0, 6));
+}
 function followWords(word, usual) {
   const out = [];
-  const add = w => { if (w && w !== word && state.words.includes(w) && !state.hiddenWords[w] && !out.includes(w)) out.push(w); };
+  // the app's own sets may offer a word that is not in the vocabulary yet; it joins when it is used
+  let own = false;
+  const add = w => { if (w && w !== word && (own || state.words.includes(w)) && !state.hiddenWords[w] && !out.includes(w)) out.push(w); };
   const node = state.builder && state.builder.words ? state.builder.words[word] : null;
   ((node && node.small) || []).forEach(add);
   // what has come next before, most often first (two times or more, so one-offs do not take over)
   const seen = {};
   (state.builderLog || []).forEach(e => (e.words || []).forEach((w, i) => { if (w === word && e.words[i + 1]) seen[e.words[i + 1]] = (seen[e.words[i + 1]] || 0) + 1; }));
   Object.keys(seen).filter(w => seen[w] >= 2).sort((a, b) => seen[b] - seen[a]).slice(0, 4).forEach(add);
-  const isAction = categoriesOf(word).some(c => c.linkers);
-  (FOLLOW_BY_WORD[word] || (isAction ? FOLLOW_ACTION : isSmallWord(word) ? [] : FOLLOW_END)).forEach(add);
+  own = true;
+  (FOLLOW_BY_WORD[word] || FOLLOW_KIND[kindOfWord(word)] || (isSmallWord(word) ? [] : FOLLOW_END)).forEach(add);
+  own = false;
   (usual || []).forEach(add);
   return punctLast(out.slice(0, 6));
 }
@@ -6969,6 +7025,8 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // with a word in the bar, the row turns to the words most likely to come after it
   const after = homePhrase.length ? followWords(homePhrase[homePhrase.length - 1], [].concat(...shown)) : null;
   if (after && after.length) shown = [after];
+  // a Categories folder with no row chosen for it starts with the words that suit its kind of page
+  else if (!homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row) && PAGE_START[kindOfCat(owner)]) shown = [startWords(owner, [].concat(...shown))];
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
     const hold = edit;
@@ -6997,6 +7055,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   shown.forEach((row, r) => row.forEach((w, i) => {
     edit = () => editRow(r);
     const b = mk(sentenceLabel(w), () => {      // the blue row is always small letters (I and names aside)
+      if (!state.words.includes(w)) { state.words.push(w); if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 }; save(); }
       homePhrase.push(w);
       warmSpeech();
       speakWord(w, 0.95);
