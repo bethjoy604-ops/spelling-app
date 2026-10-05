@@ -2299,7 +2299,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 218 - 5 Oct';
+const BUILD = 'build 219 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7358,6 +7358,7 @@ function renderBuilder(grid) {
           sheetTitle(body, 'This word', w);
           body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(w)));
           body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')));
+          deleteWordBtns(body, w, c);
           body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
         }));
       count++;
@@ -9097,6 +9098,7 @@ function openWordActions(word, cat, extra) {
     const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
+    deleteWordBtns(body, word, cat);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
     const n = document.createElement('div');
     n.className = 'help-note'; n.style.marginTop = '12px';
@@ -10252,6 +10254,45 @@ document.getElementById('errorPhraseRec').addEventListener('click', async () => 
 const BANK_FILTERS = { all: 'All', none: 'No group', dup: 'In 2+ groups' };
 let bankFilter = 'all';
 
+// Delete buttons for a word's hold menu. In a folder: take it out of just this folder (when it is
+// in others too), or delete it from the whole app - folders, groups, small words rows, builder pages.
+function dropWordFrom(word, cat) {
+  cat.words = (cat.words || []).filter(w => w !== word);
+  if (cat.slots) cat.slots = cat.slots.map(w => w === word ? null : w);
+  (cat.groups || []).forEach(g => { g.words = (g.words || []).filter(w => w !== word); });
+}
+function wipeWord(word) {
+  state.categories.forEach(c => {
+    dropWordFrom(word, c);
+    if (c.row) c.row = c.row.filter(w => w !== word);
+  });
+  state.smallRow = (state.smallRow || []).filter(w => w !== word);
+  const clean = n => { if (n.small) n.small = n.small.filter(w => w !== word); (n.kids || []).forEach(clean); };
+  if (state.builder) {
+    clean(state.builder);
+    Object.values(state.builder.words || {}).forEach(clean);
+    if (state.builder.words) delete state.builder.words[word];
+  }
+  ['wordCase', 'keptPhrases', 'targetState', 'recentsHidden', 'smallSet'].forEach(k => { if (state[k]) delete state[k][word]; });
+  for (let i = homePhrase.length - 1; i >= 0; i--) if (homePhrase[i] === word) homePhrase.splice(i, 1);
+  deleteWordEverywhere(word);
+  linkWordCache = null;
+}
+function deleteWordBtns(body, word, cat) {
+  const finish = () => { save(); closeWordSheet(); renderPhraseBar(); renderHome(true); };
+  const others = categoriesOf(word).filter(c => c !== cat);
+  if (cat && others.length) {
+    const b = sheetBtn('Remove from ' + cat.name + ' only', 'danger', () => { dropWordFrom(word, cat); finish(); });
+    b.style.marginTop = '10px';
+    body.appendChild(b);
+  }
+  const d = sheetBtn(others.length ? 'Delete this word everywhere' : 'Delete this word', 'danger', () => {
+    if (!confirm('Delete "' + bankLabel(word) + '"' + (others.length ? ' from every folder (' + categoriesOf(word).map(c => c.name).join(', ') + ')' : '') + '?\n\nThis cannot be undone.')) return;
+    wipeWord(word); finish();
+  });
+  if (!(cat && others.length)) d.style.marginTop = '10px';
+  body.appendChild(d);
+}
 function deleteWordEverywhere(word) {
   syncTombWord(word);
   state.words = state.words.filter(w => w !== word);
