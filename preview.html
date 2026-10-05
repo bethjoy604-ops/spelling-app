@@ -652,7 +652,7 @@
   }
   /* with the editing tools out the bar is full: the tabs sit closer so every one still shows */
   .home-row.tools .folder-strip-row { gap: 5px; }
-  .home-row.tools .folder-strip-row .cat-tile { padding: 0 8px; }
+  .home-row.tools .folder-strip-row .cat-tile { padding: 0 6px; }
   .home-row.tools { gap: 6px; }
   .folder-strip-row .cat-tile.plain { box-shadow: none; background: var(--surface); color: var(--ink); }
   .cat-tile {
@@ -2312,7 +2312,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 231 - 5 Oct';
+const BUILD = 'build 232 - 5 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6592,9 +6592,9 @@ function renderHome(reset) {
     const inSub = !state.builderMode && homePath.length > 1;
     document.getElementById('homeBackBtn').style.display = inSub ? '' : 'none';
     // on the targets page a gear sits beside the plus: the prompting options for practising them
-    document.getElementById('targetGearBtn').style.display = (state.homeModesOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
+    document.getElementById('targetGearBtn').style.display = (state.iconsOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
-    document.getElementById('homeModesToggle').style.display = deep ? 'none' : '';
+    document.getElementById('homeModesToggle').style.display = 'none';     // retired: everything it opened is in the pop-out on the right
     document.getElementById('homeSettingsBtn').style.display = '';     // it shows with the other switches, in the pop-out on the right
     { const tb = document.getElementById('homeTargetBtn'); const on = !state.builderMode && !!cat && !!cat.target; tb.style.display = newFolder() ? '' : 'none'; tb.classList.toggle('on', on); tb.setAttribute('aria-pressed', on ? 'true' : 'false'); }
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
@@ -6636,7 +6636,7 @@ function renderHome(reset) {
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     // the plus ends the menu bar while a folder is open: it makes a new folder inside it
     document.getElementById('homeAddFolderBtn').style.display =
-      (state.homeModesOpen && state.railOpen && cat && !cat.rule) ? '' : 'none';
+      (state.iconsOpen && state.railOpen && cat && !cat.rule) ? '' : 'none';
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
@@ -7357,7 +7357,7 @@ function renderBuilderBar() {
   const here = builderHere();
   document.getElementById('builderBackBtn').style.display = (on && builderPath.length) ? '' : 'none';
   // every page has the plus: a builder page takes words and folder links, a folder takes words and sub-folders
-  document.getElementById('builderAddBtn').style.display = (on && here && state.homeModesOpen) ? '' : 'none';
+  document.getElementById('builderAddBtn').style.display = (on && here && state.iconsOpen) ? '' : 'none';
 }
 function renderBuilder(grid) {
   if (!state.builder) state.builder = defaultBuilder();
