@@ -2412,7 +2412,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 328 - 6 Oct';
+const BUILD = 'build 329 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3177,7 +3177,7 @@ async function load() {
   // have been showing in, so nothing moves until one is dragged
   if (!state.groupOrderV1) {
     state.groupOrderV1 = true;
-    state.categories.forEach(c => (c.groups || []).forEach(g => { if (Array.isArray(g.words)) g.words.sort(byLabel); }));
+    state.categories.forEach(c => (c.groups || []).forEach(g => { if (Array.isArray(g.words)) sortAZ(g.words); }));
     save();
   }
   // One-time: on the menu bar My Stuff sits at the end, after Categories (an earlier build had
@@ -8366,7 +8366,7 @@ function renderBuilder(grid) {
     const stuff = catAllowsPhrases(c);
     const asTiles = stuff && tilesPage(c);
     const asList = stuff && !asTiles;
-    if (stuff || hasSmallStrip(c)) words = stuff ? words.slice().sort(byLabel) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3, inChoices(c));     // Categories folders are A to Z too
+    if (stuff || hasSmallStrip(c)) words = stuff ? sortAZ(words.slice()) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3, inChoices(c));     // Categories folders are A to Z too
     if (asTiles && !editing) {
       // groups are blue tiles that open onto their own titles, as on the menu-mode page
       const bGroups = listGroups(c);
@@ -9309,7 +9309,7 @@ function layoutSwitchBtn(cat) {
 }
 // Edit page on a My Stuff page (list or tiles): every title with its tick, the hidden ones below
 function editTitles(cat) {
-  const all = (cat.words || []).slice().sort(byLabel);
+  const all = sortAZ((cat.words || []).slice());
   return all.filter(w => !state.hiddenWords[w]).map(w => [w, true]).concat(all.filter(w => state.hiddenWords[w]).map(w => [w, false]));
 }
 function editToggle(grid, card, w, on, fn) {
@@ -9330,7 +9330,10 @@ function editToggle(grid, card, w, on, fn) {
 // Titles on a tiles page that are in no group: A to Z until they are dragged, then in the order set
 function looseSorted(cat, words) {
   const order = (cat.looseOrder || []).filter(w => words.includes(w));
-  return order.concat(words.filter(w => !order.includes(w)));
+  const rest = words.filter(w => !order.includes(w));
+  // loose number tiles count up; anything else keeps the order it came in
+  const nums = rest.filter(w => numberValue(w) !== null);
+  return order.concat(nums.length && nums.length * 2 >= rest.length ? sortAZ(rest) : rest);
 }
 function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   grid.style.gridAutoRows = 'auto';
@@ -9400,7 +9403,7 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
     // a group's own page: its titles as tiles, in the order they were put in
     // A to Z, until a tile is dragged: after that the group keeps the order it was given
     const shownG = inGroup.words.filter(w => listWords.includes(w));
-    if (!inGroup.custom) shownG.sort(byLabel);
+    if (!inGroup.custom) sortAZ(shownG);
     shownG.forEach(w => titleTile(w, shownG, l => { inGroup.words = l.concat(inGroup.words.filter(x => !l.includes(x))); inGroup.custom = true; }));
     ghost('+ title', () => askText('New title in ' + inGroup.name, 'Add', '', typed => addTitleTo(cat, inGroup, typed)));
     return;
@@ -9962,6 +9965,14 @@ function pairBtns(body, word, cat) {
     }));
     b2.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   })));
+}
+// A to Z, except that a list that is mostly numbers runs in counting order (one, two, three ... ten, eleven)
+function sortAZ(list) {
+  const nums = list.filter(w => numberValue(w) !== null);
+  if (!nums.length || nums.length * 2 < list.length) return list.sort(byLabel);
+  const out = nums.sort((a, b) => numberValue(a) - numberValue(b) || byLabel(a, b)).concat(list.filter(w => numberValue(w) === null).sort(byLabel));
+  list.splice(0, list.length, ...out);
+  return list;
 }
 function byLabel(a, b) { return bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' }); }
 // One word of a My Stuff folder as a full-width row
