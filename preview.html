@@ -2463,7 +2463,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 363 - 6 Oct';
+const BUILD = 'build 364 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7955,6 +7955,19 @@ function startWords(cat, usual) {
   (PAGE_START[kindOfCat(cat)] || PAGE_DEFAULT).concat(usual || []).forEach(w => { if (!state.hiddenWords[w] && !out.includes(w)) out.push(w); });
   return punctLast(out.slice(0, 6));
 }
+// Only the small words that belong after this very word: ones set or learned for it, and the app's
+// own list for it (hi -> there, you, everyone). No general filler.
+function followSpecific(word) {
+  const out = [];
+  const add = (w, own) => { if (w && w !== word && (own || state.words.includes(w)) && !state.hiddenWords[w] && !isPunct(w) && !out.includes(w)) out.push(w); };
+  const node = state.builder && state.builder.words ? state.builder.words[word] : null;
+  ((node && node.small) || []).forEach(w => add(w));
+  const seen = {};
+  (state.builderLog || []).forEach(e => (e.words || []).forEach((w, i) => { if (w === word && e.words[i + 1]) seen[e.words[i + 1]] = (seen[e.words[i + 1]] || 0) + 1; }));
+  Object.keys(seen).filter(w => seen[w] >= 2 && isSmallWord(w)).sort((a, b) => seen[b] - seen[a]).slice(0, 4).forEach(w => add(w));
+  (FOLLOW_BY_WORD[word] || []).forEach(w => add(w, true));
+  return out;
+}
 function followWords(word, usual) {
   const out = [];
   // the app's own sets may offer a word that is not in the vocabulary yet; it joins when it is used
@@ -8085,9 +8098,13 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     // the ones that usually follow the last word, then the page's own
     const mp = magicPhraseNow();
     const need = mp ? mp.phrase.filter((w, i) => !mp.used.includes(i)) : [];
+    // only the ones that really fit: what the sentence still needs, and what belongs after the last
+    // word. No padding out to six - the blue is as short as the words that make sense. (A word with
+    // nothing of its own falls back to the usual followers for its kind.)
+    const last = homePhrase[homePhrase.length - 1];
     const six = [];
-    need.concat([].concat(...shown), [].concat(...rows)).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
-    allSmallWords().forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
+    need.concat(followSpecific(last)).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
+    if (!six.length) followWords(last, []).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
     shown = [six.slice(0, 6)];
   }
   else {
@@ -8175,9 +8192,12 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       followKey = null; refreshSmallStrips();
     });
     strip.appendChild(m);
-    // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
-    const n = Math.min(6, words.length);
-    if (n < 6) { strip.style.setProperty('grid-template-columns', 'repeat(' + n + ', minmax(0, 1fr))', 'important'); strip.style.width = 'calc(' + (n / 6 * 100) + '% + 30px)'; strip.style.alignSelf = 'flex-start'; }
+  }
+  // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
+  if (gutter && words.length) {
+    const n = Math.min(6, words.length), plus = !!strip.querySelector('.strip-more');
+    if (!plus) strip.style.paddingRight = '18px';
+    if (n < 6) { strip.style.setProperty('grid-template-columns', 'repeat(' + n + ', minmax(0, 1fr))', 'important'); strip.style.width = 'calc(' + (n / 6 * 100) + '% + ' + (plus ? 40 : 30) + 'px)'; strip.style.alignSelf = 'flex-start'; }
   }
   return strip;
 }
@@ -11001,6 +11021,8 @@ function relatedRowSync() {
   if (!blue || !host.firstChild || !state.magicType || state.builderMode || !homePhrase.length || stripFull) return;
   const last = homePhrase[homePhrase.length - 1];
   if (relatedFor !== homePhrase.join(' ')) { relatedFor = homePhrase.join(' '); relatedFull = false; }
+  // (only for a word with a clear lead - go -> places, eat -> food, hi -> people - or a wanting word)
+  if (!MAGIC_WANTS.includes(last) && !Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(last))) return;
   const pool = magicNext(last, 18);
   if (!pool.length) return;
   const row = document.createElement('div');
