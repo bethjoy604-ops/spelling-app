@@ -513,7 +513,7 @@
   .home-card.library-tile { background: #e6e7ea; }
   .feed-group { align-self: start; background: #bfd8ff; border-radius: 20px; padding: 6px 12px 12px; display: flex; flex-direction: column; }
   .feed-group .feed-head { border: none; background: none; text-align: left; font-family: inherit; font-weight: 900; font-size: 17px; color: rgba(0,0,0,0.6);
-    height: 38px; padding: 0 8px; cursor: pointer; }
+    height: 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; cursor: pointer; }
   .feed-group .feed-head[aria-expanded="false"] { height: 44px; }
   .feed-group:has(.feed-head[aria-expanded="false"]) { padding-bottom: 6px; }
   .feed-tiles { display: grid; gap: 12px; }
@@ -2363,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 277 - 6 Oct';
+const BUILD = 'build 278 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9842,7 +9842,7 @@ function renderSlotGrid(grid, cat, folders) {
       // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
       const laid = sortWords(mine, cols, true);
       let n = laid.length; while (n > 0 && !laid[n - 1]) n--;
-      const span = Math.min(cols, Math.max(Math.min(2, cols), n));
+      const span = Math.min(cols, Math.max(1, n));      // one tile: a panel one tile wide
       sec.style.gridColumn = 'span ' + span;
       const hd = document.createElement('button');
       hd.className = 'feed-head';
