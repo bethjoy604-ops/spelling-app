@@ -2367,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 289 - 6 Oct';
+const BUILD = 'build 290 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2483,7 +2483,7 @@ const state = {
   promptTileOn: true,         // magnify the letter in the Target bar
   promptTileSize: 'large',    // small | med | large
   promptSize: 'large',        // small | med | large
-  promptVerbalOn: true,       // speak the next letter as a prompt
+  promptVerbalOn: false,      // speak the next letter as a prompt
   promptDelaySec: 0,          // 0-10s before any prompt appears
   helpMode: false,            // prompts wait until the star is pressed
   helpDelaySec: 3,            // after the star: wait before each following letter is prompted
@@ -2527,6 +2527,7 @@ const state = {
   suggestOn: true,            // the magnifying glass: off = typing in the bar brings up no matching words
   soundOn: true,              // the speaker icon: off = nothing is said aloud, anywhere
   chatLog: [],                // the conversation: { text, replies: [], t } per message, oldest first
+  modesV2: false,             // the one-time move of every device onto the starting settings of 6 Oct
   modesV1: false,             // the one-time return to the starting switches: menu on; builder, speak and chat off
   chatMode: false,            // home enter key: on = open the chat page with the message on top
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
@@ -2580,7 +2581,7 @@ const state = {
   bannerSize: 'med',          // target/prompt bar above the typing bar
 
   // ===== Error correction =====
-  errorFeedback: 'wrong',     // none | phrase | wrong | correct
+  errorFeedback: 'none',      // none | phrase | wrong | correct
   errorPhrase: DEFAULT_ERROR_PHRASE, // spoken when errorFeedback is 'phrase' (a recording wins)
   errorPromptAction: 'now',   // now | restart | none
   errorLetterMode: 'flash',   // keep | flash | remove — what happens to the wrong letter
@@ -2665,7 +2666,7 @@ async function load() {
         promptTileOn: saved.promptTileOn ?? true,
         promptTileSize: SIZE_STEPS.includes(saved.promptTileSize) ? saved.promptTileSize : 'large',
         promptSize: SIZE_STEPS.includes(saved.promptSize) ? saved.promptSize : 'large',
-        promptVerbalOn: saved.promptVerbalOn ?? true,
+        promptVerbalOn: saved.promptVerbalOn ?? false,
         promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
         helpMode: saved.helpMode ?? false,
         helpDelaySec: Math.min(10, Math.max(0, saved.helpDelaySec ?? 3)),
@@ -2718,6 +2719,7 @@ async function load() {
         soundOn: saved.soundOn ?? true,
         chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [],
         modesV1: saved.modesV1 ?? false,
+        modesV2: saved.modesV2 ?? false,
         chatMode: saved.chatMode ?? false,
         speakMode: saved.speakMode ?? false,
         builderMode: saved.builderMode ?? false,
@@ -2935,6 +2937,21 @@ async function load() {
     state.speakMode = false;
     state.chatMode = false;
     state.railOpen = true;
+    save();
+  }
+  // One-time: every device starts from the same switches and prompting settings (they can be
+  // changed again afterwards, and stay changed)
+  if (!state.modesV2) {
+    state.modesV2 = true;
+    Object.assign(state, {
+      builderMode: false, speakMode: false, chatMode: false, railOpen: true, soundOn: true, suggestOn: true,
+      helpMode: false, helpDelaySec: 3,
+      promptColorOn: true, promptColor: 'blue', promptIntensity: 'medium', promptPulseOn: true,
+      promptSizeOn: true, promptSize: 'large', promptTileOn: true, promptTileSize: 'large',
+      promptVerbalOn: false, otherKeysMode: 'normal', promptDelaySec: 0,
+      errorFeedback: 'none', errorPromptAction: 'now', errorLetterMode: 'flash', speakErrorLetter: true, enterSpeechMode: 'correct',
+      keySize: 'large', scoreMode: false, fadeMode: true,
+    });
     save();
   }
   if (!state.targetV1) {
@@ -3207,6 +3224,7 @@ async function save() {
       soundOn: state.soundOn,
       chatLog: state.chatLog,
       modesV1: state.modesV1,
+      modesV2: state.modesV2,
       chatMode: state.chatMode,
       speakMode: state.speakMode,
       builderMode: state.builderMode,
