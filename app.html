@@ -645,11 +645,12 @@
   }
   .magic-box.show { display: flex; }
   .magic-box .mbtn.action { flex: none; padding: 12px 18px; margin: 0; }
-  .magic-row { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .magic-row { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .magic-box { padding: 14px !important; }
   .magic-chip {
     background: var(--surface); border: 2px solid var(--border); border-radius: 14px;
-    padding: 12px 16px; font-family: inherit;
-    font-size: clamp(18px, 3.2vmin, 30px); font-weight: 900; color: var(--ink); cursor: pointer;
+    padding: 18px 24px; font-family: inherit; border-radius: 18px;
+    font-size: clamp(24px, 4.6vmin, 44px); font-weight: 900; color: var(--ink); cursor: pointer;
     display: flex; align-items: center; gap: 8px;
   }
   .magic-chip:active { transform: scale(0.97); }
@@ -2370,7 +2371,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 297 - 6 Oct';
+const BUILD = 'build 298 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6187,6 +6188,21 @@ function magicFolders(word) {
   ['actions', 'choices'].forEach(n => { const c = state.categories.find(x => x.name.trim().toLowerCase() === n && ok(x)); if (c && !out.includes(c)) out.push(c); });
   return out;
 }
+// The blue tiles at the start of the row: the small word most likely to come next ("to" after
+// "want"), then the three most used words from Actions, Choices and Groups
+function magicSmallNext(word) {
+  const prev = homePhrase.length > 1 ? homePhrase[homePhrase.length - 2] : '';
+  const afterTo = word === 'TO' && MAGIC_WANTS.includes(prev);
+  if (!afterTo && !MAGIC_WANTS.includes(word)) return [];
+  const lead = afterTo || word === 'MORE' ? [] : ['TO'];
+  const tops = state.categories.filter(c => !c.parent && !c.phrases && !c.small && !c.target && !c.hidden && c.strip);
+  const under = c => { let x = c, g = 0; while (x && g++ < 20) { if (tops.includes(x)) return true; x = x.parent ? catById(x.parent) : null; } return false; };
+  const pool = [].concat(...state.categories.filter(c => !c.hidden && !c.target && under(c) && (afterTo ? kindOfCat(c) === 'action' : true)).map(c => c.words || []));
+  const used = w => (state.wordHistory[w] || {}).n || 0, last = w => (state.wordHistory[w] || {}).t || 0;
+  const best = pool.filter((w, i) => pool.indexOf(w) === i && !homePhrase.includes(w) && !state.hiddenWords[w] && !MAGIC_WANTS.includes(w) && !isPunct(w))
+    .sort((a, b) => used(b) - used(a) || last(b) - last(a)).slice(0, afterTo ? 5 : 3);
+  return lead.concat(best);
+}
 function magicNext(word) {
   const open = state.categories.filter(c => !c.target && !c.hidden && !c.small && !c.smallSec);
   const of = test => [].concat(...open.filter(test).map(c => c.words || []));
@@ -6378,7 +6394,14 @@ function renderMagic(word) {
   const folders = sentenceOnly ? [] : magicFolders(word);
   const carryOn = !sentenceOnly && kindOfWord(word) === 'action' && !MAGIC_WANTS.includes(word) && !Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))
     ? followWords(word, []).filter(w => !isPunct(w))
-    : (!sentenceOnly && homePhrase.length > 1 && MAGIC_PREPS.includes(word) ? ['THE', 'THAT', 'MY', 'THERE', 'NOW'] : []);
+    : (!sentenceOnly && homePhrase.length > 1 && MAGIC_PREPS.includes(word) && !(word === 'TO' && MAGIC_WANTS.includes(homePhrase[homePhrase.length - 2])) ? ['THE', 'THAT', 'MY', 'THERE', 'NOW'] : []);
+  (sentenceOnly ? [] : magicSmallNext(word)).forEach(next => {
+    const b = document.createElement('button');
+    b.className = 'magic-chip fill';
+    b.textContent = sentenceLabel(next);
+    b.addEventListener('click', () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); });
+    row.appendChild(b);
+  });
   const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
   carryOn.concat(sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
     const b = document.createElement('button');
