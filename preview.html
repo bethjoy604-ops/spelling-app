@@ -511,6 +511,12 @@
   #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
   #pageEditBar button.pe-all { background: #4a4a4a; font-size: 15px; padding: 10px 16px; }
   .home-card.library-tile { background: #e6e7ea; }
+  .feed-group { align-self: start; background: #bfd8ff; border-radius: 20px; padding: 6px 12px 12px; display: flex; flex-direction: column; }
+  .feed-group .feed-head { border: none; background: none; text-align: left; font-family: inherit; font-weight: 900; font-size: 17px; color: rgba(0,0,0,0.6);
+    height: 38px; padding: 0 8px; cursor: pointer; }
+  .feed-group .feed-head[aria-expanded="false"] { height: 44px; }
+  .feed-group:has(.feed-head[aria-expanded="false"]) { padding-bottom: 6px; }
+  .feed-tiles { display: grid; gap: 12px; }
   .library-dots { align-self: center; justify-self: start; width: 72px; height: 44px; border: none; border-radius: 14px; background: rgba(255,255,255,0.35); color: rgba(0,0,0,0.45);
     font-size: 18px; letter-spacing: 2px; cursor: pointer; font-family: inherit; padding: 0; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
@@ -2357,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 273 - 6 Oct';
+const BUILD = 'build 274 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9466,7 +9472,7 @@ function renderSlotGrid(grid, cat, folders) {
   // across its folders; a Library tile at the end opens the folders themselves
   const feedMode = alpha && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && feedWords(cat).length > 0;
   if (feedMode) { words = feedWords(cat); folders = []; }
-  const slots = listMode ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
+  const slots = (listMode || feedMode) ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
   // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
   // are showing (which close up, still in their order) and stays there, greyed, to be ticked again.
   const editingF = !!cat && pageEdit === cat.id;
@@ -9783,15 +9789,68 @@ function renderSlotGrid(grid, cat, folders) {
     place(card, off + i);
   }
   if (feedMode) {
-    // under the picked tiles: a quiet row of three dots that opens the folders they came from
+    // the picked tiles, folder by folder: each folder's picks sit together in a blue panel under
+    // the folder's name (tap the name to fold the panel away), pairs side by side as in the folder
+    grid.style.gridAutoRows = 'auto';
+    grid.style.gridTemplateRows = '';
+    const picked = feedWords(cat), used = new Set();
+    cat.feedShut = cat.feedShut || {};
+    feedFolders(cat).forEach(f => {
+      const mine = (f.words || []).filter(w => picked.includes(w) && !used.has(w));
+      if (!mine.length) return;
+      mine.forEach(w => used.add(w));
+      const shut = !!cat.feedShut[f.id];
+      const sec = document.createElement('div');
+      sec.className = 'feed-group';
+      // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
+      const laid = sortWords(mine, cols, true);
+      let n = laid.length; while (n > 0 && !laid[n - 1]) n--;
+      const span = Math.min(cols, Math.max(Math.min(2, cols), n));
+      sec.style.gridColumn = 'span ' + span;
+      const hd = document.createElement('button');
+      hd.className = 'feed-head';
+      hd.setAttribute('aria-expanded', shut ? 'false' : 'true');
+      hd.textContent = f.name;
+      hd.addEventListener('click', () => {
+        if (shut) delete cat.feedShut[f.id]; else cat.feedShut[f.id] = 1;
+        buzz(10); save();
+        const top = grid.scrollTop;
+        renderHome(true);
+        grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
+      });
+      sec.appendChild(hd);
+      if (!shut) {
+        const box = document.createElement('div');
+        box.className = 'feed-tiles';
+        box.style.gridTemplateColumns = 'repeat(' + span + ', minmax(0, 1fr))';
+        laid.slice(0, Math.ceil(n / span) * span).forEach(w => {
+          if (!w) { box.appendChild(document.createElement('div')); return; }
+          const card = document.createElement('button');
+          card.className = 'home-card';
+          card.dataset.word = w;
+          card.style.height = rowH + 'px';
+          const t = document.createElement('span');
+          t.className = 'hw';
+          const label = plainLabel(w);
+          t.textContent = label;
+          card.appendChild(t);
+          card.addEventListener('click', () => {
+            if (suppressTileClick) { suppressTileClick = false; return; }
+            homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w);
+          });
+          attachWordHold(card, w, f);
+          fit(card, label);
+          box.appendChild(card);
+        });
+        sec.appendChild(box);
+      }
+      grid.appendChild(sec);
+    });
+    // after the panels: a small quiet button of three dots that opens the folders themselves
     const lib = document.createElement('button');
     lib.className = 'library-dots';
     lib.textContent = '\u2022 \u2022 \u2022';
     lib.setAttribute('aria-label', 'Library: all the folders');
-    // a small button in the place straight after the last tile
-    let at = slots.length; while (at > 0 && !slots[at - 1]) at--;
-    lib.style.gridColumn = String(at % cols + 1);
-    lib.style.gridRow = String((topRow ? 1 : 0) + Math.floor(at / cols) + 1);
     lib.addEventListener('click', () => { libraryOpen = cat.id; buzz(10); renderHome(true); });
     grid.appendChild(lib);
   }
