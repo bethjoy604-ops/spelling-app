@@ -2363,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 274 - 6 Oct';
+const BUILD = 'build 275 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7587,6 +7587,7 @@ function editAll(show) {
     if (!cat) return;
     (cat.words || []).forEach(w => { if (show) delete state.hiddenWords[w]; else state.hiddenWords[w] = true; });
     childrenOf(cat.id, true).filter(c => !c.smallSec).forEach(c => { if (show) delete c.hidden; else c.hidden = true; });
+    if (tilesPage(cat)) (cat.groups || []).forEach(g => { if (show) delete g.hidden; else g.hidden = true; });
   } else return;
   buzz(10); save(); renderHome(true);
 }
@@ -7786,13 +7787,13 @@ function renderBuilder(grid) {
       else {
         const gs = new Set([].concat(...bGroups.map(g => g.words)));
         bGroups.forEach(g => {
-          if (!g.words.some(w => words.includes(w))) return;      // nothing showing in it here
+          if (g.hidden || !g.words.some(w => words.includes(w))) return;      // hidden, or nothing showing in it here
           const card = tile(g.name, false);
           card.classList.add('group-tile');
           holdable(card, () => { builderPath.push({ cat: c.id, group: g.name }); buzz(10); renderHome(true); }, () => openGroupHead(c, g));
           count++;
         });
-        words = words.filter(w => !gs.has(w));
+        words = looseSorted(c, words.filter(w => !gs.has(w)));
       }
     }
     words.forEach(w => {
@@ -8755,6 +8756,11 @@ function editToggle(grid, card, w, on, fn) {
     grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
   });
 }
+// Titles on a tiles page that are in no group: A to Z until they are dragged, then in the order set
+function looseSorted(cat, words) {
+  const order = (cat.looseOrder || []).filter(w => words.includes(w));
+  return order.concat(words.filter(w => !order.includes(w)));
+}
 function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   grid.style.gridAutoRows = 'auto';
   const groups = listGroups(cat);
@@ -8786,15 +8792,29 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
     el.addEventListener('contextmenu', e => e.preventDefault());
     el.addEventListener('click', () => { el.classList.remove('held'); if (held) { held = false; onHold(); } else onTap(); });
   };
-  const titleTile = w => {
+  // tap uses the tile; hold lifts it to drag to a new place among its neighbours, or let go for its options
+  const movable = (card, list, item, kind, onTap, onHold, onDrop) => {
+    card.dataset.bidx = list.indexOf(item);
+    card.dataset.blist = kind;
+    attachWordHold(card, null, null, null, { list, item, onHold, onDrop });
+    card.addEventListener('click', () => { if (suppressTileClick) { suppressTileClick = false; return; } onTap(); });
+  };
+  const titleTile = (w, list, onDrop) => {
     const card = mk(bankLabel(w));
     card.dataset.word = w;
-    holdTap(card, () => { homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w); }, () => openTitleActions(w, cat));
+    movable(card, list, w, 'titles', () => { homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w); }, () => openTitleActions(w, cat), onDrop);
     put(card);
   };
   const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
   if (pageEdit === cat.id) {
     let gap = false;
+    // the groups first: a hidden group's tile (and so its titles) is off the page
+    groups.forEach(g => {
+      const card = mk(g.name, 'group-tile');
+      editToggle(grid, card, null, !g.hidden, () => { if (g.hidden) delete g.hidden; else g.hidden = true; });
+      put(card);
+    });
+    while (i % cols) i++;
     editTitles(cat).forEach(([w, on]) => {
       if (!on && !gap) { gap = true; while (i % cols) i++; }      // the hidden ones start a row of their own
       const card = mk(bankLabel(w));
@@ -8805,17 +8825,19 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   }
   if (inGroup) {
     // a group's own page: its titles as tiles, in the order they were put in
-    inGroup.words.filter(w => listWords.includes(w)).forEach(titleTile);
+    inGroup.words.filter(w => listWords.includes(w)).forEach(w => titleTile(w, inGroup.words));
     ghost('+ title', () => askText('New title in ' + inGroup.name, 'Add', '', typed => addTitleTo(cat, inGroup, typed)));
     return;
   }
   groups.forEach(g => {
+    if (g.hidden) return;
     const card = mk(g.name, 'group-tile');
-    holdTap(card, () => { tileGroup = { cat: cat.id, group: g }; buzz(10); renderHome(true); }, () => openGroupHead(cat, g));
+    movable(card, groups, g, 'groups', () => { tileGroup = { cat: cat.id, group: g }; buzz(10); renderHome(true); }, () => openGroupHead(cat, g));
     put(card);
   });
   const grouped = new Set([].concat(...groups.map(g => g.words)));
-  listWords.filter(w => !grouped.has(w)).forEach(titleTile);
+  const loose = looseSorted(cat, listWords.filter(w => !grouped.has(w)));
+  loose.forEach(w => titleTile(w, loose, l => { cat.looseOrder = l.slice(); }));
   ghost('+ title', () => askText('New title in ' + cat.name, 'Add', '', typed => {
     const ok = addTitleTo(cat, null, typed);
     const key = normaliseWord(typed);
@@ -9386,7 +9408,8 @@ function syncPageEdit(cat) {
     document.body.appendChild(bar);
   }
   if (builderEdit) return;      // the builder page fills in its own count
-  const n = (cat.words || []).filter(w => state.hiddenWords[w]).length + childrenOf(cat.id, true).filter(c => c.hidden && !c.smallSec).length;
+  const n = (cat.words || []).filter(w => state.hiddenWords[w]).length + childrenOf(cat.id, true).filter(c => c.hidden && !c.smallSec).length
+    + (tilesPage(cat) ? (cat.groups || []).filter(g => g.hidden).length : 0);
   bar.firstChild.textContent = 'Tap a tile to show or hide it' + (n ? '  \u00b7  ' + n + ' hidden' : '');
 }
 // A tile whose label is more than one word is set on two lines, split where the two lines come out
