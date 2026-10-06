@@ -2397,7 +2397,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 324 - 6 Oct';
+const BUILD = 'build 325 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10243,8 +10243,21 @@ function renderSlotGrid(grid, cat, folders) {
     el.className = 'small-section top';
     el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
     // no bar to open any more: with small words rows switched on (Settings) the row is simply there
-    el.appendChild(makeSmallStrip(rowH, base, cat, true));
+    if (stripKey !== cat.id) { stripKey = cat.id; stripShut = false; stripCountdown(cat.id); }
+    if (stripShut) {
+      const bar = document.createElement('button');
+      bar.className = 'small-head';
+      bar.setAttribute('aria-expanded', 'false');
+      bar.setAttribute('aria-label', 'Small words');
+      bar.addEventListener('click', () => { stripShut = false; buzz(10); stripCountdown(cat.id); renderHome(false); });
+      el.appendChild(bar);
+    } else {
+      el.appendChild(makeSmallStrip(rowH, base, cat, true));
+      // a word chosen from the row keeps it open for as long as this page is
+      el.addEventListener('pointerdown', e => { if (e.target.closest('.small-tile')) { clearTimeout(stripTimer); stripTimer = null; } });
+    }
     grid.appendChild(el);
+  } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null;
   }
   const place = (el, cell) => {
     const r = Math.floor(cell / cols) + (topRow ? 1 : 0), c = cell % cols;
@@ -10556,6 +10569,19 @@ function renderSlotGrid(grid, cat, folders) {
   }
 }
 
+// a folder's small words row opens with its page and, left alone for two seconds, folds into a blue bar
+let stripKey = null, stripShut = false, stripTimer = null;
+function stripCountdown(key) {
+  clearTimeout(stripTimer);
+  stripTimer = setTimeout(() => {
+    stripTimer = null;
+    if (stripKey !== key || stripShut) return;
+    stripShut = true;
+    const g = document.getElementById('homeGrid'), top = g.scrollTop;
+    renderHome(false);
+    g.scrollTop = top;
+  }, 2000);
+}
 function attachWordHold(card, word, cat, folder, builder) {
   let timer = null, sx = 0, sy = 0;
   const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
