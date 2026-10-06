@@ -1250,6 +1250,21 @@
   .mbtn.action { font-size: 15px; padding: 14px; background: var(--bg); }
   .mbtn.danger { background: var(--red-soft); color: #c0392b; }
   .mbtn.primary { background: var(--ink); color: white; }
+  /* the lighter edit menus */
+  #wordSheetBody > .mbtn.action { padding: 11px 12px; font-size: 15px; margin-top: 6px !important; }
+  #wordSheetBody > .mbtn.confirm { background: var(--green); color: #fff; padding: 14px; font-size: 16px; margin-top: 12px !important; }
+  #wordSheetBody > .mbtn.cancel { background: none; color: var(--muted); padding: 10px; }
+  #wordSheetBody > .key-preview { margin: 0 0 10px 0; }
+  .sheet-icons { display: grid; grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); gap: 8px; margin: 0 0 8px; }
+  .sheet-icons .sheet-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 10px 4px; margin: 0; width: auto; }
+  .sheet-icon .si { font-size: 24px; line-height: 1; }
+  .sheet-icon .sl { font-size: 12px; font-weight: 800; }
+  .sheet-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 6px; padding: 9px 12px; border: none; border-radius: 14px;
+    background: var(--bg); color: var(--ink); font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; text-align: left; }
+  .sheet-switch .pill { flex: none; width: 44px; height: 26px; border-radius: 13px; background: #cdcdcd; position: relative; transition: background 0.15s; }
+  .sheet-switch .pill::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+  .sheet-switch.on .pill { background: var(--green); }
+  .sheet-switch.on .pill::after { left: 21px; }
 
   .word-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .word-item {
@@ -2376,7 +2391,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 312 - 6 Oct';
+const BUILD = 'build 313 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6245,8 +6260,7 @@ function withGroup(cat, w) {
   return key;
 }
 function suffixBtn(box) {
-  const on = suffixOn(box);
-  return sheetBtn(on ? 'Its name goes in with its words: on' : 'Add its name after its words (off)', '', () => { box.suffix = !on; save(); closeWordSheet(); renderHome(true); });
+  return sheetSwitch('Its name goes in with its words', suffixOn(box), on => { box.suffix = on; });
 }
 // ---- The magic phrase: what is in the bar, filled out into a sentence with the small words it
 // is missing ("want chicken" -> "I want to eat chicken"). The missing words are offered one by
@@ -8679,10 +8693,7 @@ function renderHiddenFolders() {
 }
 // Rename, move or hide any folder, the default ones included
 function halfBtn(c) {
-  return sheetBtn(c.half ? 'Word pair grid: on (switch back to large tiles)' : 'Word pair grid (smaller tiles, pairs side by side)', '', () => {
-    if (c.half) delete c.half; else c.half = true;
-    save(); closeWordSheet(); renderHome(true);
-  });
+  return sheetSwitch('Word pair grid (smaller tiles)', !!c.half, on => { if (on) c.half = true; else delete c.half; });
 }
 function openFolderEdit(c, extra) {
   if (!c) return;
@@ -8729,16 +8740,7 @@ function openFolderEdit(c, extra) {
       walk(null, 1);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    {
-      const lb = sheetBtn('', '', () => { c.linkers = !c.linkers; save(); paintL(); renderHome(false); });
-      const paintL = () => {
-        lb.textContent = c.linkers ? '\u2713  Linking words: lowercase (tap to turn off)' : 'Make these linking words (lowercase)';
-        lb.style.background = c.linkers ? 'var(--green)' : '';
-        lb.style.color = c.linkers ? '#fff' : '';
-      };
-      paintL();
-      body.appendChild(lb);
-    }
+    body.appendChild(sheetSwitch('Linking words (lowercase)', !!c.linkers, on => { c.linkers = on; }));
     // hidden, not deleted: it and everything in it can be brought back from settings
     body.appendChild(sheetBtn('Hide folder', 'danger', () => {
       c.hidden = true;
@@ -8746,20 +8748,13 @@ function openFolderEdit(c, extra) {
       builderPath = builderPath.filter(x => !('cat' in x) || x.cat !== c.id);
       done();
     }));
-    const hn = document.createElement('div');
-    hn.className = 'help-note'; hn.style.marginTop = '10px';
-    hn.textContent = 'A hidden folder keeps its words and sub-folders. Bring it back under Settings, Hidden folders.';
-    body.appendChild(hn);
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
     if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
     if (!c.target && !c.small && !c.smallSec && (c.words || []).length) body.appendChild(suffixBtn(c));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
-    if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? 'Custom page: change the tiles' : 'Custom page: pick tiles from its folders', '', () => openFeedPicker(c)));
+    if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? '\u2B50  Custom page: choose its tiles' : '\u2B50  Make a custom page from its folders', '', () => openFeedPicker(c)));
     // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
-    if (!state.builderMode && feedHost(c) && (c.feed || []).length) body.appendChild(sheetBtn(c.feedOff ? 'Custom page: turn on' : 'Custom page: turn off', '', () => {
-      if (c.feedOff) delete c.feedOff; else c.feedOff = true;
-      libraryOpen = null; save(); closeWordSheet(); renderHome(true);
-    }));
+    if (!state.builderMode && feedHost(c) && (c.feed || []).length) body.appendChild(sheetSwitch('Custom page', !c.feedOff, on => { if (on) delete c.feedOff; else c.feedOff = true; libraryOpen = null; }));
     // every folder on the page it sits on, at once: ticks to show or hide each
     if (state.builderMode) body.appendChild(builderEditBtn());
     { const host = !state.builderMode ? currentCat() : null;
@@ -9217,10 +9212,7 @@ function addGroupHeading(cat) {
 let tileGroup = null;      // { cat: id, group } - the group whose page is open on a tiles page
 function tilesPage(cat) { return !!cat && !!cat.tiles && !cat.target && usesGroups(cat); }
 function layoutSwitchBtn(cat) {
-  return sheetBtn(cat.tiles ? 'Show this page as a list' : 'Show this page as tiles', '', () => {
-    cat.tiles = !cat.tiles; tileGroup = null;
-    save(); closeWordSheet(); renderHome(true);
-  });
+  return sheetSwitch('Show as tiles (off: a list)', !!cat.tiles, on => { cat.tiles = on; tileGroup = null; });
 }
 // Edit page on a My Stuff page (list or tiles): every title with its tick, the hidden ones below
 function editTitles(cat) {
@@ -9802,8 +9794,17 @@ function pairOf(word, list) {
 // for sets - a run with an order of its own (none, some, all), a run of numbers, a pair of
 // opposites (more, less) - and when most of the folder is in sets, each set starts a row of its
 // own, in the order the sets were added; whatever is left follows, A to Z. Else plain A to Z.
+// Colours keep company with colours like them: the warm ones, the cool ones, then browns, the
+// black-to-white ones and the metals
+const COLOR_ORDER = ['RED', 'MAROON', 'PINK', 'MAGENTA', 'ORANGE', 'PEACH', 'YELLOW', 'LIME', 'GREEN', 'TEAL', 'TURQUOISE', 'AQUA', 'BLUE', 'NAVY', 'INDIGO',
+  'PURPLE', 'VIOLET', 'LAVENDER', 'BROWN', 'TAN', 'BEIGE', 'CREAM', 'BLACK', 'GREY', 'GRAY', 'WHITE', 'GOLD', 'SILVER', 'BRONZE', 'COPPER', 'RAINBOW'];
 function sortWords(list, cols, always) {
   const real = list.filter(w => !isPunct(w));
+  { const hue = w => { const k = w.replace(/^(LIGHT|DARK|BRIGHT|PALE|HOT|SKY|NAVY|BABY) /, ''); return COLOR_ORDER.indexOf(k); };
+    const cs = real.filter(w => hue(w) >= 0);
+    if (cs.length >= 3 && cs.length * 2 >= real.length) {
+      return cs.sort((a, b) => hue(a) - hue(b) || byLabel(a, b)).concat(list.filter(w => hue(w) < 0).sort(byLabel));
+    } }
   const nums = list.filter(w => numberValue(w) !== null).sort((a, b) => numberValue(a) - numberValue(b) || byLabel(a, b));
   if (nums.length && nums.length * 2 >= real.length) {
     return nums.concat(list.filter(w => numberValue(w) === null).sort(byLabel));
@@ -9927,6 +9928,51 @@ function feedFolders(cat) { const out = []; const walk = id => childrenOf(id).fo
 function feedWords(cat) {
   const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
   return (cat.feed || []).filter(w => have.has(w) && !state.hiddenWords[w]);
+}
+// A panel on a custom page, held: add a tile to it (the word joins its folder too), change the
+// picks, or take the whole panel off the custom page (its folder and words are untouched)
+function openFeedPanelMenu(cat, f) {
+  openWordSheet(body => {
+    sheetTitle(body, 'This group on the custom page');
+    const p = document.createElement('div');
+    p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = f.name;
+    body.appendChild(p);
+    body.appendChild(sheetBtn('Add a new tile', '', () => askText('New tile in ' + f.name, 'Add', '', typed => {
+      const key = normaliseWord(typed);
+      if (!key) return false;
+      f.words = f.words || [];
+      if (!f.words.includes(key)) f.words.push(key);
+      if (!state.words.includes(key)) state.words.push(key);
+      if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+      if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
+      delete state.hiddenWords[key];
+      rememberCase(typed, key);
+      cat.feed = Array.isArray(cat.feed) ? cat.feed : [];
+      if (!cat.feed.includes(key)) cat.feed.push(key);
+    })));
+    // the folder's other words, one tap each to bring onto the custom page
+    const others = (f.words || []).filter(w => !(cat.feed || []).includes(w) && !state.hiddenWords[w] && !isPunct(w));
+    if (others.length) {
+      const lab = document.createElement('div');
+      lab.className = 'help-note'; lab.style.margin = '10px 0 4px'; lab.textContent = 'Or add one that is already in ' + f.name + ':';
+      body.appendChild(lab);
+      const list = document.createElement('div');
+      list.className = 'pick-list'; list.style.maxHeight = '30vh'; list.style.overflowY = 'auto';
+      others.slice().sort(byLabel).forEach(w => {
+        const r = document.createElement('button');
+        r.className = 'pick-row'; r.textContent = catAllowsPhrases(f) ? bankLabel(w) : plainLabel(w);
+        r.addEventListener('click', () => { cat.feed.push(w); save(); closeWordSheet(); renderHome(true); });
+        list.appendChild(r);
+      });
+      body.appendChild(list);
+    }
+    body.appendChild(sheetBtn('Change all the tiles on this page', '', () => openFeedPicker(cat)));
+    body.appendChild(sheetBtn('Take this group off the custom page', 'danger', () => {
+      cat.feed = (cat.feed || []).filter(w => !(f.words || []).includes(w));
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
 }
 function openFeedPicker(cat) {
   cat.feed = Array.isArray(cat.feed) ? cat.feed : [];
@@ -10366,14 +10412,15 @@ function renderSlotGrid(grid, cat, folders) {
       sec.dataset.blist = 'panels';
       { let timer = null, sx = 0, sy = 0;
         const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
-        hd.addEventListener('pointerdown', e => {
-          if (e.button) return;
+        // (anywhere on the blue, not on a tile; held and let go without moving, it opens the panel's menu)
+        sec.addEventListener('pointerdown', e => {
+          if (e.button || e.target.closest('.home-card')) return;
           sx = e.clientX; sy = e.clientY; cancel();
-          timer = setTimeout(() => { timer = null; startWordDrag(sec, null, null, sx, sy, null, { list: dragList, item: f, onHold: () => {}, onDrop: l => { cat.feedOrder = l.map(x => x.id); } }); }, 480);
+          timer = setTimeout(() => { timer = null; startWordDrag(sec, null, null, sx, sy, null, { list: dragList, item: f, onHold: () => setTimeout(() => { suppressTileClick = false; openFeedPanelMenu(cat, f); }, 80), onDrop: l => { cat.feedOrder = l.map(x => x.id); } }); }, 480);
         });
-        hd.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
-        ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => hd.addEventListener(ev, cancel));
-        hd.addEventListener('contextmenu', e => e.preventDefault()); }
+        sec.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => sec.addEventListener(ev, cancel));
+        sec.addEventListener('contextmenu', e => e.preventDefault()); }
       hd.addEventListener('click', () => {
         if (suppressTileClick) { suppressTileClick = false; return; }
         if (shut) delete cat.feedShut[f.id]; else cat.feedShut[f.id] = 1;
@@ -10624,7 +10671,65 @@ function openWordSheet(build) {
   const body = document.getElementById('wordSheetBody');
   body.innerHTML = '';
   build(body);
+  lightenSheet(body);
   document.getElementById('wordSheet').classList.add('show');
+}
+// Every menu is tidied the same way once it is built: the everyday actions (rename, move, hide,
+// delete, add ...) become one row of symbols under the title; a green button confirms and sits
+// above a quiet Cancel. Where the menu has nothing to save, the green button is Done.
+const SHEET_ICONS = [
+  [/^(rename|edit spelling|edit the title|change the word)/i, '\u270F\uFE0F', 'Edit'],
+  [/^move/i, '\uD83D\uDCC2', 'Move'],
+  [/^hide/i, '\uD83D\uDE48', 'Hide'],
+  [/^(delete|remove this|take (this|it) .*off)/i, '\uD83D\uDDD1\uFE0F', 'Remove'],
+  [/^edit this page/i, '\u2611\uFE0F', 'Show / hide'],
+  [/^edit what comes next/i, '\u27A1\uFE0F', 'Next'],
+  [/^add another/i, '\u2795', 'Heading'],
+  [/^add a title/i, '\u2795', 'Title'],
+  [/^(add a new tile|add a word)/i, '\u2795', 'Add'],
+];
+function lightenSheet(body) {
+  const btns = [...body.querySelectorAll(':scope > button.mbtn')];
+  const quick = btns.map(b => [b, SHEET_ICONS.find(x => x[0].test(b.textContent.trim()))]).filter(x => x[1]);
+  if (quick.length >= 2) {
+    const row = document.createElement('div');
+    row.className = 'sheet-icons';
+    const anchor = body.querySelector(':scope > .key-preview') || body.querySelector(':scope > h3');
+    if (anchor && anchor.nextSibling) body.insertBefore(row, anchor.nextSibling); else body.insertBefore(row, body.firstChild);
+    quick.forEach(([b, m]) => {
+      const full = b.textContent.trim();
+      b.classList.add('sheet-icon'); b.style.width = ''; b.style.marginTop = '';
+      b.setAttribute('aria-label', full); b.title = full;
+      b.innerHTML = '<span class="si"></span><span class="sl"></span>';
+      b.firstChild.textContent = m[1];
+      b.lastChild.textContent = /^delete/i.test(full) ? 'Delete' : m[2];
+      row.appendChild(b);
+    });
+  }
+  const cancel = btns.find(b => /^(cancel|close)$/i.test(b.textContent.trim()));
+  const confirmBtn = btns.find(b => b !== cancel && b.classList.contains('primary') && !b.classList.contains('sheet-icon'));
+  if (confirmBtn) confirmBtn.classList.add('confirm');
+  if (cancel) {
+    cancel.classList.remove('primary'); cancel.classList.add('cancel');
+    if (!confirmBtn) {
+      const done = sheetBtn('Done', 'primary confirm', () => { save(); closeWordSheet(); renderHome(true); });
+      body.insertBefore(done, cancel);
+    }
+  }
+}
+// A setting that is simply on or off: one slim row with a switch. It takes effect as it is flipped.
+function sheetSwitch(label, on, fn) {
+  const b = document.createElement('button');
+  b.className = 'sheet-switch' + (on ? ' on' : '');
+  b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', on ? 'true' : 'false');
+  b.innerHTML = '<span></span><span class="pill"></span>';
+  b.firstChild.textContent = label;
+  b.addEventListener('click', () => {
+    on = !on;
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
+    fn(on); buzz(10); save(); renderHome(true);
+  });
+  return b;
 }
 function closeWordSheet() { document.getElementById('wordSheet').classList.remove('show'); }
 function sheetBtn(label, cls, fn) {
