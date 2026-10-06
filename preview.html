@@ -2397,7 +2397,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 325 - 6 Oct';
+const BUILD = 'build 326 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8065,7 +8065,7 @@ function exportLayout() {
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
       links: c.links || [], small: !!c.small, target: !!c.target, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, groups: Array.isArray(c.groups) ? c.groups : null, strip: !!c.strip, nopop: !!c.nopop,
       phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null, tiles: !!c.tiles, feed: Array.isArray(c.feed) ? c.feed : null,
-      half: !!c.half, feedOff: !!c.feedOff, feedShut: c.feedShut || null, feedOrder: c.feedOrder || null, looseOrder: c.looseOrder || null,
+      half: !!c.half, feedOff: !!c.feedOff, feedShut: c.feedShut || null, feedHid: c.feedHid || null, feedOrder: c.feedOrder || null, looseOrder: c.looseOrder || null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
     wordCase: state.wordCase || {},
@@ -10043,12 +10043,26 @@ function openFeedPanelMenu(cat, f) {
       });
       body.appendChild(list);
     }
+    // hidden: off the page for now, its tiles remembered, and brought back from this menu or the page's own
+    body.appendChild(sheetBtn('Hide this group', '', () => {
+      cat.feedHid = cat.feedHid || {}; cat.feedHid[f.id] = f.name;
+      save(); closeWordSheet(); renderHome(true);
+    }));
+    feedHiddenButtons(body, cat);
     body.appendChild(sheetBtn('Change all the tiles on this page', '', () => openFeedPicker(cat)));
     body.appendChild(sheetBtn('Take this group off the custom page', 'danger', () => {
       cat.feed = (cat.feed || []).filter(w => !(f.words || []).includes(w));
       save(); closeWordSheet(); renderHome(true);
     }));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
+  });
+}
+function feedHiddenButtons(body, cat) {
+  Object.keys(cat.feedHid || {}).forEach(id => {
+    body.appendChild(sheetBtn('\uD83D\uDC41\uFE0F  Show ' + cat.feedHid[id] + ' again', '', () => {
+      delete cat.feedHid[id];
+      save(); closeWordSheet(); renderHome(true);
+    }));
   });
 }
 function openFeedPicker(cat) {
@@ -10059,6 +10073,7 @@ function openFeedPicker(cat) {
     n.className = 'help-note'; n.style.margin = '4px 0 8px';
     n.textContent = 'Tick the tiles to show together when ' + cat.name + ' opens. They stay in their own folders too, which are kept under Library.';
     body.appendChild(n);
+    feedHiddenButtons(body, cat);
     const list = document.createElement('div');
     list.className = 'pick-list';
     list.style.maxHeight = '52vh'; list.style.overflowY = 'auto';
@@ -10452,7 +10467,7 @@ function renderSlotGrid(grid, cat, folders) {
       mine.forEach(w => used.add(w));
       panels.push({ f, mine });
     });
-    const ordered = panels.slice().sort((a, b) => fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
+    const ordered = panels.filter(x => !(cat.feedHid || {})[x.f.id]).sort((a, b) => fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
     const dragList = ordered.map(x => x.f);
     const placed = [];
     ordered.forEach(({ f, mine }) => {
