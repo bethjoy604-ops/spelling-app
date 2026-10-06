@@ -2357,7 +2357,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 271 - 5 Oct';
+const BUILD = 'build 272 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7610,7 +7610,21 @@ function builderHidden(key) {
 }
 function startBuilderEdit() { builderEdit = builderPageKey(); closeWordSheet(); buzz(10); renderHome(true); }
 function builderEditBtn() { return sheetBtn('Edit this page (show or hide tiles)', '', startBuilderEdit); }
+// A tile with nowhere further to go: two seconds later the builder is back on its first page,
+// ready for the next sentence (what is in the bar stays). Another tap in that time starts over.
+let builderHomeTimer = null;
+function builderIdleHome() {
+  clearTimeout(builderHomeTimer);
+  builderHomeTimer = setTimeout(() => {
+    builderHomeTimer = null;
+    const sheet = document.getElementById('wordSheet');
+    if (!state.builderMode || !builderPath.length || builderEdit || (sheet && sheet.classList.contains('show'))) return;
+    builderPath = [];
+    renderHome(true);
+  }, 2000);
+}
 function builderSay(word) {
+  clearTimeout(builderHomeTimer); builderHomeTimer = null;
   homePhrase.push(word);
   warmSpeech();
   speakWord(word, 0.95);
@@ -7833,7 +7847,7 @@ function renderBuilder(grid) {
             if (up && !up.hidden && isBoardMenu(up)) {
               builderPath[builderPath.length - 1] = { cat: up.id };
               renderHome(true);
-            }
+            } else builderIdleHome();
           }
         }
       }, () => stuff
@@ -7873,6 +7887,7 @@ function renderBuilder(grid) {
         if (goCat()) { builderPath.push({ cat: k.go, via: key }); renderHome(true); return; }
         // a tile with nothing after it leaves the page as it is, so more can be added
         if (k.kids.length || k.cats.length) { builderPath.push(k); renderHome(true); }
+        else builderIdleHome();
       }, () => openBuilderTile(here, k));
       count++;
     });
@@ -8514,6 +8529,7 @@ document.getElementById('homeBuilderBtn').addEventListener('click', () => {
   save(); renderHome(true);
 });
 document.getElementById('builderBackBtn').addEventListener('click', () => {
+  clearTimeout(builderHomeTimer); builderHomeTimer = null;
   const left = builderPath.pop();
   // stepping back over a word takes that word out of the bar again
   if (left && 'cat' in left && left.via && homePhrase[homePhrase.length - 1] === left.via) homePhrase.pop();
