@@ -2397,7 +2397,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 323 - 6 Oct';
+const BUILD = 'build 324 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10441,6 +10441,7 @@ function renderSlotGrid(grid, cat, folders) {
     });
     const ordered = panels.slice().sort((a, b) => fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
     const dragList = ordered.map(x => x.f);
+    const placed = [];
     ordered.forEach(({ f, mine }) => {
       const shut = !!cat.feedShut[f.id];
       const sec = document.createElement('div');
@@ -10503,7 +10504,8 @@ function renderSlotGrid(grid, cat, folders) {
         box.style.gridTemplateColumns = 'repeat(' + span + ', minmax(0, 1fr))';
         // a panel more than one row tall: the blue between its rows is as deep as the band between two
         // panels stacked beside it (their edges, the gap and the name), so every tile lines up across the page
-        if (lines.length > 1) box.style.rowGap = (12 + (parseFloat(getComputedStyle(grid).rowGap) || 16) + 6 + 38) + 'px';
+        // (only when a panel of another height really sits beside it; alone, its rows sit close together)
+        placed.push({ r: at.r, tall, box });
         [].concat(...lines.map(l => l.slice(0, span).concat(new Array(Math.max(0, span - l.length)).fill(null)))).forEach(w => {
           if (!w) { box.appendChild(document.createElement('div')); return; }
           const card = document.createElement('button');
@@ -10525,7 +10527,13 @@ function renderSlotGrid(grid, cat, folders) {
         });
         sec.appendChild(box);
       }
+      if (shut) placed.push({ r: at.r, tall, box: null });
       grid.appendChild(sec);
+    });
+    placed.forEach(p => {
+      if (!p.box || p.tall < 2) return;
+      const beside = placed.some(q => q !== p && q.r < p.r + p.tall && p.r < q.r + q.tall && (q.r !== p.r || q.tall !== p.tall));
+      if (beside) p.box.style.rowGap = (12 + (parseFloat(getComputedStyle(grid).rowGap) || 16) + 6 + 38) + 'px';
     });
     // after the panels: a small quiet button of three dots that opens the folders themselves
     const lib = document.createElement('button');
