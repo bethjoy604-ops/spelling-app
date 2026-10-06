@@ -2454,7 +2454,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 348 - 6 Oct';
+const BUILD = 'build 349 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7517,7 +7517,7 @@ function renderHome(reset) {
     document.querySelector('.home-row').classList.toggle('tools', !!state.iconsOpen);     // the tabs sit closer while the pop-out is open
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
-    { const it = document.getElementById('homeIconsToggle'); it.textContent = '+'; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
+    { const it = document.getElementById('homeIconsToggle'); it.textContent = '+'; it.style.display = (!state.builderMode && homePath.length) ? 'none' : ''; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
@@ -10489,6 +10489,10 @@ function renderSlotGrid(grid, cat, folders) {
     addStripToggle(box, () => head.click());
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = smallTileSize().h;
+    // two rows show at a time; the rest scroll up into view inside the blue
+    box.style.maxHeight = (46 + 2 * h + 10 + 14) + 'px';
+    box.style.overflowY = 'auto'; box.style.scrollbarWidth = 'none'; box.style.overscrollBehavior = 'contain';
+    box.style.alignContent = 'start';
     const sg = groupSmallWords(smalls);
     sg.words.forEach(w => {
       const b = document.createElement('button');
