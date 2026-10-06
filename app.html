@@ -2363,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 280 - 6 Oct';
+const BUILD = 'build 281 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9837,6 +9837,15 @@ function renderSlotGrid(grid, cat, folders) {
     grid.style.gridTemplateRows = '';
     const picked = feedWords(cat), used = new Set();
     cat.feedShut = cat.feedShut || {};
+    // panels are packed to leave as little open space as they can: each goes in the first place it
+    // fits, a later small one may fill a gap beside an earlier one, and a pair stands one above the
+    // other where that is the only way it fits there
+    const rowOff = topRow ? 1 : 0;
+    const taken = [];
+    const free = (r, c, w, h) => { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (x >= cols || (taken[y] || [])[x]) return false; return true; };
+    const firstFit = (w, h) => { for (let r = 0; ; r++) for (let c = 0; c + w <= cols; c++) if (free(r, c, w, h)) return { r, c }; };
+    const claim = (r, c, w, h) => { for (let y = r; y < r + h; y++) { taken[y] = taken[y] || []; for (let x = c; x < c + w; x++) taken[y][x] = true; } };
+    let lastRow = 0;
     feedFolders(cat).forEach(f => {
       const mine = (f.words || []).filter(w => picked.includes(w) && !used.has(w));
       if (!mine.length) return;
@@ -9846,9 +9855,22 @@ function renderSlotGrid(grid, cat, folders) {
       sec.className = 'feed-group';
       // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
       const laid = sortWords(mine, cols, true);
-      let n = laid.length; while (n > 0 && !laid[n - 1]) n--;
-      const span = Math.min(cols, Math.max(1, n));      // one tile: a panel one tile wide
-      sec.style.gridColumn = 'span ' + span;
+      // its rows of tiles, and how wide the widest of them really is (the blue is no wider)
+      let lines = [];
+      for (let k = 0; k < laid.length; k += cols) lines.push(laid.slice(k, k + cols));
+      const wide = l => { let m = l.length; while (m > 0 && !l[m - 1]) m--; return m; };
+      lines = lines.filter(l => wide(l) > 0);
+      let span = Math.min(cols, Math.max(1, ...lines.map(wide)));
+      let tall = shut ? 1 : lines.length;
+      let at = firstFit(span, tall);
+      if (!shut && mine.length === 2 && span === 2) {
+        const up = firstFit(1, 2);       // the pair standing up
+        if (up.r < at.r) { at = up; span = 1; tall = 2; lines = [[laid.filter(Boolean)[0]], [laid.filter(Boolean)[1]]]; }
+      }
+      claim(at.r, at.c, span, tall);
+      lastRow = Math.max(lastRow, at.r);
+      sec.style.gridColumn = (at.c + 1) + ' / span ' + span;
+      sec.style.gridRow = (rowOff + at.r + 1) + ' / span ' + tall;
       const hd = document.createElement('button');
       hd.className = 'feed-head';
       hd.setAttribute('aria-expanded', shut ? 'false' : 'true');
@@ -9865,7 +9887,7 @@ function renderSlotGrid(grid, cat, folders) {
         const box = document.createElement('div');
         box.className = 'feed-tiles';
         box.style.gridTemplateColumns = 'repeat(' + span + ', minmax(0, 1fr))';
-        laid.slice(0, Math.ceil(n / span) * span).forEach(w => {
+        [].concat(...lines.map(l => l.slice(0, span).concat(new Array(Math.max(0, span - l.length)).fill(null)))).forEach(w => {
           if (!w) { box.appendChild(document.createElement('div')); return; }
           const card = document.createElement('button');
           card.className = 'home-card';
@@ -9894,6 +9916,9 @@ function renderSlotGrid(grid, cat, folders) {
     lib.textContent = '\u203A';      // a slim, faint arrow
     lib.setAttribute('aria-label', 'Library: all the folders');
     lib.addEventListener('click', () => { libraryOpen = cat.id; buzz(10); renderHome(true); });
+    { let r = lastRow, c = 0, found = false;
+      for (; !found; r++) for (c = 0; c < cols; c++) if (free(r, c, 1, 1)) { found = true; break; }
+      lib.style.gridRow = String(rowOff + r); lib.style.gridColumn = String(c + 1); }
     grid.appendChild(lib);
   }
   if (listMode && tilesPage(cat)) renderTileBody(grid, cat, listWords, rowH, base, cols);
