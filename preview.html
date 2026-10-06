@@ -506,7 +506,8 @@
   #pageEditBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 16px;
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
-  .home-card.group-tile { background: #bfd8ff; }      /* blue: this tile opens a group's own page */
+  .home-card.group-tile { background: #bfd8ff; }
+  .home-card.group-tile.drop-into { outline: 6px solid var(--green); outline-offset: -3px; }      /* blue: this tile opens a group's own page */
   #pageEditBar { gap: 8px !important; max-width: 96vw; }
   #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
   #pageEditBar button.pe-all { background: #4a4a4a; font-size: 15px; padding: 10px 16px; }
@@ -2396,7 +2397,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 321 - 6 Oct';
+const BUILD = 'build 322 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9325,16 +9326,17 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
     el.addEventListener('click', () => { el.classList.remove('held'); if (held) { held = false; onHold(); } else onTap(); });
   };
   // tap uses the tile; hold lifts it to drag to a new place among its neighbours, or let go for its options
-  const movable = (card, list, item, kind, onTap, onHold, onDrop) => {
+  const movable = (card, list, item, kind, onTap, onHold, onDrop, into) => {
     card.dataset.bidx = list.indexOf(item);
     card.dataset.blist = kind;
-    attachWordHold(card, null, null, null, { list, item, onHold, onDrop });
+    attachWordHold(card, null, null, null, { list, item, onHold, onDrop, into });
     card.addEventListener('click', () => { if (suppressTileClick) { suppressTileClick = false; return; } onTap(); });
   };
   const titleTile = (w, list, onDrop) => {
     const card = mk(bankLabel(w));
     card.dataset.word = w;
-    movable(card, list, w, 'titles', () => { const sw = withGroup(cat, w); magicDropPath(cat); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw); }, () => openTitleActions(w, cat), onDrop);
+    movable(card, list, w, 'titles', () => { const sw = withGroup(cat, w); magicDropPath(cat); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw); }, () => openTitleActions(w, cat), onDrop,
+      gi => { const g = groups[gi]; if (!g) return; groups.forEach(x => { x.words = (x.words || []).filter(y => y !== w); }); g.words.push(w); });
     put(card);
   };
   const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
@@ -10597,7 +10599,15 @@ function trackWordDrag() {
   // A builder tile being carried: it lands before or after another tile of the same kind on the page
   if (d.builder) {
     const over = el.closest('[data-bidx]');
-    if (!over || over === d.card || over.dataset.blist !== d.card.dataset.blist) return;
+    if (!over || over === d.card) return;
+    if (over.dataset.blist !== d.card.dataset.blist) {
+      // a title carried over a group's tile goes into that group
+      if (d.builder.into && d.card.dataset.blist === 'titles' && over.dataset.blist === 'groups') {
+        over.classList.add('drop-into'); d.ghost.classList.add('over-folder');
+        d.target = { kind: 'into', idx: Number(over.dataset.bidx) };
+      }
+      return;
+    }
     const r = over.getBoundingClientRect();
     const after = d.x > r.left + r.width / 2;
     over.classList.add(after ? 'drop-after' : 'drop-before');
@@ -10676,6 +10686,7 @@ function endWordDrag(cancelled) {
   if (!t) return;
   if (d.builder) {
     // move it within its page's list; the order is part of the layout, so it is saved and exported
+    if (t.kind === 'into') { d.builder.into(t.idx); save(); renderHome(true); return; }
     const list = d.builder.list, item = d.builder.item;
     const dest = list[t.idx];
     const from = list.indexOf(item);
