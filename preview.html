@@ -1109,6 +1109,8 @@
   #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* three quiet dots, grey like the tabs that are not open; a little clearer while the pop-out is out */
   #homeIconsToggle { font-size: 30px; font-weight: 400; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.5); box-shadow: none; }
+  /* while a message is being built the gear steps out of the way */
+  .view-home:has(.phrase-bar.has-text) #homeIconsToggle { visibility: hidden; }
   .home-row.icons-open #homeIconsToggle { color: rgba(0,0,0,0.7); background: rgba(255,255,255,0.8); }
   .chevron { transition: transform 0.25s ease; display: inline-block; }
   .chevron.open { transform: rotate(180deg); }
@@ -2450,7 +2452,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 345 - 6 Oct';
+const BUILD = 'build 346 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6541,8 +6543,25 @@ function magicMatch(phrase, have) {
   return used;
 }
 let magicTarget = null;
+let magicTargetExt = false;      // the phrase on offer carries a whole sentence further (so the bar itself already reads as one)
+function magicExtend() {
+  const last = homePhrase[homePhrase.length - 1];
+  const longer = t => !!t && t.length > homePhrase.length && !!magicMatch(t, homePhrase) && t.join(' ') !== homePhrase.join(' ');
+  for (const c of magicNext(last).slice(0, 4)) {
+    const main = homePhrase.filter((w, i) => !['TO', 'THE', 'A', 'AN'].includes(w) && !(w === 'I' && i > 0));
+    const t = magicExpand(homePhrase.concat([c]));
+    if (longer(t)) return t;
+    const t2 = magicExpand(main.concat([c]));
+    if (longer(t2)) return t2;
+    const plain = homePhrase.concat([c]);
+    if (longer(plain)) return plain;
+  }
+  if (!homePhrase.includes('PLEASE') && !isPunct(last) && homePhrase.some(w => MAGIC_WANTS.includes(w))) return homePhrase.concat(['PLEASE']);
+  return null;
+}
 function magicPhraseNow() {
-  if (!homePhrase.length) { magicTarget = null; return null; }
+  if (!homePhrase.length) { magicTarget = null; magicTargetExt = false; return null; }
+  if (magicTarget && !magicMatch(magicTarget, homePhrase)) magicTargetExt = false;
   let used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
   if (!used) {
     // as entered, or (two words put in the other way round) turned about
@@ -6552,8 +6571,15 @@ function magicPhraseNow() {
       || (main.length < homePhrase.length ? magicExpand(main) : null);
     used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
   }
-  if (!magicTarget || !used || homePhrase.join(' ') === magicTarget.join(' ')) { magicTarget = null; return null; }
-  return { phrase: magicTarget, used };
+  if (!magicTarget || !used || homePhrase.join(' ') === magicTarget.join(' ')) {
+    // the sentence in the bar is whole: offer one that carries it on ("I want" -> "I want to go",
+    // "I want to go" -> "I want to go to the park", and at the end "... please")
+    magicTarget = homePhrase.length > 1 ? magicExtend() : null;
+    used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
+    if (!magicTarget || !used) { magicTarget = null; magicTargetExt = false; return null; }
+    magicTargetExt = true;
+  }
+  return { phrase: magicTarget, used, ext: magicTargetExt };
 }
 function magicKnow(w) {
   if (!state.words.includes(w)) state.words.push(w);
@@ -6767,7 +6793,7 @@ function renderPhraseBar() {
   bar.classList.toggle('has-text', homePhrase.length > 0 || !!document.getElementById('pbInput').value);
   box.innerHTML = '';
   // a whole sentence: more than one word, and nothing the magic phrase would still add to it
-  const whole = (() => { if (homePhrase.length < 2) return false; try { const mp = magicPhraseNow(); return !mp || mp.phrase.length <= homePhrase.length; } catch (e) { return true; } })();
+  const whole = (() => { if (homePhrase.length < 2) return false; try { const mp = magicPhraseNow(); return !mp || !!mp.ext || mp.phrase.length <= homePhrase.length; } catch (e) { return true; } })();
   homePhrase.forEach((w, i) => {
     const c = document.createElement('span');
     c.className = 'pb-chip';
