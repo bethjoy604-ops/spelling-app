@@ -2371,7 +2371,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 299 - 6 Oct';
+const BUILD = 'build 300 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2719,6 +2719,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         compoundOf: saved.compoundOf || {},
+        pathOf: saved.pathOf || {},
         logShownFrom: saved.logShownFrom || 0,
         builderHideV1: saved.builderHideV1 ?? false,
         recentsHidden: saved.recentsHidden || {},
@@ -3262,6 +3263,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       compoundOf: state.compoundOf || {},
+      pathOf: state.pathOf || {},
       logShownFrom: state.logShownFrom || 0,
       builderHideV1: state.builderHideV1,
       recentsHidden: state.recentsHidden,
@@ -5994,6 +5996,7 @@ function makeFolderCard(c, rerender) {
       return;
     }
     // step into it from here, so going back returns to this page
+    magicPathPick(c, c.name);
     homePath = host ? homePath.concat([c.id]) : pathTo(c.id);
     rerender();
   });
@@ -6245,10 +6248,49 @@ function suffixBtn(box) {
 // one, each going into its own place in the bar; the phrase itself can be tapped to take it whole.
 const MAGIC_SUBJECTS = ['I', 'YOU', 'WE', 'HE', 'SHE', 'THEY', 'IT', "LET'S", 'CAN', 'PLEASE'];
 const MAGIC_BARE_PLACES = ['HOME', 'SCHOOL', 'OUTSIDE', 'INSIDE', 'BED', 'UPSTAIRS', 'DOWNSTAIRS', 'WORK'];
+// ---- Folder and group names on the way to a word. With a sentence under way ("I want"), opening
+// Music puts "music" in the bar, and opening a group inside it swaps that for the group's name
+// ("K POP Demon Hunters"); picking a word inside swaps it again for the word. Whatever is there
+// feeds the magic sentence: "I want to listen to K POP Demon Hunters".
+let magicPathIn = [];      // the path words in the bar now: { key, cat }
+function magicIsPath(w) { return !!(state.pathOf || {})[w] && !categoriesOf(w).length; }
+function magicUnder(catId, inner) { let x = inner, g = 0; while (x && g++ < 20) { if (x.id === catId) return true; x = x.parent ? catById(x.parent) : null; } return false; }
+function magicDropPath(cat) {
+  if (!cat || !magicPathIn.length) return;
+  const drop = magicPathIn.filter(p => magicUnder(p.cat, cat)).map(p => p.key);
+  if (!drop.length) return;
+  homePhrase = homePhrase.filter(w => !drop.includes(w));
+  magicPathIn = magicPathIn.filter(p => !drop.includes(p.key));
+}
+function magicPathPick(cat, name) {
+  if (!state.magicType || state.builderMode || !homePhrase.length || !cat || cat.target) return;
+  const key = normaliseWord(name);
+  if (!key) return;
+  state.pathOf = state.pathOf || {};
+  const was = state.pathOf[key];
+  state.pathOf[key] = { cat: cat.id, name };
+  const kind = categoriesOf(key).length ? '' : magicKind(key);
+  if (!['food', 'drink', 'music', 'watch', 'book', 'game', 'thing'].includes(kind)) { if (was) state.pathOf[key] = was; else delete state.pathOf[key]; return; }
+  magicDropPath(cat);
+  if (homePhrase.includes(key)) return;
+  magicKnow(key);
+  if (key.includes(' ')) state.keptPhrases[key] = true;
+  state.recentsHidden = state.recentsHidden || {}; state.recentsHidden[key] = true;      // not a tile of its own
+  state.wordCase = state.wordCase || {};
+  // a group of titles keeps its capitals ("K POP Demon Hunters"); a folder's name, or a group of everyday things, reads small
+  if (!plainStuff(cat) && name !== name.toLowerCase() && name !== cat.name) state.wordCase[key] = name; else delete state.wordCase[key];
+  magicPathIn.push({ key, cat: cat.id });
+  homePhrase.push(key);
+  warmSpeech(); speakWord(key, 0.95); save();
+  renderPhraseBar();
+}
 function magicKind(w) {
   if ((state.compoundOf || {})[w]) w = state.compoundOf[w];      // "chocolate chip cookies" is food because "chocolate chip" is
   const names = [];
-  categoriesOf(w).filter(c => !c.target && !c.hidden).forEach(c => { let x = c, g = 0; while (x && g++ < 20) { names.push(x.name.trim().toLowerCase()); x = x.parent ? catById(x.parent) : null; } });
+  // a folder's or group's own name, put in the bar on the way to a word: it is of its folder's kind
+  const pc = magicIsPath(w) ? catById(state.pathOf[w].cat) : null;
+  if (pc && /drink/.test(String(state.pathOf[w].name || '').toLowerCase())) return 'drink';
+  (pc ? [pc] : categoriesOf(w).filter(c => !c.target && !c.hidden)).forEach(c => { let x = c, g = 0; while (x && g++ < 20) { names.push(x.name.trim().toLowerCase()); x = x.parent ? catById(x.parent) : null; } });
   const has = re => names.some(n => re.test(n));
   if (MAGIC_WANTS.includes(w) || w === 'FEEL' || w === 'AM') return 'want';
   if (has(/^actions?$/) || kindOfWord(w) === 'action') return 'action';
@@ -6273,7 +6315,7 @@ const MAGIC_MASS = ['WATER', 'JUICE', 'MILK', 'SODA', 'TEA', 'COFFEE', 'LEMONADE
   'MEAT', 'FISH', 'SWEDISH FISH', 'SALAD', 'BACON', 'HAM', 'TURKEY', 'BEEF', 'PORK', 'HONEY', 'JAM', 'JELLY', 'SAUCE', 'SALSA', 'GUM', 'CAKE', 'PIE',
   'LOTION', 'SOAP', 'PAPER', 'TAPE', 'GLUE', 'PAINT', 'MONEY', 'MUSIC', 'HELP', 'MEDICINE', 'SUNSCREEN', 'MAKEUP', 'PLAY-DOH', 'SLIME', 'SAND'];
 function magicArticle(w) {
-  if ((state.compoundOf || {})[w]) return [];      // "chocolate chip cookies", "tortilla chips"
+  if ((state.compoundOf || {})[w] || magicIsPath(w)) return [];      // "chocolate chip cookies", "tortilla chips", "music"
   const label = sentenceLabel(w), last = w.split(' ').pop();
   if (MAGIC_MASS.includes(w) || MAGIC_MASS.includes(last)) return [];
   if (label !== label.toLowerCase()) return [];                    // a name or a brand: "I want Uno"
@@ -6288,6 +6330,7 @@ function magicExpand(words) {
   const body = lead ? words.slice(1) : words.slice();
   const k = body.map(magicKind);
   const toNoun = (w, kind) => {
+    if (magicIsPath(w) && ['food', 'drink', 'thing'].includes(kind)) return [w];      // "I want food", "I want fruit"
     if (kind === 'food') return ['TO', 'EAT'].concat(magicArticle(w), [w]);
     if (kind === 'drink') return ['TO', 'DRINK'].concat(magicArticle(w), [w]);
     if (kind === 'thing') return magicArticle(w).concat([w]);
@@ -6435,6 +6478,7 @@ function renderMagic(word) {
     b.addEventListener('click', () => {
       const path = []; let x = c, g = 0;
       while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
+      magicPathPick(c, c.name);
       homePath = path; libraryOpen = null; tileGroup = null;
       buzz(10); renderHome(true);
     });
@@ -6480,6 +6524,7 @@ function renderPhraseBar() {
     c.textContent = i ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // read as a sentence: a capital to start, then names and titles only
     box.appendChild(c);
   });
+  if (!homePhrase.length) magicPathIn = []; else magicPathIn = magicPathIn.filter(p => homePhrase.includes(p.key));
   if (state.magicType && !state.builderMode) { if (homePhrase.length) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
@@ -9168,7 +9213,7 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   const titleTile = (w, list, onDrop) => {
     const card = mk(bankLabel(w));
     card.dataset.word = w;
-    movable(card, list, w, 'titles', () => { const sw = withGroup(cat, w); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw); }, () => openTitleActions(w, cat), onDrop);
+    movable(card, list, w, 'titles', () => { const sw = withGroup(cat, w); magicDropPath(cat); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw); }, () => openTitleActions(w, cat), onDrop);
     put(card);
   };
   const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
@@ -9198,7 +9243,7 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   groups.forEach(g => {
     if (g.hidden) return;
     const card = mk(g.name, 'group-tile');
-    movable(card, groups, g, 'groups', () => { tileGroup = { cat: cat.id, group: g }; buzz(10); renderHome(true); }, () => openGroupHead(cat, g));
+    movable(card, groups, g, 'groups', () => { magicPathPick(cat, g.name); tileGroup = { cat: cat.id, group: g }; buzz(10); renderHome(true); }, () => openGroupHead(cat, g));
     put(card);
   });
   const grouped = new Set([].concat(...groups.map(g => g.words)));
@@ -9457,6 +9502,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     if (cat.target && (state.targetOff || {})[w]) row.classList.add('paused');
     holdTap(row, () => {
       const sw = withGroup(cat, w);
+      magicDropPath(cat);
       homePhrase.push(sw);
       warmSpeech();
       speakWord(sw, 0.95);
@@ -10169,6 +10215,7 @@ function renderSlotGrid(grid, cat, folders) {
     card.addEventListener('click', () => {
       if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
       const sw = arrange ? withGroup(cat, w) : w;
+      if (arrange) magicDropPath(cat);
       homePhrase.push(sw);
       warmSpeech();
       speakWord(sw, 0.95);
