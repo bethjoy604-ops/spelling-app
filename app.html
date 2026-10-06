@@ -1060,6 +1060,8 @@
     overflow: hidden; white-space: nowrap; -webkit-touch-callout: none;
   }
   .small-tile:active { transform: scale(0.96); }
+  .small-lib { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 14px; border-radius: 16px; background: #bfd8ff; max-height: 52vh; overflow-y: auto; margin: 6px 0; }
+  .small-lib .small-tile { height: 50px; font-size: 18px; }
   .small-tile.held { outline: 5px solid var(--green); outline-offset: -2px; background: var(--green-soft); }
   .small-tile.add-small { background: rgba(255,255,255,0.35); box-shadow: none; color: rgba(0,0,0,0.35); font-size: 17px !important; font-weight: 700; }
   .small-tile.empty { grid-column: 1 / -1; background: rgba(255,255,255,0.85); color: rgba(0,0,0,0.5); padding: 0 18px; }
@@ -2291,8 +2293,8 @@
         <div class="sublabel">Small words rows (every page)</div>
         <div class="settings-list">
           <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
-          <div class="setting-row"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
-          <div class="setting-row"><span>Fold the row away after 5 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
+          <div class="setting-row" style="display:none"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
+          <div class="setting-row"><span>Fold the row away after 3 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
           <div class="help-note" style="margin:6px 4px 0">These apply to every page. Hold the blue row on a page to give that page its own words or number.</div>
         </div>
 
@@ -2460,7 +2462,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 356 - 6 Oct';
+const BUILD = 'build 357 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4646,6 +4648,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
   // until the page is back at its top)
   if (grid.scrollTop > 2 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
+  if (grid.scrollTop > 2 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
   if (grid.scrollTop > 2 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   const was = barPrevTop; barPrevTop = grid.scrollTop;
   if (!min && grid.scrollTop > 2 && grid.scrollHeight - grid.clientHeight > 60) {
@@ -6799,6 +6802,7 @@ function renderPhraseBar() {
   refreshSmallStrips();
   // a tile was chosen: the pop-out of switches has done its job
   { const grew = homePhrase.length > phraseLenSeen; phraseLenSeen = homePhrase.length; if (grew) setTimeout(flashBar, 40);
+    if (grew) setTimeout(smallRowPop, 0);
     // on the first page a chosen tile opens the folder menu out for three seconds, in case the next word is in a folder
     if (grew && !state.builderMode && homePath.length === 0) { rootMenuUntil = Date.now() + 3000; renderCatTiles(); } if (grew && state.iconsOpen) { closeIcons(); return; } }
   const bar = document.getElementById('phraseBar');
@@ -8038,13 +8042,14 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // the faint plus at the end of the row opens every small word in the library; again, back to the few
   const full = !!gutter && isCatOwner(owner) && stripFull === owner.id;
   if (full) { const used = w => (state.wordHistory[w] || {}).n || 0; shown = [allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w)).map((w, i) => [w, i]).sort((a, b) => (isPunct(a[0]) - isPunct(b[0])) || used(b[0]) - used(a[0]) || a[1] - b[1]).map(x => x[0])]; }
-  else if (gutter && stripMagic && homePhrase.length) {
+  else if (gutter && homePhrase.length) {
     // beside a magic phrase: the six that fit best - the small words the sentence still needs, then
     // the ones that usually follow the last word, then the page's own
     const mp = magicPhraseNow();
     const need = mp ? mp.phrase.filter((w, i) => !mp.used.includes(i)) : [];
     const six = [];
     need.concat([].concat(...shown), [].concat(...rows)).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
+    allSmallWords().forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
     shown = [six.slice(0, 6)];
   }
   else {
@@ -8054,7 +8059,9 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     // Chat's row draws on every small word; with nothing in the bar the row runs most used first
     if (chat && !(after && after.length)) list = allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w) && !isPunct(w));
     if (!(after && after.length)) list = list.map((w, i) => [w, i]).sort((a, b) => used(b[0]) - used(a[0]) || a[1] - b[1]).map(x => x[0]);
-    shown = [list.slice(0, chat ? 6 : rowMax())];
+    // six to a row, as a rule: the page's own first, topped up from the rest of the small words
+    if (gutter && list.length < 6) allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w) && !isPunct(w)).sort((a, b) => used(b) - used(a)).forEach(w => { if (list.length < 6 && !list.includes(w)) list.push(w); });
+    shown = [list.slice(0, gutter ? 6 : rowMax())];
   }
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
@@ -8113,13 +8120,38 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     m.setAttribute('aria-label', full ? 'Fewer small words' : 'All the small words');
     m.addEventListener('click', e => {
       e.stopPropagation();
-      if (smallFullHook && smallFullHook.owner === owner) { smallFullHook.fn(); return; }
-      stripFull = full ? null : owner.id;
-      clearTimeout(stripTimer); stripTimer = null;
-      if (full) stripCountdown(owner.id);
-      buzz(10); followKey = null; refreshSmallStrips();
+      buzz(10);
+      clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer);
+      // the whole library of small words, in a pop-out: tap one to use it, hold one for its options
+      openWordSheet(body => {
+        sheetTitle(body, 'Small words');
+        const used = w => (state.wordHistory[w] || {}).n || 0;
+        const all = allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w)).map((w, i) => [w, i]).sort((a, b) => (isPunct(a[0]) - isPunct(b[0])) || used(b[0]) - used(a[0]) || a[1] - b[1]).map(x => x[0]);
+        const g = document.createElement('div');
+        g.className = 'small-lib';
+        all.forEach(w => {
+          const b = document.createElement('button');
+          b.className = 'small-tile'; b.textContent = sentenceLabel(w);
+          let t = null, held = false;
+          b.addEventListener('pointerdown', () => { held = false; t = setTimeout(() => { t = null; held = true; buzz(15); b.classList.add('held'); }, 520); });
+          ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, () => { if (t) { clearTimeout(t); t = null; } }));
+          b.addEventListener('contextmenu', e2 => e2.preventDefault());
+          b.addEventListener('click', () => {
+            if (held) { held = false; closeWordSheet(); setTimeout(() => openWordActions(w, smallFolder() || owner), 80); return; }
+            closeWordSheet();
+            homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar();
+          });
+          g.appendChild(b);
+        });
+        body.appendChild(g);
+        body.appendChild(sheetBtn('\u270F\uFE0F  Edit this page\u2019s row', '', () => editRow(0)));
+        body.appendChild(sheetBtn('Close', 'primary', closeWordSheet));
+      });
     });
     strip.appendChild(m);
+    // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
+    const n = Math.min(6, words.length);
+    if (n < 6) { strip.style.setProperty('grid-template-columns', 'repeat(' + n + ', minmax(0, 1fr))', 'important'); strip.style.width = 'calc(' + (n / 6 * 100) + '% + 30px)'; strip.style.alignSelf = 'flex-start'; }
   }
   return strip;
 }
@@ -10496,8 +10528,9 @@ function renderSlotGrid(grid, cat, folders) {
     head.setAttribute('aria-label', sec.name);
     head.lastChild.textContent = '\u25BC';     // turned by the styles: right when closed, down when open
     head.addEventListener('click', () => {
-      state.smallOpen = !state.smallOpen;
-      buzz(10); save(); renderHome(false);
+      state.smallOpen = !state.smallOpen; chatRowAuto = false; clearTimeout(chatRowTimer);
+      if (state.smallOpen) chatRowArm();      // opened by hand, it folds again after three seconds like every other page's
+      buzz(10); save(); paintSec();
     });
     if (!state.smallOpen) wrap.appendChild(head);
     if (state.smallOpen) {
@@ -10571,9 +10604,11 @@ function renderSlotGrid(grid, cat, folders) {
     }
     // with a magic phrase open, Chat shows the few small words that fit it; otherwise its own bar
     const paintSec = () => {
-      if (!state.smallOpen || chatFull) { smallHostSet(wrap); return; }
-      // open: one row, the small words used most; the faint plus opens the whole board
-      smallFullHook = { owner: cat, fn: () => { chatFull = true; buzz(10); paintSec(); } };
+      // (the plus on its one row opens the whole board: the page is redrawn so the board is built)
+      smallFullHook = { owner: cat, fn: () => { chatFull = true; buzz(10); const g = document.getElementById('homeGrid'), top = g.scrollTop; renderHome(false); g.scrollTop = top; } };
+      if (!state.smallOpen) { const shut = document.createElement('div'); shut.className = 'small-section top'; shut.appendChild(head); smallHostSet(shut); return; }
+      if (chatFull) { smallHostSet(wrap); return; }
+      // open: one row, the small words used most
       const el = document.createElement('div');
       el.className = 'small-section top';
       el.appendChild(makeSmallStrip(rowH, base, cat, true));
@@ -10589,7 +10624,7 @@ function renderSlotGrid(grid, cat, folders) {
     const paint = () => {
     const el = document.createElement('div');
     el.className = 'small-section top';
-    if (stripKey !== cat.id) { stripKey = cat.id; stripShut = false; stripFull = null; stripCountdown(cat.id); }
+    if (stripKey !== cat.id) { stripKey = cat.id; stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; }      // a page opens with its row folded: it opens when a tile is chosen
     if (stripShut) {
       const bar = document.createElement('button');
       bar.className = 'small-head';
@@ -10938,7 +10973,32 @@ function stripCountdown(key) {
     if (stripKey !== key || stripShut) return;
     stripShut = true; stripFull = null;
     if (smallHostRedo) smallHostRedo();
-  }, 5000);
+  }, 3000);
+}
+// A tile was chosen: the page's small words row opens with the six that fit it, for three seconds
+let chatRowTimer = null;
+function smallRowPop() {
+  if (state.builderMode || state.smallRowsOn === false) return;
+  if (stripKey !== null) { stripShut = false; stripFull = null; stripCountdown(stripKey); if (smallHostRedo) smallHostRedo(); }
+  else if (smallFullHook && !chatFull) {
+    state.smallOpen = true;
+    if (smallHostRedo) smallHostRedo();
+    clearTimeout(chatRowTimer);
+    // (a row the user opened by hand stays as it is; one opened here folds again by itself)
+    chatRowArm();
+  }
+}
+let chatRowAuto = false;
+function chatRowArm() {
+  clearTimeout(chatRowTimer);
+  if (state.smallRowsFold === false) return;
+  chatRowAuto = true;
+  chatRowTimer = setTimeout(() => {
+    chatRowTimer = null; chatRowAuto = false;
+    if (!smallFullHook || chatFull || !state.smallOpen) return;
+    state.smallOpen = false;
+    if (smallHostRedo) smallHostRedo();
+  }, 3000);
 }
 function attachWordHold(card, word, cat, folder, builder) {
   let timer = null, sx = 0, sy = 0;
