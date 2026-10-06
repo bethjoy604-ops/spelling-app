@@ -673,7 +673,7 @@
   /* ... and the key bar opens out to show every word in it */
   .view-home:has(#magicBox.show:not(.folded)) .phrase-bar .pb-words { max-height: none; }
   /* folded: a slim bar in the sentence's own light green, like the small words bar; a tap opens it again */
-  .magic-box.folded { height: 44px; padding: 0; border: none; background: var(--green-soft, #e6f6e9); cursor: pointer; }
+  .magic-box.folded { height: 54px; padding: 0; border: none; background: var(--green-soft, #e6f6e9); cursor: pointer; }
   .magic-box.folded > * { display: none; }
   /* the suggested sentence sits right under the key bar, above the folder menu, in large type */
   .magic-box .magic-chip.phrase { font-size: clamp(26px, 5vmin, 46px); padding: 14px 22px; border-radius: 18px; }
@@ -1762,13 +1762,6 @@
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
 
-  <div class="magic-box" id="magicBox">
-    <div class="magic-row" id="magicRow"></div>
-    <button class="display-clear magic-x" id="magicSkip" aria-label="Skip this suggestion">&times;</button>
-  </div>
-
-  <div class="small-host" id="smallHost"></div>
-
   <div class="controls-row home-row">
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9660;</span>
@@ -1792,6 +1785,13 @@
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#9881;&#65038;</button>
   </div>
+
+  <div class="magic-box" id="magicBox">
+    <div class="magic-row" id="magicRow"></div>
+    <button class="display-clear magic-x" id="magicSkip" aria-label="Skip this suggestion">&times;</button>
+  </div>
+
+  <div class="small-host" id="smallHost"></div>
 
   <div class="magic-small" id="magicSmall"></div>
 
@@ -2446,7 +2446,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 342 - 6 Oct';
+const BUILD = 'build 343 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6595,7 +6595,7 @@ function magicFold() {
 }
 document.getElementById('magicBox').addEventListener('click', e => {
   const box = e.currentTarget;
-  if (!box.classList.contains('folded')) return;
+  if (!box.classList.contains('folded')) { if (!e.target.closest('button')) { buzz(10); magicFold(); } return; }
   magicFoldedFor = null; magicOpenAt = { phrase: homePhrase.join(' '), t: Date.now() }; buzz(10);
   renderPhraseBar();
 });
@@ -7144,6 +7144,7 @@ function homeStepBack(all) {
   else if (libraryOpen && here && here.id === libraryOpen) libraryOpen = null;  // out of the Library, back to the custom page
   else homePath = homePath.slice(0, -1);
 }
+let rootMenuUntil = 0, rootMenuWas = -1, rootMenuTimer = null;
 function renderCatTiles(containerId, rerender) {
   const host = document.getElementById(containerId || 'catTiles');
   if (!host) return;
@@ -7207,16 +7208,26 @@ function renderCatTiles(containerId, rerender) {
 
     // a page is open: the menu folds down to just its tab (the back arrow sits to its left)
     const folded = level === 0 && homePath.length > 0 && !state.builderMode;
+    // the first page: the whole menu shows for three seconds on arriving, then draws in to the one
+    // green tab; a tap on that tab opens it out again
+    const mainBar = level === 0 && !folded && !state.builderMode && (!containerId || containerId === 'catTiles');
+    if (mainBar) {
+      if (rootMenuWas !== 0) rootMenuUntil = Date.now() + 3000;
+      clearTimeout(rootMenuTimer);
+      if (Date.now() < rootMenuUntil) rootMenuTimer = setTimeout(() => renderCatTiles(containerId, rerender), rootMenuUntil - Date.now() + 30);
+    }
+    if (level === 0 && (!containerId || containerId === 'catTiles')) rootMenuWas = homePath.length;
+    const rootShut = mainBar && Date.now() >= rootMenuUntil;
     if (level === 0 && !folded) {
       const all = document.createElement('button');
       all.className = 'cat-tile plain' + (homePath.length === 0 ? ' selected' : '');
       // named for what it shows: the latest words, or the most used ones
       all.textContent = state.bankSort === 'used' ? 'Popular' : 'Recents';
-      all.addEventListener('click', () => { homePath = []; again(); });
+      all.addEventListener('click', () => { if (rootShut) { buzz(10); rootMenuUntil = Date.now() + 3000; renderCatTiles(containerId, rerender); return; } homePath = []; again(); });
       row.appendChild(all);
     }
     // the targets tab only shows while the settings arrow is open
-    kids.filter(c => folded ? c.id === homePath[0] : !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
+    kids.filter(c => rootShut ? false : folded ? c.id === homePath[0] : !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
 
     host.appendChild(row);
   });
