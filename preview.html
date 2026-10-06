@@ -658,6 +658,8 @@
   .magic-chip.word { background: var(--bg); }
   .magic-chip.phrase { background: var(--green-soft, #e6f6e9); border-color: transparent; }
   .magic-chip.fill { background: #bfd8ff; border-color: transparent; }
+  .magic-strip { flex: 0 0 100%; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; background: #bfd8ff; border-radius: 18px; padding: 10px; box-sizing: border-box; }
+  .magic-strip .magic-chip.fill { background: #fff; justify-content: center; padding: 16px 8px; min-width: 0; }
   .magic-chip.folder { background: var(--bg); }
   .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
@@ -2371,7 +2373,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 300 - 6 Oct';
+const BUILD = 'build 301 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6410,6 +6412,11 @@ function renderMagic(word) {
   if (!state.magicType || !word) return;
 
   // one phrase made from what is in the bar, then the small words it still needs, in order
+  // the small words to tap next sit first, in a blue row of tiles like the small words rows;
+  // the whole sentence comes after it
+  const strip = document.createElement('div');
+  strip.className = 'magic-strip';
+  row.appendChild(strip);
   const mp = magicPhraseNow();
   if (mp) {
     const whole = document.createElement('button');
@@ -6435,7 +6442,7 @@ function renderMagic(word) {
         warmSpeech(); speakWord(w, 0.95); buzz(10); save();
         renderPhraseBar();
       });
-      row.appendChild(b);
+      strip.appendChild(b);
     });
   }
 
@@ -6453,7 +6460,7 @@ function renderMagic(word) {
     b.className = 'magic-chip fill';
     b.textContent = sentenceLabel(next);
     b.addEventListener('click', () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); });
-    row.appendChild(b);
+    strip.appendChild(b);
   });
   const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
   carryOn.concat(sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
@@ -6500,6 +6507,7 @@ function renderMagic(word) {
     row.appendChild(b);
   });
 
+  if (!strip.children.length) strip.remove();
   if (row.children.length) box.classList.add('show');
 }
 document.getElementById('magicSkip').addEventListener('click', hideMagic);
