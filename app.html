@@ -2294,7 +2294,7 @@
         <div class="settings-list">
           <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
           <div class="setting-row" style="display:none"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
-          <div class="setting-row"><span>Fold the row away after 3 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
+          <div class="setting-row"><span>Fold the row away after 5 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
           <div class="help-note" style="margin:6px 4px 0">These apply to every page. Hold the blue row on a page to give that page its own words or number.</div>
         </div>
 
@@ -2462,7 +2462,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 358 - 6 Oct';
+const BUILD = 'build 359 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10957,7 +10957,7 @@ function stripCountdown(key) {
     if (stripKey !== key || stripShut) return;
     stripShut = true; stripFull = null;
     if (smallHostRedo) smallHostRedo();
-  }, 3000);
+  }, 5000);
 }
 // A tile was chosen: the page's small words row opens with the six that fit it, for three seconds
 let chatRowTimer = null;
@@ -10982,7 +10982,7 @@ function chatRowArm() {
     if (!smallFullHook || chatFull || !state.smallOpen || stripFull) return;
     state.smallOpen = false;
     if (smallHostRedo) smallHostRedo();
-  }, 3000);
+  }, 5000);
 }
 function attachWordHold(card, word, cat, folder, builder) {
   let timer = null, sx = 0, sy = 0;
