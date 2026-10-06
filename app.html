@@ -2454,7 +2454,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 347 - 6 Oct';
+const BUILD = 'build 348 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2803,6 +2803,7 @@ async function load() {
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
         smallRowsFold: saved.smallRowsFold ?? true,
+        recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
         compoundOf: saved.compoundOf || {},
         pathOf: saved.pathOf || {},
@@ -3350,6 +3351,7 @@ async function save() {
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
       smallRowsFold: state.smallRowsFold !== false,
+      recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
       compoundOf: state.compoundOf || {},
       pathOf: state.pathOf || {},
@@ -6909,6 +6911,8 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
+  // every tile entered with the green button joins the last thirty that Popular is drawn from
+  if (homePhrase.length && !state.builderMode) { state.recentTiles = (state.recentTiles || []).concat(homePhrase.filter(w => !isPunct(w))).slice(-30); save(); }
   // menu mode: the sentence is done, so a sub-folder steps back up to the page of folders it came from
   if (!state.builderMode && homePhrase.length && homePath.length > 1) homePath = homePath.slice(0, -1);
   if (state.builderMode && homePhrase.length) {
@@ -7296,10 +7300,19 @@ function tileModeFilter(rows) {
     || categoriesOf(r.word).some(catAllowsPhrases));
 }
 // The bank in whichever order is chosen
+function popularFeed() { return state.bankSort === 'used' && (state.recentTiles || []).some(w => state.words.includes(w)); }
 function bankRows() {
   const all = tileModeFilter(searchWords(''));
   // Most used counts how often a word has been spelled; Recent is by when.
   if (state.bankSort === 'used') {
+    // Popular is a fresh feed: the tiles in the last thirty entered with the green button, the ones
+    // entered most often first (small words count like any other), newest first among equals
+    const log = (state.recentTiles || []).filter(w => state.words.includes(w));
+    if (log.length) {
+      const n = {}, at = {};
+      log.forEach((w, i) => { n[w] = (n[w] || 0) + 1; at[w] = i; });
+      return Object.keys(n).sort((a, b) => n[b] - n[a] || at[b] - at[a]).map(w => ({ word: w, n: n[w], t: at[w] }));
+    }
     return all.slice().sort((a, b) => (b.n || 0) - (a.n || 0) || (b.t || 0) - (a.t || 0));
   }
   return all.slice().sort((a, b) => b.t - a.t || b.n - a.n);
@@ -7545,7 +7558,7 @@ function renderHome(reset) {
 
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows())
-      .filter(r => !state.hiddenWords[r.word] && (cat || (!state.recentsHidden[r.word] && !offPopular(r.word))));
+      .filter(r => !state.hiddenWords[r.word] && (cat || (!state.recentsHidden[r.word] && (popularFeed() || !offPopular(r.word)))));      // the feed shows whatever was entered, small words and all
     if (!cat) homeRows = homeRows.slice(0, 10);     // Recents / Popular is a short list: the top ten
     const folders = gridFolders();
     // A folder is a grid of fixed places: every tile stays where it was put
