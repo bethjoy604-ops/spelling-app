@@ -1018,6 +1018,10 @@
   .small-strip .empty-note { grid-column: 1 / -1; }
   .small-section.top .small-head { align-self: stretch; }
   .small-section.top { gap: 12px; }
+  /* the small words row lives under the magic phrase, above the folder menu (not in the scrolling page) */
+  .small-host { flex: none; }
+  .small-host:empty { display: none; }
+  .view-home.bar-min .small-host, .view-home.bar-min .magic-box.folded { display: none; }
   /* opened out: a band along the top holds the arrow (the whole band folds the row away), and the
      blue edge round the tiles is the same on the other three sides */
   .small-strip.with-toggle { position: relative; padding: 40px 14px 14px; }
@@ -1763,6 +1767,8 @@
     <button class="display-clear magic-x" id="magicSkip" aria-label="Skip this suggestion">&times;</button>
   </div>
 
+  <div class="small-host" id="smallHost"></div>
+
   <div class="controls-row home-row">
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9660;</span>
@@ -2272,7 +2278,7 @@
         <div class="settings-list">
           <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
           <div class="setting-row"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
-          <div class="setting-row"><span>Fold the row away after 2 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
+          <div class="setting-row"><span>Fold the row away after 5 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
           <div class="help-note" style="margin:6px 4px 0">These apply to every page. Hold the blue row on a page to give that page its own words or number.</div>
         </div>
 
@@ -2440,7 +2446,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 341 - 6 Oct';
+const BUILD = 'build 342 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4604,9 +4610,17 @@ function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
 // The height the page's tiles are sized from: with the key bar drawn in the grid is taller, but the
 // tiles keep the size they had with the bar open, so nothing jumps
-let gridHFull = 0, barHold = false;
+let gridHFull = 0, barHold = false, menuHLast = 54;
 function gridH(grid) {
   if (grid.id === 'homeGrid' && gridHFull && document.getElementById('viewHome').classList.contains('bar-min')) return gridHFull;
+  // (tiles are sized as if the small words row were folded, so opening it never shrinks them)
+  if (grid.id === 'homeGrid') {
+    const view = document.getElementById('viewHome'), gap = parseFloat(getComputedStyle(view).rowGap) || 16;
+    const hh = document.getElementById('smallHost').offsetHeight, mh = document.getElementById('magicBox').offsetHeight;
+    const menu = document.querySelector('#viewHome .home-row');
+    if (menu.offsetHeight) menuHLast = menu.offsetHeight;
+    return grid.clientHeight + (hh ? hh + gap : 0) + (mh ? mh + gap : 0) - (menu.offsetHeight ? 0 : menuHLast + gap);
+  }
   return grid.clientHeight;
 }
 document.getElementById('homeGrid').addEventListener('scroll', () => {
@@ -4616,6 +4630,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
   // until the page is back at its top)
   if (grid.scrollTop > 30 && document.querySelector('#magicBox.show:not(.folded)')) { magicFold(); barHold = Date.now(); return; }
+  if (grid.scrollTop > 30 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); barHold = Date.now(); return; }
   if (barHold) { if (grid.scrollTop <= 0 && Date.now() - barHold > 500) barHold = false; return; }
   if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 260) { gridHFull = grid.clientHeight; view.classList.add('bar-min'); }
   else if (min && grid.scrollTop <= 0) view.classList.remove('bar-min');
@@ -6539,7 +6554,7 @@ function renderMagicTiles(grid) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
   const cellW = Math.max(60, (grid.clientWidth - gap * (cols - 1)) / cols);
-  const rowH = Math.max(60, (grid.clientHeight - gap * (screenRows - 1)) / screenRows);
+  const rowH = Math.max(60, (gridH(grid) - gap * (screenRows - 1)) / screenRows);
   const room = cellW - 30, base = Math.min(rowH * 0.4, room / (12 * 0.62));
   grid.innerHTML = ''; grid.scrollTop = 0;
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
@@ -6565,6 +6580,7 @@ function hideMagic() {
   document.getElementById('homeGrid').classList.remove('magic-on');
   document.getElementById('magicBox').classList.remove('show', 'folded');
   document.getElementById('magicRow').innerHTML = '';
+  if (stripMagic) { stripMagic = false; if (stripKey !== null) stripCountdown(stripKey); if (smallHostRedo) smallHostRedo(); }
 }
 let magicFoldTimer = null, magicFoldedFor = null, magicOpenAt = { phrase: null, t: 0 };
 function magicFold() {
@@ -6573,6 +6589,7 @@ function magicFold() {
   if (!box.classList.contains('show')) return;
   magicFoldedFor = homePhrase.join(' ');
   box.classList.add('folded');
+  stripShut = true; stripMagic = false; stripFull = null; if (smallHostRedo) smallHostRedo();
   const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
   if (magicTilesNow.length) renderPhraseBar();      // the page's own tiles come back
 }
@@ -6699,10 +6716,15 @@ function renderMagic(word) {
   // (two seconds: then it folds into its green bar, the folder menu returns and the key bar draws in)
   { const ph = homePhrase.join(' ');
     if (magicOpenAt.phrase !== ph) magicOpenAt = { phrase: ph, t: Date.now() };       // the two seconds run from when the words changed, however often the page redraws
-    const left = 2000 - (Date.now() - magicOpenAt.t);
+    const fresh = magicOpenAt.t > Date.now() - 50;
+    const left = 5000 - (Date.now() - magicOpenAt.t);
     box.classList.toggle('folded', box.classList.contains('show') && (magicFoldedFor === ph || left <= 0));
     if (box.classList.contains('folded')) magicFoldedFor = ph;
-    else if (box.classList.contains('show')) magicFoldTimer = setTimeout(magicFold, left); }
+    else if (box.classList.contains('show')) {
+      magicFoldTimer = setTimeout(magicFold, left);
+      // the small words row opens with it, and folds with it
+      if (fresh) { stripShut = false; stripMagic = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
+    } }
   // while the blue row is up it stands in for the page's own small words row
   document.getElementById('homeGrid').classList.toggle('magic-on', small.classList.contains('show'));
 }
@@ -7830,7 +7852,7 @@ function refreshSmallStrips() {
   const key = homePhrase.length ? homePhrase[homePhrase.length - 1] : '';
   if (key === followKey) return;
   followKey = key;
-  document.querySelectorAll('#homeGrid .small-strip').forEach(old => {
+  document.querySelectorAll('#homeGrid .small-strip, #smallHost .small-strip').forEach(old => {
     if (!old._args) return;
     const nu = makeSmallStrip(...old._args);
     nu.style.gridColumn = old.style.gridColumn;
@@ -7930,6 +7952,15 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // the faint plus at the end of the row opens every small word in the library; again, back to the few
   const full = !!gutter && isCatOwner(owner) && stripFull === owner.id;
   if (full) shown = [allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w))];
+  else if (gutter && stripMagic && homePhrase.length) {
+    // beside a magic phrase: the six that fit best - the small words the sentence still needs, then
+    // the ones that usually follow the last word, then the page's own
+    const mp = magicPhraseNow();
+    const need = mp ? mp.phrase.filter((w, i) => !mp.used.includes(i)) : [];
+    const six = [];
+    need.concat([].concat(...shown), [].concat(...rows)).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
+    shown = [six.slice(0, 6)];
+  }
   else shown = [[].concat(...shown).slice(0, rowMax())];
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
@@ -8337,6 +8368,7 @@ function renderBuilderBar() {
   document.getElementById('builderAddBtn').style.display = 'none';     // retired: the grey tile at the end of the page adds things
 }
 function renderBuilder(grid) {
+  smallHostSet(null); smallHostRedo = null;
   if (!state.builder) state.builder = defaultBuilder();
   let here = builderHere();
   if (here && 'cat' in here && !catById(here.cat)) { builderPath = []; here = state.builder; }
@@ -10348,7 +10380,8 @@ function renderSlotGrid(grid, cat, folders) {
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   // folders inside Categories carry a row of small words above their tiles
   const strip = arrange && !sec && hasSmallStrip(cat) && !isBoardMenu(cat) && state.smallRowsOn !== false;
-  const topRow = !!(strip || sec);    // the small words bar takes the first row, above the tiles
+  const topRow = false;    // (the small words bar has its own place above the folder menu now)
+  smallHostRedo = null;
   grid.style.gridTemplateRows = topRow ? 'auto' : '';
   if (listMode) {
     grid.style.gridTemplateRows = [topRow ? 'auto' : '', totalRows ? 'repeat(' + totalRows + ', ' + rowH + 'px)' : ''].filter(Boolean).join(' ');
@@ -10434,21 +10467,28 @@ function renderSlotGrid(grid, cat, folders) {
     }
     wrap.appendChild(box);
     }
-    grid.appendChild(wrap);
+    // with a magic phrase open, Chat shows the few small words that fit it; otherwise its own bar
+    const paintSec = () => {
+      if (!stripMagic) { smallHostSet(wrap); return; }
+      const el = document.createElement('div');
+      el.className = 'small-section top';
+      el.appendChild(makeSmallStrip(rowH, base, cat, true));
+      smallHostSet(el);
+    };
+    paintSec(); smallHostRedo = paintSec;
   }
   if (strip) {
     // a bar that opens out into the row of small words, the same as the one in Chat
+    const paint = () => {
     const el = document.createElement('div');
     el.className = 'small-section top';
-    el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
-    // no bar to open any more: with small words rows switched on (Settings) the row is simply there
     if (stripKey !== cat.id) { stripKey = cat.id; stripShut = false; stripFull = null; stripCountdown(cat.id); }
     if (stripShut) {
       const bar = document.createElement('button');
       bar.className = 'small-head';
       bar.setAttribute('aria-expanded', 'false');
       bar.setAttribute('aria-label', 'Small words');
-      bar.addEventListener('click', () => { stripShut = false; buzz(10); stripCountdown(cat.id); renderHome(false); });
+      bar.addEventListener('click', () => { stripShut = false; buzz(10); stripCountdown(cat.id); paint(); });
       el.appendChild(bar);
     } else {
       el.appendChild(makeSmallStrip(rowH, base, cat, true));
@@ -10459,11 +10499,13 @@ function renderSlotGrid(grid, cat, folders) {
       el.addEventListener('click', e => {
         if (!e.target.classList.contains('small-strip') || Date.now() - downAt > 450) return;
         stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null;
-        buzz(10); renderHome(false);
+        buzz(10); paint();
       });
     }
-    grid.appendChild(el);
-  } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null;
+    smallHostSet(el);
+    };
+    paint(); smallHostRedo = paint;
+  } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null; if (!sec) smallHostSet(null);
   }
   const place = (el, cell) => {
     const r = Math.floor(cell / cols) + (topRow ? 1 : 0), c = cell % cols;
@@ -10777,6 +10819,9 @@ function renderSlotGrid(grid, cat, folders) {
 
 // a folder's small words row opens with its page and, left alone for two seconds, folds into a blue bar
 let stripKey = null, stripShut = false, stripTimer = null, stripFull = null;
+let stripMagic = false;          // the row is open alongside a magic phrase, showing the words that fit it
+let smallHostRedo = null;        // repaints the row in its place without redrawing the page
+function smallHostSet(el) { const h = document.getElementById('smallHost'); h.innerHTML = ''; if (el) h.appendChild(el); }
 function stripCountdown(key) {
   clearTimeout(stripTimer); stripTimer = null;
   if (state.smallRowsFold === false) return;
@@ -10784,10 +10829,8 @@ function stripCountdown(key) {
     stripTimer = null;
     if (stripKey !== key || stripShut) return;
     stripShut = true; stripFull = null;
-    const g = document.getElementById('homeGrid'), top = g.scrollTop;
-    renderHome(false);
-    g.scrollTop = top;
-  }, 2000);
+    if (smallHostRedo) smallHostRedo();
+  }, 5000);
 }
 function attachWordHold(card, word, cat, folder, builder) {
   let timer = null, sx = 0, sy = 0;
