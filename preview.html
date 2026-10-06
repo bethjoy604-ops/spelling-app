@@ -2367,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 286 - 6 Oct';
+const BUILD = 'build 287 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6291,7 +6291,17 @@ function openChatWith(words) {
   setView('chat');
   renderChat();
   chatSay(words.join(' '));
+  // from the builder: if nothing is touched or typed for three seconds, the message page closes
+  // itself and the builder's first page is back (the message stays in the conversation)
+  clearTimeout(chatIdleTimer);
+  if (state.builderMode) chatIdleTimer = setTimeout(() => {
+    chatIdleTimer = null;
+    if (!document.getElementById('viewChat').classList.contains('active') || chatReply.length || chatPrefix) return;
+    showHome();
+  }, 3000);
 }
+let chatIdleTimer = null;
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { clearTimeout(chatIdleTimer); chatIdleTimer = null; }, true));
 function chatCommitPrefix() {
   const key = normaliseWord(chatPrefix);
   chatPrefix = '';
