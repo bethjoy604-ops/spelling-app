@@ -987,7 +987,10 @@
   }
   .small-section { display: flex; flex-direction: column; gap: 16px; padding: 8px 0 16px; }
   .small-section.top { padding: 0; align-items: stretch; }
-  .small-section .small-strip { align-self: flex-start; }
+  .small-section .small-strip { align-self: flex-start; position: relative; }
+  /* barely there: a faint plus beside the last small tile, for the whole library of small words */
+  .strip-more { position: absolute; left: 100%; bottom: 0; width: 44px; border: none; background: none; padding: 0; cursor: pointer;
+    font-family: inherit; font-weight: 900; font-size: 22px; color: rgba(0,0,0,0.22); }
   .small-strip .empty-note { grid-column: 1 / -1; }
   .small-section.top .small-head { align-self: stretch; }
   .small-section.top { gap: 12px; }
@@ -2235,7 +2238,14 @@
           <div class="setting-row"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
-          <div class="setting-row"><span>Small words rows on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
+        </div>
+
+        <div class="sublabel">Small words rows (every page)</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
+          <div class="setting-row"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
+          <div class="setting-row"><span>Fold the row away after 2 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
+          <div class="help-note" style="margin:6px 4px 0">These apply to every page. Hold the blue row on a page to give that page its own words or number.</div>
         </div>
 
         <div class="sublabel">Order words by</div>
@@ -2402,7 +2412,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 327 - 6 Oct';
+const BUILD = 'build 328 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2750,6 +2760,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
+        smallRowsFold: saved.smallRowsFold ?? true,
         smallRowMax: saved.smallRowMax || 0,
         compoundOf: saved.compoundOf || {},
         pathOf: saved.pathOf || {},
@@ -3296,6 +3307,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
+      smallRowsFold: state.smallRowsFold !== false,
       smallRowMax: state.smallRowMax || 0,
       compoundOf: state.compoundOf || {},
       pathOf: state.pathOf || {},
@@ -7813,8 +7825,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // a Categories folder with no row chosen for it starts with the words that suit its kind of page
   else if (!state.builderMode && !homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row)) shown = [startWords(owner, [].concat(...shown))];
   // how many show: set from the row's own menu, one at the least
-  const rowMax = () => (isCatOwner(owner) ? owner.rowMax : owner ? owner.rowMax : state.smallRowMax) || 0;
-  if (rowMax()) shown = [[].concat(...shown).slice(0, rowMax())];
+  const rowMax = () => (owner && owner.rowMax) || state.smallRowMax || 3;
+  // the faint plus at the end of the row opens every small word in the library; again, back to the few
+  const full = !!gutter && isCatOwner(owner) && stripFull === owner.id;
+  if (full) shown = [allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w))];
+  else shown = [[].concat(...shown).slice(0, rowMax())];
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
     const hold = edit;
@@ -7855,7 +7870,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // the panel is only as wide as its longest row (six across at most), so it ends after the last word
   const across = Math.min(6, Math.max(1, ...shown.map(r => r.length)));
   const gridW = document.getElementById('homeGrid').clientWidth;
-  const colW = Math.floor((gridW - 28 - 50) / 6);
+  const colW = Math.floor((gridW - 28 - 50 - 44) / 6);
   if (words.length) strip.style.gridTemplateColumns = 'repeat(' + across + ', ' + colW + 'px)';
   else strip.style.gridTemplateColumns = 'auto';
   if (!words.length) mk('+ small words', edit).classList.add('empty');
@@ -7864,6 +7879,21 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     strip.addEventListener('pointerdown', e => { if (e.target !== strip) return; held = false; t = setTimeout(() => { t = null; held = true; buzz(15); }, 520); });
     strip.addEventListener('pointerup', () => { if (t) { clearTimeout(t); t = null; } if (held) { held = false; setTimeout(() => editRow(0), 80); } });
     ['pointercancel', 'pointerleave'].forEach(ev => strip.addEventListener(ev, () => { if (t) { clearTimeout(t); t = null; } held = false; })); }
+  if (gutter && isCatOwner(owner) && words.length) {
+    const m = document.createElement('button');
+    m.className = 'strip-more';
+    m.style.height = (h + 20) + 'px';
+    m.textContent = full ? '\u2212' : '+';
+    m.setAttribute('aria-label', full ? 'Fewer small words' : 'All the small words');
+    m.addEventListener('click', e => {
+      e.stopPropagation();
+      stripFull = full ? null : owner.id;
+      clearTimeout(stripTimer); stripTimer = null;
+      if (full) stripCountdown(owner.id);
+      buzz(10); followKey = null; refreshSmallStrips();
+    });
+    strip.appendChild(m);
+  }
   return strip;
 }
 // Whose row: a folder has its own (until it is changed it shows the starting row), a builder page
@@ -10199,7 +10229,7 @@ function renderSlotGrid(grid, cat, folders) {
     const box = document.createElement('div');
     // the same blue panel as the rows on the other pages, only as wide as its tiles
     box.className = 'small-strip';
-    const colW = Math.floor((grid.clientWidth - 28 - 50) / 6);
+    const colW = Math.floor((grid.clientWidth - 28 - 50 - 44) / 6);
     addStripToggle(box, () => head.click());
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = smallTileSize().h;
@@ -10266,7 +10296,7 @@ function renderSlotGrid(grid, cat, folders) {
     el.className = 'small-section top';
     el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
     // no bar to open any more: with small words rows switched on (Settings) the row is simply there
-    if (stripKey !== cat.id) { stripKey = cat.id; stripShut = false; stripCountdown(cat.id); }
+    if (stripKey !== cat.id) { stripKey = cat.id; stripShut = false; stripFull = null; stripCountdown(cat.id); }
     if (stripShut) {
       const bar = document.createElement('button');
       bar.className = 'small-head';
@@ -10277,7 +10307,14 @@ function renderSlotGrid(grid, cat, folders) {
     } else {
       el.appendChild(makeSmallStrip(rowH, base, cat, true));
       // a word chosen from the row keeps it open for as long as this page is
-      el.addEventListener('pointerdown', e => { if (e.target.closest('.small-tile')) { clearTimeout(stripTimer); stripTimer = null; } });
+      let downAt = 0;
+      el.addEventListener('pointerdown', e => { downAt = Date.now(); if (e.target.closest('.small-tile')) { clearTimeout(stripTimer); stripTimer = null; } });
+      // a tap on the blue itself folds the row into its bar (a hold is the row's menu)
+      el.addEventListener('click', e => {
+        if (!e.target.classList.contains('small-strip') || Date.now() - downAt > 450) return;
+        stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null;
+        buzz(10); renderHome(false);
+      });
     }
     grid.appendChild(el);
   } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null;
@@ -10593,13 +10630,14 @@ function renderSlotGrid(grid, cat, folders) {
 }
 
 // a folder's small words row opens with its page and, left alone for two seconds, folds into a blue bar
-let stripKey = null, stripShut = false, stripTimer = null;
+let stripKey = null, stripShut = false, stripTimer = null, stripFull = null;
 function stripCountdown(key) {
-  clearTimeout(stripTimer);
+  clearTimeout(stripTimer); stripTimer = null;
+  if (state.smallRowsFold === false) return;
   stripTimer = setTimeout(() => {
     stripTimer = null;
     if (stripKey !== key || stripShut) return;
-    stripShut = true;
+    stripShut = true; stripFull = null;
     const g = document.getElementById('homeGrid'), top = g.scrollTop;
     renderHome(false);
     g.scrollTop = top;
@@ -12244,6 +12282,8 @@ function renderSettings() {
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
   document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
+  document.getElementById('toggleSmallFold').classList.toggle('on', state.smallRowsFold !== false);
+  document.getElementById('smallMaxN').textContent = state.smallRowMax || 3;
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -12547,6 +12587,12 @@ document.getElementById('toggleHome').addEventListener('click', () => {
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
 });
+document.getElementById('toggleSmallFold').addEventListener('click', () => {
+  state.smallRowsFold = state.smallRowsFold === false; save(); renderSettings();
+});
+[['smallMaxLess', -1], ['smallMaxMore', 1]].forEach(([id, d]) => document.getElementById(id).addEventListener('click', () => {
+  state.smallRowMax = Math.max(1, Math.min(12, (state.smallRowMax || 3) + d)); save(); renderSettings();
+}));
 document.getElementById('toggleSmallRows').addEventListener('click', () => {
   state.smallRowsOn = state.smallRowsOn === false; save(); renderSettings();
 });
