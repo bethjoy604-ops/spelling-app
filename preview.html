@@ -1100,8 +1100,8 @@
   .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn { display: none !important; }
   #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* three quiet dots, grey like the tabs that are not open; a little clearer while the pop-out is out */
-  #homeIconsToggle { font-size: 24px; font-weight: 900; line-height: 1; filter: grayscale(1); opacity: 0.6; color: rgba(0,0,0,0.38); background: rgba(255,255,255,0.5); box-shadow: none; }
-  .home-row.icons-open #homeIconsToggle { opacity: 0.9; color: rgba(0,0,0,0.6); background: rgba(255,255,255,0.8); }
+  #homeIconsToggle { font-size: 30px; font-weight: 400; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.5); box-shadow: none; }
+  .home-row.icons-open #homeIconsToggle { color: rgba(0,0,0,0.7); background: rgba(255,255,255,0.8); }
   .chevron { transition: transform 0.25s ease; display: inline-block; }
   .chevron.open { transform: rotate(180deg); }
   /* the settings arrow and the small words arrow match: same size, right when closed, down when open */
@@ -1784,7 +1784,7 @@
     <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
-    <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#129489;&#8205;&#129490;</button>
+    <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#9881;&#65038;</button>
   </div>
 
   <div class="magic-small" id="magicSmall"></div>
@@ -2440,7 +2440,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 340 - 6 Oct';
+const BUILD = 'build 341 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7418,7 +7418,7 @@ function renderHome(reset) {
     document.querySelector('.home-row').classList.toggle('tools', !!state.iconsOpen);     // the tabs sit closer while the pop-out is open
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
-    { const it = document.getElementById('homeIconsToggle'); it.textContent = '\uD83E\uDDD1\u200D\uD83E\uDDD2'; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
+    { const it = document.getElementById('homeIconsToggle'); it.textContent = '\u2699\uFE0E'; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
