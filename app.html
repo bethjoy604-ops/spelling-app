@@ -2369,7 +2369,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 292 - 6 Oct';
+const BUILD = 'build 293 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6174,14 +6174,28 @@ function magicKind(w) {
   if (categoriesOf(w).some(catAllowsPhrases) || has(/^(things?|stuff)$/)) return 'thing';
   return '';
 }
+// "a" or "an" before one of something ("a bottle", "an apple"); none before stuff that is not
+// counted (water, chicken, ketchup), before more than one (pancakes), or before a name
+const MAGIC_MASS = ['WATER', 'JUICE', 'MILK', 'SODA', 'TEA', 'COFFEE', 'LEMONADE', 'CHICKEN', 'RICE', 'PASTA', 'PIZZA', 'BREAD', 'TOAST', 'CHEESE',
+  'SOUP', 'CEREAL', 'YOGURT', 'POPCORN', 'CHOCOLATE', 'BUTTER', 'KETCHUP', 'MUSTARD', 'SALT', 'SUGAR', 'ICE', 'ICE CREAM', 'CANDY', 'FRUIT', 'FOOD',
+  'MEAT', 'FISH', 'SWEDISH FISH', 'SALAD', 'BACON', 'HAM', 'TURKEY', 'BEEF', 'PORK', 'HONEY', 'JAM', 'JELLY', 'SAUCE', 'SALSA', 'GUM', 'CAKE', 'PIE',
+  'LOTION', 'SOAP', 'PAPER', 'TAPE', 'GLUE', 'PAINT', 'MONEY', 'MUSIC', 'HELP', 'MEDICINE', 'SUNSCREEN', 'MAKEUP', 'PLAY-DOH', 'SLIME', 'SAND'];
+function magicArticle(w) {
+  const label = sentenceLabel(w), last = w.split(' ').pop();
+  if (MAGIC_MASS.includes(w) || MAGIC_MASS.includes(last)) return [];
+  if (label !== label.toLowerCase()) return [];                    // a name or a brand: "I want Uno"
+  if (/[^SU]S$/.test(last) || /(IES|OES|SES|XES)$/.test(last)) return [];      // more than one
+  return [/^[AEIOU]/.test(w) ? 'AN' : 'A'];
+}
 function magicExpand(words) {
   if (!words.length || words.length > 3) return null;
   const lead = MAGIC_SUBJECTS.includes(words[0]) || magicKind(words[0]) === 'person';
   const body = lead ? words.slice(1) : words.slice();
   const k = body.map(magicKind);
   const toNoun = (w, kind) => {
-    if (kind === 'food') return ['TO', 'EAT', w];
-    if (kind === 'drink') return ['TO', 'DRINK', w];
+    if (kind === 'food') return ['TO', 'EAT'].concat(magicArticle(w), [w]);
+    if (kind === 'drink') return ['TO', 'DRINK'].concat(magicArticle(w), [w]);
+    if (kind === 'thing') return magicArticle(w).concat([w]);
     if (kind === 'music') return ['TO', 'LISTEN', 'TO', w];
     if (kind === 'watch') return ['TO', 'WATCH', w];
     if (kind === 'book') return ['TO', 'READ', w];
@@ -6205,6 +6219,7 @@ function magicExpand(words) {
     else if (k[0] === 'want' && noun(k[1])) out = [a].concat(toNoun(b, k[1]));
     else if (k[0] === 'want' && k[1] === 'action') out = [a, 'TO', b];
     else if (k[0] === 'action' && k[1] === 'place') out = ['WANT', 'TO', a].concat(toPlace(b));
+    else if (k[0] === 'action' && ['food', 'drink', 'thing'].includes(k[1])) out = ['WANT', 'TO', a].concat(magicArticle(b), [b]);
     else if (k[0] === 'action' && noun(k[1])) out = ['WANT', 'TO', a, b];
   }
   if (!out) return null;
