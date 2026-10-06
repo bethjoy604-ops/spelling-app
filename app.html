@@ -2440,7 +2440,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 339 - 6 Oct';
+const BUILD = 'build 340 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6533,7 +6533,7 @@ function magicNavKey() { return homePath.join('/') + '|' + (tileGroup ? tileGrou
 // they show until one is picked, Skip is pressed, or the page is changed some other way
 function magicActive() {
   const ph = homePhrase.join(' ');
-  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph;
+  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph && magicFoldedFor !== ph;
 }
 function renderMagicTiles(grid) {
   const { cols, rows: screenRows } = slotShape();
@@ -6574,12 +6574,13 @@ function magicFold() {
   magicFoldedFor = homePhrase.join(' ');
   box.classList.add('folded');
   const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
+  if (magicTilesNow.length) renderPhraseBar();      // the page's own tiles come back
 }
 document.getElementById('magicBox').addEventListener('click', e => {
   const box = e.currentTarget;
   if (!box.classList.contains('folded')) return;
-  magicFoldedFor = null; magicOpenAt = { phrase: homePhrase.join(' '), t: Date.now() }; box.classList.remove('folded'); buzz(10);
-  clearTimeout(magicFoldTimer); magicFoldTimer = setTimeout(magicFold, 2000);
+  magicFoldedFor = null; magicOpenAt = { phrase: homePhrase.join(' '), t: Date.now() }; buzz(10);
+  renderPhraseBar();
 });
 function renderMagic(word) {
   const row = document.getElementById('magicRow');
@@ -6662,11 +6663,9 @@ function renderMagic(word) {
     homePath = path; libraryOpen = null; tileGroup = null;
     buzz(10); renderHome(true);
   } }));
-  if (MAGIC_SIMPLE) {
-    // the words that fit next ("go" -> the places) are plain chips in the bar; the page keeps its own tiles
-    tiles.forEach(it => { const b = document.createElement('button'); b.className = 'magic-chip word'; b.textContent = it.label; b.addEventListener('click', it.tap); row.appendChild(b); });
-    magicTilesNow = [];
-  } else magicTilesNow = tiles;
+  // the words that fit next ("go" -> the places) are a grid of tiles under the sentence, in place of
+  // the page's own tiles, for as long as the offer is open
+  magicTilesNow = tiles;
 
   // Whole phrases already modelled — tap to spell the lot
   (mp ? [] : magicPhrasesFor(word).slice(0, 1)).forEach(phrase => {
