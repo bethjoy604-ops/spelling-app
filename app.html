@@ -2462,7 +2462,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 359 - 6 Oct';
+const BUILD = 'build 360 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4649,6 +4649,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   // until the page is back at its top)
   if (grid.scrollTop > 2 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
   if (grid.scrollTop > 2 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
+  if (grid.scrollTop > 2 && popRowUntil) { popRowUntil = 0; clearTimeout(popRowTimer); smallHostSet(null); }
   if (grid.scrollTop > 2 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   const was = barPrevTop; barPrevTop = grid.scrollTop;
   if (!min && grid.scrollTop > 2 && grid.scrollHeight - grid.clientHeight > 60) {
@@ -4691,10 +4692,17 @@ document.getElementById('phraseBar').addEventListener('click', e => {
   document.getElementById('pbInput').blur();
   hideBarFlash();
   showKeyboard();
-  // opened from the bar and left alone for three seconds, the keyboard closes and the page comes back
-  clearTimeout(kbIdleTimer);
-  kbIdleTimer = setTimeout(() => { kbIdleTimer = null; if (document.getElementById('viewKeyboard').classList.contains('active')) showHome(); }, 3000);
 });
+// the keyboard page, however it was opened: left empty and untouched for three seconds (and with no
+// word set to practise), it closes and the page it came from is back
+function kbIdleArm() {
+  clearTimeout(kbIdleTimer); kbIdleTimer = null;
+  if (!state.homeEnabled || state.currentTarget) return;
+  kbIdleTimer = setTimeout(() => {
+    kbIdleTimer = null;
+    if (document.getElementById('viewKeyboard').classList.contains('active') && !(state.text || '').length && !state.currentTarget) showHome();
+  }, 3000);
+}
 let kbIdleTimer = null;
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, e => {
   if (kbIdleTimer && (ev === 'keydown' || e.target.closest('#viewKeyboard'))) { clearTimeout(kbIdleTimer); kbIdleTimer = null; }
@@ -4704,6 +4712,7 @@ function showKeyboard() {
   if (kbSearch) closeLetterSearch();     // arrive ready to type, never mid-search
   setView('keyboard');
   touchSession(); armPrompt(); render();
+  try { kbIdleArm(); } catch (e) {}
 }
 
 // ---- Voices (en-US only) ----
@@ -6642,6 +6651,7 @@ function hideMagic() {
   document.getElementById('magicRow').innerHTML = '';
   if (stripMagic) { stripMagic = false; if (stripKey !== null) stripCountdown(stripKey); if (smallHostRedo) smallHostRedo(); }
 }
+let magicShowNow = false, magicOfferedFor = null;
 let magicSolo = false;       // the green bar was tapped by hand: the phrase opens alone, the blue row stays as it is
 let magicFoldTimer = null, magicFoldedFor = null, magicOpenAt = { phrase: null, t: 0 };
 function magicFold() {
@@ -6650,6 +6660,7 @@ function magicFold() {
   if (!box.classList.contains('show')) return;
   magicFoldedFor = homePhrase.join(' ');
   box.classList.add('folded');
+  magicShowNow = false;
   if (stripMagic) { stripShut = true; stripMagic = false; stripFull = null; if (smallHostRedo) smallHostRedo(); }      // the row folds with it only if it opened with it
   const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
   if (magicTilesNow.length) renderPhraseBar();      // the page's own tiles come back
@@ -6669,6 +6680,8 @@ function renderMagic(word) {
   row.innerHTML = '';
   box.classList.remove('show');
   if (!state.magicType || !word) return;
+  // the sentence is offered after the green enter, not while the words are still going in
+  if (!magicShowNow) { magicTilesNow = []; clearTimeout(magicFoldTimer); magicFoldTimer = null; return; }
 
   // one phrase made from what is in the bar, then the small words it still needs, in order
   // the small words to tap next sit first, in a blue row of tiles like the small words rows;
@@ -6688,6 +6701,7 @@ function renderMagic(word) {
       mp.phrase.forEach(magicKnow);
       homePhrase = mp.phrase.slice();
       magicAccepted = homePhrase.join(' ');
+      magicShowNow = false; magicOfferedFor = magicAccepted;      // taken: the next enter sends it
       magicTarget = null;
       warmSpeech(); speakWord(homePhrase.join(' '), 0.95); buzz(10); save();
       renderPhraseBar();
@@ -6793,7 +6807,7 @@ function renderMagic(word) {
   // while the blue row is up it stands in for the page's own small words row
   document.getElementById('homeGrid').classList.toggle('magic-on', small.classList.contains('show'));
 }
-document.getElementById('magicSkip').addEventListener('click', () => { magicSkipped = homePhrase.join(' '); hideMagic(); renderHome(true); });
+document.getElementById('magicSkip').addEventListener('click', () => { magicShowNow = false; magicSkipped = homePhrase.join(' '); hideMagic(); renderHome(true); });
 
 // ---- Phrase bar ----
 let phraseLenSeen = 0;
@@ -6825,7 +6839,7 @@ function renderPhraseBar() {
   if (!box._clipWatch) { box._clipWatch = true; box.addEventListener('scroll', () => box.classList.toggle('clipped', box.scrollTop > 2)); }
   if (!homePhrase.length) magicPathIn = []; else magicPathIn = magicPathIn.filter(p => homePhrase.includes(p.key));
   { const ph = homePhrase.join(' '); if (ph !== magicAt.phrase) { magicAt = { phrase: ph, nav: magicNavKey() }; magicSkipped = null; } }
-  if (!homePhrase.length) magicTarget = null;      // a cleared bar starts the next sentence afresh
+  if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; }      // a cleared bar starts the next sentence afresh
   if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   // the page's tiles give way to the suggested ones, and come back, as the bar changes
   { const sig = magicActive() ? magicTilesNow.map(t => t.label).join('|') : '';
@@ -6924,6 +6938,18 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
+  // the first press of the green button offers the whole sentence the words could make ("sad" ->
+  // "I feel sad"): tap it to take it, or press the green button again to send the words as they are
+  if (state.magicType && !state.builderMode && homePhrase.length && magicOfferedFor !== homePhrase.join(' ')) {
+    magicOfferedFor = homePhrase.join(' ');
+    if (magicPhraseNow()) {
+      magicShowNow = true; magicFoldedFor = null; magicSkipped = null; magicOpenAt = { phrase: homePhrase.join(' '), t: Date.now() };
+      buzz(10); renderPhraseBar();
+      if (document.getElementById('magicBox').classList.contains('show')) return;
+      magicShowNow = false;
+    }
+  }
+  magicShowNow = false;
   // every tile entered with the green button joins the last thirty that Popular is drawn from
   if (homePhrase.length && !state.builderMode) { state.recentTiles = (state.recentTiles || []).concat(homePhrase.filter(w => !isPunct(w))).slice(-30); save(); }
   // menu mode: the sentence is done, so a sub-folder steps back up to the page of folders it came from
@@ -10631,7 +10657,7 @@ function renderSlotGrid(grid, cat, folders) {
     smallHostSet(el);
     };
     paint(); smallHostRedo = paint;
-  } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null; if (!sec) smallHostSet(null);
+  } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null; if (!sec) { popRowUntil = 0; smallHostSet(null); }
   }
   const place = (el, cell) => {
     const r = Math.floor(cell / cols) + (topRow ? 1 : 0), c = cell % cols;
@@ -10960,10 +10986,25 @@ function stripCountdown(key) {
   }, 5000);
 }
 // A tile was chosen: the page's small words row opens with the six that fit it, for three seconds
-let chatRowTimer = null;
+let chatRowTimer = null, popRowTimer = null, popRowUntil = 0;
 function smallRowPop() {
   if (state.builderMode || state.smallRowsOn === false) return;
   if (stripKey !== null) { stripShut = false; stripFull = null; stripCountdown(stripKey); if (smallHostRedo) smallHostRedo(); }
+  else if (!smallFullHook) {
+    // a page with no row of its own: one appears for the five seconds, then goes
+    const paint = () => {
+      if (!homePhrase.length || Date.now() >= popRowUntil) { smallHostSet(null); return; }
+      const el = document.createElement('div');
+      el.className = 'small-section top';
+      el.appendChild(makeSmallStrip(0, 0, currentCat() || null, true));
+      el.addEventListener('pointerdown', e => { if (e.target.closest('.small-tile')) clearTimeout(popRowTimer); });
+      smallHostSet(el);
+    };
+    popRowUntil = Date.now() + 5000;
+    smallHostRedo = paint; paint();
+    clearTimeout(popRowTimer);
+    if (state.smallRowsFold !== false) popRowTimer = setTimeout(() => { popRowUntil = 0; if (smallHostRedo === paint) paint(); }, 5000);
+  }
   else if (smallFullHook && !chatFull) {
     state.smallOpen = true; stripFull = null;
     if (smallHostRedo) smallHostRedo();
