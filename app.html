@@ -1025,10 +1025,10 @@
   /* opened, the blue row and the magic phrase are one size: the full width, and the same depth */
   .magic-box.show:not(.folded), .small-host .small-strip { min-height: clamp(96px, 16vmin, 130px); box-sizing: border-box; }
   .small-host .small-strip { align-self: stretch; width: 100%; max-width: none; justify-self: stretch; align-content: center; padding-right: 52px; }
-  .small-host .small-strip .strip-more { left: auto; right: 4px; }
+  .small-host .small-strip .strip-more { left: auto; right: 4px; width: 36px; }
   /* six even columns across the whole panel, the same space left and right */
   .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
-  .small-host .small-strip { min-height: 0; gap: 16px; padding: 18px 52px 18px 18px; }
+  .small-host .small-strip { min-height: 0; gap: 16px; padding: 18px 44px 18px 18px; }
   .small-host .small-strip.with-toggle { padding: 18px 18px 6px !important; border-bottom: 12px solid #bfd8ff; scroll-snap-type: y proximity; scroll-padding-top: 18px; }
   .small-host .small-strip.with-toggle .strip-toggle { display: none; }
   .small-host .small-strip.with-toggle .small-tile { scroll-snap-align: start; }
@@ -2463,7 +2463,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 364 - 6 Oct';
+const BUILD = 'build 365 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6689,7 +6689,14 @@ function renderMagic(word) {
   box.classList.remove('show');
   if (!state.magicType || !word) return;
   // the sentence is offered after the green enter, not while the words are still going in
-  if (!magicShowNow) { magicTilesNow = []; clearTimeout(magicFoldTimer); magicFoldTimer = null; return; }
+  if (!magicShowNow) {
+    clearTimeout(magicFoldTimer); magicFoldTimer = null;
+    // ... but the words that go with the last one chosen (hi -> people, go -> places, eat -> food)
+    // take the place of the page's own tiles until one is picked or the bar changes
+    const lead = MAGIC_WANTS.includes(word) || Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word));
+    magicTilesNow = lead ? magicNext(word, 18).map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } })) : [];
+    return;
+  }
 
   // one phrase made from what is in the bar, then the small words it still needs, in order
   // the small words to tap next sit first, in a blue row of tiles like the small words rows;
@@ -11017,7 +11024,7 @@ let relatedFull = false, relatedFor = '';
 function relatedRowSync() {
   const host = document.getElementById('smallHost');
   host.querySelectorAll('.related-strip').forEach(x => x.remove());
-  const blue = host.querySelector('.small-strip');
+  const blue = null;      // (retired: the related words are full tiles in the page now, not a second row)
   if (!blue || !host.firstChild || !state.magicType || state.builderMode || !homePhrase.length || stripFull) return;
   const last = homePhrase[homePhrase.length - 1];
   if (relatedFor !== homePhrase.join(' ')) { relatedFor = homePhrase.join(' '); relatedFull = false; }
