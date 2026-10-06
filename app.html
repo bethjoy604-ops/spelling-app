@@ -2376,7 +2376,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 311 - 6 Oct';
+const BUILD = 'build 312 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10235,6 +10235,7 @@ function renderSlotGrid(grid, cat, folders) {
     const w = slots[i];
     if (boardOnly && i === 0) continue;       // that place holds the grey add tile
     if (chatAdd && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
+    if (chatAdd && !editing && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }      // and one for a new group of words
     if (feedMode && i >= slots.length) continue;
     // in the Library (and before any tiles have been picked) a grey tile leads to the picker
     if (alpha && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
