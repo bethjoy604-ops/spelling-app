@@ -655,6 +655,9 @@
   .magic-chip:active { transform: scale(0.97); }
   .magic-chip .mc-spark { font-size: 14px; }
   .magic-chip.word { background: var(--bg); }
+  .magic-chip.phrase { background: var(--green-soft, #e6f6e9); border-color: transparent; }
+  .magic-chip.fill { background: #bfd8ff; border-color: transparent; }
+  .magic-chip.folder { background: var(--bg); }
   .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
   /* Category tiles — their own line, above the bank */
@@ -2367,7 +2370,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 291 - 6 Oct';
+const BUILD = 'build 297 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2545,6 +2548,7 @@ const state = {
   targetV1: false,            // the one-time renaming of New to the targets tab
   layoutV11: false,
   builderTidyV1: false,
+  reqV1: false,
   layoutV10: false,          // the one-time move of every device onto the built-in folders
   groupOrderV1: false,       // the one-time A to Z sort of the titles inside each group (they now keep their own order)
   tabsV2: false,             // the one-time move of My Stuff back to the end of the menu bar, after Categories
@@ -2713,6 +2717,7 @@ async function load() {
         hiddenWords: saved.hiddenWords || {},
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
+        compoundOf: saved.compoundOf || {},
         logShownFrom: saved.logShownFrom || 0,
         builderHideV1: saved.builderHideV1 ?? false,
         recentsHidden: saved.recentsHidden || {},
@@ -2738,6 +2743,7 @@ async function load() {
         layoutV10: saved.layoutV10 ?? false,
         layoutV11: saved.layoutV11 ?? false,
         builderTidyV1: saved.builderTidyV1 ?? false,
+        reqV1: saved.reqV1 ?? false,
         groupOrderV1: saved.groupOrderV1 ?? false,
         tabsV2: saved.tabsV2 ?? false,
         tabsV1: saved.tabsV1 ?? false,
@@ -3086,6 +3092,24 @@ async function load() {
     }
     save();
   }
+  // One-time: the two trial folders under Categories, "general requests" and "requests", are taken
+  // away on every device (their words stay in the vocabulary and in any other folder)
+  if (!state.reqV1) {
+    state.reqV1 = true;
+    const gone = state.categories.filter(c => {
+      const up = c.parent ? catById(c.parent) : null;
+      return up && up.name.trim().toLowerCase() === 'categories' && ['general requests', 'requests'].includes(c.name.trim().toLowerCase());
+    }).map(c => c.id);
+    if (gone.length) {
+      gone.forEach(id => deleteCategory(id));
+      const fix = n => { if (!n) return; if (gone.includes(n.go)) n.go = null; n.cats = (n.cats || []).filter(x => !gone.includes(x)); (n.kids || []).forEach(fix); };
+      if (state.builder) { fix(state.builder); Object.values(state.builder.words || {}).forEach(fix); }
+      state.categories.forEach(c => { if (c.links) c.links = c.links.filter(x => !gone.includes(x)); });
+      Object.keys(state.builderHide || {}).forEach(k => { if (gone.some(id => k === 'c' + id || k.startsWith('c' + id + '@'))) delete state.builderHide[k]; });
+      linkWordCache = null;
+    }
+    save();
+  }
   // One-time: a device's own words that went back into the built-in folders stay off the builder
   // pages that were set up by hand (I > shows feel, need, want - not an old "do"). They are still
   // in the folder in menu mode, and can be shown on a builder page with Edit this page.
@@ -3236,6 +3260,7 @@ async function save() {
       hiddenWords: state.hiddenWords,
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
+      compoundOf: state.compoundOf || {},
       logShownFrom: state.logShownFrom || 0,
       builderHideV1: state.builderHideV1,
       recentsHidden: state.recentsHidden,
@@ -3261,6 +3286,7 @@ async function save() {
       layoutV10: state.layoutV10,
       layoutV11: state.layoutV11,
       builderTidyV1: state.builderTidyV1,
+      reqV1: state.reqV1,
       groupOrderV1: state.groupOrderV1,
       tabsV2: state.tabsV2,
       tabsV1: state.tabsV1,
@@ -4470,7 +4496,17 @@ function displayWord(w) {
 function speakWord(word, rate) {
   const key = (word || '').toUpperCase().trim();
   if (recordings.word[key] && playClip(recordings.word[key])) return;
-  speak(word, rate);
+  speak(spokenText(word), rate);
+}
+// Words are kept in capitals inside the app, and some voices read a short word in capitals out
+// letter by letter ("A D D"). So what is handed to the voice is written the way it reads: small
+// letters, with I, names and titles as they are shown.
+function spokenText(text) {
+  const t = String(text || '');
+  if (!t || t !== t.toUpperCase() || t.length < 2) return t;
+  const one = k => { try { return (state.words || []).includes(k) ? sentenceLabel(k) : (k === 'I' ? 'I' : k.toLowerCase()); } catch (e) { return k.toLowerCase(); } };
+  if ((state.words || []).includes(t.trim())) return one(t.trim());
+  return t.split(' ').map(w => w ? one(w) : w).join(' ');
 }
 
 let kbSearch = false, searchPrefix = '';
@@ -6015,16 +6051,20 @@ function isLinkWord(w) {
   return linkWordCache.has(w);
 }   // small words stay small
 // A sentence: the first word starts with a capital, the rest read as they would mid-sentence
-function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : bankLabel(w)); }
+function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : capFirst(sentenceLabel(w))); }
 // How a word reads in the middle of a sentence: small letters, unless it is a name
-const PLAIN_STUFF = ['food', 'places', 'things'];
+// In My Stuff only titles (songs, shows, films, books, games, characters) and people's names keep
+// their capitals; food, places, things and anything else there reads in small letters
+const TITLE_STUFF = /^(music|songs?|tv|shows?|movies?|films?|videos?|books?|games?|characters?|people|person|family|friends?|names?)$/;
 function plainStuff(c) {
   let x = c, g = 0;
-  while (x && g++ < 20) { if (PLAIN_STUFF.includes(x.name.trim().toLowerCase())) return true; x = x.parent ? catById(x.parent) : null; }
-  return false;
+  while (x && g++ < 20) { if (TITLE_STUFF.test(x.name.trim().toLowerCase())) return false; x = x.parent ? catById(x.parent) : null; }
+  return true;
 }
 function sentenceLabel(w) {
   const key = w || '';
+  // a word that took its group's name with it reads as the word does, then the name in small letters
+  { const cb = (state.compoundOf || {})[key]; if (cb && key.startsWith(cb + ' ')) return sentenceLabel(cb) + ' ' + key.slice(cb.length + 1).toLowerCase(); }
   const kept = (state.wordCase || {})[key];
   // a linking word is small letters even if it was once saved with a first capital ("Go")
   if (kept && key !== 'I' && isLinkWord(key) && kept.slice(1) === kept.slice(1).toLowerCase()) return kept.toLowerCase();
@@ -6122,7 +6162,7 @@ const MAGIC_LEADS = {
   places: ['GO', 'COME', 'WALK', 'DRIVE', 'VISIT', 'LEAVE'],
   food: ['EAT', 'DRINK', 'HUNGRY', 'THIRSTY', 'TASTE', 'COOK'],
   feelings: ['FEEL', 'AM', "I'M"],
-  people: ['SEE', 'CALL', 'HUG', 'WITH', 'MISS'],
+  people: ['SEE', 'CALL', 'HUG', 'WITH', 'MISS', 'HI', 'HELLO', 'HEY', 'BYE', 'GOODBYE', 'THANKS', 'THANK YOU', 'GOOD MORNING', 'GOOD NIGHT'],
 };
 const MAGIC_WANTS = ['WANT', 'LIKE', 'NEED', 'LOVE', 'HAVE', 'GET', 'MORE'];
 function kindByName(c) {
@@ -6133,6 +6173,19 @@ function kindByName(c) {
     x = x.parent ? catById(x.parent) : null;
   }
   return '';
+}
+// After "want" and words like it (or any action word with no kind of its own to lead to), the
+// row offers the folders to look in - food, music, tv, actions, choices - rather than single words
+const MAGIC_PREPS = ['UP', 'DOWN', 'ON', 'IN', 'AT', 'OVER', 'UNDER', 'INTO', 'OFF', 'OUT', 'TO', 'FROM', 'BY', 'FOR'];
+const MAGIC_POINTERS = ['THE', 'A', 'AN', 'MY', 'YOUR', 'THAT', 'THIS', 'SOME', 'ANOTHER', 'WITH'].concat(MAGIC_PREPS);
+function magicFolders(word) {
+  if (Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))) return [];
+  if (!MAGIC_WANTS.includes(word) && kindOfWord(word) !== 'action' && !MAGIC_POINTERS.includes(word)) return [];
+  const ok = c => c && !c.hidden && !c.target && !c.small && !c.smallSec;
+  const stuff = state.categories.find(c => !c.parent && c.phrases && ok(c));
+  const out = stuff ? childrenOf(stuff.id).filter(ok) : [];
+  ['actions', 'choices'].forEach(n => { const c = state.categories.find(x => x.name.trim().toLowerCase() === n && ok(x)); if (c && !out.includes(c)) out.push(c); });
+  return out;
 }
 function magicNext(word) {
   const open = state.categories.filter(c => !c.target && !c.hidden && !c.small && !c.smallSec);
@@ -6145,6 +6198,137 @@ function magicNext(word) {
   return pool.filter((w, i) => w !== word && pool.indexOf(w) === i && !homePhrase.includes(w) && !state.hiddenWords[w])
     .sort((a, b) => used(b) - used(a) || last(b) - last(a)).slice(0, 5);
 }
+// A word picked inside a group or folder named for the thing itself takes that name with it:
+// "chocolate chip" under Cookies goes into the bar as "chocolate chip cookies", "tortilla" under
+// Chips as "tortilla chips". It applies on every page, to groups and to folders alike. Names like
+// these do it by themselves; any group or folder can be switched on or off from its own menu.
+const SUFFIX_NAMES = /^(cookies?|chips|crackers|cereal|sandwich(es)?|burgers?|pizza|pasta|noodles|soup|salad|yogurt|juice|milk|tea|smoothies?|muffins?|bars?|pie|cake|cupcakes?|donuts?|bagels?|toast|sauce|ice cream|popsicles?|gummies|nuggets|fries|tacos?|wraps?)$/;
+function suffixOn(box) { return !!box && (box.suffix === true || (box.suffix !== false && SUFFIX_NAMES.test(String(box.name || '').trim().toLowerCase()))); }
+function withGroup(cat, w) {
+  if (!cat || !w || cat.target) return w;
+  const g = (cat.groups || []).find(x => (x.words || []).includes(w));
+  const box = g && suffixOn(g) ? g : (suffixOn(cat) && (cat.words || []).includes(w) ? cat : null);
+  if (!box) return w;
+  const gk = normaliseWord(box.name);
+  const stem = x => x.replace(/(ES|S)$/, '');
+  if (!gk || w.split(' ').some(part => stem(part) === stem(gk)) || w.endsWith(gk)) return w;     // "sugar cookie" already says it
+  const key = w + ' ' + gk;
+  magicKnow(key);
+  state.keptPhrases[key] = true;
+  if (!categoriesOf(key).length) { state.recentsHidden = state.recentsHidden || {}; state.recentsHidden[key] = true; }     // not a tile of its own
+  state.compoundOf = state.compoundOf || {};
+  state.compoundOf[key] = w;
+  return key;
+}
+function suffixBtn(box) {
+  const on = suffixOn(box);
+  return sheetBtn(on ? 'Its name goes in with its words: on' : 'Add its name after its words (off)', '', () => { box.suffix = !on; save(); closeWordSheet(); renderHome(true); });
+}
+// ---- The magic phrase: what is in the bar, filled out into a sentence with the small words it
+// is missing ("want chicken" -> "I want to eat chicken"). The missing words are offered one by
+// one, each going into its own place in the bar; the phrase itself can be tapped to take it whole.
+const MAGIC_SUBJECTS = ['I', 'YOU', 'WE', 'HE', 'SHE', 'THEY', 'IT', "LET'S", 'CAN', 'PLEASE'];
+const MAGIC_BARE_PLACES = ['HOME', 'SCHOOL', 'OUTSIDE', 'INSIDE', 'BED', 'UPSTAIRS', 'DOWNSTAIRS', 'WORK'];
+function magicKind(w) {
+  if ((state.compoundOf || {})[w]) w = state.compoundOf[w];      // "chocolate chip cookies" is food because "chocolate chip" is
+  const names = [];
+  categoriesOf(w).filter(c => !c.target && !c.hidden).forEach(c => { let x = c, g = 0; while (x && g++ < 20) { names.push(x.name.trim().toLowerCase()); x = x.parent ? catById(x.parent) : null; } });
+  const has = re => names.some(n => re.test(n));
+  if (MAGIC_WANTS.includes(w) || w === 'FEEL' || w === 'AM') return 'want';
+  if (has(/^actions?$/) || kindOfWord(w) === 'action') return 'action';
+  if (has(/^feelings?$/)) return 'feeling';
+  if (has(/^(music|songs?)$/)) return 'music';
+  if (has(/^(tv|shows?|movies?|films?|videos?)$/)) return 'watch';
+  if (has(/^books?$/)) return 'book';
+  if (has(/^games?$/)) return 'game';
+  if (has(/^places?$/)) return 'place';
+  if (has(/^(people|person|family|friends?|characters?)$/)) return 'person';
+  if (has(/^(food|foods|snacks?|meals?|drinks?)$/)) {
+    const g = [].concat(...categoriesOf(w).map(c => (c.groups || []).filter(x => (x.words || []).includes(w)).map(x => x.name.toLowerCase())));
+    return g.some(n => /drink/.test(n)) ? 'drink' : 'food';
+  }
+  if (categoriesOf(w).some(catAllowsPhrases) || has(/^(things?|stuff)$/)) return 'thing';
+  return '';
+}
+// "a" or "an" before one of something ("a bottle", "an apple"); none before stuff that is not
+// counted (water, chicken, ketchup), before more than one (pancakes), or before a name
+const MAGIC_MASS = ['WATER', 'JUICE', 'MILK', 'SODA', 'TEA', 'COFFEE', 'LEMONADE', 'CHICKEN', 'RICE', 'PASTA', 'PIZZA', 'BREAD', 'TOAST', 'CHEESE',
+  'SOUP', 'CEREAL', 'YOGURT', 'POPCORN', 'CHOCOLATE', 'BUTTER', 'KETCHUP', 'MUSTARD', 'SALT', 'SUGAR', 'ICE', 'ICE CREAM', 'CANDY', 'FRUIT', 'FOOD',
+  'MEAT', 'FISH', 'SWEDISH FISH', 'SALAD', 'BACON', 'HAM', 'TURKEY', 'BEEF', 'PORK', 'HONEY', 'JAM', 'JELLY', 'SAUCE', 'SALSA', 'GUM', 'CAKE', 'PIE',
+  'LOTION', 'SOAP', 'PAPER', 'TAPE', 'GLUE', 'PAINT', 'MONEY', 'MUSIC', 'HELP', 'MEDICINE', 'SUNSCREEN', 'MAKEUP', 'PLAY-DOH', 'SLIME', 'SAND'];
+function magicArticle(w) {
+  if ((state.compoundOf || {})[w]) return [];      // "chocolate chip cookies", "tortilla chips"
+  const label = sentenceLabel(w), last = w.split(' ').pop();
+  if (MAGIC_MASS.includes(w) || MAGIC_MASS.includes(last)) return [];
+  if (label !== label.toLowerCase()) return [];                    // a name or a brand: "I want Uno"
+  if (/[^SU]S$/.test(last) || /(IES|OES|SES|XES)$/.test(last)) return [];      // more than one
+  return [/^[AEIOU]/.test(w) ? 'AN' : 'A'];
+}
+function magicExpand(words) {
+  if (!words.length || words.length > 3) return null;
+  // a greeting on its own: "Hi there" (or tap a person offered beside it: "Hi Mom")
+  if (words.length === 1 && ['HI', 'HELLO', 'HEY'].includes(words[0])) return [words[0], 'THERE'];
+  const lead = MAGIC_SUBJECTS.includes(words[0]) || magicKind(words[0]) === 'person';
+  const body = lead ? words.slice(1) : words.slice();
+  const k = body.map(magicKind);
+  const toNoun = (w, kind) => {
+    if (kind === 'food') return ['TO', 'EAT'].concat(magicArticle(w), [w]);
+    if (kind === 'drink') return ['TO', 'DRINK'].concat(magicArticle(w), [w]);
+    if (kind === 'thing') return magicArticle(w).concat([w]);
+    if (kind === 'music') return ['TO', 'LISTEN', 'TO', w];
+    if (kind === 'watch') return ['TO', 'WATCH', w];
+    if (kind === 'book') return ['TO', 'READ', w];
+    if (kind === 'game') return ['TO', 'PLAY', w];
+    if (kind === 'place') return ['TO', 'GO'].concat(toPlace(w));
+    return [w];
+  };
+  const toPlace = w => (MAGIC_BARE_PLACES.includes(w) ? (w === 'SCHOOL' || w === 'BED' || w === 'WORK' ? ['TO'] : []) : ['TO', 'THE']).concat([w]);
+  const noun = kind => ['food', 'drink', 'music', 'watch', 'book', 'game', 'place', 'person', 'thing'].includes(kind);
+  let out = null;
+  if (body.length === 1) {
+    const w = body[0];
+    if (k[0] === 'feeling') out = ['FEEL', w];
+    else if (noun(k[0])) out = ['WANT'].concat(toNoun(w, k[0]));
+    else if (k[0] === 'action') out = ['WANT', 'TO', w];
+    else if (w === 'MORE') out = ['WANT', 'MORE'];
+    else if (k[0] === 'want' && !lead) out = [w];
+  } else if (body.length === 2) {
+    const [a, b] = body;
+    if (a === 'MORE' && noun(k[1])) out = ['WANT', 'MORE', b];
+    else if ((a === 'FEEL' || a === 'AM') && k[1] === 'feeling') out = [a, b];
+    else if (k[0] === 'want' && noun(k[1])) out = [a].concat(toNoun(b, k[1]));
+    else if (k[0] === 'want' && k[1] === 'action') out = [a, 'TO', b];
+    else if (k[0] === 'action' && k[1] === 'place') out = ['WANT', 'TO', a].concat(toPlace(b));
+    else if (k[0] === 'action' && ['food', 'drink', 'thing'].includes(k[1])) out = ['WANT', 'TO', a].concat(magicArticle(b), [b]);
+    else if (k[0] === 'action' && noun(k[1])) out = ['WANT', 'TO', a, b];
+  }
+  if (!out) return null;
+  out = (lead ? [words[0]] : ['I']).concat(out);
+  return out.length > words.length ? out : null;
+}
+// which places of the phrase the bar already fills, reading left to right
+// (the bar's words may be in any order - "apple eat" still fills "I want to eat apple")
+function magicMatch(phrase, have) {
+  const used = [];
+  for (const w of have) { const i = phrase.findIndex((x, j) => x === w && !used.includes(j)); if (i < 0) return null; used.push(i); }
+  return used;
+}
+let magicTarget = null;
+function magicPhraseNow() {
+  if (!homePhrase.length) { magicTarget = null; return null; }
+  let used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
+  if (!used) {
+    // as entered, or (two words put in the other way round) turned about
+    magicTarget = magicExpand(homePhrase) || (homePhrase.length === 2 ? magicExpand(homePhrase.slice().reverse()) : null);
+    used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
+  }
+  if (!magicTarget || !used || homePhrase.join(' ') === magicTarget.join(' ')) { magicTarget = null; return null; }
+  return { phrase: magicTarget, used };
+}
+function magicKnow(w) {
+  if (!state.words.includes(w)) state.words.push(w);
+  if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+}
 function hideMagic() {
   document.getElementById('magicBox').classList.remove('show');
   document.getElementById('magicRow').innerHTML = '';
@@ -6156,26 +6340,76 @@ function renderMagic(word) {
   box.classList.remove('show');
   if (!state.magicType || !word) return;
 
+  // one phrase made from what is in the bar, then the small words it still needs, in order
+  const mp = magicPhraseNow();
+  if (mp) {
+    const whole = document.createElement('button');
+    whole.className = 'magic-chip phrase';
+    whole.textContent = sentenceWords(mp.phrase).join(' ');
+    whole.addEventListener('click', () => {
+      mp.phrase.forEach(magicKnow);
+      homePhrase = mp.phrase.slice();
+      magicTarget = null;
+      warmSpeech(); speakWord(homePhrase.join(' '), 0.95); buzz(10); save();
+      renderPhraseBar();
+    });
+    row.appendChild(whole);
+    mp.phrase.forEach((w, i) => {
+      if (mp.used.includes(i)) return;
+      const b = document.createElement('button');
+      b.className = 'magic-chip fill';
+      b.textContent = sentenceLabel(w);
+      b.addEventListener('click', () => {
+        magicKnow(w);
+        const keep = mp.used.concat([i]);
+        homePhrase = mp.phrase.filter((_, j) => keep.includes(j));
+        warmSpeech(); speakWord(w, 0.95); buzz(10); save();
+        renderPhraseBar();
+      });
+      row.appendChild(b);
+    });
+  }
+
   // Single words that have gone with this one before — tap to keep building
-  const byRule = magicNext(word);
-  (byRule.length ? byRule : relatedWords(word)).forEach(next => {
+  // (with two or more words in the bar and a sentence to offer, the sentence takes this row's place)
+  const sentenceOnly = !!mp && homePhrase.length > 1;
+  // after an action word ("I want to climb"): the small words that carry it on - up, the, that,
+  // now - and then the folders to find the thing in. After "the", "my", "that": the folders.
+  const folders = sentenceOnly ? [] : magicFolders(word);
+  const carryOn = !sentenceOnly && kindOfWord(word) === 'action' && !MAGIC_WANTS.includes(word) && !Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))
+    ? followWords(word, []).filter(w => !isPunct(w))
+    : (!sentenceOnly && homePhrase.length > 1 && MAGIC_PREPS.includes(word) ? ['THE', 'THAT', 'MY', 'THERE', 'NOW'] : []);
+  const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
+  carryOn.concat(sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
     const b = document.createElement('button');
     b.className = 'magic-chip word';
     const t = document.createElement('span');
-    t.textContent = bankLabel(next);
+    t.textContent = sentenceLabel(next);
     b.appendChild(t);
     b.addEventListener('click', () => {
+      magicKnow(next);
       homePhrase.push(next);
       warmSpeech();
       speakWord(next, 0.95);
       renderPhraseBar();
-      renderMagic(next);
+    });
+    row.appendChild(b);
+  });
+  folders.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'magic-chip folder';
+    b.textContent = c.name.toLowerCase();
+    b.addEventListener('click', () => {
+      const path = []; let x = c, g = 0;
+      while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
+      homePath = path; libraryOpen = null; tileGroup = null;
+      buzz(10); renderHome(true);
     });
     row.appendChild(b);
   });
 
   // Whole phrases already modelled — tap to spell the lot
-  magicPhrasesFor(word).forEach(phrase => {
+  (mp ? [] : magicPhrasesFor(word).slice(0, 1)).forEach(phrase => {
     const b = document.createElement('button');
     b.className = 'magic-chip';
 
@@ -6210,9 +6444,10 @@ function renderPhraseBar() {
   homePhrase.forEach((w, i) => {
     const c = document.createElement('span');
     c.className = 'pb-chip';
-    c.textContent = i ? sentenceLabel(w) : bankLabel(w);
+    c.textContent = i ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // read as a sentence: a capital to start, then names and titles only
     box.appendChild(c);
   });
+  if (state.magicType && !state.builderMode) { if (homePhrase.length) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
@@ -6992,7 +7227,7 @@ function renderHome(reset) {
 // The folders, words, builder pages and small-words row a new device starts
 // with. Taken from the layout exported on 3 Oct 2026; replace this one line to
 // change what a fresh install looks like.
-const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","caseMode":3,"categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slots":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slotCols":3,"links":[],"small":true,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":true,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT","MAKE","WARM","TURN","RIDE","CLIMB","REST","BREAK","SLEEP","HUG","SQUEEZE","WAIT","PUSH","SING","PULL","WANT","LIKE","FEEL","NEED","THROW","KICK","ADVENTURE","RUN","COME","LOOK","SAY","WORK","TELL","LET\'S","FILL","CLOSE","TYPE","COLOR","DRAW","ATTACH","ADD"],"slots":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":["MORE","ALL DONE","AND","NOW","YOU","AM","TO","MY","THE","IT","AGAIN"],"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":7,"name":"Music","parent":3,"order":2,"color":"yellow","words":["GOLDEN","FREE","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"K POP Demon Hunters","words":["FREE","GOLDEN","SODA POP","YOUR IDOL"],"open":false},{"id":2,"name":"Moana","words":["HOW FAR I\'LL GO","WHERE YOU ARE","YOU\'RE WELCOME"],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":9,"name":"TV","parent":3,"order":3,"color":"blue","words":["BIRD SPOTTING"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Peppa Pig","words":["BIRD SPOTTING"],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":10,"name":"Movies","parent":3,"order":6,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slots":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":11,"name":"Characters","parent":3,"order":9,"color":"purple","words":["PEPPA","GEORGE","DOC HUDSON","MCQUEEN"],"slots":["PEPPA","GEORGE"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":true,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":14,"name":"Books","parent":3,"order":8,"color":"orange","words":["TRUCKS GALORE"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":15,"name":"Games","parent":3,"order":7,"color":"pink","words":["PUZZLE","ROAR"],"slots":["PUZZLE"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":20,"name":"Groups","parent":12,"order":2,"color":"teal","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":true,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["HAPPY","SAD","FRUSTRATED","UNCOMFORTABLE","GREEN","ORANGE"]},{"id":22,"name":"Stuff","parent":3,"order":1,"color":"blue","words":["FLICKER","ROCKET BALLOONS","SPRAY BOTTLE","SWING","TRAMPOLINE","PARACHUTE","BASKETBALL"],"slots":["FLICKER"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":23,"name":"Choices","parent":12,"order":1,"color":"purple","words":[],"slots":["UP","DOWN",null,"COLD","HOT",null,"NOW","LATER",null,"QUIET","LOUD"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["UP","DOWN","QUIET","LOUD","FAST","SLOW","NOW","MORE","GOOD","BAD"]},{"id":24,"name":"🎯","parent":null,"order":3,"color":"teal","words":["CARS"],"slots":["CARS","CUT"],"slotCols":3,"links":[],"small":false,"target":true,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Established","words":[],"open":false},{"id":2,"name":"Emerging","words":["CARS"],"open":true},{"id":3,"name":"New","words":[],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":25,"name":"Small words","parent":1,"order":0,"color":"blue","words":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM",".","SOME","?","!","THIS"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":true,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":32,"name":"Places","parent":3,"order":5,"color":"purple","words":["BEDROOM","BATHROOM","KITCHEN","PARK"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":34,"name":"Food","parent":3,"order":0,"color":"orange","words":["CHOCOLATE CHIP","APPLE","MANDARIN","CHICKEN TENDERS","POTATO","FRENCH BUTTER","KETCHUP","LOLLIPOP","SWEDISH FISH","TURKEY BURGER","BEEF BURGER","MEATBALLS","SWEET POTATO","STRAWBERRY","PEACH","PLUM","POPPI","COKE","MINT","BOTTLE","POPSICLE","ICE CREAM","TORTILLA","WATER","PANCAKES","BEAN BURGER","CHERRY","ICE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Drinks","words":["WATER","POPPI","BOTTLE","COKE"],"open":false},{"id":4,"name":"Fruit","words":["APPLE","MANDARIN","PEACH","PLUM","STRAWBERRY","CHERRY"],"open":false},{"id":3,"name":"Cookies","words":["CHOCOLATE CHIP","FRENCH BUTTER","MINT"],"open":false},{"id":10,"name":"Chips","words":["TORTILLA"],"open":false},{"id":8,"name":"Candy","words":["LOLLIPOP","SWEDISH FISH"],"open":false},{"id":2,"name":"Protein","words":["CHICKEN TENDERS","BEEF BURGER","MEATBALLS","TURKEY BURGER","BEAN BURGER"],"open":false},{"id":5,"name":"Sides","words":["SWEET POTATO","POTATO"],"open":false},{"id":6,"name":"Add-on","words":["KETCHUP","ICE"],"open":false},{"id":7,"name":"Frozen","words":["ICE CREAM","POPSICLE"],"open":false},{"id":9,"name":"Dishes","words":["PANCAKES"],"open":false,"hidden":true}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":45,"name":"People","parent":3,"order":4,"color":"pink","words":["MOM","DAD"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Family","words":["DAD","MOM"],"open":false},{"id":2,"name":"Friends","words":[],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":46,"name":"Temperature","parent":23,"order":3,"color":"yellow","words":["COLD","HOT","WARM","COOL"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":47,"name":"Time","parent":23,"order":4,"color":"red","words":["LATER","NOW","SOON","TODAY","YESTERDAY","TOMORROW","TONIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":48,"name":"Direction","parent":23,"order":0,"color":"green","words":["DOWN","UP","LEFT","RIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":49,"name":"Sound","parent":23,"order":1,"color":"pink","words":["LOUD","QUIET"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":50,"name":"Speed","parent":23,"order":2,"color":"teal","words":["FAST","SLOW"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":52,"name":"Size","parent":23,"order":6,"color":"red","words":["BIG","SMALL","MEDIUM"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":53,"name":"Height","parent":23,"order":7,"color":"green","words":["TALL","SHORT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":54,"name":"Quantity","parent":23,"order":8,"color":"orange","words":["ONE","SOME","ALL","MORE","LESS","NONE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":55,"name":"Order","parent":23,"order":9,"color":"pink","words":["BEFORE","AFTER","FIRST","THEN"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":56,"name":"Position","parent":23,"order":10,"color":"teal","words":["ON","OFF","IN","OUT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":57,"name":"Weight","parent":23,"order":11,"color":"yellow","words":["HEAVY","LIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":58,"name":"Opinion","parent":23,"order":12,"color":"red","words":["GOOD","BAD","SAME","DIFFERENT","OLD","NEW"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":59,"name":"Feelings","parent":20,"order":1,"color":"red","words":["ANGRY","CONFUSED","EXCITED","FRUSTRATED","HAPPY","HUNGRY","MAD","OVERSTIMULATED","SAD","SCARED","THIRSTY","TIRED","UNCOMFORTABLE","SILLY"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":60,"name":"Numbers","parent":20,"order":3,"color":"yellow","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":61,"name":"Colors","parent":20,"order":4,"color":"blue","words":["RED","GREEN","BLUE","PURPLE","PINK","YELLOW","ORANGE","BLACK","WHITE","GREY","SILVER","GOLD","BRONZE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":62,"name":"Shapes","parent":20,"order":5,"color":"green","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":68,"name":"Clothes","parent":3,"order":10,"color":"purple","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":true,"rule":null,"tiles":true,"feed":null},{"id":69,"name":"Routines","parent":3,"order":11,"color":"orange","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":true,"rule":null,"tiles":true,"feed":null},{"id":70,"name":"Things","parent":12,"order":3,"color":"pink","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["BIRD","DOG","TRUCK","TRAIN","CAR","BUS","BOAT","HELICOPTER","HEADPHONES","LOTION","SPRAY BOTTLE"]},{"id":71,"name":"Animals","parent":70,"order":0,"color":"teal","words":["BIRD","DOG","CAT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":72,"name":"Vehicles","parent":70,"order":2,"color":"yellow","words":["TRUCK","BUS","TRAIN","CAR","HELICOPTER","BOAT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":73,"name":"Supplies","parent":70,"order":3,"color":"red","words":["LOTION","HEADPHONES","SPRAY BOTTLE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":84,"name":"general requests","parent":12,"order":4,"color":"blue","words":["MUSIC","TV","FOOD","QUIET"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":86,"name":"requests","parent":12,"order":5,"color":"green","words":["MUSIC","TV","YOUTUBE","WATER","HELP","MORE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null}],"looseWords":["SWEDISH","FISH","COOKIES","POPSICLES","COOKIE","BEAR","VIDEO","OUTSIDE","HOME","ROOM","WINDOW","TABLE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","FRUIT","MOVIE","SNACK"],"wordCase":{"I":"I","AM":"am","THANKS":"thanks","ALL DONE":"all done","WHERE YOU ARE":"Where you are","YOU\'RE WELCOME":"You\'re welcome","HOW FAR I\'LL GO":"How far I\'ll go","GRANOLA BAR":"Granola bar","CHICKEN TENDERS":"Chicken Tenders","BOTTLE":"Bottle","MANDARIN":"Mandarin","PANCAKES":"Pancakes","POPPI":"Poppi","STRAWBERRY":"Strawberry","CHOCOLATE CHIP":"Chocolate Chip","FRENCH BUTTER":"French Butter","MINT":"Mint","POTATO":"Potato","TORTILLA":"Tortilla","SWEET POTATO":"Sweet Potato","FRUIT":"Fruit","HOME":"Home","MCQUEEN":"McQueen"},"keptPhrases":["THANK YOU","ALL DONE","SWEDISH FISH","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO","GRANOLA BAR","TURKEY BURGER","BEEF BURGER","ORANGE POPPI","ICE CREAM","ROCKET BALLOONS","SPRAY BOTTLE","BEAN BURGER","POPPI","CHOCOLATE CHIP","FRENCH BUTTER","MINT","POTATO","TORTILLA","SWEET POTATO","TRUCKS GALORE","DOC HUDSON","PEPPA PIG","BIRD SPOTTING"],"hiddenWords":["ADD","ADVENTURE","ATTACH","BREAK","CHASE","CLIMB","CLOSE","COLOR","DANCE","DRAW","FEEL","GIVE","HUG","JUMP","KICK","LET\'S","LIKE","LOOK","MAKE","PULL","PUSH","REST","RIDE","RUN","SAY","SHOOT","SING","SLEEP","SPIN","SQUEEZE","SWIM","SWING","TELL","THROW","STOP","TYPE","WAIT","WARM","WORK","FILL","FIND","LISTEN","WALK","READ","SPRAY"],"builderHide":{"c4":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1},"c22":{"w:SWING":1},"c46":{"w:WARM":1},"c4@I":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:SIT":1,"w:TURN":1,"w:OPEN":1,"w:PLAY":1,"w:HELP":1,"w:GET":1,"w:GO":1,"w:FIX":1,"w:COME":1,"w:CUT":1,"w:DRINK":1,"w:EAT":1,"w:WATCH":1},"c25@c4:I/WANT":{"w:I":1,"w:AND":1,"w:IS":1,"w:BE":1,"w:NOT":1,"w:ARE":1,"w:WE":1,"w:YOUR":1,"w:AM":1,"w:NOW":1,"w:?":1,"w:LATER":1,"w:SOME":1,"w:!":1,"w:.":1},"c4@STOP":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:CUT":1,"w:COME":1,"w:EAT":1,"w:DRINK":1,"w:FIX":1,"w:GO":1,"w:GET":1,"w:HELP":1},"c25@STOP":{"w:I":1,"w:YOU":1,"w:MY":1,"w:AND":1,"w:THE":1,"w:AM":1,"w:SOME":1,"w:LATER":1,"w:?":1,"w:!":1,"w:.":1,"w:TO":1,"w:YOUR":1,"w:NOT":1,"w:ARE":1,"w:WE":1,"w:BE":1,"w:IS":1,"w:A":1,"w:THIS":1},"c59@c4:I/FEEL":{"w:MAD":1,"w:THIRSTY":1,"w:SCARED":1,"w:HUNGRY":1,"w:ANGRY":1,"w:CONFUSED":1,"w:EXCITED":1,"w:OVERSTIMULATED":1,"w:SAD":1,"w:FRUSTRATED":1,"w:SILLY":1,"w:TIRED":1},"c4@c4:I/NEED":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:EAT":1,"w:DRINK":1,"w:CUT":1,"w:COME":1,"w:FIX":1,"w:GO":1,"w:GET":1,"w:NEED":1,"w:OPEN":1,"w:PLAY":1,"w:SIT":1,"w:TURN":1,"w:WANT":1,"w:WATCH":1},"n:c4:I/want":{}},"capKeep":{},"recentsHidden":["FRUIT","HOME"],"smallRow":["TO","THE","PLEASE","AGAIN"],"smallWords":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM",".","SOME","?","!","THIS"],"targetState":{},"pairs":[],"builder":{"kids":[{"label":"I","kids":[],"cats":[],"go":4},{"label":"Go","kids":[],"cats":[],"go":32},{"label":"More","kids":[],"cats":[34,7,9,10]},{"label":"Stop","kids":[],"cats":[],"go":25}],"cats":[],"words":{"OPEN":{"label":"Open","kids":[],"cats":[7,9,10,14,15,22,11],"small":["IT","THAT","THE","MORE"]},"GO":{"label":"Go","kids":[],"cats":[4,23],"small":["AGAIN","TO","THE"]},"WANT":{"label":"want","kids":[],"cats":[],"go":86},"BATHROOM":{"label":"Bathroom","kids":[],"cats":[]},"FEEL":{"label":"feel","kids":[],"cats":[],"go":59},"NEED":{"label":"need","kids":[],"cats":[],"go":4}}}}');
+const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","caseMode":3,"categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slots":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slotCols":3,"links":[],"small":true,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":true,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT","MAKE","WARM","TURN","RIDE","CLIMB","REST","BREAK","SLEEP","HUG","SQUEEZE","WAIT","PUSH","SING","PULL","WANT","LIKE","FEEL","NEED","THROW","KICK","ADVENTURE","RUN","COME","LOOK","SAY","WORK","TELL","LET\'S","FILL","CLOSE","TYPE","COLOR","DRAW","ATTACH","ADD"],"slots":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":["MORE","ALL DONE","AND","NOW","YOU","AM","TO","MY","THE","IT","AGAIN"],"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":7,"name":"Music","parent":3,"order":2,"color":"yellow","words":["GOLDEN","FREE","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"K POP Demon Hunters","words":["FREE","GOLDEN","SODA POP","YOUR IDOL"],"open":false},{"id":2,"name":"Moana","words":["HOW FAR I\'LL GO","WHERE YOU ARE","YOU\'RE WELCOME"],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":9,"name":"TV","parent":3,"order":3,"color":"blue","words":["BIRD SPOTTING"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Peppa Pig","words":["BIRD SPOTTING"],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":10,"name":"Movies","parent":3,"order":6,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slots":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":11,"name":"Characters","parent":3,"order":9,"color":"purple","words":["PEPPA","GEORGE","DOC HUDSON","MCQUEEN"],"slots":["PEPPA","GEORGE"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":true,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":14,"name":"Books","parent":3,"order":8,"color":"orange","words":["TRUCKS GALORE"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":15,"name":"Games","parent":3,"order":7,"color":"pink","words":["PUZZLE","ROAR"],"slots":["PUZZLE"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":20,"name":"Groups","parent":12,"order":2,"color":"teal","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":true,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["HAPPY","SAD","FRUSTRATED","UNCOMFORTABLE","GREEN","ORANGE"]},{"id":22,"name":"Stuff","parent":3,"order":1,"color":"blue","words":["FLICKER","ROCKET BALLOONS","SPRAY BOTTLE","SWING","TRAMPOLINE","PARACHUTE","BASKETBALL"],"slots":["FLICKER"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":23,"name":"Choices","parent":12,"order":1,"color":"purple","words":[],"slots":["UP","DOWN",null,"COLD","HOT",null,"NOW","LATER",null,"QUIET","LOUD"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["UP","DOWN","QUIET","LOUD","FAST","SLOW","NOW","MORE","GOOD","BAD"]},{"id":24,"name":"🎯","parent":null,"order":3,"color":"teal","words":["CARS"],"slots":["CARS","CUT"],"slotCols":3,"links":[],"small":false,"target":true,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Established","words":[],"open":false},{"id":2,"name":"Emerging","words":["CARS"],"open":true},{"id":3,"name":"New","words":[],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":25,"name":"Small words","parent":1,"order":0,"color":"blue","words":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM",".","SOME","?","!","THIS"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":true,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":32,"name":"Places","parent":3,"order":5,"color":"purple","words":["BEDROOM","BATHROOM","KITCHEN","PARK"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":34,"name":"Food","parent":3,"order":0,"color":"orange","words":["CHOCOLATE CHIP","APPLE","MANDARIN","CHICKEN TENDERS","POTATO","FRENCH BUTTER","KETCHUP","LOLLIPOP","SWEDISH FISH","TURKEY BURGER","BEEF BURGER","MEATBALLS","SWEET POTATO","STRAWBERRY","PEACH","PLUM","POPPI","COKE","MINT","BOTTLE","POPSICLE","ICE CREAM","TORTILLA","WATER","PANCAKES","BEAN BURGER","CHERRY","ICE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Drinks","words":["WATER","POPPI","BOTTLE","COKE"],"open":false},{"id":4,"name":"Fruit","words":["APPLE","MANDARIN","PEACH","PLUM","STRAWBERRY","CHERRY"],"open":false},{"id":3,"name":"Cookies","words":["CHOCOLATE CHIP","FRENCH BUTTER","MINT"],"open":false},{"id":10,"name":"Chips","words":["TORTILLA"],"open":false},{"id":8,"name":"Candy","words":["LOLLIPOP","SWEDISH FISH"],"open":false},{"id":2,"name":"Protein","words":["CHICKEN TENDERS","BEEF BURGER","MEATBALLS","TURKEY BURGER","BEAN BURGER"],"open":false},{"id":5,"name":"Sides","words":["SWEET POTATO","POTATO"],"open":false},{"id":6,"name":"Add-on","words":["KETCHUP","ICE"],"open":false},{"id":7,"name":"Frozen","words":["ICE CREAM","POPSICLE"],"open":false},{"id":9,"name":"Dishes","words":["PANCAKES"],"open":false,"hidden":true}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":45,"name":"People","parent":3,"order":4,"color":"pink","words":["MOM","DAD"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Family","words":["DAD","MOM"],"open":false},{"id":2,"name":"Friends","words":[],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":46,"name":"Temperature","parent":23,"order":3,"color":"yellow","words":["COLD","HOT","WARM","COOL"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":47,"name":"Time","parent":23,"order":4,"color":"red","words":["LATER","NOW","SOON","TODAY","YESTERDAY","TOMORROW","TONIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":48,"name":"Direction","parent":23,"order":0,"color":"green","words":["DOWN","UP","LEFT","RIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":49,"name":"Sound","parent":23,"order":1,"color":"pink","words":["LOUD","QUIET"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":50,"name":"Speed","parent":23,"order":2,"color":"teal","words":["FAST","SLOW"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":52,"name":"Size","parent":23,"order":6,"color":"red","words":["BIG","SMALL","MEDIUM"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":53,"name":"Height","parent":23,"order":7,"color":"green","words":["TALL","SHORT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":54,"name":"Quantity","parent":23,"order":8,"color":"orange","words":["ONE","SOME","ALL","MORE","LESS","NONE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":55,"name":"Order","parent":23,"order":9,"color":"pink","words":["BEFORE","AFTER","FIRST","THEN"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":56,"name":"Position","parent":23,"order":10,"color":"teal","words":["ON","OFF","IN","OUT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":57,"name":"Weight","parent":23,"order":11,"color":"yellow","words":["HEAVY","LIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":58,"name":"Opinion","parent":23,"order":12,"color":"red","words":["GOOD","BAD","SAME","DIFFERENT","OLD","NEW"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":59,"name":"Feelings","parent":20,"order":1,"color":"red","words":["ANGRY","CONFUSED","EXCITED","FRUSTRATED","HAPPY","HUNGRY","MAD","OVERSTIMULATED","SAD","SCARED","THIRSTY","TIRED","UNCOMFORTABLE","SILLY"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":60,"name":"Numbers","parent":20,"order":3,"color":"yellow","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":61,"name":"Colors","parent":20,"order":4,"color":"blue","words":["RED","GREEN","BLUE","PURPLE","PINK","YELLOW","ORANGE","BLACK","WHITE","GREY","SILVER","GOLD","BRONZE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":62,"name":"Shapes","parent":20,"order":5,"color":"green","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":68,"name":"Clothes","parent":3,"order":10,"color":"purple","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":true,"rule":null,"tiles":true,"feed":null},{"id":69,"name":"Routines","parent":3,"order":11,"color":"orange","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":true,"rule":null,"tiles":true,"feed":null},{"id":70,"name":"Things","parent":12,"order":3,"color":"pink","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["BIRD","DOG","TRUCK","TRAIN","CAR","BUS","BOAT","HELICOPTER","HEADPHONES","LOTION","SPRAY BOTTLE"]},{"id":71,"name":"Animals","parent":70,"order":0,"color":"teal","words":["BIRD","DOG","CAT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":72,"name":"Vehicles","parent":70,"order":2,"color":"yellow","words":["TRUCK","BUS","TRAIN","CAR","HELICOPTER","BOAT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":73,"name":"Supplies","parent":70,"order":3,"color":"red","words":["LOTION","HEADPHONES","SPRAY BOTTLE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null}],"looseWords":["SWEDISH","FISH","COOKIES","POPSICLES","COOKIE","BEAR","VIDEO","OUTSIDE","HOME","ROOM","WINDOW","TABLE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","FRUIT","MOVIE","SNACK","MUSIC","TV","FOOD","YOUTUBE"],"wordCase":{"I":"I","AM":"am","THANKS":"thanks","ALL DONE":"all done","WHERE YOU ARE":"Where you are","YOU\'RE WELCOME":"You\'re welcome","HOW FAR I\'LL GO":"How far I\'ll go","GRANOLA BAR":"Granola bar","CHICKEN TENDERS":"Chicken Tenders","BOTTLE":"Bottle","MANDARIN":"Mandarin","PANCAKES":"Pancakes","POPPI":"Poppi","STRAWBERRY":"Strawberry","CHOCOLATE CHIP":"Chocolate Chip","FRENCH BUTTER":"French Butter","MINT":"Mint","POTATO":"Potato","TORTILLA":"Tortilla","SWEET POTATO":"Sweet Potato","FRUIT":"Fruit","HOME":"Home","MCQUEEN":"McQueen"},"keptPhrases":["THANK YOU","ALL DONE","SWEDISH FISH","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO","GRANOLA BAR","TURKEY BURGER","BEEF BURGER","ORANGE POPPI","ICE CREAM","ROCKET BALLOONS","SPRAY BOTTLE","BEAN BURGER","POPPI","CHOCOLATE CHIP","FRENCH BUTTER","MINT","POTATO","TORTILLA","SWEET POTATO","TRUCKS GALORE","DOC HUDSON","PEPPA PIG","BIRD SPOTTING"],"hiddenWords":["ADD","ADVENTURE","ATTACH","BREAK","CHASE","CLIMB","CLOSE","COLOR","DANCE","DRAW","FEEL","GIVE","HUG","JUMP","KICK","LET\'S","LIKE","LOOK","MAKE","PULL","PUSH","REST","RIDE","RUN","SAY","SHOOT","SING","SLEEP","SPIN","SQUEEZE","SWIM","SWING","TELL","THROW","STOP","TYPE","WAIT","WARM","WORK","FILL","FIND","LISTEN","WALK","READ","SPRAY"],"builderHide":{"c4":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1},"c22":{"w:SWING":1},"c46":{"w:WARM":1},"c4@I":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:SIT":1,"w:TURN":1,"w:OPEN":1,"w:PLAY":1,"w:HELP":1,"w:GET":1,"w:GO":1,"w:FIX":1,"w:COME":1,"w:CUT":1,"w:DRINK":1,"w:EAT":1,"w:WATCH":1},"c25@c4:I/WANT":{"w:I":1,"w:AND":1,"w:IS":1,"w:BE":1,"w:NOT":1,"w:ARE":1,"w:WE":1,"w:YOUR":1,"w:AM":1,"w:NOW":1,"w:?":1,"w:LATER":1,"w:SOME":1,"w:!":1,"w:.":1},"c4@STOP":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:CUT":1,"w:COME":1,"w:EAT":1,"w:DRINK":1,"w:FIX":1,"w:GO":1,"w:GET":1,"w:HELP":1},"c25@STOP":{"w:I":1,"w:YOU":1,"w:MY":1,"w:AND":1,"w:THE":1,"w:AM":1,"w:SOME":1,"w:LATER":1,"w:?":1,"w:!":1,"w:.":1,"w:TO":1,"w:YOUR":1,"w:NOT":1,"w:ARE":1,"w:WE":1,"w:BE":1,"w:IS":1,"w:A":1,"w:THIS":1},"c59@c4:I/FEEL":{"w:MAD":1,"w:THIRSTY":1,"w:SCARED":1,"w:HUNGRY":1,"w:ANGRY":1,"w:CONFUSED":1,"w:EXCITED":1,"w:OVERSTIMULATED":1,"w:SAD":1,"w:FRUSTRATED":1,"w:SILLY":1,"w:TIRED":1},"c4@c4:I/NEED":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:EAT":1,"w:DRINK":1,"w:CUT":1,"w:COME":1,"w:FIX":1,"w:GO":1,"w:GET":1,"w:NEED":1,"w:OPEN":1,"w:PLAY":1,"w:SIT":1,"w:TURN":1,"w:WANT":1,"w:WATCH":1},"n:c4:I/want":{}},"capKeep":{},"recentsHidden":["FRUIT","HOME"],"smallRow":["TO","THE","PLEASE","AGAIN"],"smallWords":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM",".","SOME","?","!","THIS"],"targetState":{},"pairs":[],"builder":{"kids":[{"label":"I","kids":[],"cats":[],"go":4},{"label":"Go","kids":[],"cats":[],"go":32},{"label":"More","kids":[],"cats":[34,7,9,10]},{"label":"Stop","kids":[],"cats":[],"go":25}],"cats":[],"words":{"OPEN":{"label":"Open","kids":[],"cats":[7,9,10,14,15,22,11],"small":["IT","THAT","THE","MORE"]},"GO":{"label":"Go","kids":[],"cats":[4,23],"small":["AGAIN","TO","THE"]},"WANT":{"label":"want","kids":[],"cats":[],"go":null},"BATHROOM":{"label":"Bathroom","kids":[],"cats":[]},"FEEL":{"label":"feel","kids":[],"cats":[],"go":59},"NEED":{"label":"need","kids":[],"cats":[],"go":4}}}}');
 // Additions to the built-in layout since that export
 if (!DEFAULT_LAYOUT.categories.some(c => !c.parent && (c.target || c.name === 'New'))) {
   DEFAULT_LAYOUT.categories.push({
@@ -7205,6 +7440,10 @@ function hasSmallStrip(cat) {
 // set for its kind of word, and last the page's usual row to fill any places left.
 const FOLLOW_ACTION = ['IT', 'THAT', 'THIS', 'THE', 'MY', 'MORE', 'AGAIN', 'NOW', 'WITH', 'TO'];
 const FOLLOW_BY_WORD = {
+  CLIMB: ['UP', 'DOWN', 'ON', 'THE', 'THAT', 'NOW'], JUMP: ['ON', 'IN', 'UP', 'OVER', 'THE', 'NOW'], SIT: ['ON', 'DOWN', 'HERE', 'WITH', 'THE', 'NOW'],
+  LOOK: ['AT', 'THE', 'THAT', 'HERE', 'UP', 'NOW'], OPEN: ['THE', 'IT', 'THAT', 'THIS', 'MY', 'NOW'], CLOSE: ['THE', 'IT', 'THAT', 'THIS', 'MY', 'NOW'],
+  PLAY: ['WITH', 'THE', 'MORE', 'AGAIN', 'OUTSIDE', 'NOW'], HELP: ['ME', 'PLEASE', 'WITH', 'THE', 'NOW'], TURN: ['ON', 'OFF', 'IT', 'THE', 'UP', 'DOWN'],
+  GET: ['THE', 'MY', 'IT', 'THAT', 'MORE', 'NOW'], PUT: ['ON', 'IN', 'IT', 'THE', 'THAT', 'AWAY'], WALK: ['TO', 'WITH', 'OUTSIDE', 'THE', 'NOW'],
   I: ['WANT', 'AM', 'LIKE', 'NEED', 'CAN', 'SEE'], YOU: ['ARE', 'CAN', 'WANT', 'LIKE'], WE: ['ARE', 'CAN', 'WANT', 'GO'],
   IT: ['IS', 'AGAIN', 'NOW', 'PLEASE', '.', '?'], THAT: ['IS', 'ONE', 'AGAIN', 'PLEASE', '.'], THIS: ['IS', 'ONE', 'AGAIN', 'PLEASE', '.'],
   IS: ['IT', 'THAT', 'THE', 'MY', 'NOT', 'A'], AM: ['NOT', 'A', 'THE', 'ALL DONE'], ARE: ['YOU', 'WE', 'NOT', 'THE'],
@@ -7926,7 +8165,7 @@ function renderBuilder(grid) {
           if (!categoriesOf(gk).length) { state.recentsHidden = state.recentsHidden || {}; state.recentsHidden[gk] = true; }
           homePhrase.push(gk);
         }
-        builderSay(w);
+        builderSay(withGroup(c, w));
         const n = leads();
         const g = n && n.go ? catById(n.go) : null;
         if (g && !g.hidden) { builderPath.push({ cat: n.go, via: w }); renderHome(true); }
@@ -8360,6 +8599,7 @@ function openFolderEdit(c, extra) {
     body.appendChild(hn);
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
     if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
+    if (!c.target && !c.small && !c.smallSec && (c.words || []).length) body.appendChild(suffixBtn(c));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
     if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? 'Custom page: change the tiles' : 'Custom page: pick tiles from its folders', '', () => openFeedPicker(c)));
     // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
@@ -8895,7 +9135,7 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   const titleTile = (w, list, onDrop) => {
     const card = mk(bankLabel(w));
     card.dataset.word = w;
-    movable(card, list, w, 'titles', () => { homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w); }, () => openTitleActions(w, cat), onDrop);
+    movable(card, list, w, 'titles', () => { const sw = withGroup(cat, w); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw); }, () => openTitleActions(w, cat), onDrop);
     put(card);
   };
   const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
@@ -8951,6 +9191,7 @@ function openGroupHead(cat, group) {
       if (!name) return false;
       group.name = name;
     })));
+    if (!cat.target) body.appendChild(suffixBtn(group));
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
     if (!cat.target) body.appendChild(layoutSwitchBtn(cat));
@@ -9182,9 +9423,10 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const row = makeListRow(w, rowH, base);
     if (cat.target && (state.targetOff || {})[w]) row.classList.add('paused');
     holdTap(row, () => {
-      homePhrase.push(w);
+      const sw = withGroup(cat, w);
+      homePhrase.push(sw);
       warmSpeech();
-      speakWord(w, 0.95);
+      speakWord(sw, 0.95);
       renderPhraseBar();
       renderMagic(w);
     }, () => openTitleActions(w, cat), usesGroups(cat) ? { kind: 'title', drop: (to, below, onWord) => {
@@ -9893,9 +10135,10 @@ function renderSlotGrid(grid, cat, folders) {
     }
     card.addEventListener('click', () => {
       if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
-      homePhrase.push(w);
+      const sw = arrange ? withGroup(cat, w) : w;
+      homePhrase.push(sw);
       warmSpeech();
-      speakWord(w, 0.95);
+      speakWord(sw, 0.95);
       renderPhraseBar();
       renderMagic(w);
       // the page stays put so more words can be added from it; enter (or the folder menu) moves on
@@ -9997,7 +10240,7 @@ function renderSlotGrid(grid, cat, folders) {
           card.appendChild(t);
           card.addEventListener('click', () => {
             if (suppressTileClick) { suppressTileClick = false; return; }
-            homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w);
+            const sw = withGroup(f, w); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw);
           });
           attachWordHold(card, w, f);
           fit(card, label);
