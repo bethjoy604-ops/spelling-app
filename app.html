@@ -2463,7 +2463,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 365 - 6 Oct';
+const BUILD = 'build 366 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8005,6 +8005,7 @@ function refreshSmallStrips() {
     old.replaceWith(nu);
   });
   relatedRowSync();
+  smallRowEmptyCheck();
 }
 // The small words library in Chat, in a set order so each word keeps its place: the first row is
 // the six most common of them (I first), then the words by kind, each kind starting a row -
@@ -8112,6 +8113,12 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const six = [];
     need.concat(followSpecific(last)).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
     if (!six.length) followWords(last, []).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
+    // never an empty row: failing all that, the page's own small words and then the most used ones
+    if (!six.length) {
+      const used = w => (state.wordHistory[w] || {}).n || 0;
+      [].concat(...shown, ...rows).concat(allSmallWords().slice().sort((a, b) => used(b) - used(a)))
+        .forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
+    }
     shown = [six.slice(0, 6)];
   }
   else {
@@ -10568,6 +10575,8 @@ function renderSlotGrid(grid, cat, folders) {
     grid.style.gridAutoRows = 'auto';
   }
   if (!sec) { smallFullHook = null; chatFull = false; }
+  // arriving on a page with words already in the bar: its small words row opens straight away
+  { const key = cat ? cat.id : 'root'; if (rowPageKey !== key) { rowPageKey = key; if (homePhrase.length && !state.builderMode) setTimeout(smallRowPop, 0); } }
   if (sec) {
     const wrap = document.createElement('div');
     wrap.className = 'small-section top';
@@ -11067,7 +11076,12 @@ function stripCountdown(key) {
   }, 5000);
 }
 // A tile was chosen: the page's small words row opens with the six that fit it, for three seconds
+let rowPageKey = null;
 let chatRowTimer = null, popRowTimer = null, popRowUntil = 0;
+// nothing fits after the words in the bar: no empty blue row - the page is simply the page again
+function smallRowEmptyCheck() {
+  if (homePhrase.length && document.querySelector('#smallHost .small-strip .small-tile.empty')) smallRowDrop();
+}
 function smallRowDrop() {
   if (stripKey !== null) { if (!stripShut) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); } }
   else if (smallFullHook) { if (chatRowAuto && state.smallOpen) { chatRowAuto = false; clearTimeout(chatRowTimer); state.smallOpen = false; stripFull = null; if (smallHostRedo) smallHostRedo(); } }
@@ -11075,6 +11089,7 @@ function smallRowDrop() {
 }
 function smallRowPop() {
   if (state.builderMode || state.smallRowsOn === false) return;
+  setTimeout(smallRowEmptyCheck, 0);
   // (opened this way it stays until the page is scrolled, the blue is tapped, or the bar is emptied)
   if (stripKey !== null) { stripShut = false; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   else if (!smallFullHook) {
