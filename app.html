@@ -517,6 +517,10 @@
   .feed-group .feed-head[aria-expanded="false"] { height: 44px; }
   .feed-group:has(.feed-head[aria-expanded="false"]) { padding-bottom: 6px; }
   .feed-tiles { display: grid; gap: 12px; }
+  .feed-group.drop-before { box-shadow: -8px 0 0 var(--green); }
+  .feed-group.drop-after { box-shadow: 8px 0 0 var(--green); }
+  .feed-group.drag-src { opacity: 0.35; }
+  .feed-group .feed-head { touch-action: none; }
   .library-dots { align-self: center; justify-self: start; width: 34px; height: 64px; border: none; border-radius: 12px; background: none;
     color: rgba(0,0,0,0.28); font-size: 40px; line-height: 1; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 0 6px; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
@@ -2363,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 282 - 6 Oct';
+const BUILD = 'build 283 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9846,10 +9850,19 @@ function renderSlotGrid(grid, cat, folders) {
     const firstFit = (w, h) => { for (let r = 0; ; r++) for (let c = 0; c + w <= cols; c++) if (free(r, c, w, h)) return { r, c }; };
     const claim = (r, c, w, h) => { for (let y = r; y < r + h; y++) { taken[y] = taken[y] || []; for (let x = c; x < c + w; x++) taken[y][x] = true; } };
     let lastRow = 0;
+    // the panels' order: as they were last dragged, then the Library's order for any others
+    const fOrder = cat.feedOrder || [];
+    const fRank = f => { const k = fOrder.indexOf(f.id); return k < 0 ? 9999 : k; };
+    const panels = [];
     feedFolders(cat).forEach(f => {
       const mine = (f.words || []).filter(w => picked.includes(w) && !used.has(w));
       if (!mine.length) return;
       mine.forEach(w => used.add(w));
+      panels.push({ f, mine });
+    });
+    const ordered = panels.slice().sort((a, b) => fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
+    const dragList = ordered.map(x => x.f);
+    ordered.forEach(({ f, mine }) => {
       const shut = !!cat.feedShut[f.id];
       const sec = document.createElement('div');
       sec.className = 'feed-group';
@@ -9875,7 +9888,21 @@ function renderSlotGrid(grid, cat, folders) {
       hd.className = 'feed-head';
       hd.setAttribute('aria-expanded', shut ? 'false' : 'true');
       hd.textContent = f.name;
+      // hold the name and the whole panel lifts, to drag before or after another panel
+      sec.dataset.bidx = dragList.indexOf(f);
+      sec.dataset.blist = 'panels';
+      { let timer = null, sx = 0, sy = 0;
+        const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+        hd.addEventListener('pointerdown', e => {
+          if (e.button) return;
+          sx = e.clientX; sy = e.clientY; cancel();
+          timer = setTimeout(() => { timer = null; startWordDrag(sec, null, null, sx, sy, null, { list: dragList, item: f, onHold: () => {}, onDrop: l => { cat.feedOrder = l.map(x => x.id); } }); }, 480);
+        });
+        hd.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => hd.addEventListener(ev, cancel));
+        hd.addEventListener('contextmenu', e => e.preventDefault()); }
       hd.addEventListener('click', () => {
+        if (suppressTileClick) { suppressTileClick = false; return; }
         if (shut) delete cat.feedShut[f.id]; else cat.feedShut[f.id] = 1;
         buzz(10); save();
         const top = grid.scrollTop;
@@ -9985,7 +10012,7 @@ function trackWordDrag() {
   if (!el) return;
   // A builder tile being carried: it lands before or after another tile of the same kind on the page
   if (d.builder) {
-    const over = el.closest('.home-card[data-bidx]');
+    const over = el.closest('[data-bidx]');
     if (!over || over === d.card || over.dataset.blist !== d.card.dataset.blist) return;
     const r = over.getBoundingClientRect();
     const after = d.x > r.left + r.width / 2;
