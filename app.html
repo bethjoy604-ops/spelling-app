@@ -2462,7 +2462,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 357 - 6 Oct';
+const BUILD = 'build 358 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8099,6 +8099,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     });
     if (i === 0) b.style.gridColumnStart = 1;     // each row starts on its own line
   }));
+  // the whole library is open: a quiet grey tile at the end opens the row's edit options
+  if (full) {
+    mk('\u270F\uFE0F edit', () => editRow(0)).classList.add('add-small');
+    strip.style.maxHeight = '66vh'; strip.style.overflowY = 'auto'; strip.style.alignContent = 'start'; strip.style.scrollbarWidth = 'none';
+  }
   edit = () => openSmallRowPicker(owner, 0);
   // the panel is only as wide as its longest row (six across at most), so it ends after the last word
   const across = Math.min(6, Math.max(1, ...shown.map(r => r.length)));
@@ -8120,33 +8125,12 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     m.setAttribute('aria-label', full ? 'Fewer small words' : 'All the small words');
     m.addEventListener('click', e => {
       e.stopPropagation();
+      // the plus pulls the whole library down in place; the minus draws it back to the one row
       buzz(10);
-      clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer);
-      // the whole library of small words, in a pop-out: tap one to use it, hold one for its options
-      openWordSheet(body => {
-        sheetTitle(body, 'Small words');
-        const used = w => (state.wordHistory[w] || {}).n || 0;
-        const all = allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w)).map((w, i) => [w, i]).sort((a, b) => (isPunct(a[0]) - isPunct(b[0])) || used(b[0]) - used(a[0]) || a[1] - b[1]).map(x => x[0]);
-        const g = document.createElement('div');
-        g.className = 'small-lib';
-        all.forEach(w => {
-          const b = document.createElement('button');
-          b.className = 'small-tile'; b.textContent = sentenceLabel(w);
-          let t = null, held = false;
-          b.addEventListener('pointerdown', () => { held = false; t = setTimeout(() => { t = null; held = true; buzz(15); b.classList.add('held'); }, 520); });
-          ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, () => { if (t) { clearTimeout(t); t = null; } }));
-          b.addEventListener('contextmenu', e2 => e2.preventDefault());
-          b.addEventListener('click', () => {
-            if (held) { held = false; closeWordSheet(); setTimeout(() => openWordActions(w, smallFolder() || owner), 80); return; }
-            closeWordSheet();
-            homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar();
-          });
-          g.appendChild(b);
-        });
-        body.appendChild(g);
-        body.appendChild(sheetBtn('\u270F\uFE0F  Edit this page\u2019s row', '', () => editRow(0)));
-        body.appendChild(sheetBtn('Close', 'primary', closeWordSheet));
-      });
+      stripFull = full ? null : owner.id;
+      clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null;
+      if (full) { if (stripKey !== null) stripCountdown(stripKey); else if (smallFullHook) chatRowArm(); }
+      followKey = null; refreshSmallStrips();
     });
     strip.appendChild(m);
     // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
@@ -10606,7 +10590,7 @@ function renderSlotGrid(grid, cat, folders) {
     const paintSec = () => {
       // (the plus on its one row opens the whole board: the page is redrawn so the board is built)
       smallFullHook = { owner: cat, fn: () => { chatFull = true; buzz(10); const g = document.getElementById('homeGrid'), top = g.scrollTop; renderHome(false); g.scrollTop = top; } };
-      if (!state.smallOpen) { const shut = document.createElement('div'); shut.className = 'small-section top'; shut.appendChild(head); smallHostSet(shut); return; }
+      if (!state.smallOpen) { if (stripFull === cat.id) stripFull = null; const shut = document.createElement('div'); shut.className = 'small-section top'; shut.appendChild(head); smallHostSet(shut); return; }
       if (chatFull) { smallHostSet(wrap); return; }
       // open: one row, the small words used most
       const el = document.createElement('div');
@@ -10981,7 +10965,7 @@ function smallRowPop() {
   if (state.builderMode || state.smallRowsOn === false) return;
   if (stripKey !== null) { stripShut = false; stripFull = null; stripCountdown(stripKey); if (smallHostRedo) smallHostRedo(); }
   else if (smallFullHook && !chatFull) {
-    state.smallOpen = true;
+    state.smallOpen = true; stripFull = null;
     if (smallHostRedo) smallHostRedo();
     clearTimeout(chatRowTimer);
     // (a row the user opened by hand stays as it is; one opened here folds again by itself)
@@ -10995,7 +10979,7 @@ function chatRowArm() {
   chatRowAuto = true;
   chatRowTimer = setTimeout(() => {
     chatRowTimer = null; chatRowAuto = false;
-    if (!smallFullHook || chatFull || !state.smallOpen) return;
+    if (!smallFullHook || chatFull || !state.smallOpen || stripFull) return;
     state.smallOpen = false;
     if (smallHostRedo) smallHostRedo();
   }, 3000);
