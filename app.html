@@ -657,6 +657,7 @@
   .magic-chip.word { background: var(--bg); }
   .magic-chip.phrase { background: var(--green-soft, #e6f6e9); border-color: transparent; }
   .magic-chip.fill { background: #bfd8ff; border-color: transparent; }
+  .magic-chip.folder { background: var(--bg); }
   .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
   /* Category tiles — their own line, above the bank */
@@ -2369,7 +2370,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 293 - 6 Oct';
+const BUILD = 'build 294 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6126,7 +6127,7 @@ const MAGIC_LEADS = {
   places: ['GO', 'COME', 'WALK', 'DRIVE', 'VISIT', 'LEAVE'],
   food: ['EAT', 'DRINK', 'HUNGRY', 'THIRSTY', 'TASTE', 'COOK'],
   feelings: ['FEEL', 'AM', "I'M"],
-  people: ['SEE', 'CALL', 'HUG', 'WITH', 'MISS'],
+  people: ['SEE', 'CALL', 'HUG', 'WITH', 'MISS', 'HI', 'HELLO', 'HEY', 'BYE', 'GOODBYE', 'THANKS', 'THANK YOU', 'GOOD MORNING', 'GOOD NIGHT'],
 };
 const MAGIC_WANTS = ['WANT', 'LIKE', 'NEED', 'LOVE', 'HAVE', 'GET', 'MORE'];
 function kindByName(c) {
@@ -6137,6 +6138,17 @@ function kindByName(c) {
     x = x.parent ? catById(x.parent) : null;
   }
   return '';
+}
+// After "want" and words like it (or any action word with no kind of its own to lead to), the
+// row offers the folders to look in - food, music, tv, actions, choices - rather than single words
+function magicFolders(word) {
+  if (Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))) return [];
+  if (!MAGIC_WANTS.includes(word) && kindOfWord(word) !== 'action') return [];
+  const ok = c => c && !c.hidden && !c.target && !c.small && !c.smallSec;
+  const stuff = state.categories.find(c => !c.parent && c.phrases && ok(c));
+  const out = stuff ? childrenOf(stuff.id).filter(ok) : [];
+  ['actions', 'choices'].forEach(n => { const c = state.categories.find(x => x.name.trim().toLowerCase() === n && ok(x)); if (c && !out.includes(c)) out.push(c); });
+  return out;
 }
 function magicNext(word) {
   const open = state.categories.filter(c => !c.target && !c.hidden && !c.small && !c.smallSec);
@@ -6189,6 +6201,8 @@ function magicArticle(w) {
 }
 function magicExpand(words) {
   if (!words.length || words.length > 3) return null;
+  // a greeting on its own: "Hi there" (or tap a person offered beside it: "Hi Mom")
+  if (words.length === 1 && ['HI', 'HELLO', 'HEY'].includes(words[0])) return [words[0], 'THERE'];
   const lead = MAGIC_SUBJECTS.includes(words[0]) || magicKind(words[0]) === 'person';
   const body = lead ? words.slice(1) : words.slice();
   const k = body.map(magicKind);
@@ -6211,6 +6225,7 @@ function magicExpand(words) {
     if (k[0] === 'feeling') out = ['FEEL', w];
     else if (noun(k[0])) out = ['WANT'].concat(toNoun(w, k[0]));
     else if (k[0] === 'action') out = ['WANT', 'TO', w];
+    else if (w === 'MORE') out = ['WANT', 'MORE'];
     else if (k[0] === 'want' && !lead) out = [w];
   } else if (body.length === 2) {
     const [a, b] = body;
@@ -6292,8 +6307,22 @@ function renderMagic(word) {
 
   // Single words that have gone with this one before — tap to keep building
   // (with two or more words in the bar and a sentence to offer, the sentence takes this row's place)
-  const byRule = mp && homePhrase.length > 1 ? [] : magicNext(word);
-  (mp && homePhrase.length > 1 ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
+  const sentenceOnly = !!mp && homePhrase.length > 1;
+  const folders = sentenceOnly ? [] : magicFolders(word);
+  folders.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'magic-chip folder';
+    b.textContent = c.name.toLowerCase();
+    b.addEventListener('click', () => {
+      const path = []; let x = c, g = 0;
+      while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
+      homePath = path; libraryOpen = null; tileGroup = null;
+      buzz(10); renderHome(true);
+    });
+    row.appendChild(b);
+  });
+  const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
+  (sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
     const b = document.createElement('button');
     b.className = 'magic-chip word';
     const t = document.createElement('span');
