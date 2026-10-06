@@ -635,10 +635,11 @@
   .phrase-bar .pb-words { max-height: calc(2.3em + 10px); overflow-y: auto; scrollbar-width: none; overscroll-behavior: contain; }
   .phrase-bar .pb-words::-webkit-scrollbar { display: none; }
   /* scrolled down a page: the key bar draws in to one slim line, and opens out again at the top */
-  .view-home.bar-min .phrase-bar { min-height: 0; height: 50px; flex: none; padding-top: 4px; padding-bottom: 4px; font-size: 22px; overflow: hidden; }
+  .view-home.bar-min .phrase-bar { min-height: 0; height: 96px; flex: none; padding-top: 6px; padding-bottom: 6px; font-size: 44px; overflow: hidden; }
   .view-home.bar-min .phrase-bar .pb-words { max-height: 1.35em; }
-  .view-home.bar-min .phrase-bar .home-enter { min-height: 0; height: 38px; width: 64px; font-size: 20px; }
-  .view-home.bar-min .phrase-bar .display-clear { transform: scale(0.75); }
+  .view-home.bar-min .phrase-bar .home-enter { min-height: 0; height: 64px; }
+  /* (the folder menu and the switches step aside too, and their room goes to the bar) */
+  .view-home.bar-min .home-row { display: none; }
   /* a tile was chosen: for two seconds the whole page is the sentence, then the page comes back */
   .bar-flash { position: fixed; inset: 0; z-index: 40; background: rgba(174,176,181,0.45); padding: 16px; display: flex; animation: barFlash 1s ease both; }
   @keyframes barFlash { 0% { opacity: 0; } 22% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -2432,7 +2433,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 335 - 6 Oct';
+const BUILD = 'build 336 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
