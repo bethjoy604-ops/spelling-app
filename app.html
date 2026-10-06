@@ -2306,9 +2306,9 @@
         <div class="help-note">Words keeps one word per tile and splits anything longer as it's added. Sentences shows only saved phrases. Both mixes them. Any folder switched to phrases in Edit groups ignores this and keeps full names like "Doc Hudson Best Moments" on one tile.</div>
 
 
-        <div class="sublabel">Tiles on a screenful</div>
+        <div class="sublabel">Tile size (every tile: pages and small words)</div>
         <div class="seg-row" id="segGridFill"></div>
-        <div class="help-note">Every tile uses the same size of type; each one is only as wide as its word, and the rows fill the width neatly. This number sets how big that type is — pick 6 for big tiles, 12 for smaller ones. More words than that simply carry on below, so nothing is ever hidden.</div>
+        <div class="help-note">Large shows 6 tiles on a screen, Medium 9 and Small 12. The small word tiles grow and shrink with them. More words than that simply carry on below, so nothing is ever hidden.</div>
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
         <div class="sublabel" style="margin-top:14px;">Hidden folders</div>
         <div id="hiddenFolders"></div>
@@ -2462,7 +2462,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 360 - 6 Oct';
+const BUILD = 'build 361 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2502,7 +2502,7 @@ function shadeFor(solid, intensity) {
 }
 const BANK_SORTS = { recent: 'Recent', used: 'Most used' };
 const TILE_MODES = { word: 'Words', sentence: 'Sentences', mixed: 'Both' };
-const GRID_FILLS = { 6: '6', 9: '9', 12: '12', 0: 'Scroll' };
+const GRID_FILLS = { 6: 'Large', 9: 'Medium', 12: 'Small', 0: 'Small' };
 const SIZE_STEPS = ['small', 'med', 'large'];
 const SIZE_LABELS = { small: 'Small', med: 'Medium', large: 'Large' };
 const OTHER_KEYS_LABELS = {
@@ -8005,9 +8005,11 @@ function groupSmallWords(list) {
 // One size for the tiles of every small words row - Chat's, each folder's, a builder page's and the
 // magic bar's blue row - whatever grid the page under it uses. It goes by the screen, not the page.
 function smallTileSize() {
-  const h = Math.round(Math.max(44, Math.min(70, window.innerHeight * 0.078)));      // slim tiles: more of the blue shows round them
+  // the small word tiles follow the tile size chosen in Settings: Large, Medium or Small, like the page's own tiles
+  const k = state.gridFill === 6 ? 1.2 : state.gridFill === 9 ? 1 : 0.84;
+  const h = Math.round(Math.max(50, Math.min(104, window.innerHeight * 0.105 * k)));      // slim tiles: more of the blue shows round them
   const colW = Math.floor(((document.getElementById('homeGrid') || {}).clientWidth || window.innerWidth) / 6) - 24;
-  return { h, font: Math.round(Math.max(15, Math.min(h * 0.42, colW / (9 * 0.62)))) };
+  return { h, font: Math.round(Math.max(17, Math.min(h * 0.42, colW / (8 * 0.62)))) };
 }
 function addStripToggle(strip, onClose) {
   strip.classList.add('with-toggle');
@@ -8118,7 +8120,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     edit = () => editRow(r);
     const b = mk(sentenceLabel(w), () => {      // the blue row is always small letters (I and names aside)
       if (!state.words.includes(w)) { state.words.push(w); if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 }; save(); }
-      homePhrase.push(w);
+      // with magic on, a small word goes where the sentence wants it ("want" + I reads "I want"), not on the end
+      const mp = state.magicType && !state.builderMode ? magicPhraseNow() : null;
+      const at = mp ? mp.phrase.findIndex((x, j) => x === w && !mp.used.includes(j)) : -1;
+      if (at >= 0) { const keep = mp.used.concat([at]); homePhrase = mp.phrase.filter((_, j) => keep.includes(j)); }
+      else homePhrase.push(w);
       warmSpeech();
       speakWord(w, 0.95);
       renderPhraseBar();
@@ -12610,7 +12616,7 @@ function renderSettings() {
     v => { state.bankSort = v; save(); renderSettings();
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
-  buildSeg('segGridFill', [6, 9, 12, 0].map(v => ({ value: v, label: GRID_FILLS[v] })), state.gridFill,
+  buildSeg('segGridFill', [6, 9, 12].map(v => ({ value: v, label: GRID_FILLS[v] })), state.gridFill || 12,
     v => { state.gridFill = +v; save(); renderSettings();
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
