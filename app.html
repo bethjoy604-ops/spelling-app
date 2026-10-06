@@ -2371,7 +2371,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 298 - 6 Oct';
+const BUILD = 'build 299 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6281,7 +6281,7 @@ function magicArticle(w) {
   return [/^[AEIOU]/.test(w) ? 'AN' : 'A'];
 }
 function magicExpand(words) {
-  if (!words.length || words.length > 3) return null;
+  if (!words.length || words.length > 4) return null;
   // a greeting on its own: "Hi there" (or tap a person offered beside it: "Hi Mom")
   if (words.length === 1 && ['HI', 'HELLO', 'HEY'].includes(words[0])) return [words[0], 'THERE'];
   const lead = MAGIC_SUBJECTS.includes(words[0]) || magicKind(words[0]) === 'person';
@@ -6318,6 +6318,13 @@ function magicExpand(words) {
     else if (k[0] === 'action' && ['food', 'drink', 'thing'].includes(k[1])) out = ['WANT', 'TO', a].concat(magicArticle(b), [b]);
     else if (k[0] === 'action' && noun(k[1])) out = ['WANT', 'TO', a, b];
   }
+  else if (body.length === 3) {
+    // "want go park" -> want to go to the park; "want eat apple" -> want to eat an apple
+    const [a, b, c] = body;
+    if (k[0] === 'want' && k[1] === 'action' && k[2] === 'place') out = [a, 'TO', b].concat(toPlace(c));
+    else if (k[0] === 'want' && k[1] === 'action' && ['food', 'drink', 'thing'].includes(k[2])) out = [a, 'TO', b].concat(magicArticle(c), [c]);
+    else if (k[0] === 'want' && k[1] === 'action' && noun(k[2])) out = [a, 'TO', b, c];
+  }
   if (!out) return null;
   out = (lead ? [words[0]] : ['I']).concat(out);
   return out.length > words.length ? out : null;
@@ -6335,7 +6342,10 @@ function magicPhraseNow() {
   let used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
   if (!used) {
     // as entered, or (two words put in the other way round) turned about
-    magicTarget = magicExpand(homePhrase) || (homePhrase.length === 2 ? magicExpand(homePhrase.slice().reverse()) : null);
+    // (a longer bar is read by its main words: "I want to go park" is want + go + park)
+    const main = homePhrase.filter((w, i) => !['TO', 'THE', 'A', 'AN'].includes(w) && !(w === 'I' && i > 0));
+    magicTarget = magicExpand(homePhrase) || (homePhrase.length === 2 ? magicExpand(homePhrase.slice().reverse()) : null)
+      || (main.length < homePhrase.length ? magicExpand(main) : null);
     used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
   }
   if (!magicTarget || !used || homePhrase.join(' ') === magicTarget.join(' ')) { magicTarget = null; return null; }
