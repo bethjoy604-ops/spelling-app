@@ -517,8 +517,8 @@
   .feed-group .feed-head[aria-expanded="false"] { height: 44px; }
   .feed-group:has(.feed-head[aria-expanded="false"]) { padding-bottom: 6px; }
   .feed-tiles { display: grid; gap: 12px; }
-  .library-dots { align-self: center; justify-self: start; width: 72px; height: 44px; border: none; border-radius: 14px; background: rgba(255,255,255,0.35); color: rgba(0,0,0,0.45);
-    font-size: 18px; letter-spacing: 2px; cursor: pointer; font-family: inherit; padding: 0; }
+  .library-dots { align-self: center; justify-self: start; width: 34px; height: 64px; border: none; border-radius: 12px; background: none;
+    color: rgba(0,0,0,0.28); font-size: 40px; line-height: 1; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 0 6px; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
   .drop-before { box-shadow: 0 -7px 0 0 var(--green) !important; }
   .drop-after { box-shadow: 0 7px 0 0 var(--green) !important; }
@@ -2363,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 279 - 6 Oct';
+const BUILD = 'build 280 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9891,7 +9891,7 @@ function renderSlotGrid(grid, cat, folders) {
     // after the panels: a small quiet button of three dots that opens the folders themselves
     const lib = document.createElement('button');
     lib.className = 'library-dots';
-    lib.textContent = '\u2022 \u2022 \u2022';
+    lib.textContent = '\u203A';      // a slim, faint arrow
     lib.setAttribute('aria-label', 'Library: all the folders');
     lib.addEventListener('click', () => { libraryOpen = cat.id; buzz(10); renderHome(true); });
     grid.appendChild(lib);
