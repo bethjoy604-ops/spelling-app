@@ -2363,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 275 - 6 Oct';
+const BUILD = 'build 276 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2706,6 +2706,7 @@ async function load() {
         hiddenWords: saved.hiddenWords || {},
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
+        logShownFrom: saved.logShownFrom || 0,
         builderHideV1: saved.builderHideV1 ?? false,
         recentsHidden: saved.recentsHidden || {},
         suggestOn: saved.suggestOn ?? true,
@@ -3190,6 +3191,7 @@ async function save() {
       hiddenWords: state.hiddenWords,
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
+      logShownFrom: state.logShownFrom || 0,
       builderHideV1: state.builderHideV1,
       recentsHidden: state.recentsHidden,
       suggestOn: state.suggestOn,
@@ -7931,10 +7933,19 @@ function renderBuilderLog(grid, tileType) {
   const line = document.createElement('div');
   line.className = 'bl-line';
   head.appendChild(line);
+  // a quiet "clear" at the end of the line: the sentences leave the screen but stay in the full history
+  const from = state.logShownFrom || 0;
+  const shown = log.filter(e => (e.t || 0) >= from);
+  if (shown.length) {
+    const b = document.createElement('button');
+    b.className = 'chat-mini'; b.textContent = 'clear'; b.setAttribute('aria-label', 'Clear the sentences from the screen');
+    b.addEventListener('click', () => { state.logShownFrom = Date.now(); buzz(10); save(); renderHome(true); });
+    head.appendChild(b);
+  }
   box.appendChild(head);
   // each different sentence once, newest first, with how many times it has been entered in all
   const counts = {}, firsts = [];
-  log.forEach(e => { const k = e.words.join(' '); if (!counts[k]) { counts[k] = 0; firsts.push(e); } counts[k]++; });
+  shown.forEach(e => { const k = e.words.join(' '); if (!counts[k]) { counts[k] = 0; firsts.push(e); } counts[k]++; });
   firsts.slice(0, 5).forEach(entry => {      // the latest five; the rest is in the full history
     const row = document.createElement('button');
     row.className = 'bl-row';
