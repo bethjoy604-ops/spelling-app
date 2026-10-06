@@ -1025,6 +1025,11 @@
   .magic-box.show:not(.folded), .small-host .small-strip { min-height: clamp(96px, 16vmin, 130px); box-sizing: border-box; }
   .small-host .small-strip { align-self: stretch; width: 100%; max-width: none; justify-self: stretch; align-content: center; padding-right: 52px; }
   .small-host .small-strip .strip-more { left: auto; right: 4px; }
+  /* six even columns across the whole panel, the same space left and right */
+  .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
+  .small-host .small-strip.with-toggle { padding: 14px 14px 2px !important; border-bottom: 12px solid #bfd8ff; scroll-snap-type: y mandatory; scroll-padding-top: 14px; }
+  .small-host .small-strip.with-toggle .strip-toggle { display: none; }
+  .small-host .small-strip.with-toggle .small-tile { scroll-snap-align: start; }
   .view-home.bar-min .small-host, .view-home.bar-min .magic-box.folded { display: none; }
   /* opened out: a band along the top holds the arrow (the whole band folds the row away), and the
      blue edge round the tiles is the same on the other three sides */
@@ -2454,7 +2459,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 349 - 6 Oct';
+const BUILD = 'build 350 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10490,7 +10495,9 @@ function renderSlotGrid(grid, cat, folders) {
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = smallTileSize().h;
     // two rows show at a time; the rest scroll up into view inside the blue
-    box.style.maxHeight = (46 + 2 * h + 10 + 14) + 'px';
+    box.style.maxHeight = (14 + 2 * h + 10 + 2 + 12) + 'px';      // exactly two rows, the same blue above and below; nothing of the third peeks in
+    // (no band along the top: a tap on the blue between or beside the tiles folds it away)
+    box.addEventListener('click', e => { if (e.target === box) head.click(); });
     box.style.overflowY = 'auto'; box.style.scrollbarWidth = 'none'; box.style.overscrollBehavior = 'contain';
     box.style.alignContent = 'start';
     const sg = groupSmallWords(smalls);
