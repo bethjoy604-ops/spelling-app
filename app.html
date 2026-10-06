@@ -506,7 +506,7 @@
   #pageEditBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 16px;
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
-  .home-card.group-tile { }      /* white like any tile: the blue belongs to the list layout's headings */
+  .home-card.group-tile { background: #bfd8ff; }      /* blue: this tile opens a group's own page */
   #pageEditBar { gap: 8px !important; max-width: 96vw; }
   #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
   #pageEditBar button.pe-all { background: #4a4a4a; font-size: 15px; padding: 10px 16px; }
@@ -2367,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 284 - 6 Oct';
+const BUILD = 'build 285 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
