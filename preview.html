@@ -666,7 +666,10 @@
   .magic-chip.phrase { background: var(--green-soft, #e6f6e9); border-color: transparent; }
   .magic-chip.fill { background: #bfd8ff; border-color: transparent; }
   .magic-strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; background: #bfd8ff; border-radius: 18px; padding: 10px; box-sizing: border-box; }
-  .magic-strip .magic-chip.fill { box-shadow: none; height: 70px; }
+  .magic-strip .magic-chip.fill, .magic-strip .magic-chip.folder { box-shadow: none; height: 70px; }
+  .magic-strip.magic-folders { background: #cdeed2; }
+  .pb-magic { border: none; border-radius: 14px; background: #d9f3dd; color: rgba(0,0,0,0.62); font-family: inherit; font-weight: 900; font-size: 0.5em;
+    padding: 0.35em 0.7em; margin-left: 0.4em; cursor: pointer; align-self: center; white-space: nowrap; }
   .magic-chip.folder { background: var(--bg); }
   .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
@@ -2380,7 +2383,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 305 - 6 Oct';
+const BUILD = 'build 306 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6408,6 +6411,7 @@ function magicKnow(w) {
   if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
 }
 function hideMagic() {
+  document.querySelectorAll('#pbWords .pb-magic').forEach(x => x.remove());
   document.getElementById('magicBox').classList.remove('show');
   document.getElementById('magicRow').innerHTML = '';
 }
@@ -6427,7 +6431,7 @@ function renderMagic(word) {
   const mp = magicPhraseNow();
   if (mp) {
     const whole = document.createElement('button');
-    whole.className = 'magic-chip phrase';
+    whole.className = 'pb-magic';
     whole.textContent = sentenceWords(mp.phrase).join(' ');
     whole.addEventListener('click', () => {
       mp.phrase.forEach(magicKnow);
@@ -6436,7 +6440,9 @@ function renderMagic(word) {
       warmSpeech(); speakWord(homePhrase.join(' '), 0.95); buzz(10); save();
       renderPhraseBar();
     });
-    row.appendChild(whole);
+    // it sits in the key bar itself, after the words already there
+    document.querySelectorAll('#pbWords .pb-magic').forEach(x => x.remove());
+    document.getElementById('pbWords').appendChild(whole);
     mp.phrase.forEach((w, i) => {
       if (mp.used.includes(i)) return;
       const b = document.createElement('button');
@@ -6492,10 +6498,13 @@ function renderMagic(word) {
     });
     row.appendChild(b);
   });
+  // folder names sit together in a green panel, made like the blue row above it
+  const fpanel = document.createElement('div');
+  fpanel.className = 'magic-strip magic-folders';
   folders.forEach(c => {
     const b = document.createElement('button');
     b.className = 'magic-chip folder';
-    b.textContent = c.name;      // as its tile reads on the page
+    b.textContent = c.name.toLowerCase();      // a folder's name used as a word reads in small letters
     b.addEventListener('click', () => {
       const path = []; let x = c, g = 0;
       while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
@@ -6503,8 +6512,9 @@ function renderMagic(word) {
       homePath = path; libraryOpen = null; tileGroup = null;
       buzz(10); renderHome(true);
     });
-    row.appendChild(b);
+    fpanel.appendChild(b);
   });
+  if (folders.length) { fpanel.style.gridTemplateColumns = 'repeat(' + Math.min(6, folders.length) + ', minmax(0, 1fr))'; fpanel.style.gridColumn = '1 / span ' + Math.min(6, folders.length); row.appendChild(fpanel); }
 
   // Whole phrases already modelled — tap to spell the lot
   (mp ? [] : magicPhrasesFor(word).slice(0, 1)).forEach(phrase => {
@@ -6522,6 +6532,7 @@ function renderMagic(word) {
   });
 
   if (!strip.children.length) strip.remove();
+  else { const n = Math.min(6, strip.children.length); strip.style.gridTemplateColumns = 'repeat(' + n + ', minmax(0, 1fr))'; strip.style.gridColumn = '1 / span ' + n; }      // the blue ends with its last tile
   // the words and folders are tiles in a tidy grid, six across, made like the tiles on the pages
   // so the same tile is easy to find again there; long names step down in size to fit
   { const w = (document.getElementById('homeGrid').clientWidth - 110 - 5 * 12) / 6 - 20;
@@ -6530,7 +6541,7 @@ function renderMagic(word) {
       b.style.fontSize = Math.max(13, Math.min(30, w / (longest * 0.62))) + 'px';
     });
     const st = smallTileSize();
-    row.querySelectorAll('.magic-strip .magic-chip').forEach(b => { b.style.height = st.h + 'px'; b.style.fontSize = st.font + 'px'; }); }
+    row.querySelectorAll('.magic-strip .magic-chip').forEach(b => { b.style.height = st.h + 'px'; const longest = Math.max(...b.textContent.split(' ').map(x => x.length), 1); b.style.fontSize = Math.min(st.font, Math.max(13, w / (longest * 0.62))) + 'px'; }); }
   if (row.children.length) box.classList.add('show');
 }
 document.getElementById('magicSkip').addEventListener('click', hideMagic);
