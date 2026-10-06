@@ -2462,7 +2462,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 361 - 6 Oct';
+const BUILD = 'build 362 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4707,7 +4707,12 @@ let kbIdleTimer = null;
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, e => {
   if (kbIdleTimer && (ev === 'keydown' || e.target.closest('#viewKeyboard'))) { clearTimeout(kbIdleTimer); kbIdleTimer = null; }
 }, true));
-function showHome() { if (kbSearch) closeLetterSearch(); setView('home'); touchSession(); renderHome(true); }
+function showHome() {
+  if (kbSearch) closeLetterSearch();
+  // coming back to the first page (from the keyboard, say): the folder menu opens out for three seconds
+  try { if (!state.builderMode && homePath.length === 0 && !document.getElementById('viewHome').classList.contains('active')) rootMenuUntil = Date.now() + 3000; } catch (e) {}
+  setView('home'); touchSession(); renderHome(true);
+}
 function showKeyboard() {
   if (kbSearch) closeLetterSearch();     // arrive ready to type, never mid-search
   setView('keyboard');
