@@ -1021,6 +1021,10 @@
   /* the small words row lives under the magic phrase, above the folder menu (not in the scrolling page) */
   .small-host { flex: none; }
   .small-host:empty { display: none; }
+  /* opened, the blue row and the magic phrase are one size: the full width, and the same depth */
+  .magic-box.show:not(.folded), .small-host .small-strip { min-height: clamp(96px, 16vmin, 130px); box-sizing: border-box; }
+  .small-host .small-strip { align-self: stretch; width: 100%; max-width: none; justify-self: stretch; align-content: center; padding-right: 52px; }
+  .small-host .small-strip .strip-more { left: auto; right: 4px; }
   .view-home.bar-min .small-host, .view-home.bar-min .magic-box.folded { display: none; }
   /* opened out: a band along the top holds the arrow (the whole band folds the row away), and the
      blue edge round the tiles is the same on the other three sides */
@@ -2446,7 +2450,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 344 - 6 Oct';
+const BUILD = 'build 345 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6598,6 +6602,7 @@ function hideMagic() {
   document.getElementById('magicRow').innerHTML = '';
   if (stripMagic) { stripMagic = false; if (stripKey !== null) stripCountdown(stripKey); if (smallHostRedo) smallHostRedo(); }
 }
+let magicSolo = false;       // the green bar was tapped by hand: the phrase opens alone, the blue row stays as it is
 let magicFoldTimer = null, magicFoldedFor = null, magicOpenAt = { phrase: null, t: 0 };
 function magicFold() {
   clearTimeout(magicFoldTimer); magicFoldTimer = null;
@@ -6605,7 +6610,7 @@ function magicFold() {
   if (!box.classList.contains('show')) return;
   magicFoldedFor = homePhrase.join(' ');
   box.classList.add('folded');
-  stripShut = true; stripMagic = false; stripFull = null; if (smallHostRedo) smallHostRedo();
+  if (stripMagic) { stripShut = true; stripMagic = false; stripFull = null; if (smallHostRedo) smallHostRedo(); }      // the row folds with it only if it opened with it
   const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
   if (magicTilesNow.length) renderPhraseBar();      // the page's own tiles come back
 }
@@ -6613,6 +6618,7 @@ document.getElementById('magicBox').addEventListener('click', e => {
   const box = e.currentTarget;
   if (!box.classList.contains('folded')) { if (!e.target.closest('button')) { buzz(10); magicFold(); } return; }
   magicFoldedFor = null; magicOpenAt = { phrase: homePhrase.join(' '), t: Date.now() }; buzz(10);
+  magicSolo = true; setTimeout(() => { magicSolo = false; }, 200);
   renderPhraseBar();
 });
 function renderMagic(word) {
@@ -6739,7 +6745,7 @@ function renderMagic(word) {
     else if (box.classList.contains('show')) {
       magicFoldTimer = setTimeout(magicFold, left);
       // the small words row opens with it, and folds with it
-      if (fresh) { stripShut = false; stripMagic = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
+      if (fresh && !magicSolo) { stripShut = false; stripMagic = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
     } }
   // while the blue row is up it stands in for the page's own small words row
   document.getElementById('homeGrid').classList.toggle('magic-on', small.classList.contains('show'));
