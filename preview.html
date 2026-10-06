@@ -665,6 +665,8 @@
     border-radius: 16px; padding: 12px;
   }
   .magic-box.show { display: flex; }
+  /* the suggested sentence sits right under the key bar, above the folder menu, in large type */
+  .magic-box .magic-chip.phrase { font-size: clamp(26px, 5vmin, 46px); padding: 14px 22px; border-radius: 18px; }
   .magic-box .mbtn.action { flex: none; padding: 12px 18px; margin: 0; }
   .magic-row { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
   .magic-chip {
@@ -1746,6 +1748,11 @@
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
 
+  <div class="magic-box" id="magicBox">
+    <div class="magic-row" id="magicRow"></div>
+    <button class="mbtn action" id="magicSkip">Skip</button>
+  </div>
+
   <div class="controls-row home-row">
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9660;</span>
@@ -1770,10 +1777,6 @@
     <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#8943;</button>
   </div>
 
-  <div class="magic-box" id="magicBox">
-    <div class="magic-row" id="magicRow"></div>
-    <button class="mbtn action" id="magicSkip">Skip</button>
-  </div>
   <div class="magic-small" id="magicSmall"></div>
 
   <div class="bank-area">
@@ -2427,7 +2430,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 332 - 6 Oct';
+const BUILD = 'build 333 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4614,11 +4617,6 @@ function flashBar() {
   const w = document.createElement('div'); w.className = 'bf-words';
   w.innerHTML = document.getElementById('pbWords').innerHTML;
   card.appendChild(w);
-  if (document.getElementById('magicBox').classList.contains('show')) {
-    const m = document.createElement('div'); m.className = 'bf-magic';
-    m.innerHTML = document.getElementById('magicRow').innerHTML;
-    card.appendChild(m);
-  }
   f.appendChild(card);
   f.addEventListener('click', hideBarFlash);       // a tap brings the page straight back
   document.getElementById('viewHome').appendChild(f);
@@ -6595,7 +6593,7 @@ function renderMagic(word) {
         warmSpeech(); speakWord(w, 0.95); buzz(10); save();
         renderPhraseBar();
       });
-      (MAGIC_SIMPLE ? row : strip).appendChild(b);
+      if (!MAGIC_SIMPLE) strip.appendChild(b);      // the bar holds the green sentence only
     });
   }
 
