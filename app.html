@@ -2367,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 288 - 6 Oct';
+const BUILD = 'build 289 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2542,6 +2542,7 @@ const state = {
   targetOff: {},              // target words whose prompting is switched off for now
   targetState: {},            // each target word's section: independent, prompted or waiting
   targetV1: false,            // the one-time renaming of New to the targets tab
+  layoutV11: false,
   layoutV10: false,          // the one-time move of every device onto the built-in folders
   groupOrderV1: false,       // the one-time A to Z sort of the titles inside each group (they now keep their own order)
   tabsV2: false,             // the one-time move of My Stuff back to the end of the menu bar, after Categories
@@ -2732,6 +2733,7 @@ async function load() {
         targetState: saved.targetState || {},
         targetV1: saved.targetV1 ?? false,
         layoutV10: saved.layoutV10 ?? false,
+        layoutV11: saved.layoutV11 ?? false,
         groupOrderV1: saved.groupOrderV1 ?? false,
         tabsV2: saved.tabsV2 ?? false,
         tabsV1: saved.tabsV1 ?? false,
@@ -3037,8 +3039,9 @@ async function load() {
   // One-time: every device moves onto the built-in folders, groups, small words rows and builder
   // pages. The device's own words are kept, and go back into the folder of the same name where
   // there is one. The preview site is where the built-in layout is put together, so it is left be.
-  if (!state.layoutV10) {
-    state.layoutV10 = true;
+  // (layoutV11: once more, onto the built-in layout of 5 Oct)
+  if (!state.layoutV10 || !state.layoutV11) {
+    state.layoutV10 = true; state.layoutV11 = true;
     if (!/github\.io$/.test(location.hostname)) {
       const where = {};
       const spot = c => { const p = c.parent ? catById(c.parent) : null; return [(p ? p.name : '').trim().toLowerCase(), c.name.trim().toLowerCase(), !!c.target, !!c.smallSec]; };
@@ -3053,9 +3056,11 @@ async function load() {
         where[w].forEach(([pn, n, tgt, sm]) => {
           const to = state.categories.find(c => tgt ? c.target : sm ? c.smallSec
             : (c.name.trim().toLowerCase() === n && !c.target && !c.smallSec && spot(c)[0] === pn));
-          if (!to || to.words.includes(w)) return;
-          to.words.push(w);
-          if (w.includes(' ') && !catAllowsPhrases(to)) state.keptPhrases[w] = true;
+          // the folder may have moved (Food is under My Stuff now): then the one of the same name will do
+          const to2 = to || (tgt || sm ? null : state.categories.find(c => c.name.trim().toLowerCase() === n && !c.target && !c.smallSec && !c.hidden));
+          if (!to2 || to2.words.includes(w)) return;
+          to2.words.push(w);
+          if (w.includes(' ') && !catAllowsPhrases(to2)) state.keptPhrases[w] = true;
         });
       });
       linkWordCache = null;
@@ -3217,6 +3222,7 @@ async function save() {
       targetState: state.targetState,
       targetV1: state.targetV1,
       layoutV10: state.layoutV10,
+      layoutV11: state.layoutV11,
       groupOrderV1: state.groupOrderV1,
       tabsV2: state.tabsV2,
       tabsV1: state.tabsV1,
@@ -7008,7 +7014,7 @@ function applyLayout(L, keep) {
   state.drinksV1 = true;
   state.punctV1 = true;
   state.chatV1 = true;
-  state.layoutV10 = true;
+  state.layoutV10 = true; state.layoutV11 = true;
   state.tabsV1 = true;
   state.tabsV2 = true;
   addSmallPunct();
