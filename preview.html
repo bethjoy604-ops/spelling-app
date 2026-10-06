@@ -669,7 +669,12 @@
   .magic-box.show { display: flex; }
   .magic-box .magic-x { display: flex; }
   /* while a sentence is offered it stands in for the folder menu */
-  .view-home:has(#magicBox.show) .home-row { display: none; }
+  .view-home:has(#magicBox.show:not(.folded)) .home-row { display: none; }
+  /* ... and the key bar opens out to show every word in it */
+  .view-home:has(#magicBox.show:not(.folded)) .phrase-bar .pb-words { max-height: none; }
+  /* folded: a slim bar in the sentence's own light green, like the small words bar; a tap opens it again */
+  .magic-box.folded { height: 44px; padding: 0; border: none; background: var(--green-soft, #e6f6e9); cursor: pointer; }
+  .magic-box.folded > * { display: none; }
   /* the suggested sentence sits right under the key bar, above the folder menu, in large type */
   .magic-box .magic-chip.phrase { font-size: clamp(26px, 5vmin, 46px); padding: 14px 22px; border-radius: 18px; }
   .magic-box .mbtn.action { flex: none; padding: 12px 18px; margin: 0; }
@@ -2435,7 +2440,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 338 - 6 Oct';
+const BUILD = 'build 339 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4610,7 +4615,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   if (state.builderMode) { if (min) view.classList.remove('bar-min'); return; }
   // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
   // until the page is back at its top)
-  if (grid.scrollTop > 30 && document.getElementById('magicBox').classList.contains('show')) { magicSkipped = homePhrase.join(' '); hideMagic(); barHold = Date.now(); return; }
+  if (grid.scrollTop > 30 && document.querySelector('#magicBox.show:not(.folded)')) { magicFold(); barHold = Date.now(); return; }
   if (barHold) { if (grid.scrollTop <= 0 && Date.now() - barHold > 500) barHold = false; return; }
   if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 260) { gridHFull = grid.clientHeight; view.classList.add('bar-min'); }
   else if (min && grid.scrollTop <= 0) view.classList.remove('bar-min');
@@ -4619,7 +4624,7 @@ let barFlashTimer = null;
 function hideBarFlash() { clearTimeout(barFlashTimer); barFlashTimer = null; const f = document.getElementById('barFlash'); if (f) f.remove(); }
 function flashBar() {
   hideBarFlash();
-  if (state.builderMode || !homePhrase.length || !document.getElementById('viewHome').classList.contains('active')) return;
+  if (state.magicType || state.builderMode || !homePhrase.length || !document.getElementById('viewHome').classList.contains('active')) return;
   const f = document.createElement('div');
   f.className = 'bar-flash'; f.id = 'barFlash';
   const card = document.createElement('div'); card.className = 'bf-card';
@@ -6558,10 +6563,24 @@ function hideMagic() {
   magicTilesNow = [];
   { const ms = document.getElementById('magicSmall'); ms.innerHTML = ''; ms.classList.remove('show'); }
   document.getElementById('homeGrid').classList.remove('magic-on');
-  document.getElementById('magicBox').classList.remove('show');
+  document.getElementById('magicBox').classList.remove('show', 'folded');
   document.getElementById('magicRow').innerHTML = '';
 }
-let magicFoldTimer = null;
+let magicFoldTimer = null, magicFoldedFor = null, magicOpenAt = { phrase: null, t: 0 };
+function magicFold() {
+  clearTimeout(magicFoldTimer); magicFoldTimer = null;
+  const box = document.getElementById('magicBox');
+  if (!box.classList.contains('show')) return;
+  magicFoldedFor = homePhrase.join(' ');
+  box.classList.add('folded');
+  const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
+}
+document.getElementById('magicBox').addEventListener('click', e => {
+  const box = e.currentTarget;
+  if (!box.classList.contains('folded')) return;
+  magicFoldedFor = null; magicOpenAt = { phrase: homePhrase.join(' '), t: Date.now() }; box.classList.remove('folded'); buzz(10);
+  clearTimeout(magicFoldTimer); magicFoldTimer = setTimeout(magicFold, 2000);
+});
 function renderMagic(word) {
   const row = document.getElementById('magicRow');
   const box = document.getElementById('magicBox');
@@ -6678,7 +6697,13 @@ function renderMagic(word) {
   if (!row.children.length && magicTilesNow.length) box.classList.add('show');      // Skip stays in reach
   // left alone for three seconds, the offer folds away and the folder menu is back
   clearTimeout(magicFoldTimer); magicFoldTimer = null;
-  if (box.classList.contains('show')) magicFoldTimer = setTimeout(() => { magicFoldTimer = null; if (box.classList.contains('show')) { magicSkipped = homePhrase.join(' '); hideMagic(); } }, 3000);
+  // (two seconds: then it folds into its green bar, the folder menu returns and the key bar draws in)
+  { const ph = homePhrase.join(' ');
+    if (magicOpenAt.phrase !== ph) magicOpenAt = { phrase: ph, t: Date.now() };       // the two seconds run from when the words changed, however often the page redraws
+    const left = 2000 - (Date.now() - magicOpenAt.t);
+    box.classList.toggle('folded', box.classList.contains('show') && (magicFoldedFor === ph || left <= 0));
+    if (box.classList.contains('folded')) magicFoldedFor = ph;
+    else if (box.classList.contains('show')) magicFoldTimer = setTimeout(magicFold, left); }
   // while the blue row is up it stands in for the page's own small words row
   document.getElementById('homeGrid').classList.toggle('magic-on', small.classList.contains('show'));
 }
@@ -7394,7 +7419,7 @@ function renderHome(reset) {
     document.querySelector('.home-row').classList.toggle('tools', !!state.iconsOpen);     // the tabs sit closer while the pop-out is open
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
-    { const it = document.getElementById('homeIconsToggle'); it.textContent = '\uD83E\uDDD1\u200D\uD83E\uDDD2';      // adult and child: the grown-up's switches it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
+    { const it = document.getElementById('homeIconsToggle'); it.textContent = '\uD83E\uDDD1\u200D\uD83E\uDDD2'; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
