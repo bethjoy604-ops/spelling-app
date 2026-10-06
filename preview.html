@@ -655,6 +655,8 @@
   .magic-chip:active { transform: scale(0.97); }
   .magic-chip .mc-spark { font-size: 14px; }
   .magic-chip.word { background: var(--bg); }
+  .magic-chip.phrase { background: var(--green-soft, #e6f6e9); border-color: transparent; }
+  .magic-chip.fill { background: #bfd8ff; border-color: transparent; }
   .magic-chip.word::after { content: '+'; color: var(--muted); font-size: 15px; }
 
   /* Category tiles — their own line, above the bank */
@@ -2367,7 +2369,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 291 - 6 Oct';
+const BUILD = 'build 292 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6015,13 +6017,15 @@ function isLinkWord(w) {
   return linkWordCache.has(w);
 }   // small words stay small
 // A sentence: the first word starts with a capital, the rest read as they would mid-sentence
-function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : bankLabel(w)); }
+function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : capFirst(sentenceLabel(w))); }
 // How a word reads in the middle of a sentence: small letters, unless it is a name
-const PLAIN_STUFF = ['food', 'places', 'things'];
+// In My Stuff only titles (songs, shows, films, books, games, characters) and people's names keep
+// their capitals; food, places, things and anything else there reads in small letters
+const TITLE_STUFF = /^(music|songs?|tv|shows?|movies?|films?|videos?|books?|games?|characters?|people|person|family|friends?|names?)$/;
 function plainStuff(c) {
   let x = c, g = 0;
-  while (x && g++ < 20) { if (PLAIN_STUFF.includes(x.name.trim().toLowerCase())) return true; x = x.parent ? catById(x.parent) : null; }
-  return false;
+  while (x && g++ < 20) { if (TITLE_STUFF.test(x.name.trim().toLowerCase())) return false; x = x.parent ? catById(x.parent) : null; }
+  return true;
 }
 function sentenceLabel(w) {
   const key = w || '';
@@ -6145,6 +6149,91 @@ function magicNext(word) {
   return pool.filter((w, i) => w !== word && pool.indexOf(w) === i && !homePhrase.includes(w) && !state.hiddenWords[w])
     .sort((a, b) => used(b) - used(a) || last(b) - last(a)).slice(0, 5);
 }
+// ---- The magic phrase: what is in the bar, filled out into a sentence with the small words it
+// is missing ("want chicken" -> "I want to eat chicken"). The missing words are offered one by
+// one, each going into its own place in the bar; the phrase itself can be tapped to take it whole.
+const MAGIC_SUBJECTS = ['I', 'YOU', 'WE', 'HE', 'SHE', 'THEY', 'IT', "LET'S", 'CAN', 'PLEASE'];
+const MAGIC_BARE_PLACES = ['HOME', 'SCHOOL', 'OUTSIDE', 'INSIDE', 'BED', 'UPSTAIRS', 'DOWNSTAIRS', 'WORK'];
+function magicKind(w) {
+  const names = [];
+  categoriesOf(w).filter(c => !c.target && !c.hidden).forEach(c => { let x = c, g = 0; while (x && g++ < 20) { names.push(x.name.trim().toLowerCase()); x = x.parent ? catById(x.parent) : null; } });
+  const has = re => names.some(n => re.test(n));
+  if (MAGIC_WANTS.includes(w) || w === 'FEEL' || w === 'AM') return 'want';
+  if (has(/^actions?$/) || kindOfWord(w) === 'action') return 'action';
+  if (has(/^feelings?$/)) return 'feeling';
+  if (has(/^(music|songs?)$/)) return 'music';
+  if (has(/^(tv|shows?|movies?|films?|videos?)$/)) return 'watch';
+  if (has(/^books?$/)) return 'book';
+  if (has(/^games?$/)) return 'game';
+  if (has(/^places?$/)) return 'place';
+  if (has(/^(people|person|family|friends?|characters?)$/)) return 'person';
+  if (has(/^(food|foods|snacks?|meals?|drinks?)$/)) {
+    const g = [].concat(...categoriesOf(w).map(c => (c.groups || []).filter(x => (x.words || []).includes(w)).map(x => x.name.toLowerCase())));
+    return g.some(n => /drink/.test(n)) ? 'drink' : 'food';
+  }
+  if (categoriesOf(w).some(catAllowsPhrases) || has(/^(things?|stuff)$/)) return 'thing';
+  return '';
+}
+function magicExpand(words) {
+  if (!words.length || words.length > 3) return null;
+  const lead = MAGIC_SUBJECTS.includes(words[0]) || magicKind(words[0]) === 'person';
+  const body = lead ? words.slice(1) : words.slice();
+  const k = body.map(magicKind);
+  const toNoun = (w, kind) => {
+    if (kind === 'food') return ['TO', 'EAT', w];
+    if (kind === 'drink') return ['TO', 'DRINK', w];
+    if (kind === 'music') return ['TO', 'LISTEN', 'TO', w];
+    if (kind === 'watch') return ['TO', 'WATCH', w];
+    if (kind === 'book') return ['TO', 'READ', w];
+    if (kind === 'game') return ['TO', 'PLAY', w];
+    if (kind === 'place') return ['TO', 'GO'].concat(toPlace(w));
+    return [w];
+  };
+  const toPlace = w => (MAGIC_BARE_PLACES.includes(w) ? (w === 'SCHOOL' || w === 'BED' || w === 'WORK' ? ['TO'] : []) : ['TO', 'THE']).concat([w]);
+  const noun = kind => ['food', 'drink', 'music', 'watch', 'book', 'game', 'place', 'person', 'thing'].includes(kind);
+  let out = null;
+  if (body.length === 1) {
+    const w = body[0];
+    if (k[0] === 'feeling') out = ['FEEL', w];
+    else if (noun(k[0])) out = ['WANT'].concat(toNoun(w, k[0]));
+    else if (k[0] === 'action') out = ['WANT', 'TO', w];
+    else if (k[0] === 'want' && !lead) out = [w];
+  } else if (body.length === 2) {
+    const [a, b] = body;
+    if (a === 'MORE' && noun(k[1])) out = ['WANT', 'MORE', b];
+    else if ((a === 'FEEL' || a === 'AM') && k[1] === 'feeling') out = [a, b];
+    else if (k[0] === 'want' && noun(k[1])) out = [a].concat(toNoun(b, k[1]));
+    else if (k[0] === 'want' && k[1] === 'action') out = [a, 'TO', b];
+    else if (k[0] === 'action' && k[1] === 'place') out = ['WANT', 'TO', a].concat(toPlace(b));
+    else if (k[0] === 'action' && noun(k[1])) out = ['WANT', 'TO', a, b];
+  }
+  if (!out) return null;
+  out = (lead ? [words[0]] : ['I']).concat(out);
+  return out.length > words.length ? out : null;
+}
+// which places of the phrase the bar already fills, reading left to right
+// (the bar's words may be in any order - "apple eat" still fills "I want to eat apple")
+function magicMatch(phrase, have) {
+  const used = [];
+  for (const w of have) { const i = phrase.findIndex((x, j) => x === w && !used.includes(j)); if (i < 0) return null; used.push(i); }
+  return used;
+}
+let magicTarget = null;
+function magicPhraseNow() {
+  if (!homePhrase.length) { magicTarget = null; return null; }
+  let used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
+  if (!used) {
+    // as entered, or (two words put in the other way round) turned about
+    magicTarget = magicExpand(homePhrase) || (homePhrase.length === 2 ? magicExpand(homePhrase.slice().reverse()) : null);
+    used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
+  }
+  if (!magicTarget || !used || homePhrase.join(' ') === magicTarget.join(' ')) { magicTarget = null; return null; }
+  return { phrase: magicTarget, used };
+}
+function magicKnow(w) {
+  if (!state.words.includes(w)) state.words.push(w);
+  if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
+}
 function hideMagic() {
   document.getElementById('magicBox').classList.remove('show');
   document.getElementById('magicRow').innerHTML = '';
@@ -6156,9 +6245,40 @@ function renderMagic(word) {
   box.classList.remove('show');
   if (!state.magicType || !word) return;
 
+  // one phrase made from what is in the bar, then the small words it still needs, in order
+  const mp = magicPhraseNow();
+  if (mp) {
+    const whole = document.createElement('button');
+    whole.className = 'magic-chip phrase';
+    whole.textContent = sentenceWords(mp.phrase).join(' ');
+    whole.addEventListener('click', () => {
+      mp.phrase.forEach(magicKnow);
+      homePhrase = mp.phrase.slice();
+      magicTarget = null;
+      warmSpeech(); speakWord(homePhrase.join(' '), 0.95); buzz(10); save();
+      renderPhraseBar();
+    });
+    row.appendChild(whole);
+    mp.phrase.forEach((w, i) => {
+      if (mp.used.includes(i)) return;
+      const b = document.createElement('button');
+      b.className = 'magic-chip fill';
+      b.textContent = sentenceLabel(w);
+      b.addEventListener('click', () => {
+        magicKnow(w);
+        const keep = mp.used.concat([i]);
+        homePhrase = mp.phrase.filter((_, j) => keep.includes(j));
+        warmSpeech(); speakWord(w, 0.95); buzz(10); save();
+        renderPhraseBar();
+      });
+      row.appendChild(b);
+    });
+  }
+
   // Single words that have gone with this one before — tap to keep building
-  const byRule = magicNext(word);
-  (byRule.length ? byRule : relatedWords(word)).forEach(next => {
+  // (with two or more words in the bar and a sentence to offer, the sentence takes this row's place)
+  const byRule = mp && homePhrase.length > 1 ? [] : magicNext(word);
+  (mp && homePhrase.length > 1 ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
     const b = document.createElement('button');
     b.className = 'magic-chip word';
     const t = document.createElement('span');
@@ -6175,7 +6295,7 @@ function renderMagic(word) {
   });
 
   // Whole phrases already modelled — tap to spell the lot
-  magicPhrasesFor(word).forEach(phrase => {
+  (mp ? [] : magicPhrasesFor(word).slice(0, 1)).forEach(phrase => {
     const b = document.createElement('button');
     b.className = 'magic-chip';
 
@@ -6210,9 +6330,10 @@ function renderPhraseBar() {
   homePhrase.forEach((w, i) => {
     const c = document.createElement('span');
     c.className = 'pb-chip';
-    c.textContent = i ? sentenceLabel(w) : bankLabel(w);
+    c.textContent = i ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // read as a sentence: a capital to start, then names and titles only
     box.appendChild(c);
   });
+  if (state.magicType && !state.builderMode) { if (homePhrase.length) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
