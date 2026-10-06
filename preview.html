@@ -2363,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 278 - 6 Oct';
+const BUILD = 'build 279 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8288,6 +8288,11 @@ function openFolderEdit(c, extra) {
     if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
     if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? 'Custom page: change the tiles' : 'Custom page: pick tiles from its folders', '', () => openFeedPicker(c)));
+    // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
+    if (!state.builderMode && feedHost(c) && (c.feed || []).length) body.appendChild(sheetBtn(c.feedOff ? 'Custom page: turn on' : 'Custom page: turn off', '', () => {
+      if (c.feedOff) delete c.feedOff; else c.feedOff = true;
+      libraryOpen = null; save(); closeWordSheet(); renderHome(true);
+    }));
     // every folder on the page it sits on, at once: ticks to show or hide each
     if (state.builderMode) body.appendChild(builderEditBtn());
     { const host = !state.builderMode ? currentCat() : null;
@@ -9483,7 +9488,7 @@ function openFeedPicker(cat) {
         list.appendChild(r);
       });
     });
-    body.appendChild(sheetBtn('Done', 'primary', () => { libraryOpen = null; closeWordSheet(); renderHome(true); }));
+    body.appendChild(sheetBtn('Done', 'primary', () => { libraryOpen = null; delete cat.feedOff; save(); closeWordSheet(); renderHome(true); }));
   });
 }
 function renderSlotGrid(grid, cat, folders) {
@@ -9507,7 +9512,7 @@ function renderSlotGrid(grid, cat, folders) {
   const alpha = arrange && !listMode && hasSmallStrip(cat);
   // Choices: once tiles have been picked for it, the page opens as that short feed of tiles from
   // across its folders; a Library tile at the end opens the folders themselves
-  const feedMode = alpha && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && feedWords(cat).length > 0;
+  const feedMode = alpha && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && !cat.feedOff && feedWords(cat).length > 0;
   if (feedMode) { words = feedWords(cat); folders = []; }
   const slots = (listMode || feedMode) ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
   // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
