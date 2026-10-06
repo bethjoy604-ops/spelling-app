@@ -630,6 +630,11 @@
   /* Chosen words take the room they need; the typing box fills what is left.
      (Sharing the row equally let the typing box squeeze the words to nothing.) */
   .phrase-bar .pb-words { flex: 0 1 auto; min-width: 0; }
+  /* a long sentence: the bar stops at two lines and shows the newest words; the earlier lines slide up
+     out of sight (a fade at the top says they are there) and come back with a swipe down */
+  .phrase-bar .pb-words { max-height: calc(2.3em + 10px); overflow-y: auto; scrollbar-width: none; overscroll-behavior: contain; }
+  .phrase-bar .pb-words::-webkit-scrollbar { display: none; }
+  .phrase-bar .pb-words.clipped { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.25) 0, #000 0.2em); mask-image: linear-gradient(to bottom, rgba(0,0,0,0.25) 0, #000 0.2em); }
   .phrase-bar .pb-words:empty { display: none; }
   .pb-empty { color: var(--muted); font-size: 14px; font-weight: 700; }
   .pb-chip {
@@ -2397,7 +2402,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 326 - 6 Oct';
+const BUILD = 'build 327 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6612,6 +6617,9 @@ function renderPhraseBar() {
     c.textContent = i ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // read as a sentence: a capital to start, then names and titles only
     box.appendChild(c);
   });
+  box.scrollTop = box.scrollHeight;      // the newest words are the ones in view
+  box.classList.toggle('clipped', box.scrollTop > 2);
+  if (!box._clipWatch) { box._clipWatch = true; box.addEventListener('scroll', () => box.classList.toggle('clipped', box.scrollTop > 2)); }
   if (!homePhrase.length) magicPathIn = []; else magicPathIn = magicPathIn.filter(p => homePhrase.includes(p.key));
   { const ph = homePhrase.join(' '); if (ph !== magicAt.phrase) { magicAt = { phrase: ph, nav: magicNavKey() }; magicSkipped = null; } }
   if (!homePhrase.length) magicTarget = null;      // a cleared bar starts the next sentence afresh
