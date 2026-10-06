@@ -641,9 +641,9 @@
   /* (the folder menu and the switches step aside too, and their room goes to the bar) */
   .view-home.bar-min .home-row { display: none; }
   /* a tile was chosen: for two seconds the whole page is the sentence, then the page comes back */
-  .bar-flash { position: fixed; inset: 0; z-index: 40; background: rgba(174,176,181,0.45); padding: 16px; display: flex; animation: barFlash 1s ease both; }
-  @keyframes barFlash { 0% { opacity: 0; } 22% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
-  .bar-flash .bf-card { flex: 1; background: rgba(255,255,255,0.86); border-radius: 28px; padding: 28px; display: flex; flex-direction: column; justify-content: center; gap: 28px; overflow: hidden; }
+  .bar-flash { position: fixed; inset: 0; z-index: 40; background: #aeb0b5; padding: 16px; display: flex; animation: barFlash 1s ease both; }
+  @keyframes barFlash { 0% { opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+  .bar-flash .bf-card { flex: 1; background: #fff; border-radius: 28px; padding: 28px; display: flex; flex-direction: column; justify-content: center; gap: 28px; overflow: hidden; }
   .bar-flash .bf-words { display: flex; flex-wrap: wrap; gap: 10px 4px; font-size: clamp(36px, 9vh, 90px); font-weight: 900; }
   .bar-flash .bf-magic > * { font-size: 1em !important; padding: 0.25em 0.6em !important; height: auto !important; }
   .bar-flash .bf-words .pb-chip { font-size: 1em; background: var(--prompt-soft); border-radius: 16px; padding: 2px 18px; margin-right: 10px; line-height: 1.15; }
@@ -668,6 +668,8 @@
   }
   .magic-box.show { display: flex; }
   .magic-box .magic-x { display: flex; }
+  /* while a sentence is offered it stands in for the folder menu */
+  .view-home:has(#magicBox.show) .home-row { display: none; }
   /* the suggested sentence sits right under the key bar, above the folder menu, in large type */
   .magic-box .magic-chip.phrase { font-size: clamp(26px, 5vmin, 46px); padding: 14px 22px; border-radius: 18px; }
   .magic-box .mbtn.action { flex: none; padding: 12px 18px; margin: 0; }
@@ -2433,7 +2435,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 336 - 6 Oct';
+const BUILD = 'build 337 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4597,7 +4599,7 @@ function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
 // The height the page's tiles are sized from: with the key bar drawn in the grid is taller, but the
 // tiles keep the size they had with the bar open, so nothing jumps
-let gridHFull = 0;
+let gridHFull = 0, barHold = false;
 function gridH(grid) {
   if (grid.id === 'homeGrid' && gridHFull && document.getElementById('viewHome').classList.contains('bar-min')) return gridHFull;
   return grid.clientHeight;
@@ -4606,6 +4608,10 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   const grid = document.getElementById('homeGrid'), view = document.getElementById('viewHome');
   const min = view.classList.contains('bar-min');
   if (state.builderMode) { if (min) view.classList.remove('bar-min'); return; }
+  // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
+  // until the page is back at its top)
+  if (grid.scrollTop > 30 && document.getElementById('magicBox').classList.contains('show')) { magicSkipped = homePhrase.join(' '); hideMagic(); barHold = Date.now(); return; }
+  if (barHold) { if (grid.scrollTop <= 0 && Date.now() - barHold > 500) barHold = false; return; }
   if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 260) { gridHFull = grid.clientHeight; view.classList.add('bar-min'); }
   else if (min && grid.scrollTop <= 0) view.classList.remove('bar-min');
 });
@@ -6555,6 +6561,7 @@ function hideMagic() {
   document.getElementById('magicBox').classList.remove('show');
   document.getElementById('magicRow').innerHTML = '';
 }
+let magicFoldTimer = null;
 function renderMagic(word) {
   const row = document.getElementById('magicRow');
   const box = document.getElementById('magicBox');
@@ -6669,6 +6676,9 @@ function renderMagic(word) {
   }
   if (row.children.length) box.classList.add('show');
   if (!row.children.length && magicTilesNow.length) box.classList.add('show');      // Skip stays in reach
+  // left alone for three seconds, the offer folds away and the folder menu is back
+  clearTimeout(magicFoldTimer); magicFoldTimer = null;
+  if (box.classList.contains('show')) magicFoldTimer = setTimeout(() => { magicFoldTimer = null; if (box.classList.contains('show')) { magicSkipped = homePhrase.join(' '); hideMagic(); } }, 3000);
   // while the blue row is up it stands in for the page's own small words row
   document.getElementById('homeGrid').classList.toggle('magic-on', small.classList.contains('show'));
 }
@@ -6688,10 +6698,12 @@ function renderPhraseBar() {
   bar.classList.toggle('suggesting', document.getElementById('typeSuggest').style.display !== 'none');
   bar.classList.toggle('has-text', homePhrase.length > 0 || !!document.getElementById('pbInput').value);
   box.innerHTML = '';
+  // a whole sentence: more than one word, and nothing the magic phrase would still add to it
+  const whole = (() => { if (homePhrase.length < 2) return false; try { const mp = magicPhraseNow(); return !mp || mp.phrase.length <= homePhrase.length; } catch (e) { return true; } })();
   homePhrase.forEach((w, i) => {
     const c = document.createElement('span');
     c.className = 'pb-chip';
-    c.textContent = i ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // read as a sentence: a capital to start, then names and titles only
+    c.textContent = i || !whole ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // a capital to start only once it reads as a whole sentence
     box.appendChild(c);
   });
   box.scrollTop = box.scrollHeight;      // the newest words are the ones in view
