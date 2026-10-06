@@ -1282,6 +1282,9 @@
   .sheet-icon .sl { font-size: 12px; font-weight: 800; }
   .sheet-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 6px; padding: 9px 12px; border: none; border-radius: 14px;
     background: var(--bg); color: var(--ink); font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; text-align: left; }
+  .spell-tip { margin-top: 8px; padding: 10px 12px; border-radius: 14px; background: #fff6d6; font-weight: 800; font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .spell-tip button { border: none; border-radius: 10px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 8px 14px; cursor: pointer; }
+  .spell-tip small { flex-basis: 100%; font-weight: 700; color: rgba(0,0,0,0.55); }
   .sheet-stepper { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 7px 12px; border-radius: 14px; background: var(--bg); font-weight: 800; font-size: 15px; }
   .sheet-stepper span { flex: 1; }
   .sheet-stepper button { width: 38px; height: 34px; border: none; border-radius: 10px; background: #fff; font-family: inherit; font-size: 20px; font-weight: 900; cursor: pointer; }
@@ -2424,7 +2427,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 331 - 6 Oct';
+const BUILD = 'build 332 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9341,11 +9344,44 @@ function addTitleTo(cat, group, typed) {
   if (group) group.words.push(key);       // no group: it stays ungrouped
   return true;
 }
+// Spelling: the common slips the app knows, checked whenever a tile or name is typed in. It offers
+// the usual spelling once; pressing the button again keeps what was typed.
+const MISSPELL = {'fourty': 'forty', 'ninty': 'ninety', 'forteen': 'fourteen', 'eigth': 'eight', 'twelth': 'twelfth', 'fith': 'fifth', 'frist': 'first', 'secound': 'second', 'thrid': 'third', 'wich': 'which', 'recieve': 'receive', 'freind': 'friend', 'freinds': 'friends', 'becuase': 'because', 'beacuse': 'because', 'becuz': 'because', 'definately': 'definitely', 'seperate': 'separate', 'tommorow': 'tomorrow', 'tommorrow': 'tomorrow', 'tomorow': 'tomorrow', 'wensday': 'Wednesday', 'wendsday': 'Wednesday', 'febuary': 'February', 'saterday': 'Saturday', 'thrusday': 'Thursday', 'tuseday': 'Tuesday', 'restaraunt': 'restaurant', 'resturant': 'restaurant', 'bannana': 'banana', 'bananna': 'banana', 'choclate': 'chocolate', 'chocolote': 'chocolate', 'brocoli': 'broccoli', 'broccolli': 'broccoli', 'spagetti': 'spaghetti', 'sandwhich': 'sandwich', 'sanwich': 'sandwich', 'strawbery': 'strawberry', 'rasberry': 'raspberry', 'tomatoe': 'tomato', 'potatoe': 'potato', 'yogert': 'yogurt', 'cinamon': 'cinnamon', 'libary': 'library', 'hospitle': 'hospital', 'docter': 'doctor', 'nieghbor': 'neighbor', 'neice': 'niece', 'beatiful': 'beautiful', 'beutiful': 'beautiful', 'diffrent': 'different', 'favorit': 'favorite', 'intresting': 'interesting', 'probly': 'probably', 'realy': 'really', 'untill': 'until', 'alot': 'a lot', 'allready': 'already', 'bathrom': 'bathroom', 'batroom': 'bathroom', 'kichen': 'kitchen', 'bedrom': 'bedroom', 'scool': 'school', 'shcool': 'school', 'calender': 'calendar', 'purpel': 'purple', 'yelow': 'yellow', 'orenge': 'orange', 'wite': 'white', 'grean': 'green', 'blak': 'black', 'sissors': 'scissors', 'scisors': 'scissors', 'pensil': 'pencil', 'computor': 'computer', 'tablit': 'tablet', 'telivision': 'television', 'musik': 'music', 'moive': 'movie', 'movei': 'movie', 'pleese': 'please', 'plese': 'please', 'thankyou': 'thank you', 'sory': 'sorry', 'sorrey': 'sorry', 'tierd': 'tired', 'hungery': 'hungry', 'thristy': 'thirsty', 'angery': 'angry', 'happpy': 'happy', 'exited': 'excited', 'suprise': 'surprise', 'surprize': 'surprise', 'birthdy': 'birthday', 'chrismas': 'Christmas', 'holliday': 'holiday', 'vacaton': 'vacation', 'swiming': 'swimming', 'runing': 'running', 'siting': 'sitting', 'geting': 'getting', 'comming': 'coming', 'writting': 'writing', 'makeing': 'making', 'haveing': 'having', 'wierd': 'weird', 'thier': 'their', 'teh': 'the', 'adn': 'and', 'wat': 'what', 'wen': 'when', 'wher': 'where', 'whith': 'with', 'wih': 'with', 'mabye': 'maybe', 'peice': 'piece', 'peple': 'people', 'poeple': 'people', 'familly': 'family', 'brouther': 'brother', 'elefant': 'elephant', 'girafe': 'giraffe', 'monky': 'monkey', 'tigar': 'tiger', 'dinasaur': 'dinosaur', 'dinosour': 'dinosaur', 'buterfly': 'butterfly', 'helicoptor': 'helicopter', 'airplain': 'airplane', 'ambulence': 'ambulance', 'bycicle': 'bicycle', 'bicicle': 'bicycle', 'vehical': 'vehicle', 'tommorrows': 'tomorrows', 'goodby': 'goodbye', 'helo': 'hello', 'mornig': 'morning', 'nite': 'night', 'togather': 'together', 'toghether': 'together', 'outsid': 'outside', 'insid': 'inside', 'upstares': 'upstairs', 'downstares': 'downstairs', 'medecine': 'medicine', 'medicin': 'medicine', 'stomache': 'stomach', 'headake': 'headache', 'hurtt': 'hurt'};
+function spellFix(text) {
+  let hit = false;
+  const out = String(text || '').split(/(\s+)/).map(w => {
+    const fix = MISSPELL[w.toLowerCase()];
+    if (!fix) return w;
+    hit = true;
+    return /^[A-Z]/.test(w) ? fix.charAt(0).toUpperCase() + fix.slice(1) : fix;
+  }).join('');
+  return hit ? out : null;
+}
 function askText(title, btn, value, done) {
   openWordSheet(b2 => {
     sheetTitle(b2, title);
     const inp = builderInput(b2, value || '');
-    const ok = () => { if (done(inp.value) !== false) { save(); closeWordSheet(); renderHome(true); } };
+    let asked = null, tip = null;
+    const ok = () => {
+      const fix = spellFix(inp.value);
+      if (tip) { tip.remove(); tip = null; }
+      if (fix && asked !== inp.value) {
+        asked = inp.value;
+        tip = document.createElement('div');
+        tip.className = 'spell-tip';
+        const n = document.createElement('span');
+        n.textContent = 'Check the spelling. Did you mean:';
+        const use = document.createElement('button');
+        use.textContent = fix;
+        use.addEventListener('click', () => { inp.value = fix; asked = null; tip.remove(); tip = null; ok(); });
+        const keep = document.createElement('small');
+        keep.textContent = 'Or press ' + btn + ' again to keep \u201C' + inp.value.trim() + '\u201D.';
+        tip.append(n, use, keep);
+        inp.insertAdjacentElement('afterend', tip);
+        return;
+      }
+      if (done(inp.value) !== false) { save(); closeWordSheet(); renderHome(true); }
+    };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
     b2.appendChild(sheetBtn(btn, 'primary', ok));
     b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
@@ -11343,6 +11379,12 @@ function setWordCase(raw, key) {
   if (text.toUpperCase() === key && text !== text.toLowerCase()) state.capKeep[key] = 1; else delete state.capKeep[key];
 }
 // Change a word's spelling everywhere it appears, keeping its place and its history
+// one time: the tile typed as "fourty" takes its usual spelling
+setTimeout(() => { try {
+  if (localStorage.getItem('kbd-fix-forty')) return;
+  localStorage.setItem('kbd-fix-forty', '1');
+  if (state.words.includes('FOURTY') && !state.words.includes('FORTY')) { renameWord('FOURTY', 'FORTY'); save(); if (document.getElementById('viewHome').classList.contains('active')) renderHome(true); }
+} catch (e) {} }, 0);
 function renameWord(from, to) {
   const swap = list => {
     const out = [];
