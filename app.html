@@ -496,7 +496,36 @@
   .home-card.list-row.add-row { background: rgba(255,255,255,0.3); box-shadow: 0 0 0 3px rgba(0,0,0,0.14) inset; }
   .home-card.list-row.add-row .hw { color: rgba(0,0,0,0.42); }
   .list-ghost { position: fixed; z-index: 500; pointer-events: none; opacity: 0.9; outline: 5px solid var(--green); outline-offset: -2px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin: 0 !important; }
+  .home-card.edit-tile { position: relative; }
+  .home-card.list-row.edit-tile .edit-tick { top: 50%; transform: translateY(-50%); right: 20px; }
+  .edit-tick { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; background: var(--green); color: #fff;
+    font-size: 22px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+  .home-card.edit-off { background: rgba(255,255,255,0.35); box-shadow: none; }
+  .home-card.edit-off .hw { opacity: 0.4; }
+  .home-card.edit-off .edit-tick { background: rgba(255,255,255,0.7); box-shadow: 0 0 0 3px rgba(0,0,0,0.25) inset; }
+  #pageEditBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 16px;
+    background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
+  #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
+  .home-card.group-tile { background: #bfd8ff; }      /* blue: this tile opens a group's own page */
+  #pageEditBar { gap: 8px !important; max-width: 96vw; }
+  #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
+  #pageEditBar button.pe-all { background: #4a4a4a; font-size: 15px; padding: 10px 16px; }
+  .home-card.library-tile { background: #e6e7ea; }
+  .feed-group { align-self: start; background: #bfd8ff; border-radius: 20px; padding: 6px 12px 12px; display: flex; flex-direction: column; }
+  .feed-group .feed-head { border: none; background: none; text-align: left; font-family: inherit; font-weight: 900; font-size: 17px; color: rgba(0,0,0,0.6);
+    height: 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; cursor: pointer; }
+  .feed-group .feed-head[aria-expanded="false"] { height: 44px; }
+  .feed-group:has(.feed-head[aria-expanded="false"]) { padding-bottom: 6px; }
+  .feed-tiles { display: grid; gap: 12px; }
+  .feed-group.drop-before { box-shadow: -8px 0 0 var(--green); }
+  .feed-group.drop-after { box-shadow: 8px 0 0 var(--green); }
+  .feed-group.drag-src { opacity: 0.35; }
+  .feed-group .feed-head { touch-action: none; }
+  .library-dots { align-self: center; justify-self: start; width: 34px; height: 64px; border: none; border-radius: 12px; background: none;
+    color: rgba(0,0,0,0.28); font-size: 40px; line-height: 1; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 0 6px; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
+  .drop-before { box-shadow: 0 -7px 0 0 var(--green) !important; }
+  .drop-after { box-shadow: 0 7px 0 0 var(--green) !important; }
   /* the grey prompts for adding things stay in the background: slim, pale, small quiet lettering */
   .home-card.list-row.add-row, .group-head.add-group {
     height: 46px !important; min-height: 46px !important; padding: 0 22px !important; margin-top: 4px;
@@ -998,6 +1027,7 @@
     flex: none; min-width: 1.9em; padding: 0.15em 0.5em; border-radius: 999px; text-align: center;
     background: #bfd8ff; color: var(--ink); font-size: 0.75em; font-weight: 900;
   }
+  .chat-mini { flex: none; border: none; background: none; font-family: inherit; font-weight: 700; font-size: 15px; color: rgba(0,0,0,0.38); padding: 8px 6px; cursor: pointer; }
   .bl-more {
     align-self: flex-start; border: none; border-radius: 12px; background: rgba(255,255,255,0.6);
     font-family: inherit; font-weight: 800; font-size: 16px; color: var(--ink); padding: 10px 16px; cursor: pointer;
@@ -2337,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 244 - 5 Oct';
+const BUILD = 'build 289 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2491,6 +2521,8 @@ const state = {
   bankLimit: 0,               // no cap: the layout grows instead of hiding words
   tileMode: 'word',           // word | sentence | mixed — what may sit on a tile
   hiddenWords: {},            // words kept out of the bank grid
+  builderHide: {},            // builder mode's own hidden tiles, page by page (menu mode is not touched)
+  builderHideV1: false,
   recentsHidden: {},          // words taken off the Recents / Popular page only
   suggestOn: true,            // the magnifying glass: off = typing in the bar brings up no matching words
   soundOn: true,              // the speaker icon: off = nothing is said aloud, anywhere
@@ -2510,7 +2542,10 @@ const state = {
   targetOff: {},              // target words whose prompting is switched off for now
   targetState: {},            // each target word's section: independent, prompted or waiting
   targetV1: false,            // the one-time renaming of New to the targets tab
+  layoutV11: false,
   layoutV10: false,          // the one-time move of every device onto the built-in folders
+  groupOrderV1: false,       // the one-time A to Z sort of the titles inside each group (they now keep their own order)
+  tabsV2: false,             // the one-time move of My Stuff back to the end of the menu bar, after Categories
   tabsV1: false,             // the one-time move of My Stuff ahead of Categories on the menu bar
   chatV1: false,             // the one-time check that Chat and its Small words folder are there
   punctV1: false,             // the one-time addition of . ? ! to the small words
@@ -2674,6 +2709,10 @@ async function load() {
         bankLimit: 0,
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
+        builderHide: saved.builderHide || {},
+        capKeep: saved.capKeep || {},
+        logShownFrom: saved.logShownFrom || 0,
+        builderHideV1: saved.builderHideV1 ?? false,
         recentsHidden: saved.recentsHidden || {},
         suggestOn: saved.suggestOn ?? true,
         soundOn: saved.soundOn ?? true,
@@ -2694,6 +2733,9 @@ async function load() {
         targetState: saved.targetState || {},
         targetV1: saved.targetV1 ?? false,
         layoutV10: saved.layoutV10 ?? false,
+        layoutV11: saved.layoutV11 ?? false,
+        groupOrderV1: saved.groupOrderV1 ?? false,
+        tabsV2: saved.tabsV2 ?? false,
         tabsV1: saved.tabsV1 ?? false,
         chatV1: saved.chatV1 ?? false,
         punctV1: saved.punctV1 ?? false,
@@ -2997,8 +3039,9 @@ async function load() {
   // One-time: every device moves onto the built-in folders, groups, small words rows and builder
   // pages. The device's own words are kept, and go back into the folder of the same name where
   // there is one. The preview site is where the built-in layout is put together, so it is left be.
-  if (!state.layoutV10) {
-    state.layoutV10 = true;
+  // (layoutV11: once more, onto the built-in layout of 5 Oct)
+  if (!state.layoutV10 || !state.layoutV11) {
+    state.layoutV10 = true; state.layoutV11 = true;
     if (!/github\.io$/.test(location.hostname)) {
       const where = {};
       const spot = c => { const p = c.parent ? catById(c.parent) : null; return [(p ? p.name : '').trim().toLowerCase(), c.name.trim().toLowerCase(), !!c.target, !!c.smallSec]; };
@@ -3013,21 +3056,31 @@ async function load() {
         where[w].forEach(([pn, n, tgt, sm]) => {
           const to = state.categories.find(c => tgt ? c.target : sm ? c.smallSec
             : (c.name.trim().toLowerCase() === n && !c.target && !c.smallSec && spot(c)[0] === pn));
-          if (!to || to.words.includes(w)) return;
-          to.words.push(w);
-          if (w.includes(' ') && !catAllowsPhrases(to)) state.keptPhrases[w] = true;
+          // the folder may have moved (Food is under My Stuff now): then the one of the same name will do
+          const to2 = to || (tgt || sm ? null : state.categories.find(c => c.name.trim().toLowerCase() === n && !c.target && !c.smallSec && !c.hidden));
+          if (!to2 || to2.words.includes(w)) return;
+          to2.words.push(w);
+          if (w.includes(' ') && !catAllowsPhrases(to2)) state.keptPhrases[w] = true;
         });
       });
       linkWordCache = null;
     }
     save();
   }
-  // One-time: on the menu bar My Stuff comes before Categories
-  if (!state.tabsV1) {
-    state.tabsV1 = true;
+  // One-time: titles inside a group now keep their own order; they start in the A to Z order they
+  // have been showing in, so nothing moves until one is dragged
+  if (!state.groupOrderV1) {
+    state.groupOrderV1 = true;
+    state.categories.forEach(c => (c.groups || []).forEach(g => { if (Array.isArray(g.words)) g.words.sort(byLabel); }));
+    save();
+  }
+  // One-time: on the menu bar My Stuff sits at the end, after Categories (an earlier build had
+  // moved it in front; this puts it back)
+  if (!state.tabsV2) {
+    state.tabsV1 = true; state.tabsV2 = true;
     const top = n => state.categories.find(c => !c.parent && c.name.trim().toLowerCase() === n);
     const ms = top('my stuff'), cg = top('categories');
-    if (ms && cg && (ms.order || 0) > (cg.order || 0)) { const o = ms.order; ms.order = cg.order; cg.order = o; }
+    if (ms && cg && (ms.order || 0) < (cg.order || 0)) { const o = ms.order; ms.order = cg.order; cg.order = o; }
     save();
   }
   // One-time: the builder's first page says Stop where it used to say All Done
@@ -3145,6 +3198,10 @@ async function save() {
       revives: state.revives,
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
+      builderHide: state.builderHide,
+      capKeep: state.capKeep || {},
+      logShownFrom: state.logShownFrom || 0,
+      builderHideV1: state.builderHideV1,
       recentsHidden: state.recentsHidden,
       suggestOn: state.suggestOn,
       soundOn: state.soundOn,
@@ -3165,6 +3222,9 @@ async function save() {
       targetState: state.targetState,
       targetV1: state.targetV1,
       layoutV10: state.layoutV10,
+      layoutV11: state.layoutV11,
+      groupOrderV1: state.groupOrderV1,
+      tabsV2: state.tabsV2,
       tabsV1: state.tabsV1,
       chatV1: state.chatV1,
       punctV1: state.punctV1,
@@ -5919,6 +5979,12 @@ function isLinkWord(w) {
 // A sentence: the first word starts with a capital, the rest read as they would mid-sentence
 function sentenceWords(words) { return words.map((w, i) => i ? sentenceLabel(w) : bankLabel(w)); }
 // How a word reads in the middle of a sentence: small letters, unless it is a name
+const PLAIN_STUFF = ['food', 'places', 'things'];
+function plainStuff(c) {
+  let x = c, g = 0;
+  while (x && g++ < 20) { if (PLAIN_STUFF.includes(x.name.trim().toLowerCase())) return true; x = x.parent ? catById(x.parent) : null; }
+  return false;
+}
 function sentenceLabel(w) {
   const key = w || '';
   const kept = (state.wordCase || {})[key];
@@ -5926,6 +5992,14 @@ function sentenceLabel(w) {
   if (kept && key !== 'I' && isLinkWord(key) && kept.slice(1) === kept.slice(1).toLowerCase()) return kept.toLowerCase();
   // a title in My Stuff gets a capital on every word, however it was typed ("How far I'll go");
   // only unusual capitals given by hand (iPad, KPOP) are left as they are
+  // everyday words in My Stuff (Food, Places, Things) are not titles: they read in small letters,
+  // on tiles and in the bar ("go bathroom"). Capitals given by hand in the word's edit box stay.
+  const stuff = categoriesOf(key).filter(catAllowsPhrases);
+  if (stuff.length && stuff.every(plainStuff)) {
+    if (kept && ((state.capKeep || {})[key] || (kept !== titleCase(key) && kept !== kept.toLowerCase()))) return kept;
+    if (key === 'I' || key.startsWith("I'")) return 'I' + key.slice(1).toLowerCase();
+    return key.toLowerCase().replace(/\bi\b/g, 'I');
+  }
   if (kept && categoriesOf(key).some(catAllowsPhrases)) {
     return kept.split(' ').map(x => x.slice(1) === x.slice(1).toLowerCase() ? x.charAt(0).toUpperCase() + x.slice(1) : x).join(' ');
   }
@@ -6000,12 +6074,38 @@ function magicPhrasesFor(word) {
   Object.entries(state.wordHistory || {}).forEach(([entry, d]) => {
     if (entry !== word && d && d.n && !isLexicalUnit(entry) && entry.split(' ').includes(word)) push(entry);
   });
-  learnedFrames().forEach(f => {
-    if (out.length >= 3) return;
-    if (f.split(' ').includes(word)) return;   // never "park park"
-    push(f.replace('\u2022', word));
-  });
-  return out.slice(0, 3);
+  // (made-up combinations from sentence patterns are no longer offered: they read as random)
+  return out.slice(0, 2);
+}
+// What is offered after a word, by rule: "go" leads to places, "eat" to food, "feel" to feelings,
+// "see" to people, and any other action word (want, like, play ...) to the things in My Stuff.
+// Within the right kind, the most used come first.
+const MAGIC_LEADS = {
+  places: ['GO', 'COME', 'WALK', 'DRIVE', 'VISIT', 'LEAVE'],
+  food: ['EAT', 'DRINK', 'HUNGRY', 'THIRSTY', 'TASTE', 'COOK'],
+  feelings: ['FEEL', 'AM', "I'M"],
+  people: ['SEE', 'CALL', 'HUG', 'WITH', 'MISS'],
+};
+const MAGIC_WANTS = ['WANT', 'LIKE', 'NEED', 'LOVE', 'HAVE', 'GET', 'MORE'];
+function kindByName(c) {
+  let x = c, g = 0;
+  while (x && g++ < 20) {
+    const hit = KIND_NAMES.find(k => k[0].test(x.name.trim().toLowerCase()));
+    if (hit) return hit[1];
+    x = x.parent ? catById(x.parent) : null;
+  }
+  return '';
+}
+function magicNext(word) {
+  const open = state.categories.filter(c => !c.target && !c.hidden && !c.small && !c.smallSec);
+  const of = test => [].concat(...open.filter(test).map(c => c.words || []));
+  const lead = Object.keys(MAGIC_LEADS).find(k => MAGIC_LEADS[k].includes(word));
+  let pool = lead ? of(c => kindByName(c) === lead) : [];
+  // any other action word, or a kind with nothing in it yet: the things in My Stuff
+  if (!pool.length && (lead || MAGIC_WANTS.includes(word) || kindOfWord(word) === 'action')) pool = of(c => catAllowsPhrases(c) && kindByName(c) !== 'people');
+  const used = w => (state.wordHistory[w] || {}).n || 0, last = w => (state.wordHistory[w] || {}).t || 0;
+  return pool.filter((w, i) => w !== word && pool.indexOf(w) === i && !homePhrase.includes(w) && !state.hiddenWords[w])
+    .sort((a, b) => used(b) - used(a) || last(b) - last(a)).slice(0, 5);
 }
 function hideMagic() {
   document.getElementById('magicBox').classList.remove('show');
@@ -6019,7 +6119,8 @@ function renderMagic(word) {
   if (!state.magicType || !word) return;
 
   // Single words that have gone with this one before — tap to keep building
-  relatedWords(word).forEach(next => {
+  const byRule = magicNext(word);
+  (byRule.length ? byRule : relatedWords(word)).forEach(next => {
     const b = document.createElement('button');
     b.className = 'magic-chip word';
     const t = document.createElement('span');
@@ -6216,14 +6317,24 @@ function openChatWith(words) {
   homePhrase = [];
   hideMagic();
   chatNow = { text, replies: [], t: now };
-  state.chatLog = (state.chatLog || []).concat([chatNow]).slice(-200);
+  state.chatLog = (state.chatLog || []).concat([chatNow]).slice(-5000);      // the whole conversation is kept, for export
   chatReply = []; chatPrefix = '';
   save();
   buzz(15);
   setView('chat');
   renderChat();
   chatSay(words.join(' '));
+  // from the builder: if nothing is touched or typed for three seconds, the message page closes
+  // itself and the builder's first page is back (the message stays in the conversation)
+  clearTimeout(chatIdleTimer);
+  if (state.builderMode) chatIdleTimer = setTimeout(() => {
+    chatIdleTimer = null;
+    if (!document.getElementById('viewChat').classList.contains('active') || chatReply.length || chatPrefix) return;
+    showHome();
+  }, 3000);
 }
+let chatIdleTimer = null;
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { clearTimeout(chatIdleTimer); chatIdleTimer = null; }, true));
 function chatCommitPrefix() {
   const key = normaliseWord(chatPrefix);
   chatPrefix = '';
@@ -6292,6 +6403,51 @@ function chatSendReply() {
 }
 // On the builder's first page, chat mode shows the conversation where the transcript usually is:
 // the newest message first, each with its replies under it
+// The chat on screen starts empty each time the app opens, and can be cleared at any time. The
+// messages themselves stay saved: 'history' lists them all and exports them as a file.
+let chatShownFrom = Date.now();
+function exportChatLog() {
+  const log = state.chatLog || [];
+  if (!log.length) { alert('There is nothing in the chat yet.'); return; }
+  const cell = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const pad = n => String(n).padStart(2, '0');
+  const lines = ['Date,Time,Message,Replies'];
+  log.forEach(m => {
+    const d = new Date(m.t || 0);
+    lines.push([
+      d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+      pad(d.getHours()) + ':' + pad(d.getMinutes()),
+      cell(m.text || ''), cell((m.replies || []).join(' | ')),
+    ].join(','));
+  });
+  const url = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'spelling-app-chat.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function openChatHistory() {
+  const log = (state.chatLog || []).slice().reverse();
+  const pad = n => String(n).padStart(2, '0');
+  openWordSheet(body => {
+    sheetTitle(body, 'Chat history');
+    const list = document.createElement('div');
+    list.className = 'pick-list';
+    list.style.maxHeight = '50vh'; list.style.overflowY = 'auto';
+    log.slice(0, 300).forEach(m => {
+      const d = new Date(m.t || 0);
+      const r = document.createElement('div');
+      r.className = 'pick-row'; r.style.cursor = 'default'; r.style.textAlign = 'left';
+      r.textContent = d.getDate() + '/' + (d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + '   ' + (m.text || '')
+        + ((m.replies || []).length ? '   \u2192 ' + m.replies.join(' / ') : '');
+      list.appendChild(r);
+    });
+    body.appendChild(list);
+    if (log.length > 300) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'Showing the latest 300 of ' + log.length + '. The export has them all.'; body.appendChild(n); }
+    body.appendChild(sheetBtn('Export as a file', '', exportChatLog));
+    body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
+  });
+}
 function renderChatLog(grid, tileType) {
   const box = document.createElement('div');
   box.className = 'builder-log chat-log';
@@ -6300,8 +6456,19 @@ function renderChatLog(grid, tileType) {
   const line = document.createElement('div');
   line.className = 'bl-line';
   head.appendChild(line);
+  // quiet controls at the end of the line: clear what is showing (nothing is deleted), and the
+  // whole conversation, which can be exported
+  const mini = (text, label, fn) => {
+    const b = document.createElement('button');
+    b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label);
+    b.addEventListener('click', fn);
+    head.appendChild(b);
+  };
+  const showing = (state.chatLog || []).filter(m => (m.t || 0) >= chatShownFrom);
+  if (showing.length) mini('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderHome(true); });
+  if ((state.chatLog || []).length) mini('history', 'The whole conversation', openChatHistory);
   box.appendChild(head);
-  (state.chatLog || []).slice(-30).reverse().forEach(m => {
+  showing.slice(-30).reverse().forEach(m => {
     const g = document.createElement('div');
     g.className = 'chat-group';
     chatBubbles(m).forEach(d => { d.style.fontSize = Math.round(tileType * 0.85) + 'px'; g.appendChild(d); });
@@ -6381,6 +6548,7 @@ function tintFor(cat, amount) {
   const def = PROMPT_COLORS[(cat && cat.color) || 'blue'] || PROMPT_COLORS.blue;
   return mixHex(def.solid, '#ffffff', amount);
 }
+let lastTabTap = { id: null, t: 0 };
 function renderCatTiles(containerId, rerender) {
   const host = document.getElementById(containerId || 'catTiles');
   if (!host) return;
@@ -6397,20 +6565,36 @@ function renderCatTiles(containerId, rerender) {
     // back to the page of folders, and the tab reads Categories again
     if (homePath[level] === c.id && homePath.length > level + 1) {
       const open = catById(homePath[homePath.length - 1]);
-      if (open) b.textContent = open.name;
+      if (open) b.textContent = (tileGroup && tileGroup.cat === open.id) ? tileGroup.group.name : open.name;
     }
     b.addEventListener('pointerdown', () => {
       longPressed = false;
       tileTimer = setTimeout(() => {
         longPressed = true;
         buzz(15);
-        openFolderEdit(c);
+        // the green tab carries the name of the page that is open, so its menu is that page's menu
+        const open = (homePath[level] === c.id && homePath.length > level + 1) ? catById(homePath[homePath.length - 1]) : null;
+        openFolderEdit(open || c);
       }, 650);
     });
     b.addEventListener('pointerup', () => {
       if (tileTimer) clearTimeout(tileTimer);
       if (wordDrag) return;      // a word is being dropped here, not a tap on the tab
       if (longPressed) return;
+      // the green tab of the page that is open: one tap steps back a page, a quick second tap goes
+      // all the way to that tab's main page. Any other tab opens its main page.
+      const now = Date.now();
+      const mine = homePath[level] === c.id;
+      const twice = mine && lastTabTap.id === c.id && now - lastTabTap.t < 450;
+      lastTabTap = { id: c.id, t: now };
+      const lastId = homePath[homePath.length - 1];
+      if (mine && !twice && libraryOpen && libraryOpen === lastId && !tileGroup) { libraryOpen = null; again(); return; }
+      if (mine && !twice && (tileGroup || homePath.length > level + 1)) {
+        if (tileGroup) tileGroup = null; else homePath = homePath.slice(0, -1);
+        again();
+        return;
+      }
+      tileGroup = null;
       // stay on the bar: pick at this level, drop anything deeper
       homePath = homePath.slice(0, level);
       homePath.push(c.id);
@@ -6640,6 +6824,9 @@ function renderHome(reset) {
   const grid = document.getElementById('homeGrid');
   const cat = currentCat();
   if (!cat || state.builderMode || cat.id !== listPageShown) listPageShown = null;     // that page of groups has been left
+  syncPageEdit(cat);
+  if (tileGroup && (!cat || state.builderMode || cat.id !== tileGroup.cat)) tileGroup = null;
+  if (libraryOpen && (state.builderMode || !homePath.includes(libraryOpen))) libraryOpen = null;
   if (reset) {
     renderPhraseBar();
     renderBuilderBar();
@@ -6695,7 +6882,7 @@ function renderHome(reset) {
     rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
     // the plus ends the menu bar while a folder is open: it makes a new folder inside it
     document.getElementById('homeAddFolderBtn').style.display =
-      ((state.iconsOpen || homePath.length > 1) && state.railOpen && cat && !cat.rule) ? '' : 'none';     // always there beside the back arrow
+      'none';     // retired: every page has its own grey tiles for adding
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
     document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
 
@@ -6767,7 +6954,7 @@ function renderHome(reset) {
 // The folders, words, builder pages and small-words row a new device starts
 // with. Taken from the layout exported on 3 Oct 2026; replace this one line to
 // change what a fresh install looks like.
-const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slots":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slotCols":3,"small":true},{"id":2,"name":"Food","parent":12,"order":1,"color":"green","words":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"],"slots":["PEACH","PLUM","APPLE","STRAWBERRIES","CHERRY","CHICKEN","LOLLIPOP","SWEDISH","FISH","COOKIES","POPSICLES","SWEDISH FISH","COOKIE","WATER"],"slotCols":3},{"id":3,"name":"My Stuff","parent":null,"order":1,"color":"orange","words":[],"phrases":true},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT","MAKE","WARM"],"slots":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT"],"slotCols":3,"linkers":true,"row":["MORE","ALL DONE","AND","NOW","YES","NO"]},{"id":5,"name":"People","parent":12,"order":3,"color":"pink","words":["MOM","DAD"]},{"id":6,"name":"Places","parent":12,"order":4,"color":"teal","words":["PARK","BENCH","OUTSIDE","HOME","ROOM","WINDOW","BATHROOM","TABLE"],"slots":["PARK","BENCH","OUTSIDE","HOME"],"slotCols":3,"row":["TO","THE","PLEASE","AGAIN","NOW","."]},{"id":7,"name":"Music","parent":3,"order":0,"color":"yellow","words":["GOLDEN","FREE","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"groups":[{"id":1,"name":"K POP Demon Hunters","words":["GOLDEN","FREE","SODA POP","YOUR IDOL"],"open":false},{"id":2,"name":"Moana","words":["WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"open":false}]},{"id":9,"name":"TV","parent":3,"order":1,"color":"blue","words":["PEPPA PIG"],"groups":[]},{"id":10,"name":"Movies","parent":3,"order":2,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slots":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slotCols":3,"groups":[]},{"id":11,"name":"Characters","parent":3,"order":5,"color":"purple","words":["PEPPA","GEORGE"],"slots":["PEPPA","GEORGE"],"slotCols":3,"groups":[]},{"id":12,"name":"Categories","parent":null,"order":2,"color":"green","words":[],"strip":true},{"id":13,"name":"Things","parent":12,"order":2,"color":"yellow","words":[]},{"id":14,"name":"Books","parent":3,"order":3,"color":"orange","words":[],"groups":[]},{"id":15,"name":"Games","parent":3,"order":4,"color":"pink","words":["PUZZLE"],"slots":["PUZZLE"],"slotCols":3,"groups":[]},{"id":16,"name":"Health","parent":12,"order":8,"color":"red","words":["WATER"]},{"id":20,"name":"Feelings","parent":12,"order":6,"color":"teal","words":[],"nopop":true},{"id":21,"name":"Activities","parent":12,"order":5,"color":"red","words":["DANCING","SINGING"]},{"id":22,"name":"Things","parent":3,"order":6,"color":"blue","words":["FLICKER"],"slots":["FLICKER"],"slotCols":3,"groups":[]},{"id":23,"name":"Choices","parent":12,"order":7,"color":"purple","words":["UP","DOWN","COLD","HOT","NOW","LATER","QUIET","LOUD"],"slots":["UP","DOWN",null,"COLD","HOT",null,"NOW","LATER",null,"QUIET","LOUD"],"slotCols":3},{"id":24,"name":"🎯","parent":null,"order":3,"color":"teal","words":["CARS","CUT"],"slots":["CARS","CUT"],"slotCols":3,"target":true,"groups":[{"id":1,"name":"Established","words":[],"open":false},{"id":2,"name":"Emerging","words":[],"open":false},{"id":3,"name":"New","words":[],"open":false}]},{"id":25,"name":"Small words","parent":1,"order":0,"color":"blue","words":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM","NOW",".","SOME","?","!","LATER"],"smallSec":true},{"id":32,"name":"Places","parent":3,"order":7,"color":"purple","words":[],"groups":[]},{"id":34,"name":"Food","parent":3,"order":8,"color":"orange","words":[],"groups":[]},{"id":35,"name":"Music","parent":13,"order":0,"color":"pink","words":["MUSIC","VIDEO"]},{"id":36,"name":"Animals","parent":13,"order":1,"color":"yellow","words":["BEAR"]},{"id":37,"name":"Toys","parent":13,"order":5,"color":"red","words":["FLICKER"]},{"id":38,"name":"Sports","parent":36,"order":0,"color":"green","words":[]},{"id":39,"name":"Apps","parent":13,"order":3,"color":"orange","words":["YOUTUBE"]},{"id":41,"name":"Clothes","parent":13,"order":8,"color":"teal","words":[]},{"id":42,"name":"Vehicles","parent":13,"order":4,"color":"yellow","words":["TRUCK"]},{"id":43,"name":"TV","parent":13,"order":2,"color":"red","words":[]},{"id":44,"name":"Sports","parent":13,"order":6,"color":"blue","words":[]}],"looseWords":["WANT"],"wordCase":{"I":"I","AM":"am","THANKS":"thanks","ALL DONE":"all done","WHERE YOU ARE":"Where you are","YOU\'RE WELCOME":"You\'re welcome","HOW FAR I\'LL GO":"How far I\'ll go"},"keptPhrases":["THANK YOU","ALL DONE","SWEDISH FISH","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"recentsHidden":[],"smallRow":["TO","THE","PLEASE","AGAIN"],"builder":{"kids":[{"label":"I","kids":[{"label":"want","kids":[],"cats":[3,12],"small":[]},{"label":"need","kids":[],"cats":[3,12]},{"label":"feel","kids":[],"cats":[],"go":20},{"label":"like","kids":[],"cats":[],"small":[],"go":25},{"label":"love","kids":[],"cats":[]},{"label":"see","kids":[],"cats":[]},{"label":"hear","kids":[],"cats":[12,3]}],"cats":[]},{"label":"Go","kids":[],"cats":[6],"go":6},{"label":"More","kids":[],"cats":[2,4,21,7,9,10,14,15,11,22]},{"label":"Stop","kids":[],"cats":[21,5]}],"cats":[],"words":{"OPEN":{"label":"Open","kids":[],"cats":[2,13,5,6,16,7,9,10,14,15,22,11,21],"small":["IT","THAT","THE","MORE"]},"GO":{"label":"Go","kids":[],"cats":[6,4,21,23],"small":["AGAIN","TO","THE"]}}}}');
+const DEFAULT_LAYOUT = JSON.parse('{"gridFill":6,"bankSort":"used","caseMode":3,"categories":[{"id":1,"name":"Chat","parent":null,"order":0,"color":"blue","words":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slots":["HI","BYE","PLEASE","YES","NO","THANKS","MORE","ALL DONE","AGAIN"],"slotCols":3,"links":[],"small":true,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":3,"name":"My Stuff","parent":null,"order":2,"color":"orange","words":[],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":true,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":4,"name":"Actions","parent":12,"order":0,"color":"purple","words":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT","MAKE","WARM","TURN","RIDE","CLIMB","REST","BREAK","SLEEP","HUG","SQUEEZE","WAIT","PUSH","SING","PULL","WANT","LIKE","FEEL","NEED","THROW","KICK","ADVENTURE","RUN","COME","LOOK","SAY","WORK","TELL","LET\'S","FILL","CLOSE","TYPE","COLOR","DRAW","ATTACH","ADD"],"slots":["OPEN","GO","WATCH","EAT","FIX","PLAY","DRINK","STOP","READ","SPRAY","DANCE","WALK","SWING","SWIM","JUMP","SPIN","HELP","CUT","SIT","LISTEN","FIND","GET","GIVE","CHASE","SHOOT"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":["MORE","ALL DONE","AND","NOW","YOU","AM","TO","MY","THE","IT","AGAIN"],"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":7,"name":"Music","parent":3,"order":2,"color":"yellow","words":["GOLDEN","FREE","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"K POP Demon Hunters","words":["FREE","GOLDEN","SODA POP","YOUR IDOL"],"open":false},{"id":2,"name":"Moana","words":["HOW FAR I\'LL GO","WHERE YOU ARE","YOU\'RE WELCOME"],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":9,"name":"TV","parent":3,"order":3,"color":"blue","words":["BIRD SPOTTING"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Peppa Pig","words":["BIRD SPOTTING"],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":10,"name":"Movies","parent":3,"order":6,"color":"green","words":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slots":["CARS","KPOP DEMON HUNTERS","FINDING NEMO","COCO"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":11,"name":"Characters","parent":3,"order":9,"color":"purple","words":["PEPPA","GEORGE","DOC HUDSON","MCQUEEN"],"slots":["PEPPA","GEORGE"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":12,"name":"Categories","parent":null,"order":1,"color":"green","words":[],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":true,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":14,"name":"Books","parent":3,"order":8,"color":"orange","words":["TRUCKS GALORE"],"slots":[],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":15,"name":"Games","parent":3,"order":7,"color":"pink","words":["PUZZLE","ROAR"],"slots":["PUZZLE"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":20,"name":"Groups","parent":12,"order":2,"color":"teal","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":true,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["HAPPY","SAD","FRUSTRATED","UNCOMFORTABLE","GREEN","ORANGE"]},{"id":22,"name":"Stuff","parent":3,"order":1,"color":"blue","words":["FLICKER","ROCKET BALLOONS","SPRAY BOTTLE","SWING","TRAMPOLINE","PARACHUTE","BASKETBALL"],"slots":["FLICKER"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":23,"name":"Choices","parent":12,"order":1,"color":"purple","words":[],"slots":["UP","DOWN",null,"COLD","HOT",null,"NOW","LATER",null,"QUIET","LOUD"],"slotCols":3,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["UP","DOWN","QUIET","LOUD","FAST","SLOW","NOW","MORE","GOOD","BAD"]},{"id":24,"name":"🎯","parent":null,"order":3,"color":"teal","words":["CARS"],"slots":["CARS","CUT"],"slotCols":3,"links":[],"small":false,"target":true,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Established","words":[],"open":false},{"id":2,"name":"Emerging","words":["CARS"],"open":true},{"id":3,"name":"New","words":[],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":25,"name":"Small words","parent":1,"order":0,"color":"blue","words":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM",".","SOME","?","!","THIS"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":true,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":32,"name":"Places","parent":3,"order":5,"color":"purple","words":["BEDROOM","BATHROOM","KITCHEN","PARK"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":34,"name":"Food","parent":3,"order":0,"color":"orange","words":["CHOCOLATE CHIP","APPLE","MANDARIN","CHICKEN TENDERS","POTATO","FRENCH BUTTER","KETCHUP","LOLLIPOP","SWEDISH FISH","TURKEY BURGER","BEEF BURGER","MEATBALLS","SWEET POTATO","STRAWBERRY","PEACH","PLUM","POPPI","COKE","MINT","BOTTLE","POPSICLE","ICE CREAM","TORTILLA","WATER","PANCAKES","BEAN BURGER","CHERRY","ICE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Drinks","words":["WATER","POPPI","BOTTLE","COKE"],"open":false},{"id":4,"name":"Fruit","words":["APPLE","MANDARIN","PEACH","PLUM","STRAWBERRY","CHERRY"],"open":false},{"id":3,"name":"Cookies","words":["CHOCOLATE CHIP","FRENCH BUTTER","MINT"],"open":false},{"id":10,"name":"Chips","words":["TORTILLA"],"open":false},{"id":8,"name":"Candy","words":["LOLLIPOP","SWEDISH FISH"],"open":false},{"id":2,"name":"Protein","words":["CHICKEN TENDERS","BEEF BURGER","MEATBALLS","TURKEY BURGER","BEAN BURGER"],"open":false},{"id":5,"name":"Sides","words":["SWEET POTATO","POTATO"],"open":false},{"id":6,"name":"Add-on","words":["KETCHUP","ICE"],"open":false},{"id":7,"name":"Frozen","words":["ICE CREAM","POPSICLE"],"open":false},{"id":9,"name":"Dishes","words":["PANCAKES"],"open":false,"hidden":true}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":45,"name":"People","parent":3,"order":4,"color":"pink","words":["MOM","DAD"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[{"id":1,"name":"Family","words":["DAD","MOM"],"open":false},{"id":2,"name":"Friends","words":[],"open":false}],"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":true,"feed":null},{"id":46,"name":"Temperature","parent":23,"order":3,"color":"yellow","words":["COLD","HOT","WARM","COOL"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":47,"name":"Time","parent":23,"order":4,"color":"red","words":["LATER","NOW","SOON","TODAY","YESTERDAY","TOMORROW","TONIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":48,"name":"Direction","parent":23,"order":0,"color":"green","words":["DOWN","UP","LEFT","RIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":49,"name":"Sound","parent":23,"order":1,"color":"pink","words":["LOUD","QUIET"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":50,"name":"Speed","parent":23,"order":2,"color":"teal","words":["FAST","SLOW"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":52,"name":"Size","parent":23,"order":6,"color":"red","words":["BIG","SMALL","MEDIUM"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":53,"name":"Height","parent":23,"order":7,"color":"green","words":["TALL","SHORT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":54,"name":"Quantity","parent":23,"order":8,"color":"orange","words":["ONE","SOME","ALL","MORE","LESS","NONE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":55,"name":"Order","parent":23,"order":9,"color":"pink","words":["BEFORE","AFTER","FIRST","THEN"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":56,"name":"Position","parent":23,"order":10,"color":"teal","words":["ON","OFF","IN","OUT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":57,"name":"Weight","parent":23,"order":11,"color":"yellow","words":["HEAVY","LIGHT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":58,"name":"Opinion","parent":23,"order":12,"color":"red","words":["GOOD","BAD","SAME","DIFFERENT","OLD","NEW"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":59,"name":"Feelings","parent":20,"order":1,"color":"red","words":["ANGRY","CONFUSED","EXCITED","FRUSTRATED","HAPPY","HUNGRY","MAD","OVERSTIMULATED","SAD","SCARED","THIRSTY","TIRED","UNCOMFORTABLE","SILLY"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":60,"name":"Numbers","parent":20,"order":3,"color":"yellow","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":61,"name":"Colors","parent":20,"order":4,"color":"blue","words":["RED","GREEN","BLUE","PURPLE","PINK","YELLOW","ORANGE","BLACK","WHITE","GREY","SILVER","GOLD","BRONZE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":62,"name":"Shapes","parent":20,"order":5,"color":"green","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":68,"name":"Clothes","parent":3,"order":10,"color":"purple","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":true,"rule":null,"tiles":true,"feed":null},{"id":69,"name":"Routines","parent":3,"order":11,"color":"orange","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":[],"strip":false,"nopop":false,"phrases":null,"hidden":true,"rule":null,"tiles":true,"feed":null},{"id":70,"name":"Things","parent":12,"order":3,"color":"pink","words":[],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":["BIRD","DOG","TRUCK","TRAIN","CAR","BUS","BOAT","HELICOPTER","HEADPHONES","LOTION","SPRAY BOTTLE"]},{"id":71,"name":"Animals","parent":70,"order":0,"color":"teal","words":["BIRD","DOG","CAT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":72,"name":"Vehicles","parent":70,"order":2,"color":"yellow","words":["TRUCK","BUS","TRAIN","CAR","HELICOPTER","BOAT"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":73,"name":"Supplies","parent":70,"order":3,"color":"red","words":["LOTION","HEADPHONES","SPRAY BOTTLE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":84,"name":"general requests","parent":12,"order":4,"color":"blue","words":["MUSIC","TV","FOOD","QUIET"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null},{"id":86,"name":"requests","parent":12,"order":5,"color":"green","words":["MUSIC","TV","YOUTUBE","WATER","HELP","MORE"],"slots":null,"slotCols":null,"links":[],"small":false,"target":false,"smallSec":false,"linkers":false,"row":null,"groups":null,"strip":false,"nopop":false,"phrases":null,"hidden":false,"rule":null,"tiles":false,"feed":null}],"looseWords":["SWEDISH","FISH","COOKIES","POPSICLES","COOKIE","BEAR","VIDEO","OUTSIDE","HOME","ROOM","WINDOW","TABLE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","FRUIT","MOVIE","SNACK"],"wordCase":{"I":"I","AM":"am","THANKS":"thanks","ALL DONE":"all done","WHERE YOU ARE":"Where you are","YOU\'RE WELCOME":"You\'re welcome","HOW FAR I\'LL GO":"How far I\'ll go","GRANOLA BAR":"Granola bar","CHICKEN TENDERS":"Chicken Tenders","BOTTLE":"Bottle","MANDARIN":"Mandarin","PANCAKES":"Pancakes","POPPI":"Poppi","STRAWBERRY":"Strawberry","CHOCOLATE CHIP":"Chocolate Chip","FRENCH BUTTER":"French Butter","MINT":"Mint","POTATO":"Potato","TORTILLA":"Tortilla","SWEET POTATO":"Sweet Potato","FRUIT":"Fruit","HOME":"Home","MCQUEEN":"McQueen"},"keptPhrases":["THANK YOU","ALL DONE","SWEDISH FISH","SODA POP","YOUR IDOL","WHERE YOU ARE","YOU\'RE WELCOME","HOW FAR I\'LL GO","GRANOLA BAR","TURKEY BURGER","BEEF BURGER","ORANGE POPPI","ICE CREAM","ROCKET BALLOONS","SPRAY BOTTLE","BEAN BURGER","POPPI","CHOCOLATE CHIP","FRENCH BUTTER","MINT","POTATO","TORTILLA","SWEET POTATO","TRUCKS GALORE","DOC HUDSON","PEPPA PIG","BIRD SPOTTING"],"hiddenWords":["ADD","ADVENTURE","ATTACH","BREAK","CHASE","CLIMB","CLOSE","COLOR","DANCE","DRAW","FEEL","GIVE","HUG","JUMP","KICK","LET\'S","LIKE","LOOK","MAKE","PULL","PUSH","REST","RIDE","RUN","SAY","SHOOT","SING","SLEEP","SPIN","SQUEEZE","SWIM","SWING","TELL","THROW","STOP","TYPE","WAIT","WARM","WORK","FILL","FIND","LISTEN","WALK","READ","SPRAY"],"builderHide":{"c4":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1},"c22":{"w:SWING":1},"c46":{"w:WARM":1},"c4@I":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:SIT":1,"w:TURN":1,"w:OPEN":1,"w:PLAY":1,"w:HELP":1,"w:GET":1,"w:GO":1,"w:FIX":1,"w:COME":1,"w:CUT":1,"w:DRINK":1,"w:EAT":1,"w:WATCH":1},"c25@c4:I/WANT":{"w:I":1,"w:AND":1,"w:IS":1,"w:BE":1,"w:NOT":1,"w:ARE":1,"w:WE":1,"w:YOUR":1,"w:AM":1,"w:NOW":1,"w:?":1,"w:LATER":1,"w:SOME":1,"w:!":1,"w:.":1},"c4@STOP":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:BREAK":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:CUT":1,"w:COME":1,"w:EAT":1,"w:DRINK":1,"w:FIX":1,"w:GO":1,"w:GET":1,"w:HELP":1},"c25@STOP":{"w:I":1,"w:YOU":1,"w:MY":1,"w:AND":1,"w:THE":1,"w:AM":1,"w:SOME":1,"w:LATER":1,"w:?":1,"w:!":1,"w:.":1,"w:TO":1,"w:YOUR":1,"w:NOT":1,"w:ARE":1,"w:WE":1,"w:BE":1,"w:IS":1,"w:A":1,"w:THIS":1},"c59@c4:I/FEEL":{"w:MAD":1,"w:THIRSTY":1,"w:SCARED":1,"w:HUNGRY":1,"w:ANGRY":1,"w:CONFUSED":1,"w:EXCITED":1,"w:OVERSTIMULATED":1,"w:SAD":1,"w:FRUSTRATED":1,"w:SILLY":1,"w:TIRED":1},"c4@c4:I/NEED":{"w:STOP":1,"w:READ":1,"w:SPRAY":1,"w:DANCE":1,"w:WALK":1,"w:SWING":1,"w:SWIM":1,"w:JUMP":1,"w:SPIN":1,"w:LISTEN":1,"w:FIND":1,"w:GIVE":1,"w:CHASE":1,"w:SHOOT":1,"w:MAKE":1,"w:WARM":1,"w:RIDE":1,"w:CLIMB":1,"w:REST":1,"w:SLEEP":1,"w:HUG":1,"w:SQUEEZE":1,"w:WAIT":1,"w:PUSH":1,"w:SING":1,"w:PULL":1,"w:LIKE":1,"w:FEEL":1,"w:THROW":1,"w:KICK":1,"w:ADVENTURE":1,"w:RUN":1,"w:LOOK":1,"w:SAY":1,"w:WORK":1,"w:TELL":1,"w:LET\'S":1,"w:FILL":1,"w:CLOSE":1,"w:TYPE":1,"w:COLOR":1,"w:DRAW":1,"w:ATTACH":1,"w:ADD":1,"w:EAT":1,"w:DRINK":1,"w:CUT":1,"w:COME":1,"w:FIX":1,"w:GO":1,"w:GET":1,"w:NEED":1,"w:OPEN":1,"w:PLAY":1,"w:SIT":1,"w:TURN":1,"w:WANT":1,"w:WATCH":1},"n:c4:I/want":{}},"capKeep":{},"recentsHidden":["FRUIT","HOME"],"smallRow":["TO","THE","PLEASE","AGAIN"],"smallWords":["I","IT","AND","YOU","MY","THE","A","IS","BE","NOT","ARE","WE","YOUR","THAT","TO","AM",".","SOME","?","!","THIS"],"targetState":{},"pairs":[],"builder":{"kids":[{"label":"I","kids":[],"cats":[],"go":4},{"label":"Go","kids":[],"cats":[],"go":32},{"label":"More","kids":[],"cats":[34,7,9,10]},{"label":"Stop","kids":[],"cats":[],"go":25}],"cats":[],"words":{"OPEN":{"label":"Open","kids":[],"cats":[7,9,10,14,15,22,11],"small":["IT","THAT","THE","MORE"]},"GO":{"label":"Go","kids":[],"cats":[4,23],"small":["AGAIN","TO","THE"]},"WANT":{"label":"want","kids":[],"cats":[],"go":86},"BATHROOM":{"label":"Bathroom","kids":[],"cats":[]},"FEEL":{"label":"feel","kids":[],"cats":[],"go":59},"NEED":{"label":"need","kids":[],"cats":[],"go":4}}}}');
 // Additions to the built-in layout since that export
 if (!DEFAULT_LAYOUT.categories.some(c => !c.parent && (c.target || c.name === 'New'))) {
   DEFAULT_LAYOUT.categories.push({
@@ -6801,6 +6988,8 @@ function applyLayout(L, keep) {
   (L.keptPhrases || []).forEach(w => { state.keptPhrases[w] = true; });
   state.wordCase = Object.assign(keep ? (state.wordCase || {}) : {}, L.wordCase || {});
   state.recentsHidden = Object.assign(keep ? (state.recentsHidden || {}) : {}, ...(L.recentsHidden || []).map(w => ({ [w]: true })));
+  if (L.capKeep) state.capKeep = Object.assign({}, L.capKeep);
+  if (L.builderHide) { state.builderHide = JSON.parse(JSON.stringify(L.builderHide)); state.builderHideV1 = true; }
   if (L.hiddenWords) { state.hiddenWords = keep ? (state.hiddenWords || {}) : {}; L.hiddenWords.forEach(w => { state.hiddenWords[w] = true; }); }
   if (L.targetState) state.targetState = Object.assign({}, L.targetState);
   if (Array.isArray(L.pairs)) state.pairs = L.pairs.map(x => x.slice(0, 2));
@@ -6825,8 +7014,9 @@ function applyLayout(L, keep) {
   state.drinksV1 = true;
   state.punctV1 = true;
   state.chatV1 = true;
-  state.layoutV10 = true;
+  state.layoutV10 = true; state.layoutV11 = true;
   state.tabsV1 = true;
+  state.tabsV2 = true;
   addSmallPunct();
   state.targetV1 = true;
   ensureTargets();
@@ -7068,6 +7258,32 @@ function refreshSmallStrips() {
     old.replaceWith(nu);
   });
 }
+// The small words library in Chat, in a set order so each word keeps its place: the first row is
+// the six most common of them (I first), then the words by kind, each kind starting a row -
+// people words, helping verbs, pointing and amount words, joining words, place words, time
+// words - then anything else A to Z, and the punctuation marks last.
+const SMALL_COMMON = ['I', 'YOU', 'IT', 'THE', 'A', 'AND', 'TO', 'IS', 'MY', 'ME', 'WE', 'THAT', 'NOT', 'IN', 'ARE', 'FOR', 'ON', 'THIS', 'WITH', 'HAVE', 'BE', 'YOUR', 'AM', 'DO', 'CAN'];
+const SMALL_KINDS = [
+  ['I', 'YOU', 'WE', 'HE', 'SHE', 'IT', 'THEY', 'ME', 'US', 'HIM', 'HER', 'THEM', 'MY', 'YOUR', 'OUR', 'HIS', 'THEIR', 'MINE', 'YOURS', 'OURS', 'THEIRS', 'MYSELF', 'WHO', 'EVERYONE', 'SOMEONE'],
+  ['AM', 'IS', 'ARE', 'WAS', 'WERE', 'BE', 'BEEN', 'DO', 'DOES', 'DID', "DON'T", "DOESN'T", "DIDN'T", 'CAN', "CAN'T", 'COULD', 'WILL', "WON'T", 'WOULD', 'SHOULD', 'MIGHT', 'MUST', 'HAVE', 'HAS', 'HAD', 'NOT', "ISN'T", "AREN'T", "LET'S"],
+  ['THE', 'A', 'AN', 'THIS', 'THAT', 'THESE', 'THOSE', 'SOME', 'ANY', 'ALL', 'NO', 'NONE', 'MORE', 'MOST', 'EACH', 'EVERY', 'OTHER', 'ANOTHER', 'WHAT', 'WHICH'],
+  ['AND', 'OR', 'BUT', 'SO', 'BECAUSE', 'IF', 'THEN', 'THAN', 'AS', 'LIKE', 'WHEN', 'WHILE', 'UNTIL', 'WHY', 'HOW'],
+  ['TO', 'IN', 'ON', 'AT', 'FOR', 'WITH', 'OF', 'FROM', 'BY', 'UP', 'DOWN', 'OUT', 'OFF', 'OVER', 'UNDER', 'INTO', 'ABOUT', 'HERE', 'THERE', 'WHERE'],
+  ['NOW', 'SOON', 'LATER', 'AGAIN', 'BEFORE', 'AFTER', 'TODAY', 'ALWAYS', 'NEVER', 'TOO', 'VERY', 'JUST', 'ALSO', 'ONLY', 'MAYBE', 'PLEASE'],
+];
+function groupSmallWords(list) {
+  const real = list.filter(w => !isPunct(w));
+  const rank = w => { const i = SMALL_COMMON.indexOf(w); return i < 0 ? 999 : i; };
+  const top = real.filter(w => rank(w) < 999).sort((a, b) => rank(a) - rank(b)).slice(0, 6);
+  const rest = real.filter(w => !top.includes(w));
+  const groups = [top];
+  SMALL_KINDS.forEach(kind => groups.push(kind.filter(w => rest.includes(w))));
+  const known = new Set([].concat(...SMALL_KINDS));
+  groups.push(rest.filter(w => !known.has(w)).sort(byLabel));
+  groups.push(list.filter(isPunct));
+  const full = groups.filter(g => g.length);
+  return { words: [].concat(...full), starts: new Set(full.slice(1).map(g => g[0])) };
+}
 function addStripToggle(strip, onClose) {
   strip.classList.add('with-toggle');
   strip._onClose = onClose;
@@ -7093,10 +7309,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   let shown = rows.map(row => row.filter(w => state.words.includes(w)));
   strip._args = [rowH, base, owner, gutter];
   // with a word in the bar, the row turns to the words most likely to come after it
-  const after = homePhrase.length ? followWords(homePhrase[homePhrase.length - 1], [].concat(...shown)) : null;
+  // (builder mode shows only the words chosen for the row from the small words library)
+  const after = state.builderMode ? null : homePhrase.length ? followWords(homePhrase[homePhrase.length - 1], [].concat(...shown)) : null;
   if (after && after.length) shown = [after];
   // a Categories folder with no row chosen for it starts with the words that suit its kind of page
-  else if (!homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row) && PAGE_START[kindOfCat(owner)]) shown = [startWords(owner, [].concat(...shown))];
+  else if (!state.builderMode && !homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row) && PAGE_START[kindOfCat(owner)]) shown = [startWords(owner, [].concat(...shown))];
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
     const hold = edit;
@@ -7349,12 +7566,15 @@ function exportLayout() {
       id: c.id, name: c.name, parent: c.parent || null, order: c.order || 0, color: c.color,
       words: c.words || [], slots: Array.isArray(c.slots) ? c.slots : null, slotCols: c.slotCols || null,
       links: c.links || [], small: !!c.small, target: !!c.target, smallSec: !!c.smallSec, linkers: !!c.linkers, row: Array.isArray(c.row) ? c.row : null, groups: Array.isArray(c.groups) ? c.groups : null, strip: !!c.strip, nopop: !!c.nopop,
-      phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null,
+      phrases: c.phrases === undefined ? null : !!c.phrases, hidden: !!c.hidden, rule: c.rule || null, tiles: !!c.tiles, feed: Array.isArray(c.feed) ? c.feed : null,
+      half: !!c.half, feedOff: !!c.feedOff, feedShut: c.feedShut || null, feedOrder: c.feedOrder || null, looseOrder: c.looseOrder || null,
     })),
     looseWords: (state.words || []).filter(w => categoriesOf(w).length === 0),
     wordCase: state.wordCase || {},
     keptPhrases: Object.keys(state.keptPhrases || {}),
     hiddenWords: Object.keys(state.hiddenWords || {}),
+    builderHide: (builderHidden(''), state.builderHide),
+    capKeep: state.capKeep || {},
     recentsHidden: Object.keys(state.recentsHidden || {}),
     smallRow: state.smallRow || [],
     smallWords: state.words.filter(isSmallWord),
@@ -7403,7 +7623,67 @@ function defaultBuilder() {
 function builderHere() {
   return builderPath.length ? builderPath[builderPath.length - 1] : state.builder;
 }
+// Builder mode keeps its own list of hidden tiles for each page, so hiding a tile here leaves
+// menu mode alone (and the other way round). The words and folders themselves are shared.
+let builderEdit = null;
+let builderEditIds = [];
+// The edit bar's Show all / Hide all: every tile on the page being edited, in one go
+function editAll(show) {
+  if (builderEdit) {
+    const h = state.builderHide[builderEdit] = Object.assign({}, builderHidden(builderEdit));
+    builderEditIds.forEach(id => { if (show) delete h[id]; else h[id] = 1; });
+  } else if (pageEdit) {
+    const cat = catById(pageEdit);
+    if (!cat) return;
+    (cat.words || []).forEach(w => { if (show) delete state.hiddenWords[w]; else state.hiddenWords[w] = true; });
+    childrenOf(cat.id, true).filter(c => !c.smallSec).forEach(c => { if (show) delete c.hidden; else c.hidden = true; });
+    if (tilesPage(cat)) (cat.groups || []).forEach(g => { if (show) delete g.hidden; else g.hidden = true; });
+  } else return;
+  buzz(10); save(); renderHome(true);
+}
+function builderPageKey() {
+  // (a group opened on a tiles page shares its folder's page)
+  const path = builderPath.length && builderPath[builderPath.length - 1].group ? builderPath.slice(0, -1) : builderPath;
+  const here = path.length ? path[path.length - 1] : state.builder;
+  const step = p => 'cat' in p ? 'c' + p.cat + (p.via ? ':' + p.via : '') : p.label;
+  // a folder's page is told apart by how it was reached: Actions after "I" is not Actions after "you"
+  if (here && 'cat' in here) return 'c' + here.cat + '@' + path.slice(0, -1).map(step).concat(here.via ? [here.via] : []).join('/');
+  return 'n:' + path.map(step).join('/');
+}
+function builderHidden(key) {
+  if (!state.builderHide) state.builderHide = {};
+  if (!state.builderHideV1) {
+    // the first time: start from what menu mode hides today, so nothing suddenly appears
+    state.builderHideV1 = true;
+    state.categories.forEach(c => {
+      const h = {};
+      (c.words || []).forEach(w => { if (state.hiddenWords[w]) h['w:' + w] = 1; });
+      childrenOf(c.id, true).forEach(x => { if (x.hidden && !x.smallSec) h['f:' + x.id] = 1; });
+      if (Object.keys(h).length) state.builderHide['c' + c.id] = Object.assign(h, state.builderHide['c' + c.id] || {});
+    });
+  }
+  // a page not edited yet starts from the folder's general list
+  return state.builderHide[key] || state.builderHide[key.split('@')[0]] || {};
+}
+function startBuilderEdit() { builderEdit = builderPageKey(); closeWordSheet(); buzz(10); renderHome(true); }
+function builderEditBtn() { return sheetBtn('Edit this page (show or hide tiles)', '', startBuilderEdit); }
+// A tile with nowhere further to go: three seconds later the builder is back on its first page,
+// ready for the next sentence (what is in the bar stays). Another tap in that time starts over.
+let builderHomeTimer = null;
+// any touch on the screen calls the return off; a tile with nothing after it sets it going again
+document.addEventListener('pointerdown', () => { clearTimeout(builderHomeTimer); builderHomeTimer = null; }, true);
+function builderIdleHome() {
+  clearTimeout(builderHomeTimer);
+  builderHomeTimer = setTimeout(() => {
+    builderHomeTimer = null;
+    const sheet = document.getElementById('wordSheet');
+    if (!state.builderMode || !builderPath.length || builderEdit || (sheet && sheet.classList.contains('show'))) return;
+    builderPath = [];
+    renderHome(true);
+  }, 3000);
+}
 function builderSay(word) {
+  clearTimeout(builderHomeTimer); builderHomeTimer = null;
   homePhrase.push(word);
   warmSpeech();
   speakWord(word, 0.95);
@@ -7417,12 +7697,27 @@ function renderBuilderBar() {
   const here = builderHere();
   document.getElementById('builderBackBtn').style.display = (on && builderPath.length) ? '' : 'none';
   // every page has the plus: a builder page takes words and folder links, a folder takes words and sub-folders
-  document.getElementById('builderAddBtn').style.display = (on && here && (state.iconsOpen || builderPath.length > 0)) ? '' : 'none';
+  document.getElementById('builderAddBtn').style.display = 'none';     // retired: the grey tile at the end of the page adds things
 }
 function renderBuilder(grid) {
   if (!state.builder) state.builder = defaultBuilder();
   let here = builderHere();
   if (here && 'cat' in here && !catById(here.cat)) { builderPath = []; here = state.builder; }
+  const bKey = builderPageKey();
+  if (builderEdit !== bKey) builderEdit = null;
+  const editing = builderEdit === bKey;
+  const hid = builderHidden(bKey);
+  let hiddenN = 0;
+  builderEditIds = [];
+  const bToggle = (card, id) => {
+    const on = !hid[id];
+    builderEditIds.push(id);
+    if (!on) hiddenN++;
+    editToggle(grid, card, null, on, () => {
+      const h = state.builderHide[bKey] || (state.builderHide[bKey] = Object.assign({}, hid));
+      if (on) h[id] = 1; else delete h[id];
+    });
+  };
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
   const W = grid.clientWidth, H = grid.clientHeight;
@@ -7436,15 +7731,35 @@ function renderBuilder(grid) {
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
   grid.style.gridAutoRows = 'auto';
   grid.style.gridTemplateRows = '';
-  if ('cat' in here && hasSmallStrip(catById(here.cat)) && !isBoardMenu(catById(here.cat))) {
-    const el = makeSmallStrip(rowH, base, catById(here.cat));   // the folder's own row, the same one menu mode shows
-    el.style.gridColumn = '1 / -1';
-    grid.appendChild(el);
-  } else if (!('cat' in here) && (here.small || []).length && !isBoardMenu(here)) {
-    // a builder page can carry its own row of small words
-    const el = makeSmallStrip(rowH, base, here);
-    el.style.gridColumn = '1 / -1';
-    grid.appendChild(el);
+  {
+    // the row of small words: a blue bar that opens out when it is tapped, as in menu mode.
+    // A folder brings its own row; a builder page can carry one too.
+    const owner = 'cat' in here ? (hasSmallStrip(catById(here.cat)) ? catById(here.cat) : null) : ((here.small || []).length ? here : null);
+    if (false && owner && !isBoardMenu(owner)) {      // switched off: builder pages carry no small words row
+      const okey = 'b:' + builderPageKey();
+      const isOpen = !!(state.rowOpenBy || {})[okey];
+      const el = document.createElement('div');
+      el.className = 'small-section top';
+      el.style.gridColumn = '1 / -1';
+      const flip = () => {
+        state.rowOpenBy = state.rowOpenBy || {};
+        if (isOpen) delete state.rowOpenBy[okey]; else state.rowOpenBy[okey] = true;
+        buzz(10); save(); renderHome(true);
+      };
+      if (!isOpen) {
+        const bar = document.createElement('button');
+        bar.className = 'small-head';
+        bar.setAttribute('aria-expanded', 'false');
+        bar.setAttribute('aria-label', 'Small words');
+        bar.addEventListener('click', flip);
+        el.appendChild(bar);
+      } else {
+        const strip = makeSmallStrip(rowH, base, owner);
+        addStripToggle(strip, flip);
+        el.appendChild(strip);
+      }
+      grid.appendChild(el);
+    }
   }
 
   const tile = (label, folder) => {
@@ -7458,6 +7773,7 @@ function renderBuilder(grid) {
     if (label.includes(' ') && one < base) t.style.whiteSpace = 'normal';
     const longest = Math.max(...label.split(' ').map(x => x.length));
     t.style.fontSize = Math.min(base, label.includes(' ') ? room / (longest * 0.62) : one) + 'px';
+    stackLabel(t, label, room, base);
     card.appendChild(t);
     grid.appendChild(card);
     return card;
@@ -7485,9 +7801,12 @@ function renderBuilder(grid) {
     const c = catById(here.cat);
     // folder tiles on a choice board can be held and dragged to a new place; the order is the
     // folder's own, so menu mode shows the same
-    const subs = foldersShownIn(c);
+    const shownSubs = foldersShownIn(c);
+    const subs = shownSubs.concat(childrenOf(c.id, true).filter(x => x.hidden && !x.smallSec && !shownSubs.includes(x)))
+      .filter(x => editing || !hid['f:' + x.id]);
     subs.forEach(sub => {
       const card = tile(sub.name, true);
+      if (editing) { bToggle(card, 'f:' + sub.id); count++; return; }
       card.dataset.bidx = subs.indexOf(sub);
       card.dataset.blist = 'subs';
       attachWordHold(card, null, null, null, {
@@ -7505,10 +7824,30 @@ function renderBuilder(grid) {
     const inCat = c.words || [];
     const placed = Array.isArray(c.slots) ? c.slots.filter(w => w && inCat.includes(w)) : [];
     let words = placed.concat(inCat.filter(w => !placed.includes(w)))
-      .filter(w => !state.hiddenWords[w]);
+      .filter(w => editing || !hid['w:' + w]);
     // My Stuff: a list, one title to a row, A to Z - the same as menu mode shows it
-    const asList = catAllowsPhrases(c);
-    if (asList || hasSmallStrip(c)) words = asList ? words.slice().sort(byLabel) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3, inChoices(c));     // Categories folders are A to Z too
+    // ... or as tiles, when the page is set to tiles in menu mode: the one setting serves both
+    const stuff = catAllowsPhrases(c);
+    const asTiles = stuff && tilesPage(c);
+    const asList = stuff && !asTiles;
+    if (stuff || hasSmallStrip(c)) words = stuff ? words.slice().sort(byLabel) : sortWords(words, getComputedStyle(grid).gridTemplateColumns.split(' ').length || 3, inChoices(c));     // Categories folders are A to Z too
+    if (asTiles && !editing) {
+      // groups are blue tiles that open onto their own titles, as on the menu-mode page
+      const bGroups = listGroups(c);
+      const openG = here.group ? bGroups.find(g => g.name === here.group) : null;
+      if (openG) words = openG.words.filter(w => words.includes(w));
+      else {
+        const gs = new Set([].concat(...bGroups.map(g => g.words)));
+        bGroups.forEach(g => {
+          if (g.hidden || !g.words.some(w => words.includes(w))) return;      // hidden, or nothing showing in it here
+          const card = tile(g.name, false);
+          card.classList.add('group-tile');
+          holdable(card, () => { builderPath.push({ cat: c.id, group: g.name }); buzz(10); renderHome(true); }, () => openGroupHead(c, g));
+          count++;
+        });
+        words = looseSorted(c, words.filter(w => !gs.has(w)));
+      }
+    }
     words.forEach(w => {
       if (!w) {       // the empty place beside a pair of opposites
         const gap = document.createElement('div');
@@ -7533,10 +7872,11 @@ function renderBuilder(grid) {
         hw.style.whiteSpace = 'nowrap';
       }
       if (leads()) wt.classList.add('link-word');
+      if (editing) { bToggle(wt, 'w:' + w); count++; return; }
       holdable(wt, () => {
         // a title that sits under a group heading in My Stuff brings the group's name with it:
         // "Moana" then "How Far I'll Go"
-        const grp = asList && !c.target ? (c.groups || []).find(g => (g.words || []).includes(w)) : null;
+        const grp = null;     // switched off: a title goes into the bar on its own, without its group's name
         const gk = grp ? normaliseWord(grp.name) : '';
         if (gk && gk !== w && homePhrase[homePhrase.length - 1] !== gk) {
           if (!state.words.includes(gk)) state.words.push(gk);
@@ -7554,28 +7894,18 @@ function renderBuilder(grid) {
         if (g && !g.hidden) { builderPath.push({ cat: n.go, via: w }); renderHome(true); }
         else if (n) { builderPath.push(n); renderHome(true); }
         else {
-          // a plain word from a group of words: step back to the choice board it was opened from
-          // (Actions, Food ...), ready for the next pick
-          const prev = builderPath.length > 1 ? builderPath[builderPath.length - 2] : null;
-          const owner = prev ? ('cat' in prev ? catById(prev.cat) : prev) : null;
-          if (owner && isBoardMenu(owner)) { builderPath.pop(); renderHome(true); }
-          else {
-            // opened straight from a linking word, with no choice board behind it: switch to the
-            // board this folder belongs to (Categories: Actions, Food ...)
-            const up = c.parent ? catById(c.parent) : null;
-            if (up && !up.hidden && isBoardMenu(up)) {
-              builderPath[builderPath.length - 1] = { cat: up.id };
-              renderHome(true);
-            }
-          }
+          // nothing is linked after this word: the page stays as it is (so another can be picked),
+          // and the first page comes back shortly - with no stop at the board in between
+          builderIdleHome();
         }
-      }, () => asList
+      }, () => stuff
         ? openTitleActions(w, c, body => body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"'))))
         : openWordSheet(body => {
           // in the builder a word tile has just two options: fix the word, or say what follows it
           sheetTitle(body, 'This word', w);
           body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(w)));
           body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')));
+          body.appendChild(builderEditBtn());
           deleteWordBtns(body, w, c);
           body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
         }));
@@ -7593,34 +7923,41 @@ function renderBuilder(grid) {
       });
     };
     here.kids.forEach(k => {
+      if (!editing && hid['k:' + k.label]) return;
       const key = normaliseWord(k.label);
       const kt = tile(key ? sentenceLabel(key) : k.label, false);   // linking words read in small letters (I and names aside)
       const goCat = () => { const c = k.go ? catById(k.go) : null; return (c && !c.hidden) ? c : null; };
       if (k.kids.length || k.cats.length || goCat()) kt.classList.add('link-word');
+      if (editing) { bToggle(kt, 'k:' + k.label); count++; return; }
       movable(kt, here.kids, k, 'kids', () => {
         if (key) builderSay(key);
         // linked straight to a folder of words: open its words right away
         if (goCat()) { builderPath.push({ cat: k.go, via: key }); renderHome(true); return; }
         // a tile with nothing after it leaves the page as it is, so more can be added
         if (k.kids.length || k.cats.length) { builderPath.push(k); renderHome(true); }
+        else builderIdleHome();
       }, () => openBuilderTile(here, k));
       count++;
     });
     here.cats.forEach(cid => {
       const c = catById(cid);
-      if (!c || c.hidden) return;
-      movable(tile(c.name, true), here.cats, cid, 'cats', () => { builderPath.push({ cat: cid }); renderHome(true); },
+      if (!c || c.hidden || (!editing && hid['f:' + cid])) return;
+      const ft = tile(c.name, true);
+      if (editing) { bToggle(ft, 'f:' + cid); count++; return; }
+      movable(ft, here.cats, cid, 'cats', () => { builderPath.push({ cat: cid }); renderHome(true); },
         () => openBuilderLink(here, cid));
       count++;
     });
   }
-  if (!count) {
-    // an empty page: a greyed-out plus tile shows where things go and how to add them
-    const add = tile('+', false);
-    add.classList.add('add-folder');
-    add.setAttribute('aria-label', 'Add a tile');
-    add.querySelector('.hw').style.fontSize = Math.round(rowH * 0.4) + 'px';
-    add.addEventListener('click', openBuilderAdd);
+  if (!editing) {
+    // every builder page ends with a quiet grey tile for adding to it; held, it edits the page
+    const add = tile('+ add', false);
+    add.classList.add('add-folder', 'ghost-tile');
+    add.setAttribute('aria-label', 'Add to this page');
+    holdable(add, openBuilderAdd, startBuilderEdit);
+  } else {
+    const bar = document.getElementById('pageEditBar');
+    if (bar) bar.firstChild.textContent = 'Tap a tile to show or hide it' + (hiddenN ? '  \u00b7  ' + hiddenN + ' hidden' : '');
   }
   if (!builderPath.length) { if (state.chatMode) renderChatLog(grid, base); else renderBuilderLog(grid, base); }
 }
@@ -7635,10 +7972,19 @@ function renderBuilderLog(grid, tileType) {
   const line = document.createElement('div');
   line.className = 'bl-line';
   head.appendChild(line);
+  // a quiet "clear" at the end of the line: the sentences leave the screen but stay in the full history
+  const from = state.logShownFrom || 0;
+  const shown = log.filter(e => (e.t || 0) >= from);
+  if (shown.length) {
+    const b = document.createElement('button');
+    b.className = 'chat-mini'; b.textContent = 'clear'; b.setAttribute('aria-label', 'Clear the sentences from the screen');
+    b.addEventListener('click', () => { state.logShownFrom = Date.now(); buzz(10); save(); renderHome(true); });
+    head.appendChild(b);
+  }
   box.appendChild(head);
   // each different sentence once, newest first, with how many times it has been entered in all
   const counts = {}, firsts = [];
-  log.forEach(e => { const k = e.words.join(' '); if (!counts[k]) { counts[k] = 0; firsts.push(e); } counts[k]++; });
+  shown.forEach(e => { const k = e.words.join(' '); if (!counts[k]) { counts[k] = 0; firsts.push(e); } counts[k]++; });
   firsts.slice(0, 5).forEach(entry => {      // the latest five; the rest is in the full history
     const row = document.createElement('button');
     row.className = 'bl-row';
@@ -7902,6 +8248,12 @@ function renderHiddenFolders() {
   });
 }
 // Rename, move or hide any folder, the default ones included
+function halfBtn(c) {
+  return sheetBtn(c.half ? 'Word pair grid: on (switch back to large tiles)' : 'Word pair grid (smaller tiles, pairs side by side)', '', () => {
+    if (c.half) delete c.half; else c.half = true;
+    save(); closeWordSheet(); renderHome(true);
+  });
+}
 function openFolderEdit(c, extra) {
   if (!c) return;
   const done = () => { save(); closeWordSheet(); renderHome(true); };
@@ -7968,6 +8320,19 @@ function openFolderEdit(c, extra) {
     hn.className = 'help-note'; hn.style.marginTop = '10px';
     hn.textContent = 'A hidden folder keeps its words and sub-folders. Bring it back under Settings, Hidden folders.';
     body.appendChild(hn);
+    if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
+    if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
+    // a folder of folders can open as one custom page of tiles picked from them (menu mode)
+    if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? 'Custom page: change the tiles' : 'Custom page: pick tiles from its folders', '', () => openFeedPicker(c)));
+    // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
+    if (!state.builderMode && feedHost(c) && (c.feed || []).length) body.appendChild(sheetBtn(c.feedOff ? 'Custom page: turn on' : 'Custom page: turn off', '', () => {
+      if (c.feedOff) delete c.feedOff; else c.feedOff = true;
+      libraryOpen = null; save(); closeWordSheet(); renderHome(true);
+    }));
+    // every folder on the page it sits on, at once: ticks to show or hide each
+    if (state.builderMode) body.appendChild(builderEditBtn());
+    { const host = !state.builderMode ? currentCat() : null;
+      if (host && host.id !== c.id && !host.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = host.id; closeWordSheet(); renderHome(true); })); }
     // deleted for good, sub-folders and all (not for Chat, Small words or the targets tab, which
     // the app relies on). The words themselves stay on the device and in any other folder.
     if (!c.small && !c.smallSec && !c.target) {
@@ -8139,6 +8504,26 @@ function openBuilderAddTo(here, heading) {
     })));
     if (!isBoardMenu(here)) body.appendChild(sheetBtn('A small words row', '', () => openSmallRowPicker(here)));
     body.appendChild(sheetBtn('A choice board', '', () => openChoiceBoardPicker(here)));
+    if (here !== state.builder) body.appendChild(sheetBtn('A new folder of words', '', () => openWordSheet(b2 => {
+      sheetTitle(b2, 'Name the new folder of words');
+      const inp = builderInput(b2, '');
+      const ok = () => {
+        const name = inp.value.replace(/\s+/g, ' ').trim();
+        if (!name) return;
+        // it is made in Categories (or on the menu bar if that is gone) and opens straight after this tile
+        const home = state.categories.find(x => !x.parent && x.name.toLowerCase() === 'categories');
+        const made = addCategory(name, home ? home.id : null);
+        here.go = made.id;
+        save(); closeWordSheet(); renderHome(true);
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+      const n = document.createElement('div');
+      n.className = 'help-note'; n.style.marginTop = '6px';
+      n.textContent = 'An empty folder is made in Categories. After "' + here.label + '" is tapped it opens straight away, ready for its words.';
+      b2.appendChild(n);
+      b2.appendChild(sheetBtn('Create', 'primary', ok));
+      b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
+    })));
     body.appendChild(sheetBtn('A new choice board', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Name the new choice board');
       const inp = builderInput(b2, '');
@@ -8166,6 +8551,7 @@ function openBuilderTile(parent, node) {
     body.appendChild(p);
     body.appendChild(sheetBtn('Edit what comes next', '', () =>
       openBuilderAddTo(node, 'After "' + node.label + '"')));
+    body.appendChild(builderEditBtn());
     body.appendChild(sheetBtn('Change the word', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Change the word');
       const inp = builderInput(b2, node.label);
@@ -8205,6 +8591,7 @@ document.getElementById('homeBuilderBtn').addEventListener('click', () => {
   save(); renderHome(true);
 });
 document.getElementById('builderBackBtn').addEventListener('click', () => {
+  clearTimeout(builderHomeTimer); builderHomeTimer = null;
   const left = builderPath.pop();
   // stepping back over a word takes that word out of the bar again
   if (left && 'cat' in left && left.via && homePhrase[homePhrase.length - 1] === left.via) homePhrase.pop();
@@ -8218,7 +8605,10 @@ document.getElementById('builderAddBtn').addEventListener('click', openBuilderAd
 document.getElementById('targetGearBtn').addEventListener('click', () => { targetSetOpen = 'when'; openTargetSettings(); });
 // menu mode: back up one folder
 document.getElementById('homeBackBtn').addEventListener('click', () => {
-  if (homePath.length > 1) homePath = homePath.slice(0, -1);
+  const here0 = currentCat();
+  if (tileGroup) tileGroup = null;                      // out of a group's page of tiles, back to the page of groups
+  else if (libraryOpen && here0 && here0.id === libraryOpen) libraryOpen = null;      // out of the Library, back to the feed
+  else if (homePath.length > 1) homePath = homePath.slice(0, -1);
   buzz(10);
   renderHome(true);
 });
@@ -8235,6 +8625,9 @@ document.getElementById('homeAddFolderBtn').addEventListener('click', () => {
 
 // Columns and rows on a screen, from the "tiles on a screenful" setting
 function slotShape() {
+  // a page set to smaller tiles: four across and four down, so two pairs fit side by side
+  const hc = !state.builderMode ? currentCat() : null;
+  if (hc && hc.half) return { cols: 4, rows: 4 };
   if (state.gridFill === 6) return { cols: 3, rows: 2 };
   if (state.gridFill === 9) return { cols: 3, rows: 3 };
   return { cols: 4, rows: 3 };
@@ -8386,6 +8779,128 @@ function addGroupHeading(cat) {
     groups.push({ id: Math.max(0, ...groups.map(g => g.id || 0)) + 1, name, words: [], open: true });
   });
 }
+// ---- My Stuff pages laid out as tiles ----
+// A My Stuff page can show as a list (group headings that open out into rows of titles) or as
+// tiles: each group is a blue tile that opens a page of its titles, and titles with no group are
+// tiles beside them. The page itself is the same either way; only the look changes.
+let tileGroup = null;      // { cat: id, group } - the group whose page is open on a tiles page
+function tilesPage(cat) { return !!cat && !!cat.tiles && !cat.target && usesGroups(cat); }
+function layoutSwitchBtn(cat) {
+  return sheetBtn(cat.tiles ? 'Show this page as a list' : 'Show this page as tiles', '', () => {
+    cat.tiles = !cat.tiles; tileGroup = null;
+    save(); closeWordSheet(); renderHome(true);
+  });
+}
+// Edit page on a My Stuff page (list or tiles): every title with its tick, the hidden ones below
+function editTitles(cat) {
+  const all = (cat.words || []).slice().sort(byLabel);
+  return all.filter(w => !state.hiddenWords[w]).map(w => [w, true]).concat(all.filter(w => state.hiddenWords[w]).map(w => [w, false]));
+}
+function editToggle(grid, card, w, on, fn) {
+  card.classList.add('edit-tile');
+  if (!on) card.classList.add('edit-off');
+  card.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const tick = document.createElement('span');
+  tick.className = 'edit-tick'; tick.textContent = on ? '\u2713' : '';
+  card.appendChild(tick);
+  card.addEventListener('click', () => {
+    if (fn) fn(); else if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
+    buzz(10); save();
+    const top = grid.scrollTop;
+    renderHome(true);
+    grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
+  });
+}
+// Titles on a tiles page that are in no group: A to Z until they are dragged, then in the order set
+function looseSorted(cat, words) {
+  const order = (cat.looseOrder || []).filter(w => words.includes(w));
+  return order.concat(words.filter(w => !order.includes(w)));
+}
+function renderTileBody(grid, cat, listWords, rowH, base, cols) {
+  grid.style.gridAutoRows = 'auto';
+  const groups = listGroups(cat);
+  const inGroup = tileGroup && tileGroup.cat === cat.id && groups.includes(tileGroup.group) ? tileGroup.group : null;
+  if (!inGroup) tileGroup = null;
+  let i = 0;
+  const cellW = (grid.clientWidth - 16 * (cols - 1)) / cols;
+  const put = card => { card.style.gridRow = String(Math.floor(i / cols) + 1); card.style.gridColumn = String(i % cols + 1); card.style.height = rowH + 'px'; grid.appendChild(card); i++; };
+  const mk = (label, cls) => {
+    const card = document.createElement('button');
+    card.className = 'home-card' + (cls ? ' ' + cls : '');
+    const t = document.createElement('span');
+    t.className = 'hw'; t.textContent = label;
+    const room = cellW - 30, longest = Math.max(...label.split(' ').map(x => x.length), 1);
+    const one = room / (Math.max(1, label.length) * 0.62);
+    if (label.includes(' ') && one < base) t.style.whiteSpace = 'normal';
+    t.style.fontSize = Math.max(14, Math.min(base, label.includes(' ') ? room / (longest * 0.62) : one)) + 'px';
+    stackLabel(t, label, room, base);
+    card.appendChild(t);
+    return card;
+  };
+  // tap uses the tile, hold opens its options
+  const holdTap = (el, onTap, onHold) => {
+    let timer = null, held = false;
+    el.addEventListener('pointerdown', () => { held = false; timer = setTimeout(() => { timer = null; held = true; buzz(15); el.classList.add('held'); }, 520); });
+    const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    el.addEventListener('pointerup', stop);
+    ['pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => { stop(); held = false; el.classList.remove('held'); }));
+    el.addEventListener('contextmenu', e => e.preventDefault());
+    el.addEventListener('click', () => { el.classList.remove('held'); if (held) { held = false; onHold(); } else onTap(); });
+  };
+  // tap uses the tile; hold lifts it to drag to a new place among its neighbours, or let go for its options
+  const movable = (card, list, item, kind, onTap, onHold, onDrop) => {
+    card.dataset.bidx = list.indexOf(item);
+    card.dataset.blist = kind;
+    attachWordHold(card, null, null, null, { list, item, onHold, onDrop });
+    card.addEventListener('click', () => { if (suppressTileClick) { suppressTileClick = false; return; } onTap(); });
+  };
+  const titleTile = (w, list, onDrop) => {
+    const card = mk(bankLabel(w));
+    card.dataset.word = w;
+    movable(card, list, w, 'titles', () => { homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w); }, () => openTitleActions(w, cat), onDrop);
+    put(card);
+  };
+  const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
+  if (pageEdit === cat.id) {
+    let gap = false;
+    // the groups first: a hidden group's tile (and so its titles) is off the page
+    groups.forEach(g => {
+      const card = mk(g.name, 'group-tile');
+      editToggle(grid, card, null, !g.hidden, () => { if (g.hidden) delete g.hidden; else g.hidden = true; });
+      put(card);
+    });
+    while (i % cols) i++;
+    editTitles(cat).forEach(([w, on]) => {
+      if (!on && !gap) { gap = true; while (i % cols) i++; }      // the hidden ones start a row of their own
+      const card = mk(bankLabel(w));
+      editToggle(grid, card, w, on);
+      put(card);
+    });
+    return;
+  }
+  if (inGroup) {
+    // a group's own page: its titles as tiles, in the order they were put in
+    inGroup.words.filter(w => listWords.includes(w)).forEach(w => titleTile(w, inGroup.words));
+    ghost('+ title', () => askText('New title in ' + inGroup.name, 'Add', '', typed => addTitleTo(cat, inGroup, typed)));
+    return;
+  }
+  groups.forEach(g => {
+    if (g.hidden) return;
+    const card = mk(g.name, 'group-tile');
+    movable(card, groups, g, 'groups', () => { tileGroup = { cat: cat.id, group: g }; buzz(10); renderHome(true); }, () => openGroupHead(cat, g));
+    put(card);
+  });
+  const grouped = new Set([].concat(...groups.map(g => g.words)));
+  const loose = looseSorted(cat, listWords.filter(w => !grouped.has(w)));
+  loose.forEach(w => titleTile(w, loose, l => { cat.looseOrder = l.slice(); }));
+  ghost('+ title', () => askText('New title in ' + cat.name, 'Add', '', typed => {
+    const ok = addTitleTo(cat, null, typed);
+    const key = normaliseWord(typed);
+    if (ok !== false && listGroups(cat).length) setTimeout(() => openGroupPicker(cat, key), 60);
+    return ok;
+  }));
+  ghost('+ group', () => addGroupHeading(cat));
+}
 function openGroupHead(cat, group) {
   const groups = listGroups(cat);
   openWordSheet(body => {
@@ -8400,7 +8915,10 @@ function openGroupHead(cat, group) {
     })));
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
+    if (!cat.target) body.appendChild(layoutSwitchBtn(cat));
+    if (!cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; tileGroup = null; closeWordSheet(); renderHome(true); }));
     body.appendChild(sheetBtn('Remove this heading', 'danger', () => {
+      if (tileGroup && tileGroup.group === group) tileGroup = null;
       // its titles are kept: they go back to being ungrouped, above the groups
       cat.groups = groups.filter(g => g !== group);
       save(); closeWordSheet(); renderHome(true);
@@ -8433,6 +8951,9 @@ function openTitleActions(word, cat, extra) {
     body.appendChild(sheetBtn(cat.target ? 'Edit spelling or capitals' : 'Edit the title or its capitals', '', () => openWordEdit(word)));
     if (cat.target) body.appendChild(targetPauseBtn(word));
     if (extra) extra(body);
+    if (!cat.target && usesGroups(cat)) body.appendChild(layoutSwitchBtn(cat));
+    if (!cat.target && !state.builderMode) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; tileGroup = null; closeWordSheet(); renderHome(true); }));
+    if (!cat.target && state.builderMode) body.appendChild(builderEditBtn());
     const groups = usesGroups(cat) ? listGroups(cat) : [];
     if (groups.length) {
       const h = document.createElement('div');
@@ -8518,8 +9039,9 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
   // group (or out, onto the titles with no group), a group heading to a new place among the groups
   const holdTap = (el, onTap, onHold, drag) => {
     let timer = null, held = false, pid = null, sx = 0, sy = 0, ghost = null, over = null, dropped = false, mouseDown = false;
-    const clear = () => { if (over) over.classList.remove('drop-on'); over = null; };
-    const endDrag = () => { if (ghost) ghost.remove(); ghost = null; clear(); grid.classList.remove('list-dragging'); };
+    let after = false;
+    const clear = () => { if (over) over.classList.remove('drop-on', 'drop-before', 'drop-after'); over = null; };
+    const endDrag = () => { if (ghost) ghost.remove(); ghost = null; clear(); grid.classList.remove('list-dragging'); if (scroller) { clearInterval(scroller); scroller = null; } };
     el.addEventListener('pointerdown', e => {
       held = false; dropped = false; pid = e.pointerId; sx = e.clientX; sy = e.clientY;
       // with a mouse there is no need to wait: press and drag straight away (a finger still holds
@@ -8534,6 +9056,29 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
     // once it is held, a finger moving must drag the row rather than scroll the page
     el.addEventListener('touchmove', e => { if (held && drag) e.preventDefault(); }, { passive: false });
+    let lastX = 0, lastY = 0, scroller = null;
+    const hover = () => {
+      ghost.style.top = (lastY - ghost._dy) + 'px';
+      const under = document.elementFromPoint(lastX, lastY);
+      let t = under ? under.closest('[data-gidx]') : null;
+      if (t === el || (t && !grid.contains(t))) t = null;
+      if (drag.kind === 'group') {
+        // a heading goes above or below whichever other heading is nearest, so it need not be
+        // dropped exactly on one: a green line shows where it will land
+        const heads = [...grid.querySelectorAll('.group-head[data-gidx]')].filter(h => h !== el);
+        let best = null, bd = 1e9;
+        heads.forEach(h => { const r = h.getBoundingClientRect(); const d = Math.abs((r.top + r.bottom) / 2 - lastY); if (d < bd) { bd = d; best = h; } });
+        t = best;
+        if (t) { const r = t.getBoundingClientRect(); after = lastY > (r.top + r.bottom) / 2; }
+        const cls = after ? 'drop-after' : 'drop-before';
+        if (t !== over || !t || !t.classList.contains(cls)) { clear(); over = t; if (over) over.classList.add(cls); }
+      } else if (t && t.dataset.word && Number(t.dataset.gidx) >= 0) {
+        // over a title inside a group: a green line shows whether it lands above or below it
+        const r = t.getBoundingClientRect(); after = lastY > (r.top + r.bottom) / 2;
+        const cls = after ? 'drop-after' : 'drop-before';
+        if (t !== over || !t.classList.contains(cls)) { clear(); over = t; over.classList.add(cls); }
+      } else if (t !== over || (t && !t.classList.contains('drop-on'))) { clear(); over = t; if (over) over.classList.add('drop-on'); }
+    };
     el.addEventListener('pointermove', e => {
       if (!held && mouseDown && Math.hypot(e.clientX - sx, e.clientY - sy) >= 10) { stop(); held = true; el.classList.add('held'); }
       if (!held || !drag) return;
@@ -8546,30 +9091,46 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         ghost._dy = sy - r.top;
         document.body.appendChild(ghost);
         grid.classList.add('list-dragging');
+        document.addEventListener('pointerup', release, true);
+        document.addEventListener('pointercancel', release, true);
+        window.addEventListener('blur', release);
       }
-      ghost.style.top = (e.clientY - ghost._dy) + 'px';
-      const under = document.elementFromPoint(e.clientX, e.clientY);
-      let t = under ? under.closest('[data-gidx]') : null;
-      if (t === el || (t && !grid.contains(t))) t = null;
-      if (t && drag.kind === 'group' && t.dataset.gidx === '-1') t = null;      // a heading only moves among headings
-      if (t !== over) { clear(); over = t; if (over) over.classList.add('drop-on'); }
-      // near the top or bottom edge the list scrolls along
-      const gr = grid.getBoundingClientRect();
-      if (e.clientY < gr.top + 40) grid.scrollTop -= 14; else if (e.clientY > gr.bottom - 40) grid.scrollTop += 14;
+      lastX = e.clientX; lastY = e.clientY;
+      hover();
+      // held near the top or bottom edge, the list keeps scrolling by itself so a group that is
+      // off the screen can be reached
+      if (!scroller) scroller = setInterval(() => {
+        if (!ghost) return;
+        const gr = grid.getBoundingClientRect();
+        const before = grid.scrollTop;
+        // the closer to the edge, the faster it goes
+        const up = gr.top + 80 - lastY, down = lastY - (gr.bottom - 80);
+        if (up > 0) grid.scrollTop -= 10 + Math.min(40, up / 2); else if (down > 0) grid.scrollTop += 10 + Math.min(40, down / 2);
+        if (grid.scrollTop !== before) hover();
+      }, 30);
     });
-    el.addEventListener('pointerup', () => {
+    // letting go ends the drag wherever the release is seen - on the row itself, or anywhere on the
+    // page if the row was redrawn or lost hold of the pointer meanwhile - so a drag can never be
+    // left hanging with the lifted row stuck on screen
+    const release = () => {
       stop(); mouseDown = false;
+      document.removeEventListener('pointerup', release, true);
+      document.removeEventListener('pointercancel', release, true);
+      window.removeEventListener('blur', release);
       if (ghost) {
         const to = over ? Number(over.dataset.gidx) : null;
+        const onWord = over ? (over.dataset.word || null) : null;
         endDrag(); held = false; dropped = true; el.classList.remove('held');
         // the list is redrawn under the finger: the click that follows the drop must not land on
         // whatever row is there now
         const eat = ev => { ev.stopPropagation(); ev.preventDefault(); };
         document.addEventListener('click', eat, true);
         setTimeout(() => document.removeEventListener('click', eat, true), 350);
-        if (to !== null) drag.drop(to);
+        if (to !== null) drag.drop(to, after, onWord);
       }
-    });
+    };
+    el.addEventListener('pointerup', release);
+    el.addEventListener('lostpointercapture', () => { if (ghost) release(); });
     ['pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => { if (ghost && ev === 'pointerleave') return; stop(); held = false; el.classList.remove('held'); endDrag(); }));
     el.addEventListener('contextmenu', e => e.preventDefault());
     el.addEventListener('click', () => {
@@ -8578,7 +9139,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       if (held) { held = false; onHold(); } else onTap();
     });
   };
-  const redraw = () => { save(); const top = grid.scrollTop; renderHome(false); grid.scrollTop = top; };
+  const redraw = () => { save(); const top = grid.scrollTop; renderHome(true); grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; }); };
   const wordRow = w => {
     const row = makeListRow(w, rowH, base);
     if (cat.target && (state.targetOff || {})[w]) row.classList.add('paused');
@@ -8588,14 +9149,27 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       speakWord(w, 0.95);
       renderPhraseBar();
       renderMagic(w);
-    }, () => openTitleActions(w, cat), usesGroups(cat) ? { kind: 'title', drop: to => {
+    }, () => openTitleActions(w, cat), usesGroups(cat) ? { kind: 'title', drop: (to, below, onWord) => {
       const gs = listGroups(cat);
       gs.forEach(x => { x.words = x.words.filter(v => v !== w); });
-      if (to >= 0 && gs[to]) { gs[to].words.push(w); gs[to].open = true; }
+      if (to >= 0 && gs[to]) {
+        // dropped on a title in the group: it goes just above or below that title; on the heading: at the end
+        const at = onWord ? gs[to].words.indexOf(onWord) : -1;
+        if (at >= 0) gs[to].words.splice(at + (below ? 1 : 0), 0, w); else gs[to].words.push(w);
+        gs.forEach(x => { x.open = x === gs[to]; });
+      }
       redraw();
     } } : null);
     return row;
   };
+  if (pageEdit === cat.id) {
+    editTitles(cat).forEach(([w, on]) => {
+      const row = makeListRow(w, rowH, base);
+      editToggle(grid, row, w, on);
+      put(row);
+    });
+    return;
+  }
   if (!usesGroups(cat)) { listWords.forEach(w => put(wordRow(w))); return; }
   const addRow = (g) => {
     // a greyed-out row: tap it to add a title here
@@ -8603,7 +9177,13 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     add.classList.add('add-row');
     add.removeAttribute('data-word');
     add.querySelector('.hw').textContent = cat.target ? '+ word' : '+ title';
-    add.addEventListener('click', () => askText(g ? 'New title under ' + g.name : 'New title in ' + cat.name, 'Add', '', typed => addTitleTo(cat, g, typed)));
+    add.addEventListener('click', () => askText(g ? 'New title under ' + g.name : 'New title in ' + cat.name, 'Add', '', typed => {
+      const ok = addTitleTo(cat, g, typed);
+      // on a page that has groups, ask straight away which one the new title belongs in (or none)
+      const key = normaliseWord(typed);
+      if (ok !== false && !g && !cat.target && listGroups(cat).length) setTimeout(() => openGroupPicker(cat, key), 60);
+      return ok;
+    }));
     return add;
   };
   const groupsNow = listGroups(cat);
@@ -8623,20 +9203,29 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     head.lastChild.textContent = g.name;
     head.style.fontSize = Math.max(18, Math.round(base * 0.7)) + 'px';
     head.style.minHeight = Math.max(48, Math.round(rowH * 0.36)) + 'px';
-    holdTap(head, () => { g.open = !open; buzz(10); save(); const top = grid.scrollTop; renderHome(false); grid.scrollTop = top; },
-      () => openGroupHead(cat, g), { kind: 'group', drop: to => {
+    holdTap(head, () => {
+      // one group open at a time: opening this one closes the others, and the heading that was
+      // tapped stays where it is on the screen
+      const was = head.getBoundingClientRect().top;
+      groupsNow.forEach(x => { x.open = (x === g) ? !open : false; });
+      buzz(10); save();
+      renderHome(true);
+      const now = [...grid.querySelectorAll('.group-head[data-gidx]')].find(h => h.dataset.gidx === String(gi));
+      const fix = () => { if (now && now.isConnected) grid.scrollTop += now.getBoundingClientRect().top - was; };
+      fix(); requestAnimationFrame(fix);
+    },
+      () => openGroupHead(cat, g), { kind: 'group', drop: (to, below) => {
         const gs = listGroups(cat);
         if (to < 0 || to === gi || !gs[to]) return;
+        const target = gs[to];
         const [moved] = gs.splice(gi, 1);
-        gs.splice(to, 0, moved);        // it takes the place of the heading it was dropped on
+        gs.splice(gs.indexOf(target) + (below ? 1 : 0), 0, moved);        // just above or just below the heading it was nearest
         redraw();
       } });
     put(mark(head, gi));
     if (!open) return;
-    listWords.filter(w => g.words.includes(w)).forEach(w => put(mark(wordRow(w), gi)));
-    // at the end of every group: add a title to that group (on targets the last group leaves it to
-    // the 'add a target' row right below, so there are never two grey rows together)
-    if (!(cat.target && g === groupsNow[groupsNow.length - 1])) put(mark(addRow(g), gi));
+    // inside a group the titles keep the order they were put in (drag one to move it)
+    g.words.filter(w => listWords.includes(w)).forEach(w => put(mark(wordRow(w), gi)));
   });
   if (!cat.target) loose();
   // at the bottom of the whole list: add a title (ungrouped), then start a new group
@@ -8647,7 +9236,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const at = addRow(null);
     at.querySelector('.hw').textContent = '+ target';
     put(mark(at, -1));
-  } else if (!lastG || lastG.open === false || listWords.some(w => !grouped.has(w))) put(mark(addRow(null), -1));
+  } else put(mark(addRow(null), -1));      // one add row for the whole page, at the very end
   const ng = document.createElement('button');
   ng.className = 'small-head group-head add-group';
   ng.innerHTML = '<span>+ group</span>';
@@ -8809,7 +9398,8 @@ function sortWords(list, cols, always) {
   const n = Math.max(2, cols || 3);
   const out = [];
   const newRow = () => { while (out.length % n) out.push(null); };
-  sets.forEach(set => { newRow(); set.forEach(w => out.push(w)); });
+  // four across: a second pair sits beside the first, in the other half of the row
+  sets.forEach(set => { if (!(n === 4 && set.length === 2 && out.length % 4 === 2)) newRow(); set.forEach(w => out.push(w)); });
   newRow();      // the grey add tiles, and any other words, start on the row after
   return out.concat(left.concat(list.filter(isPunct)).sort(byLabel));
 }
@@ -8856,6 +9446,87 @@ function makeListRow(w, rowH, base) {
   row.appendChild(t);
   return row;
 }
+// The folder whose page is being edited all at once (ticks on its tiles), if any
+let pageEdit = null;
+function syncPageEdit(cat) {
+  if (pageEdit && (!cat || cat.id !== pageEdit || state.builderMode)) pageEdit = null;     // leaving the page ends it
+  if (builderEdit && (!state.builderMode || builderEdit !== builderPageKey())) builderEdit = null;
+  let bar = document.getElementById('pageEditBar');
+  if (!pageEdit && !builderEdit) { if (bar) bar.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pageEditBar';
+    bar.innerHTML = '<span></span><button class="pe-all">Show all</button><button class="pe-all">Hide all</button><button class="pe-done">Done</button>';
+    bar.querySelectorAll('.pe-all')[0].addEventListener('click', () => editAll(true));
+    bar.querySelectorAll('.pe-all')[1].addEventListener('click', () => editAll(false));
+    bar.querySelector('.pe-done').addEventListener('click', () => { pageEdit = null; builderEdit = null; buzz(10); renderHome(true); });
+    document.body.appendChild(bar);
+  }
+  if (builderEdit) return;      // the builder page fills in its own count
+  const n = (cat.words || []).filter(w => state.hiddenWords[w]).length + childrenOf(cat.id, true).filter(c => c.hidden && !c.smallSec).length
+    + (tilesPage(cat) ? (cat.groups || []).filter(g => g.hidden).length : 0);
+  bar.firstChild.textContent = 'Tap a tile to show or hide it' + (n ? '  \u00b7  ' + n + ' hidden' : '');
+}
+// A tile whose label is more than one word is set on two lines, split where the two lines come out
+// most even ("Chicken / Tenders", "Sweet Potato / Fries"), at the largest size that fits the tile.
+function stackLabel(t, label, room, base) {
+  const parts = String(label).split(' ').filter(Boolean);
+  if (parts.length < 2 || label.charAt(0) === '+') return false;
+  let best = 1, bestLen = 1e9;
+  for (let k = 1; k < parts.length; k++) {
+    const len = Math.max(parts.slice(0, k).join(' ').length, parts.slice(k).join(' ').length);
+    if (len < bestLen) { bestLen = len; best = k; }
+  }
+  t.textContent = parts.slice(0, best).join(' ') + '\n' + parts.slice(best).join(' ');
+  t.style.whiteSpace = 'pre-line';
+  t.style.lineHeight = '1.12';
+  t.style.textAlign = 'center';
+  t.style.fontSize = Math.max(14, Math.min(base, room / (bestLen * 0.62))) + 'px';
+  return true;
+}
+// ---- The Choices feed ----
+// Choices can keep a short list of tiles picked from all its folders. While there are any, opening
+// Choices shows them together as one page; the Library tile at the end opens the folders.
+let libraryOpen = null;      // the Choices folder whose folders (its library) are showing in place of the feed
+function feedHost(cat) { return !!cat && !cat.target && !!cat.parent && !catAllowsPhrases(cat) && childrenOf(cat.id).length > 0; }
+function feedFolders(cat) { const out = []; const walk = id => childrenOf(id).forEach(c => { out.push(c); walk(c.id); }); walk(cat.id); return out; }
+function feedWords(cat) {
+  const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
+  return (cat.feed || []).filter(w => have.has(w) && !state.hiddenWords[w]);
+}
+function openFeedPicker(cat) {
+  cat.feed = Array.isArray(cat.feed) ? cat.feed : [];
+  openWordSheet(body => {
+    sheetTitle(body, 'Custom page for ' + cat.name);
+    const n = document.createElement('div');
+    n.className = 'help-note'; n.style.margin = '4px 0 8px';
+    n.textContent = 'Tick the tiles to show together when ' + cat.name + ' opens. They stay in their own folders too, which are kept under Library.';
+    body.appendChild(n);
+    const list = document.createElement('div');
+    list.className = 'pick-list';
+    list.style.maxHeight = '52vh'; list.style.overflowY = 'auto';
+    body.appendChild(list);
+    feedFolders(cat).forEach(f => {
+      const ws = sortWords((f.words || []).filter(w => !state.hiddenWords[w]), 3, true).filter(Boolean);
+      if (!ws.length) return;
+      const h = document.createElement('div');
+      h.className = 'help-note'; h.style.margin = '12px 0 4px'; h.style.fontWeight = '900'; h.textContent = f.name;
+      list.appendChild(h);
+      ws.forEach(w => {
+        const r = document.createElement('button');
+        r.className = 'pick-row';
+        const paint = () => { const on = cat.feed.includes(w); r.classList.toggle('on', on); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w); };
+        r.addEventListener('click', () => {
+          if (cat.feed.includes(w)) cat.feed = cat.feed.filter(x => x !== w); else cat.feed.push(w);
+          save(); paint();
+        });
+        paint();
+        list.appendChild(r);
+      });
+    });
+    body.appendChild(sheetBtn('Done', 'primary', () => { libraryOpen = null; delete cat.feedOff; save(); closeWordSheet(); renderHome(true); }));
+  });
+}
 function renderSlotGrid(grid, cat, folders) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
@@ -8875,7 +9546,23 @@ function renderSlotGrid(grid, cat, folders) {
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
   // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
   const alpha = arrange && !listMode && hasSmallStrip(cat);
-  const slots = listMode ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
+  // Choices: once tiles have been picked for it, the page opens as that short feed of tiles from
+  // across its folders; a Library tile at the end opens the folders themselves
+  const feedMode = alpha && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && !cat.feedOff && feedWords(cat).length > 0;
+  if (feedMode) { words = feedWords(cat); folders = []; }
+  const slots = (listMode || feedMode) ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
+  // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
+  // are showing (which close up, still in their order) and stays there, greyed, to be ticked again.
+  const editingF = !!cat && pageEdit === cat.id;
+  const editing = (alpha || (!!cat && !!cat.small && !listMode)) && editingF;
+  // the same for the folder tiles of a choice board: the hidden folders show again, greyed, on the
+  // rows below the ones that are showing
+  if (editingF) {
+    const offF = childrenOf(cat.id, true).filter(c => c.hidden && !c.smallSec);
+    if (offF.length) { folders = folders.slice(); while (folders.length % cols) folders.push(null); folders = folders.concat(offF); }
+  }
+  const offHere = editing ? (cat.words || []).filter(w => state.hiddenWords[w]).sort(byLabel) : [];
+  if (editing && offHere.length) { while (slots.length % cols) slots.push(null); offHere.forEach(w => slots.push(w)); }
   const head = folders.length;                      // sub-folders come first
   // Categories folders: group tiles (and the ghost tile to add one) sit in their own rows at the top,
   // and the words start on the row after, so there is a clear divide between the two
@@ -8885,7 +9572,9 @@ function renderSlotGrid(grid, cat, folders) {
   // arriving on a page of groups, every group starts closed; one opened here stays open until the page is left
   if (grouped && listPageShown !== cat.id) listGroups(cat).forEach(g => { g.open = false; });
   listPageShown = grouped ? cat.id : null;
-  const totalRows = listMode ? (head ? Math.ceil(head / cols) : ((listWords.length || grouped) ? 0 : 1))
+  // a page that is only folder tiles (My Stuff, Categories) ends with a grey tile for adding one more
+  const boardOnly = !!cat && !editingF && head > 0 && !alpha && !words.length && !cat.target && !cat.small;
+  const totalRows = listMode ? (head ? Math.ceil((head + (boardOnly ? 1 : 0)) / cols) : ((listWords.length || grouped) ? 0 : 1))
                   : arrange ? Math.max(screenRows, lastRow + 1)   // always a spare row to move things into
                             : lastRow;
   grid.innerHTML = '';
@@ -8930,9 +9619,11 @@ function renderSlotGrid(grid, cat, folders) {
     addStripToggle(box, () => head.click());
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
     const h = Math.max(48, Math.round(rowH / 2));
-    smalls.forEach(w => {
+    const sg = groupSmallWords(smalls);
+    sg.words.forEach(w => {
       const b = document.createElement('button');
       b.className = 'small-tile';
+      if (sg.starts.has(w)) b.style.gridColumnStart = '1';      // each kind of word begins a row
       b.dataset.word = w;
       b.style.height = h + 'px';
       b.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
@@ -9020,6 +9711,7 @@ function renderSlotGrid(grid, cat, folders) {
   };
   const fit = (card, label) => {
     const t = card.querySelector('.hw');
+    if (stackLabel(t, label, room, base)) return;
     const one = room / (Math.max(1, label.length) * 0.62);
     if (!label.includes(' ') || one >= base) { t.style.fontSize = Math.min(base, one) + 'px'; return; }
     // a long title wraps onto lines instead of shrinking away
@@ -9037,6 +9729,29 @@ function renderSlotGrid(grid, cat, folders) {
   };
 
   folders.forEach((c, i) => {
+    if (!c) return;                      // the gap before the hidden folders, while the page is being edited
+    if (editingF) {
+      const on = !c.hidden;
+      const card = document.createElement('button');
+      card.className = 'home-card folder-card edit-tile' + (on ? '' : ' edit-off');
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const t = document.createElement('span');
+      t.className = 'hw'; t.textContent = c.name;
+      card.appendChild(t);
+      const tick = document.createElement('span');
+      tick.className = 'edit-tick'; tick.textContent = on ? '\u2713' : '';
+      card.appendChild(tick);
+      card.addEventListener('click', () => {
+        c.hidden = on;
+        buzz(10); save();
+        const top = grid.scrollTop;
+        renderHome(true);
+        grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
+      });
+      fit(card, c.name);
+      place(card, i);
+      return;
+    }
     const card = makeFolderCard(c, () => renderHome(true));
     fit(card, c.name);
     place(card, i);
@@ -9071,11 +9786,21 @@ function renderSlotGrid(grid, cat, folders) {
     if (!name) return false;
     addCategory(name, cat.id);
   }));
-  if (alpha && head) place(ghostGroup(), head);
+  if (alpha && head && !editingF) { const gf = ghostGroup(); gf.querySelector('.hw').textContent = '+ folder'; place(gf, head); }     // beside folder tiles it reads the same on every choice board
+  if (boardOnly) {
+    const gf = ghost('+ folder', () => openFolderAdd(cat));      // a new folder, one that exists already, or a word
+    place(gf, head);
+  }
+  // Chat: a grey tile after its last word
+  const chatAdd = !!cat && !!cat.small && !alpha && !listMode;
   for (let i = 0; off + i < totalRows * cols; i++) {
     const w = slots[i];
-    if (alpha && i === slots.length) { place(ghostWord(), off + i); continue; }
-    if (alpha && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
+    if (boardOnly && i === 0) continue;       // that place holds the grey add tile
+    if (chatAdd && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
+    if (feedMode && i >= slots.length) continue;
+    // in the Library (and before any tiles have been picked) a grey tile leads to the picker
+    if (alpha && !editing && i === slots.length) { place(ghostWord(), off + i); continue; }
+    if (alpha && !editing && !head && i === slots.length + 1) { place(ghostGroup(), off + i); continue; }
     // an empty page shows a greyed-out plus tile in the first place: tap it to add something
     if (!w && i === 0 && arrange && !alpha && head === 0 && !slots.some(Boolean)) {
       const add = document.createElement('button');
@@ -9108,6 +9833,26 @@ function renderSlotGrid(grid, cat, folders) {
     const label = alpha ? plainLabel(w) : bankLabel(w);
     t.textContent = label;     // small letters on every page, Recents / Popular included
     card.appendChild(t);
+    if (editing) {
+      const on = !state.hiddenWords[w];
+      card.classList.add('edit-tile');
+      if (!on) card.classList.add('edit-off');
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const tick = document.createElement('span');
+      tick.className = 'edit-tick';
+      tick.textContent = on ? '\u2713' : '';
+      card.appendChild(tick);
+      card.addEventListener('click', () => {
+        if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
+        buzz(10); save();
+        const top = grid.scrollTop;
+        renderHome(true);
+        grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
+      });
+      fit(card, label);
+      place(card, off + i);
+      continue;
+    }
     card.addEventListener('click', () => {
       if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
       homePhrase.push(w);
@@ -9117,11 +9862,126 @@ function renderSlotGrid(grid, cat, folders) {
       renderMagic(w);
       // the page stays put so more words can be added from it; enter (or the folder menu) moves on
     });
-    attachWordHold(card, w, arrange ? cat : null);   // Recents: hold for edit, move or remove
+    attachWordHold(card, w, feedMode ? (categoriesOf(w).find(x => inChoices(x) && !x.target) || cat) : arrange ? cat : null);   // Recents: hold for edit, move or remove
     fit(card, label);
     place(card, off + i);
   }
-  if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
+  if (feedMode) {
+    // the picked tiles, folder by folder: each folder's picks sit together in a blue panel under
+    // the folder's name (tap the name to fold the panel away), pairs side by side as in the folder
+    grid.style.gridAutoRows = 'auto';
+    grid.style.gridTemplateRows = '';
+    const picked = feedWords(cat), used = new Set();
+    cat.feedShut = cat.feedShut || {};
+    // panels are packed to leave as little open space as they can: each goes in the first place it
+    // fits, a later small one may fill a gap beside an earlier one, and a pair stands one above the
+    // other where that is the only way it fits there
+    const rowOff = topRow ? 1 : 0;
+    const taken = [];
+    const free = (r, c, w, h) => { for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (x >= cols || (taken[y] || [])[x]) return false; return true; };
+    const firstFit = (w, h) => { for (let r = 0; ; r++) for (let c = 0; c + w <= cols; c++) if (free(r, c, w, h)) return { r, c }; };
+    const claim = (r, c, w, h) => { for (let y = r; y < r + h; y++) { taken[y] = taken[y] || []; for (let x = c; x < c + w; x++) taken[y][x] = true; } };
+    let lastRow = 0;
+    // the panels' order: as they were last dragged, then the Library's order for any others
+    const fOrder = cat.feedOrder || [];
+    const fRank = f => { const k = fOrder.indexOf(f.id); return k < 0 ? 9999 : k; };
+    const panels = [];
+    feedFolders(cat).forEach(f => {
+      const mine = (f.words || []).filter(w => picked.includes(w) && !used.has(w));
+      if (!mine.length) return;
+      mine.forEach(w => used.add(w));
+      panels.push({ f, mine });
+    });
+    const ordered = panels.slice().sort((a, b) => fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
+    const dragList = ordered.map(x => x.f);
+    ordered.forEach(({ f, mine }) => {
+      const shut = !!cat.feedShut[f.id];
+      const sec = document.createElement('div');
+      sec.className = 'feed-group';
+      // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
+      const laid = sortWords(mine, cols, true);
+      // its rows of tiles, and how wide the widest of them really is (the blue is no wider)
+      let lines = [];
+      for (let k = 0; k < laid.length; k += cols) lines.push(laid.slice(k, k + cols));
+      const wide = l => { let m = l.length; while (m > 0 && !l[m - 1]) m--; return m; };
+      lines = lines.filter(l => wide(l) > 0);
+      let span = Math.min(cols, Math.max(1, ...lines.map(wide)));
+      let tall = shut ? 1 : lines.length;
+      let at = firstFit(span, tall);
+      if (!shut && mine.length === 2 && span === 2) {
+        const up = firstFit(1, 2);       // the pair standing up
+        if (up.r < at.r) { at = up; span = 1; tall = 2; lines = [[laid.filter(Boolean)[0]], [laid.filter(Boolean)[1]]]; }
+      }
+      claim(at.r, at.c, span, tall);
+      lastRow = Math.max(lastRow, at.r);
+      sec.style.gridColumn = (at.c + 1) + ' / span ' + span;
+      sec.style.gridRow = (rowOff + at.r + 1) + ' / span ' + tall;
+      const hd = document.createElement('button');
+      hd.className = 'feed-head';
+      hd.setAttribute('aria-expanded', shut ? 'false' : 'true');
+      hd.textContent = f.name;
+      // hold the name and the whole panel lifts, to drag before or after another panel
+      sec.dataset.bidx = dragList.indexOf(f);
+      sec.dataset.blist = 'panels';
+      { let timer = null, sx = 0, sy = 0;
+        const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+        hd.addEventListener('pointerdown', e => {
+          if (e.button) return;
+          sx = e.clientX; sy = e.clientY; cancel();
+          timer = setTimeout(() => { timer = null; startWordDrag(sec, null, null, sx, sy, null, { list: dragList, item: f, onHold: () => {}, onDrop: l => { cat.feedOrder = l.map(x => x.id); } }); }, 480);
+        });
+        hd.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => hd.addEventListener(ev, cancel));
+        hd.addEventListener('contextmenu', e => e.preventDefault()); }
+      hd.addEventListener('click', () => {
+        if (suppressTileClick) { suppressTileClick = false; return; }
+        if (shut) delete cat.feedShut[f.id]; else cat.feedShut[f.id] = 1;
+        buzz(10); save();
+        const top = grid.scrollTop;
+        renderHome(true);
+        grid.scrollTop = top; requestAnimationFrame(() => { grid.scrollTop = top; });
+      });
+      sec.appendChild(hd);
+      if (!shut) {
+        const box = document.createElement('div');
+        box.className = 'feed-tiles';
+        box.style.gridTemplateColumns = 'repeat(' + span + ', minmax(0, 1fr))';
+        [].concat(...lines.map(l => l.slice(0, span).concat(new Array(Math.max(0, span - l.length)).fill(null)))).forEach(w => {
+          if (!w) { box.appendChild(document.createElement('div')); return; }
+          const card = document.createElement('button');
+          card.className = 'home-card';
+          card.dataset.word = w;
+          card.style.height = rowH + 'px';
+          const t = document.createElement('span');
+          t.className = 'hw';
+          const label = plainLabel(w);
+          t.textContent = label;
+          card.appendChild(t);
+          card.addEventListener('click', () => {
+            if (suppressTileClick) { suppressTileClick = false; return; }
+            homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w);
+          });
+          attachWordHold(card, w, f);
+          fit(card, label);
+          box.appendChild(card);
+        });
+        sec.appendChild(box);
+      }
+      grid.appendChild(sec);
+    });
+    // after the panels: a small quiet button of three dots that opens the folders themselves
+    const lib = document.createElement('button');
+    lib.className = 'library-dots';
+    lib.textContent = '\u203A';      // a slim, faint arrow
+    lib.setAttribute('aria-label', 'Library: all the folders');
+    lib.addEventListener('click', () => { libraryOpen = cat.id; buzz(10); renderHome(true); });
+    { let r = lastRow, c = 0, found = false;
+      for (; !found; r++) for (c = 0; c < cols; c++) if (free(r, c, 1, 1)) { found = true; break; }
+      lib.style.gridRow = String(rowOff + r); lib.style.gridColumn = String(c + 1); }
+    grid.appendChild(lib);
+  }
+  if (listMode && tilesPage(cat)) renderTileBody(grid, cat, listWords, rowH, base, cols);
+  else if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
   if (!arrange && state.chatMode) {
     grid.style.gridTemplateRows = 'repeat(' + Math.max(1, totalRows) + ', ' + rowH + 'px) auto';
@@ -9184,7 +10044,7 @@ function trackWordDrag() {
   if (!el) return;
   // A builder tile being carried: it lands before or after another tile of the same kind on the page
   if (d.builder) {
-    const over = el.closest('.home-card[data-bidx]');
+    const over = el.closest('[data-bidx]');
     if (!over || over === d.card || over.dataset.blist !== d.card.dataset.blist) return;
     const r = over.getBoundingClientRect();
     const after = d.x > r.left + r.width / 2;
@@ -9621,6 +10481,7 @@ function openWordActions(word, cat, extra) {
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
     if (hasSmallStrip(cat) && !cat.smallSec) pairBtns(body, word, cat);
+    if (!cat.smallSec && !cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; closeWordSheet(); renderHome(true); }));
     deleteWordBtns(body, word, cat);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
     const n = document.createElement('div');
@@ -9684,6 +10545,9 @@ function setWordCase(raw, key) {
   state.wordCase = state.wordCase || {};
   if (text.toUpperCase() === key) state.wordCase[key] = text;
   else delete state.wordCase[key];
+  // capitals typed in the edit box are meant: they stay even on pages that read in small letters
+  state.capKeep = state.capKeep || {};
+  if (text.toUpperCase() === key && text !== text.toLowerCase()) state.capKeep[key] = 1; else delete state.capKeep[key];
 }
 // Change a word's spelling everywhere it appears, keeping its place and its history
 function renameWord(from, to) {
@@ -9696,7 +10560,25 @@ function renameWord(from, to) {
   state.categories.forEach(c => {
     c.words = swap(c.words);
     if (Array.isArray(c.slots)) c.slots = c.slots.map(w => w === from ? to : w);   // it keeps its place
+    // ... and its place in its group, and in any small words row it is part of
+    (c.groups || []).forEach(g => { g.words = swap(g.words); });
+    if (Array.isArray(c.row)) c.row = swap(c.row);
   });
+  state.smallRow = swap(state.smallRow);
+  state.pairs = (state.pairs || []).map(pr => pr.map(w => w === from ? to : w)).filter(pr => pr[0] !== pr[1]);
+  ['targetState', 'targetOff', 'keptPhrases', 'smallSet'].forEach(k => {
+    if (state[k] && state[k][from] !== undefined) { if (state[k][to] === undefined) state[k][to] = state[k][from]; delete state[k][from]; }
+  });
+  if (to.includes(' ') && categoriesOf(to).length) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; }
+  // what comes after it in the builder stays attached to it
+  if (state.builder) {
+    const fixRow = n => { if (Array.isArray(n.small)) n.small = swap(n.small); (n.kids || []).forEach(fixRow); };
+    fixRow(state.builder);
+    const bw = state.builder.words || {};
+    Object.values(bw).forEach(fixRow);
+    if (bw[from]) { if (!bw[to]) { bw[to] = bw[from]; bw[to].label = to; } delete bw[from]; }
+  }
+  linkWordCache = null;
   state.wordBank = (state.wordBank || []).map(w => w === from ? to : w);
   homePhrase = homePhrase.map(w => w === from ? to : w);
   const a = state.wordHistory[from], b = state.wordHistory[to];
