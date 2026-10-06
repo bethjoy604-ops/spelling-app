@@ -2396,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 315 - 6 Oct';
+const BUILD = 'build 316 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9990,6 +9990,13 @@ function openFeedPanelMenu(cat, f) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = f.name;
     body.appendChild(p);
+    // its name: the folder's (or group's) own name, so it changes in the Library too
+    if (!f.loose) body.appendChild(sheetBtn('Rename', '', () => askText('Rename ' + f.name, 'Save', f.name, typed => {
+      const name = String(typed || '').replace(/\s+/g, ' ').trim();
+      if (!name) return false;
+      if (f.isGroup) { const g = listGroups(f.host).find(x => x.name === f.name); if (g) g.name = name; }
+      else f.name = name;
+    })));
     body.appendChild(sheetBtn('Add a new tile', '', () => askText('New tile in ' + f.name, 'Add', '', typed => {
       const key = normaliseWord(typed);
       if (!key) return false;
