@@ -2376,7 +2376,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 310 - 6 Oct';
+const BUILD = 'build 311 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10386,6 +10386,9 @@ function renderSlotGrid(grid, cat, folders) {
         const box = document.createElement('div');
         box.className = 'feed-tiles';
         box.style.gridTemplateColumns = 'repeat(' + span + ', minmax(0, 1fr))';
+        // a panel more than one row tall: the blue between its rows is as deep as the band between two
+        // panels stacked beside it (their edges, the gap and the name), so every tile lines up across the page
+        if (lines.length > 1) box.style.rowGap = (12 + (parseFloat(getComputedStyle(grid).rowGap) || 16) + 6 + 38) + 'px';
         [].concat(...lines.map(l => l.slice(0, span).concat(new Array(Math.max(0, span - l.length)).fill(null)))).forEach(w => {
           if (!w) { box.appendChild(document.createElement('div')); return; }
           const card = document.createElement('button');
