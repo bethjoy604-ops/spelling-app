@@ -668,6 +668,7 @@
   .magic-strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; background: #bfd8ff; border-radius: 18px; padding: 10px; box-sizing: border-box; }
   .magic-strip .magic-chip.fill, .magic-strip .magic-chip.folder { box-shadow: none; height: 70px; }
   .magic-strip.magic-folders { background: #cdeed2; }
+  #homeGrid.magic-on .small-section { display: none !important; }
   .pb-magic { border: none; border-radius: 14px; background: #d9f3dd; color: rgba(0,0,0,0.62); font-family: inherit; font-weight: 900; font-size: 0.5em;
     padding: 0.35em 0.7em; margin-left: 0.4em; cursor: pointer; align-self: center; white-space: nowrap; }
   .magic-chip.folder { background: var(--bg); }
@@ -2383,7 +2384,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 306 - 6 Oct';
+const BUILD = 'build 307 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6411,6 +6412,7 @@ function magicKnow(w) {
   if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
 }
 function hideMagic() {
+  document.getElementById('homeGrid').classList.remove('magic-on');
   document.querySelectorAll('#pbWords .pb-magic').forEach(x => x.remove());
   document.getElementById('magicBox').classList.remove('show');
   document.getElementById('magicRow').innerHTML = '';
@@ -6543,6 +6545,8 @@ function renderMagic(word) {
     const st = smallTileSize();
     row.querySelectorAll('.magic-strip .magic-chip').forEach(b => { b.style.height = st.h + 'px'; const longest = Math.max(...b.textContent.split(' ').map(x => x.length), 1); b.style.fontSize = Math.min(st.font, Math.max(13, w / (longest * 0.62))) + 'px'; }); }
   if (row.children.length) box.classList.add('show');
+  // while the magic bar's blue row is up it stands in for the page's own small words row
+  document.getElementById('homeGrid').classList.toggle('magic-on', !!row.querySelector('.magic-strip:not(.magic-folders)'));
 }
 document.getElementById('magicSkip').addEventListener('click', hideMagic);
 
