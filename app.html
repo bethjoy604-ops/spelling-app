@@ -2375,7 +2375,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 308 - 6 Oct';
+const BUILD = 'build 309 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6402,7 +6402,43 @@ function magicKnow(w) {
   if (!state.words.includes(w)) state.words.push(w);
   if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
 }
+// ---- Suggested tiles standing in for the page's tiles
+let magicTilesNow = [];                       // { label, tap, folder } for the word in the bar
+let magicAt = { phrase: '', nav: '' };        // where the page was when the bar last changed
+let magicSkipped = null;                      // the bar's words when Skip was pressed
+let magicSigShown = '', magicInHome = false;
+function magicNavKey() { return homePath.join('/') + '|' + (tileGroup ? tileGroup.group.name : '') + '|' + (libraryOpen || ''); }
+// they show until one is picked, Skip is pressed, or the page is changed some other way
+function magicActive() {
+  const ph = homePhrase.join(' ');
+  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph;
+}
+function renderMagicTiles(grid) {
+  const { cols, rows: screenRows } = slotShape();
+  const gap = 16;
+  const cellW = Math.max(60, (grid.clientWidth - gap * (cols - 1)) / cols);
+  const rowH = Math.max(60, (grid.clientHeight - gap * (screenRows - 1)) / screenRows);
+  const room = cellW - 30, base = Math.min(rowH * 0.4, room / (12 * 0.62));
+  grid.innerHTML = ''; grid.scrollTop = 0;
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+  grid.style.gridAutoRows = rowH + 'px'; grid.style.gridTemplateRows = '';
+  magicTilesNow.forEach(it => {
+    const card = document.createElement('button');
+    card.className = 'home-card magic-tile';
+    const t = document.createElement('span');
+    t.className = 'hw'; t.textContent = it.label;
+    const longest = Math.max(...it.label.split(' ').map(x => x.length), 1);
+    const one = room / (Math.max(1, it.label.length) * 0.62);
+    if (it.label.includes(' ') && one < base) t.style.whiteSpace = 'normal';
+    t.style.fontSize = Math.min(base, it.label.includes(' ') ? room / (longest * 0.62) : one) + 'px';
+    stackLabel(t, it.label, room, base);
+    card.appendChild(t);
+    card.addEventListener('click', it.tap);
+    grid.appendChild(card);
+  });
+}
 function hideMagic() {
+  magicTilesNow = [];
   { const ms = document.getElementById('magicSmall'); ms.innerHTML = ''; ms.classList.remove('show'); }
   document.getElementById('homeGrid').classList.remove('magic-on');
   document.getElementById('magicBox').classList.remove('show');
@@ -6474,34 +6510,20 @@ function renderMagic(word) {
   });
   const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
   const nextWords = sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word);
-  nextWords.forEach(next => {
-    const b = document.createElement('button');
-    b.className = 'magic-chip word';
-    const t = document.createElement('span');
-    t.textContent = sentenceLabel(next);
-    b.appendChild(t);
-    b.addEventListener('click', () => {
-      magicKnow(next);
-      homePhrase.push(next);
-      warmSpeech();
-      speakWord(next, 0.95);
-      renderPhraseBar();
-    });
-    row.appendChild(b);
-  });
-  folders.forEach(c => {
-    const b = document.createElement('button');
-    b.className = 'magic-chip folder';
-    b.textContent = c.name.toLowerCase();      // a folder's name used as a word reads in small letters
-    b.addEventListener('click', () => {
-      const path = []; let x = c, g = 0;
-      while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
-      magicPathPick(c, c.name);
-      homePath = path; libraryOpen = null; tileGroup = null;
-      buzz(10); renderHome(true);
-    });
-    row.appendChild(b);
-  });
+  // the words or folders to pick from next are not chips in the bar: they take the place of the
+  // page's own tiles (see renderMagicTiles), and the page comes back once one is picked
+  const tiles = [];
+  nextWords.forEach(next => tiles.push({ label: sentenceLabel(next), tap: () => {
+    magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); renderPhraseBar();
+  } }));
+  folders.forEach(c => tiles.push({ label: c.name.toLowerCase(), folder: true, tap: () => {      // a folder's name used as a word reads in small letters
+    const path = []; let x = c, g = 0;
+    while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
+    magicPathPick(c, c.name);
+    homePath = path; libraryOpen = null; tileGroup = null;
+    buzz(10); renderHome(true);
+  } }));
+  magicTilesNow = tiles;
 
   // Whole phrases already modelled — tap to spell the lot
   (mp ? [] : magicPhrasesFor(word).slice(0, 1)).forEach(phrase => {
@@ -6529,10 +6551,11 @@ function renderMagic(word) {
     small.classList.add('show');
   }
   if (row.children.length) box.classList.add('show');
+  if (!row.children.length && magicTilesNow.length) box.classList.add('show');      // Skip stays in reach
   // while the blue row is up it stands in for the page's own small words row
   document.getElementById('homeGrid').classList.toggle('magic-on', small.classList.contains('show'));
 }
-document.getElementById('magicSkip').addEventListener('click', hideMagic);
+document.getElementById('magicSkip').addEventListener('click', () => { magicSkipped = homePhrase.join(' '); hideMagic(); renderHome(true); });
 
 // ---- Phrase bar ----
 let phraseLenSeen = 0;
@@ -6555,7 +6578,12 @@ function renderPhraseBar() {
     box.appendChild(c);
   });
   if (!homePhrase.length) magicPathIn = []; else magicPathIn = magicPathIn.filter(p => homePhrase.includes(p.key));
-  if (state.magicType && !state.builderMode) { if (homePhrase.length) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
+  { const ph = homePhrase.join(' '); if (ph !== magicAt.phrase) { magicAt = { phrase: ph, nav: magicNavKey() }; magicSkipped = null; } }
+  if (!homePhrase.length) magicTarget = null;      // a cleared bar starts the next sentence afresh
+  if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
+  // the page's tiles give way to the suggested ones, and come back, as the bar changes
+  { const sig = magicActive() ? magicTilesNow.map(t => t.label).join('|') : '';
+    if (sig !== magicSigShown) { magicSigShown = sig; if (!magicInHome && !state.builderMode) { renderHome(true); return; } } }
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
@@ -7209,7 +7237,7 @@ function renderHome(reset) {
   if (tileGroup && (!cat || state.builderMode || cat.id !== tileGroup.cat)) tileGroup = null;
   if (libraryOpen && (state.builderMode || !homePath.includes(libraryOpen))) libraryOpen = null;
   if (reset) {
-    renderPhraseBar();
+    magicInHome = true; try { renderPhraseBar(); } finally { magicInHome = false; }
     renderBuilderBar();
     // The arrow houses only the settings gear. The sandwich sits on the right with
     // the other switches and shows or hides the folder menu.
@@ -9927,6 +9955,8 @@ function openFeedPicker(cat) {
   });
 }
 function renderSlotGrid(grid, cat, folders) {
+  if (magicActive()) { magicSigShown = magicTilesNow.map(t => t.label).join('|'); renderMagicTiles(grid); return; }
+  magicSigShown = '';
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
   const W = grid.clientWidth, H = grid.clientHeight;
