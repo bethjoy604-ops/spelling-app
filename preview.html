@@ -2367,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 290 - 6 Oct';
+const BUILD = 'build 291 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2544,6 +2544,7 @@ const state = {
   targetState: {},            // each target word's section: independent, prompted or waiting
   targetV1: false,            // the one-time renaming of New to the targets tab
   layoutV11: false,
+  builderTidyV1: false,
   layoutV10: false,          // the one-time move of every device onto the built-in folders
   groupOrderV1: false,       // the one-time A to Z sort of the titles inside each group (they now keep their own order)
   tabsV2: false,             // the one-time move of My Stuff back to the end of the menu bar, after Categories
@@ -2736,6 +2737,7 @@ async function load() {
         targetV1: saved.targetV1 ?? false,
         layoutV10: saved.layoutV10 ?? false,
         layoutV11: saved.layoutV11 ?? false,
+        builderTidyV1: saved.builderTidyV1 ?? false,
         groupOrderV1: saved.groupOrderV1 ?? false,
         tabsV2: saved.tabsV2 ?? false,
         tabsV1: saved.tabsV1 ?? false,
@@ -3084,6 +3086,23 @@ async function load() {
     }
     save();
   }
+  // One-time: a device's own words that went back into the built-in folders stay off the builder
+  // pages that were set up by hand (I > shows feel, need, want - not an old "do"). They are still
+  // in the folder in menu mode, and can be shown on a builder page with Edit this page.
+  if (!state.builderTidyV1) {
+    state.builderTidyV1 = true;
+    if (!/github\.io$/.test(location.hostname)) {
+      const hide = state.builderHide || {};
+      state.categories.forEach(c => {
+        const base = DEFAULT_LAYOUT.categories.find(x => x.id === c.id && x.name === c.name);
+        if (!base) return;
+        const extra = (c.words || []).filter(w => !(base.words || []).includes(w));
+        if (!extra.length) return;
+        Object.keys(hide).filter(k => k === 'c' + c.id || k.startsWith('c' + c.id + '@')).forEach(k => extra.forEach(w => { hide[k]['w:' + w] = 1; }));
+      });
+    }
+    save();
+  }
   // One-time: titles inside a group now keep their own order; they start in the A to Z order they
   // have been showing in, so nothing moves until one is dragged
   if (!state.groupOrderV1) {
@@ -3241,6 +3260,7 @@ async function save() {
       targetV1: state.targetV1,
       layoutV10: state.layoutV10,
       layoutV11: state.layoutV11,
+      builderTidyV1: state.builderTidyV1,
       groupOrderV1: state.groupOrderV1,
       tabsV2: state.tabsV2,
       tabsV1: state.tabsV1,
