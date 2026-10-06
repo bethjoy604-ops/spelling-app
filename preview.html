@@ -2380,7 +2380,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 304 - 6 Oct';
+const BUILD = 'build 305 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6528,7 +6528,9 @@ function renderMagic(word) {
     row.querySelectorAll('.magic-chip.word, .magic-chip.folder, .magic-strip .magic-chip').forEach(b => {
       const longest = Math.max(...b.textContent.split(' ').map(x => x.length), 1);
       b.style.fontSize = Math.max(13, Math.min(30, w / (longest * 0.62))) + 'px';
-    }); }
+    });
+    const st = smallTileSize();
+    row.querySelectorAll('.magic-strip .magic-chip').forEach(b => { b.style.height = st.h + 'px'; b.style.fontSize = st.font + 'px'; }); }
   if (row.children.length) box.classList.add('show');
 }
 document.getElementById('magicSkip').addEventListener('click', hideMagic);
@@ -7671,6 +7673,13 @@ function groupSmallWords(list) {
   const full = groups.filter(g => g.length);
   return { words: [].concat(...full), starts: new Set(full.slice(1).map(g => g[0])) };
 }
+// One size for the tiles of every small words row - Chat's, each folder's, a builder page's and the
+// magic bar's blue row - whatever grid the page under it uses. It goes by the screen, not the page.
+function smallTileSize() {
+  const h = Math.round(Math.max(54, Math.min(92, window.innerHeight * 0.105)));
+  const colW = Math.floor(((document.getElementById('homeGrid') || {}).clientWidth || window.innerWidth) / 6) - 24;
+  return { h, font: Math.round(Math.max(15, Math.min(h * 0.36, colW / (9 * 0.62)))) };
+}
 function addStripToggle(strip, onClose) {
   strip.classList.add('with-toggle');
   strip._onClose = onClose;
@@ -7692,7 +7701,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   let edit = () => openSmallRowPicker(owner, 0);
   const strip = document.createElement('div');
   strip.className = 'small-strip';
-  const h = Math.max(48, Math.round(rowH / 2));
+  const h = smallTileSize().h;
   let shown = rows.map(row => row.filter(w => state.words.includes(w)));
   strip._args = [rowH, base, owner, gutter];
   // with a word in the bar, the row turns to the words most likely to come after it
@@ -7707,7 +7716,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const b = document.createElement('button');
     b.className = 'small-tile';
     b.style.height = h + 'px';
-    b.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
+    b.style.fontSize = smallTileSize().font + 'px';
     b.textContent = label;
     // tap says the word; hold opens the list to choose which words are in the row
     let timer = null, held = false;
@@ -10011,7 +10020,7 @@ function renderSlotGrid(grid, cat, folders) {
     const colW = Math.floor((grid.clientWidth - 28 - 50) / 6);
     addStripToggle(box, () => head.click());
     box.style.gridTemplateColumns = smalls.length ? 'repeat(' + Math.min(6, smalls.length) + ', ' + colW + 'px)' : 'auto';
-    const h = Math.max(48, Math.round(rowH / 2));
+    const h = smallTileSize().h;
     const sg = groupSmallWords(smalls);
     sg.words.forEach(w => {
       const b = document.createElement('button');
@@ -10019,7 +10028,7 @@ function renderSlotGrid(grid, cat, folders) {
       if (sg.starts.has(w)) b.style.gridColumnStart = '1';      // each kind of word begins a row
       b.dataset.word = w;
       b.style.height = h + 'px';
-      b.style.fontSize = Math.max(16, Math.round(base * 0.62)) + 'px';
+      b.style.fontSize = smallTileSize().font + 'px';
       b.textContent = bankLabel(w);
       let timer = null, held = false;
       b.addEventListener('pointerdown', () => {
