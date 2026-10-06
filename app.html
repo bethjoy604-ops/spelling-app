@@ -2396,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 314 - 6 Oct';
+const BUILD = 'build 315 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8795,7 +8795,7 @@ function openFolderEdit(c, extra) {
     if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
     if (!c.target && !c.small && !c.smallSec && (c.words || []).length) body.appendChild(suffixBtn(c));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
-    if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? '\u2B50  Custom page: choose its tiles' : '\u2B50  Make a custom page from its folders', '', () => openFeedPicker(c)));
+    if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? '\u2B50  Custom page: choose its tiles' : '\u2B50  Make a custom page', '', () => openFeedPicker(c)));
     // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
     if (!state.builderMode && feedHost(c) && (c.feed || []).length) body.appendChild(sheetSwitch('Custom page', !c.feedOff, on => { if (on) delete c.feedOff; else c.feedOff = true; libraryOpen = null; }));
     // every folder on the page it sits on, at once: ticks to show or hide each
@@ -9966,8 +9966,18 @@ function stackLabel(t, label, room, base) {
 // Choices can keep a short list of tiles picked from all its folders. While there are any, opening
 // Choices shows them together as one page; the Library tile at the end opens the folders.
 let libraryOpen = null;      // the Choices folder whose folders (its library) are showing in place of the feed
-function feedHost(cat) { return !!cat && !cat.target && !cat.small && !cat.smallSec && (!!cat.parent || catAllowsPhrases(cat)) && childrenOf(cat.id).length > 0; }
-function feedFolders(cat) { const out = []; const walk = id => childrenOf(id).forEach(c => { out.push(c); walk(c.id); }); walk(cat.id); return out; }
+function feedHost(cat) { return !!cat && !cat.target && !cat.small && !cat.smallSec && (!!cat.parent || catAllowsPhrases(cat)) && (childrenOf(cat.id).length > 0 || (usesGroups(cat) && listGroups(cat).length > 0)); }
+function feedFolders(cat) {
+  const out = []; const walk = id => childrenOf(id).forEach(c => { out.push(c); walk(c.id); }); walk(cat.id);
+  // a page of groups (Food: Drinks, Fruit ...) offers its groups in the same way, each standing in as a folder
+  if (!out.length && usesGroups(cat) && !cat.target) {
+    const groups = listGroups(cat), inG = new Set([].concat(...groups.map(g => g.words || [])));
+    groups.forEach(g => out.push({ id: 'g:' + g.name, name: g.name, parent: cat.id, words: g.words, host: cat, isGroup: true }));
+    const loose = (cat.words || []).filter(w => !inG.has(w));
+    if (loose.length) out.push({ id: 'g:', name: cat.name, parent: cat.id, words: loose, host: cat, isGroup: true, loose: true });
+  }
+  return out;
+}
 function feedWords(cat) {
   const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
   return (cat.feed || []).filter(w => have.has(w) && !state.hiddenWords[w]);
@@ -9984,7 +9994,8 @@ function openFeedPanelMenu(cat, f) {
       const key = normaliseWord(typed);
       if (!key) return false;
       f.words = f.words || [];
-      if (!f.words.includes(key)) f.words.push(key);
+      if (!f.words.includes(key) && !f.loose) f.words.push(key);
+      if (f.host && !(f.host.words || []).includes(key)) f.host.words.push(key);      // a group's word belongs to its page too
       if (!state.words.includes(key)) state.words.push(key);
       if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
       if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
@@ -10476,9 +10487,9 @@ function renderSlotGrid(grid, cat, folders) {
           card.appendChild(t);
           card.addEventListener('click', () => {
             if (suppressTileClick) { suppressTileClick = false; return; }
-            const sw = withGroup(f, w); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw);
+            const sw = withGroup(f.host || f, w); magicDropPath(f.host || f); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw);
           });
-          attachWordHold(card, w, f);
+          attachWordHold(card, w, f.host || f);
           fit(card, label);
           box.appendChild(card);
         });
