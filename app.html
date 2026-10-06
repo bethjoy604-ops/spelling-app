@@ -2396,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 316 - 6 Oct';
+const BUILD = 'build 317 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8783,7 +8783,8 @@ function openFolderEdit(c, extra) {
       walk(null, 1);
       b2.appendChild(sheetBtn('Cancel', '', closeWordSheet));
     })));
-    body.appendChild(sheetSwitch('Linking words (lowercase)', !!c.linkers, on => { c.linkers = on; }));
+    // (the old "linking words" switch is gone from the menu: capitals and linking follow rules now.
+    //  A folder already marked that way, like Actions, keeps the mark.)
     // hidden, not deleted: it and everything in it can be brought back from settings
     body.appendChild(sheetBtn('Hide folder', 'danger', () => {
       c.hidden = true;
