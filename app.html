@@ -2367,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 285 - 6 Oct';
+const BUILD = 'build 286 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7850,21 +7850,9 @@ function renderBuilder(grid) {
         if (g && !g.hidden) { builderPath.push({ cat: n.go, via: w }); renderHome(true); }
         else if (n) { builderPath.push(n); renderHome(true); }
         else {
-          builderIdleHome();      // nothing is linked after this word: the first page comes back shortly
-          // a plain word from a group of words: step back to the choice board it was opened from
-          // (Actions, Food ...), ready for the next pick
-          const prev = builderPath.length > 1 ? builderPath[builderPath.length - 2] : null;
-          const owner = prev ? ('cat' in prev ? catById(prev.cat) : prev) : null;
-          if (owner && isBoardMenu(owner)) { builderPath.pop(); renderHome(true); }
-          else {
-            // opened straight from a linking word, with no choice board behind it: switch to the
-            // board this folder belongs to (Categories: Actions, Food ...)
-            const up = c.parent ? catById(c.parent) : null;
-            if (up && !up.hidden && isBoardMenu(up)) {
-              builderPath[builderPath.length - 1] = { cat: up.id };
-              renderHome(true);
-            }
-          }
+          // nothing is linked after this word: the page stays as it is (so another can be picked),
+          // and the first page comes back shortly - with no stop at the board in between
+          builderIdleHome();
         }
       }, () => stuff
         ? openTitleActions(w, c, body => body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"'))))
