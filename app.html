@@ -1261,6 +1261,10 @@
   .sheet-icon .sl { font-size: 12px; font-weight: 800; }
   .sheet-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 6px; padding: 9px 12px; border: none; border-radius: 14px;
     background: var(--bg); color: var(--ink); font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; text-align: left; }
+  .sheet-stepper { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 7px 12px; border-radius: 14px; background: var(--bg); font-weight: 800; font-size: 15px; }
+  .sheet-stepper span { flex: 1; }
+  .sheet-stepper button { width: 38px; height: 34px; border: none; border-radius: 10px; background: #fff; font-family: inherit; font-size: 20px; font-weight: 900; cursor: pointer; }
+  .sheet-stepper b { min-width: 24px; text-align: center; font-size: 17px; }
   .sheet-switch .pill { flex: none; width: 44px; height: 26px; border-radius: 13px; background: #cdcdcd; position: relative; transition: background 0.15s; }
   .sheet-switch .pill::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 0.15s; }
   .sheet-switch.on .pill { background: var(--green); }
@@ -2225,6 +2229,7 @@
           <div class="setting-row"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
+          <div class="setting-row"><span>Small words rows on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
         </div>
 
         <div class="sublabel">Order words by</div>
@@ -2391,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 313 - 6 Oct';
+const BUILD = 'build 314 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2738,6 +2743,8 @@ async function load() {
         hiddenWords: saved.hiddenWords || {},
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
+        smallRowsOn: saved.smallRowsOn ?? true,
+        smallRowMax: saved.smallRowMax || 0,
         compoundOf: saved.compoundOf || {},
         pathOf: saved.pathOf || {},
         logShownFrom: saved.logShownFrom || 0,
@@ -3282,6 +3289,8 @@ async function save() {
       hiddenWords: state.hiddenWords,
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
+      smallRowsOn: state.smallRowsOn !== false,
+      smallRowMax: state.smallRowMax || 0,
       compoundOf: state.compoundOf || {},
       pathOf: state.pathOf || {},
       logShownFrom: state.logShownFrom || 0,
@@ -7649,6 +7658,8 @@ const FOLLOW_KIND = {
   title: ['PLEASE', 'AGAIN', 'NOW', 'AND', 'MORE', '.'],
 };
 // ... and before anything is chosen, the words a sentence on that kind of page tends to start with
+// (a page of no particular kind - colours, numbers, shapes ... - starts with words that pair with almost anything: "one more")
+const PAGE_DEFAULT = ['ONE', 'MORE', 'THE', 'THAT', 'MY', 'PLEASE'];
 const PAGE_START = {
   action: ['I', 'WANT', 'TO', 'CAN', 'YOU', 'NOT'],
   food: ['I', 'WANT', 'MORE', 'EAT', 'SOME', 'THE'],
@@ -7662,7 +7673,7 @@ const PAGE_START = {
 };
 function startWords(cat, usual) {
   const out = [];
-  (PAGE_START[kindOfCat(cat)] || []).concat(usual || []).forEach(w => { if (!state.hiddenWords[w] && !out.includes(w)) out.push(w); });
+  (PAGE_START[kindOfCat(cat)] || PAGE_DEFAULT).concat(usual || []).forEach(w => { if (!state.hiddenWords[w] && !out.includes(w)) out.push(w); });
   return punctLast(out.slice(0, 6));
 }
 function followWords(word, usual) {
@@ -7742,8 +7753,32 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // rows are kept in one list, with '\n' marking where a new row starts
   const rows = smallRows(owner);
   const editRow = r => openWordSheet(body => {
-    sheetTitle(body, 'Small words');
-    body.appendChild(sheetBtn('Choose the small words', '', () => openSmallRowPicker(owner, 0)));
+    sheetTitle(body, 'Small words row');
+    body.appendChild(sheetBtn('\u270F\uFE0F  Choose the small words', '', () => openSmallRowPicker(owner, 0)));
+    // a new one joins the Small words library in Chat as well as this row
+    body.appendChild(sheetBtn('\u2795  Add a new small word', '', () => askText('New small word', 'Add', '', typed => {
+      const key = normaliseWord(typed);
+      if (!key) return false;
+      if (!state.words.includes(key)) state.words.push(key);
+      if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
+      if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
+      if (!allSmallWords().includes(key)) { const sf = smallFolder(); const dest = sf || state.categories.find(c => c.small); if (dest) dest.words.push(key); }
+      const now = [].concat(...shown).filter(w => !isPunct(w));
+      if (!now.includes(key)) now.push(key);
+      setSmallRows(owner, [now]);
+      if (rowMax() && rowMax() < now.length) { if (owner) owner.rowMax = now.length; else state.smallRowMax = now.length; }
+    })));
+    // how many of them show, from one up to twelve
+    { const st = document.createElement('div');
+      st.className = 'sheet-stepper';
+      let n = rowMax() || words.length || 1;
+      st.innerHTML = '<span>How many show</span><button aria-label="Fewer">\u2212</button><b></b><button aria-label="More">+</button>';
+      const paint = () => { st.querySelector('b').textContent = n; };
+      const set = d => { n = Math.max(1, Math.min(12, n + d)); if (owner) owner.rowMax = n; else state.smallRowMax = n; paint(); buzz(10); save(); renderHome(true); };
+      st.children[1].addEventListener('click', () => set(-1));
+      st.children[3].addEventListener('click', () => set(1));
+      paint();
+      body.appendChild(st); }
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
   let edit = () => openSmallRowPicker(owner, 0);
@@ -7757,7 +7792,10 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   const after = state.builderMode ? null : homePhrase.length ? followWords(homePhrase[homePhrase.length - 1], [].concat(...shown)) : null;
   if (after && after.length) shown = [after];
   // a Categories folder with no row chosen for it starts with the words that suit its kind of page
-  else if (!state.builderMode && !homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row) && PAGE_START[kindOfCat(owner)]) shown = [startWords(owner, [].concat(...shown))];
+  else if (!state.builderMode && !homePhrase.length && isCatOwner(owner) && !Array.isArray(owner.row)) shown = [startWords(owner, [].concat(...shown))];
+  // how many show: set from the row's own menu, one at the least
+  const rowMax = () => (isCatOwner(owner) ? owner.rowMax : owner ? owner.rowMax : state.smallRowMax) || 0;
+  if (rowMax()) shown = [[].concat(...shown).slice(0, rowMax())];
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
     const hold = edit;
@@ -7802,6 +7840,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   if (words.length) strip.style.gridTemplateColumns = 'repeat(' + across + ', ' + colW + 'px)';
   else strip.style.gridTemplateColumns = 'auto';
   if (!words.length) mk('+ small words', edit).classList.add('empty');
+  // the blue itself can be held too: let go and the row's menu opens
+  { let t = null, held = false;
+    strip.addEventListener('pointerdown', e => { if (e.target !== strip) return; held = false; t = setTimeout(() => { t = null; held = true; buzz(15); }, 520); });
+    strip.addEventListener('pointerup', () => { if (t) { clearTimeout(t); t = null; } if (held) { held = false; setTimeout(() => editRow(0), 80); } });
+    ['pointercancel', 'pointerleave'].forEach(ev => strip.addEventListener(ev, () => { if (t) { clearTimeout(t); t = null; } held = false; })); }
   return strip;
 }
 // Whose row: a folder has its own (until it is changed it shows the starting row), a builder page
@@ -10071,7 +10114,7 @@ function renderSlotGrid(grid, cat, folders) {
   const room = cellW - 30;
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   // folders inside Categories carry a row of small words above their tiles
-  const strip = arrange && !sec && hasSmallStrip(cat) && !isBoardMenu(cat);
+  const strip = arrange && !sec && hasSmallStrip(cat) && !isBoardMenu(cat) && state.smallRowsOn !== false;
   const topRow = !!(strip || sec);    // the small words bar takes the first row, above the tiles
   grid.style.gridTemplateRows = topRow ? 'auto' : '';
   if (listMode) {
@@ -10165,25 +10208,8 @@ function renderSlotGrid(grid, cat, folders) {
     const el = document.createElement('div');
     el.className = 'small-section top';
     el.style.gridRow = '1'; el.style.gridColumn = '1 / -1';
-    const bar = document.createElement('button');
-    bar.className = 'small-head';
-    // each folder remembers for itself whether its row is opened out
-    const isOpen = !!(state.rowOpenBy || {})[cat.id];
-    bar.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    bar.innerHTML = '<span class="sh-arrow"></span>';
-    bar.setAttribute('aria-label', 'Small words');
-    bar.lastChild.textContent = '\u25BC';
-    bar.addEventListener('click', () => {
-      state.rowOpenBy = state.rowOpenBy || {};
-      if (isOpen) delete state.rowOpenBy[cat.id]; else state.rowOpenBy[cat.id] = true;
-      buzz(10); save(); renderHome(false);
-    });
-    if (!isOpen) el.appendChild(bar);
-    if (isOpen) {
-      const strip = makeSmallStrip(rowH, base, cat, true);
-      addStripToggle(strip, () => bar.click());
-      el.appendChild(strip);
-    }
+    // no bar to open any more: with small words rows switched on (Settings) the row is simply there
+    el.appendChild(makeSmallStrip(rowH, base, cat, true));
     grid.appendChild(el);
   }
   const place = (el, cell) => {
@@ -12110,6 +12136,7 @@ function renderSettings() {
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
+  document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
 
   // ----- Sizes -----
   const sizeOpts = SIZE_STEPS.map(v => ({ value: v, label: SIZE_LABELS[v] }));
@@ -12412,6 +12439,9 @@ document.getElementById('toggleHome').addEventListener('click', () => {
 });
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
+});
+document.getElementById('toggleSmallRows').addEventListener('click', () => {
+  state.smallRowsOn = state.smallRowsOn === false; save(); renderSettings();
 });
 document.getElementById('unhideWordsBtn').addEventListener('click', () => {
   state.hiddenWords = {};
