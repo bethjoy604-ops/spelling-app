@@ -2396,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 317 - 6 Oct';
+const BUILD = 'build 318 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6251,7 +6251,7 @@ function magicNext(word) {
 // Chips as "tortilla chips". It applies on every page, to groups and to folders alike. Names like
 // these do it by themselves; any group or folder can be switched on or off from its own menu.
 const SUFFIX_NAMES = /^(cookies?|chips|crackers|cereal|sandwich(es)?|burgers?|pizza|pasta|noodles|soup|salad|yogurt|juice|milk|tea|smoothies?|muffins?|bars?|pie|cake|cupcakes?|donuts?|bagels?|toast|sauce|ice cream|popsicles?|gummies|nuggets|fries|tacos?|wraps?)$/;
-function suffixOn(box) { return !!box && (box.suffix === true || (box.suffix !== false && SUFFIX_NAMES.test(String(box.name || '').trim().toLowerCase()))); }
+function suffixOn(box) { return !!box && SUFFIX_NAMES.test(String(box.name || '').trim().toLowerCase()); }      // by the name alone: the switch for it has been retired
 function withGroup(cat, w) {
   if (!cat || !w || cat.target) return w;
   const g = (cat.groups || []).find(x => (x.words || []).includes(w));
@@ -8794,7 +8794,6 @@ function openFolderEdit(c, extra) {
     }));
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
     if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
-    if (!c.target && !c.small && !c.smallSec && (c.words || []).length) body.appendChild(suffixBtn(c));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
     if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? '\u2B50  Custom page: choose its tiles' : '\u2B50  Make a custom page', '', () => openFeedPicker(c)));
     // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
@@ -9380,7 +9379,6 @@ function openGroupHead(cat, group) {
       if (!name) return false;
       group.name = name;
     })));
-    if (!cat.target) body.appendChild(suffixBtn(group));
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
     if (!cat.target) body.appendChild(layoutSwitchBtn(cat));
