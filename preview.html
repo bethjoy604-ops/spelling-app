@@ -773,7 +773,10 @@
     text-transform: uppercase; letter-spacing: 1.4px;
     color: var(--muted); flex-shrink: 0;
   }
-  .target-word { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+  /* one line however long the phrase: it slides along a word at a time as the spelling goes */
+  .target-word { display: flex; gap: 8px; flex-wrap: nowrap; flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 10px 12px; margin: -10px -12px; }
+  .target-word::-webkit-scrollbar { display: none; }
+  .target-word .tletter { flex: none; }
   .tletter {
     font-size: var(--tile); font-weight: 900;
     min-width: calc(var(--tile) * 1.2);
@@ -2463,7 +2466,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 366 - 6 Oct';
+const BUILD = 'build 367 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5057,6 +5060,7 @@ function render() {
   if (state.currentTarget) {
     banner.classList.add('active');
     const tw = document.getElementById('targetWord');
+    const twWas = tw.scrollLeft;
     tw.innerHTML = '';
     // In help mode the word bar always marks the letter to type next, straight
     // away; the matching highlight on the keys still waits to be asked for
@@ -5081,6 +5085,18 @@ function render() {
       s.textContent = (ch === ' ') ? '\u2423' : displayLetterAt(ch, i);
       tw.appendChild(s);
     });
+    // a long phrase: the word being spelled slides to the front of the bar (and the letter to type
+    // is always in view, however long the word)
+    tw.scrollLeft = twWas;
+    if (tw.scrollWidth > tw.clientWidth + 2) {
+      const idx = Math.min(state.targetIndex, tw.children.length - 1);
+      const start = state.currentTarget.lastIndexOf(' ', Math.max(0, idx - 1)) + 1;
+      const x = el => el.getBoundingClientRect().left - tw.getBoundingClientRect().left + tw.scrollLeft;
+      let left = Math.max(0, x(tw.children[start]) - 10);
+      const cur = tw.children[idx], curRight = x(cur) + cur.getBoundingClientRect().width;
+      if (curRight > left + tw.clientWidth - 10) left = curRight - tw.clientWidth + 24;
+      if (Math.abs(left - tw.scrollLeft) > 2) { try { tw.scrollTo({ left, behavior: 'smooth' }); } catch (e) { tw.scrollLeft = left; } }
+    }
   } else {
     banner.classList.remove('active');
   }
