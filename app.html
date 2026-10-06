@@ -2396,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 319 - 6 Oct';
+const BUILD = 'build 320 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4471,6 +4471,10 @@ function stopRecording() {
 // Coco), otherwise all lower case. Phrases fall back to word-by-word.
 function casedText(w) {
   const key = w || '';
+  // a word that sits in a folder is written on the spelling page exactly as its tile and the key
+  // bar write it: "bathroom" small, "Moana" with its capital. One rule (sentenceLabel) for all three.
+  if (!key.includes(' ') && categoriesOf(key).length) return sentenceLabel(key);
+  if (key.includes(' ') && categoriesOf(key).some(catAllowsPhrases)) return sentenceLabel(key);
   const kept = (state.wordCase || {})[key];
   if (kept && kept.toUpperCase() === key) return kept;
   // anything in My Stuff is a name or a title: capitals by default, the same as on its tile
