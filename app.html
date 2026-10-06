@@ -2412,7 +2412,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 329 - 6 Oct';
+const BUILD = 'build 330 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9785,8 +9785,9 @@ function plainLabel(w) {
 // A to Z; anything in it that is not a number follows, A to Z.
 const NUM_WORDS = { ZERO: 0, ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5, SIX: 6, SEVEN: 7, EIGHT: 8, NINE: 9, TEN: 10,
   ELEVEN: 11, TWELVE: 12, THIRTEEN: 13, FOURTEEN: 14, FIFTEEN: 15, SIXTEEN: 16, SEVENTEEN: 17, EIGHTEEN: 18, NINETEEN: 19,
-  TWENTY: 20, THIRTY: 30, FORTY: 40, FIFTY: 50, SIXTY: 60, SEVENTY: 70, EIGHTY: 80, NINETY: 90 };
-const NUM_BIG = { HUNDRED: 100, THOUSAND: 1000, MILLION: 1000000 };
+  TWENTY: 20, THIRTY: 30, FORTY: 40, FIFTY: 50, SIXTY: 60, SEVENTY: 70, EIGHTY: 80, NINETY: 90,
+  FOURTY: 40, NINTY: 90, FORTEEN: 14, FOURTEEN: 14, EIGHTTEEN: 18, TWELVE: 12, TWELF: 12 };     // and the usual misspellings, so they still land in place
+const NUM_BIG = { HUNDRED: 100, THOUSAND: 1000, MILLION: 1e6, BILLION: 1e9, TRILLION: 1e12 };
 function numberValue(w) {
   const t = String(w || '').toUpperCase().replace(/,/g, '').trim();
   if (/^\d+(\.\d+)?$/.test(t)) return parseFloat(t);
