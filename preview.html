@@ -2370,7 +2370,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 295 - 6 Oct';
+const BUILD = 'build 296 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2716,6 +2716,7 @@ async function load() {
         hiddenWords: saved.hiddenWords || {},
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
+        compoundOf: saved.compoundOf || {},
         logShownFrom: saved.logShownFrom || 0,
         builderHideV1: saved.builderHideV1 ?? false,
         recentsHidden: saved.recentsHidden || {},
@@ -3239,6 +3240,7 @@ async function save() {
       hiddenWords: state.hiddenWords,
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
+      compoundOf: state.compoundOf || {},
       logShownFrom: state.logShownFrom || 0,
       builderHideV1: state.builderHideV1,
       recentsHidden: state.recentsHidden,
@@ -6040,6 +6042,8 @@ function plainStuff(c) {
 }
 function sentenceLabel(w) {
   const key = w || '';
+  // a word that took its group's name with it reads as the word does, then the name in small letters
+  { const cb = (state.compoundOf || {})[key]; if (cb && key.startsWith(cb + ' ')) return sentenceLabel(cb) + ' ' + key.slice(cb.length + 1).toLowerCase(); }
   const kept = (state.wordCase || {})[key];
   // a linking word is small letters even if it was once saved with a first capital ("Go")
   if (kept && key !== 'I' && isLinkWord(key) && kept.slice(1) === kept.slice(1).toLowerCase()) return kept.toLowerCase();
@@ -6173,12 +6177,39 @@ function magicNext(word) {
   return pool.filter((w, i) => w !== word && pool.indexOf(w) === i && !homePhrase.includes(w) && !state.hiddenWords[w])
     .sort((a, b) => used(b) - used(a) || last(b) - last(a)).slice(0, 5);
 }
+// A word picked inside a group or folder named for the thing itself takes that name with it:
+// "chocolate chip" under Cookies goes into the bar as "chocolate chip cookies", "tortilla" under
+// Chips as "tortilla chips". It applies on every page, to groups and to folders alike. Names like
+// these do it by themselves; any group or folder can be switched on or off from its own menu.
+const SUFFIX_NAMES = /^(cookies?|chips|crackers|cereal|sandwich(es)?|burgers?|pizza|pasta|noodles|soup|salad|yogurt|juice|milk|tea|smoothies?|muffins?|bars?|pie|cake|cupcakes?|donuts?|bagels?|toast|sauce|ice cream|popsicles?|gummies|nuggets|fries|tacos?|wraps?)$/;
+function suffixOn(box) { return !!box && (box.suffix === true || (box.suffix !== false && SUFFIX_NAMES.test(String(box.name || '').trim().toLowerCase()))); }
+function withGroup(cat, w) {
+  if (!cat || !w || cat.target) return w;
+  const g = (cat.groups || []).find(x => (x.words || []).includes(w));
+  const box = g && suffixOn(g) ? g : (suffixOn(cat) && (cat.words || []).includes(w) ? cat : null);
+  if (!box) return w;
+  const gk = normaliseWord(box.name);
+  const stem = x => x.replace(/(ES|S)$/, '');
+  if (!gk || w.split(' ').some(part => stem(part) === stem(gk)) || w.endsWith(gk)) return w;     // "sugar cookie" already says it
+  const key = w + ' ' + gk;
+  magicKnow(key);
+  state.keptPhrases[key] = true;
+  if (!categoriesOf(key).length) { state.recentsHidden = state.recentsHidden || {}; state.recentsHidden[key] = true; }     // not a tile of its own
+  state.compoundOf = state.compoundOf || {};
+  state.compoundOf[key] = w;
+  return key;
+}
+function suffixBtn(box) {
+  const on = suffixOn(box);
+  return sheetBtn(on ? 'Its name goes in with its words: on' : 'Add its name after its words (off)', '', () => { box.suffix = !on; save(); closeWordSheet(); renderHome(true); });
+}
 // ---- The magic phrase: what is in the bar, filled out into a sentence with the small words it
 // is missing ("want chicken" -> "I want to eat chicken"). The missing words are offered one by
 // one, each going into its own place in the bar; the phrase itself can be tapped to take it whole.
 const MAGIC_SUBJECTS = ['I', 'YOU', 'WE', 'HE', 'SHE', 'THEY', 'IT', "LET'S", 'CAN', 'PLEASE'];
 const MAGIC_BARE_PLACES = ['HOME', 'SCHOOL', 'OUTSIDE', 'INSIDE', 'BED', 'UPSTAIRS', 'DOWNSTAIRS', 'WORK'];
 function magicKind(w) {
+  if ((state.compoundOf || {})[w]) w = state.compoundOf[w];      // "chocolate chip cookies" is food because "chocolate chip" is
   const names = [];
   categoriesOf(w).filter(c => !c.target && !c.hidden).forEach(c => { let x = c, g = 0; while (x && g++ < 20) { names.push(x.name.trim().toLowerCase()); x = x.parent ? catById(x.parent) : null; } });
   const has = re => names.some(n => re.test(n));
@@ -6205,6 +6236,7 @@ const MAGIC_MASS = ['WATER', 'JUICE', 'MILK', 'SODA', 'TEA', 'COFFEE', 'LEMONADE
   'MEAT', 'FISH', 'SWEDISH FISH', 'SALAD', 'BACON', 'HAM', 'TURKEY', 'BEEF', 'PORK', 'HONEY', 'JAM', 'JELLY', 'SAUCE', 'SALSA', 'GUM', 'CAKE', 'PIE',
   'LOTION', 'SOAP', 'PAPER', 'TAPE', 'GLUE', 'PAINT', 'MONEY', 'MUSIC', 'HELP', 'MEDICINE', 'SUNSCREEN', 'MAKEUP', 'PLAY-DOH', 'SLIME', 'SAND'];
 function magicArticle(w) {
+  if ((state.compoundOf || {})[w]) return [];      // "chocolate chip cookies", "tortilla chips"
   const label = sentenceLabel(w), last = w.split(' ').pop();
   if (MAGIC_MASS.includes(w) || MAGIC_MASS.includes(last)) return [];
   if (label !== label.toLowerCase()) return [];                    // a name or a brand: "I want Uno"
@@ -8112,7 +8144,7 @@ function renderBuilder(grid) {
           if (!categoriesOf(gk).length) { state.recentsHidden = state.recentsHidden || {}; state.recentsHidden[gk] = true; }
           homePhrase.push(gk);
         }
-        builderSay(w);
+        builderSay(withGroup(c, w));
         const n = leads();
         const g = n && n.go ? catById(n.go) : null;
         if (g && !g.hidden) { builderPath.push({ cat: n.go, via: w }); renderHome(true); }
@@ -8546,6 +8578,7 @@ function openFolderEdit(c, extra) {
     body.appendChild(hn);
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
     if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
+    if (!c.target && !c.small && !c.smallSec && (c.words || []).length) body.appendChild(suffixBtn(c));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
     if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? 'Custom page: change the tiles' : 'Custom page: pick tiles from its folders', '', () => openFeedPicker(c)));
     // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
@@ -9081,7 +9114,7 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   const titleTile = (w, list, onDrop) => {
     const card = mk(bankLabel(w));
     card.dataset.word = w;
-    movable(card, list, w, 'titles', () => { homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w); }, () => openTitleActions(w, cat), onDrop);
+    movable(card, list, w, 'titles', () => { const sw = withGroup(cat, w); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw); }, () => openTitleActions(w, cat), onDrop);
     put(card);
   };
   const ghost = (text, fn) => { const g = mk(text, 'add-folder ghost-tile'); g.addEventListener('click', fn); put(g); };
@@ -9137,6 +9170,7 @@ function openGroupHead(cat, group) {
       if (!name) return false;
       group.name = name;
     })));
+    if (!cat.target) body.appendChild(suffixBtn(group));
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
     if (!cat.target) body.appendChild(layoutSwitchBtn(cat));
@@ -9368,9 +9402,10 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const row = makeListRow(w, rowH, base);
     if (cat.target && (state.targetOff || {})[w]) row.classList.add('paused');
     holdTap(row, () => {
-      homePhrase.push(w);
+      const sw = withGroup(cat, w);
+      homePhrase.push(sw);
       warmSpeech();
-      speakWord(w, 0.95);
+      speakWord(sw, 0.95);
       renderPhraseBar();
       renderMagic(w);
     }, () => openTitleActions(w, cat), usesGroups(cat) ? { kind: 'title', drop: (to, below, onWord) => {
@@ -10079,9 +10114,10 @@ function renderSlotGrid(grid, cat, folders) {
     }
     card.addEventListener('click', () => {
       if (suppressTileClick) { suppressTileClick = false; return; }   // it was a hold, not a tap
-      homePhrase.push(w);
+      const sw = arrange ? withGroup(cat, w) : w;
+      homePhrase.push(sw);
       warmSpeech();
-      speakWord(w, 0.95);
+      speakWord(sw, 0.95);
       renderPhraseBar();
       renderMagic(w);
       // the page stays put so more words can be added from it; enter (or the folder menu) moves on
@@ -10183,7 +10219,7 @@ function renderSlotGrid(grid, cat, folders) {
           card.appendChild(t);
           card.addEventListener('click', () => {
             if (suppressTileClick) { suppressTileClick = false; return; }
-            homePhrase.push(w); warmSpeech(); speakWord(w, 0.95); renderPhraseBar(); renderMagic(w);
+            const sw = withGroup(f, w); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw);
           });
           attachWordHold(card, w, f);
           fit(card, label);
