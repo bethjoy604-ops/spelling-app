@@ -2459,7 +2459,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 352 - 6 Oct';
+const BUILD = 'build 353 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6650,6 +6650,8 @@ function magicFold() {
   if (stripMagic) { stripShut = true; stripMagic = false; stripFull = null; if (smallHostRedo) smallHostRedo(); }      // the row folds with it only if it opened with it
   const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
   if (magicTilesNow.length) renderPhraseBar();      // the page's own tiles come back
+  // back on the first page with the offer gone: the folder menu opens out again for three seconds
+  if (!state.builderMode && homePath.length === 0) { rootMenuUntil = Date.now() + 3000; renderCatTiles(); }
 }
 document.getElementById('magicBox').addEventListener('click', e => {
   const box = e.currentTarget;
