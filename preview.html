@@ -2367,7 +2367,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 283 - 6 Oct';
+const BUILD = 'build 284 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7691,7 +7691,7 @@ function renderBuilder(grid) {
     // the row of small words: a blue bar that opens out when it is tapped, as in menu mode.
     // A folder brings its own row; a builder page can carry one too.
     const owner = 'cat' in here ? (hasSmallStrip(catById(here.cat)) ? catById(here.cat) : null) : ((here.small || []).length ? here : null);
-    if (owner && !isBoardMenu(owner)) {
+    if (false && owner && !isBoardMenu(owner)) {      // switched off: builder pages carry no small words row
       const okey = 'b:' + builderPageKey();
       const isOpen = !!(state.rowOpenBy || {})[okey];
       const el = document.createElement('div');
