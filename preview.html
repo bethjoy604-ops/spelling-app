@@ -2446,7 +2446,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 343 - 6 Oct';
+const BUILD = 'build 344 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4632,9 +4632,25 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   if (grid.scrollTop > 30 && document.querySelector('#magicBox.show:not(.folded)')) { magicFold(); barHold = Date.now(); return; }
   if (grid.scrollTop > 30 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); barHold = Date.now(); return; }
   if (barHold) { if (grid.scrollTop <= 0 && Date.now() - barHold > 500) barHold = false; return; }
-  if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 260) { gridHFull = grid.clientHeight; view.classList.add('bar-min'); }
-  else if (min && grid.scrollTop <= 0) view.classList.remove('bar-min');
+  const was = barPrevTop; barPrevTop = grid.scrollTop;
+  if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 260) {
+    // the room the menu and bars give up goes to the page: the tiles stay where they were on screen
+    // (so the row being scrolled is shown whole, not cut off under the bar)
+    const y0 = grid.getBoundingClientRect().top;
+    gridHFull = grid.clientHeight; view.classList.add('bar-min'); barMinAt = Date.now();
+    const freed = y0 - grid.getBoundingClientRect().top;
+    if (freed > 0) grid.scrollTop = Math.max(0, grid.scrollTop - freed);
+  }
+  else if (min && grid.scrollTop <= 0 && was > 0 && Date.now() - barMinAt > 400) view.classList.remove('bar-min');
 });
+// at the very top with the bar drawn in: pulling down again (wheel or finger) opens everything out
+let barPrevTop = 0, barMinAt = 0;
+{ const grid = document.getElementById('homeGrid'), view = document.getElementById('viewHome');
+  const open = () => { if (view.classList.contains('bar-min') && grid.scrollTop <= 0 && Date.now() - barMinAt > 400) view.classList.remove('bar-min'); };
+  grid.addEventListener('wheel', e => { if (e.deltaY < 0) open(); }, { passive: true });
+  let ty = 0;
+  grid.addEventListener('touchstart', e => { ty = e.touches[0].clientY; }, { passive: true });
+  grid.addEventListener('touchmove', e => { if (e.touches[0].clientY - ty > 24) open(); }, { passive: true }); }
 let barFlashTimer = null;
 function hideBarFlash() { clearTimeout(barFlashTimer); barFlashTimer = null; const f = document.getElementById('barFlash'); if (f) f.remove(); }
 function flashBar() {
