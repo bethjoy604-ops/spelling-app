@@ -669,7 +669,7 @@
   .magic-box.show { display: flex; }
   .magic-box .magic-x { display: flex; }
   /* while a sentence is offered it stands in for the folder menu */
-  .view-home:has(#magicBox.show:not(.folded)) .home-row { display: none; }
+  .view-home:not(.at-root):has(#magicBox.show:not(.folded)) .home-row { display: none; }      /* (the first page keeps its menu: a folder may be wanted next) */
   /* ... and the key bar opens out to show every word in it */
   .view-home:has(#magicBox.show:not(.folded)) .phrase-bar .pb-words { max-height: none; }
   /* folded: a slim bar in the sentence's own light green, like the small words bar; a tap opens it again */
@@ -2459,7 +2459,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 351 - 6 Oct';
+const BUILD = 'build 352 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6796,7 +6796,9 @@ function renderPhraseBar() {
   renderSpeakBtn();
   refreshSmallStrips();
   // a tile was chosen: the pop-out of switches has done its job
-  { const grew = homePhrase.length > phraseLenSeen; phraseLenSeen = homePhrase.length; if (grew) setTimeout(flashBar, 40); if (grew && state.iconsOpen) { closeIcons(); return; } }
+  { const grew = homePhrase.length > phraseLenSeen; phraseLenSeen = homePhrase.length; if (grew) setTimeout(flashBar, 40);
+    // on the first page a chosen tile opens the folder menu out for three seconds, in case the next word is in a folder
+    if (grew && !state.builderMode && homePath.length === 0) { rootMenuUntil = Date.now() + 3000; renderCatTiles(); } if (grew && state.iconsOpen) { closeIcons(); return; } }
   const bar = document.getElementById('phraseBar');
   const box = document.getElementById('pbWords');
   // Same size settings as the keyboard's typing bar
@@ -7278,7 +7280,7 @@ function renderCatTiles(containerId, rerender) {
       clearTimeout(rootMenuTimer);
       if (Date.now() < rootMenuUntil) rootMenuTimer = setTimeout(() => renderCatTiles(containerId, rerender), rootMenuUntil - Date.now() + 30);
     }
-    if (level === 0 && (!containerId || containerId === 'catTiles')) rootMenuWas = homePath.length;
+    if (level === 0 && (!containerId || containerId === 'catTiles')) { rootMenuWas = homePath.length; document.getElementById('viewHome').classList.toggle('at-root', homePath.length === 0 && !state.builderMode); }
     const rootShut = mainBar && Date.now() >= rootMenuUntil;
     if (level === 0 && !folded) {
       const all = document.createElement('button');
