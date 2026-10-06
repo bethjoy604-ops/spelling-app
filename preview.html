@@ -2396,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 318 - 6 Oct';
+const BUILD = 'build 319 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10435,6 +10435,13 @@ function renderSlotGrid(grid, cat, folders) {
       for (let k = 0; k < laid.length; k += cols) lines.push(laid.slice(k, k + cols));
       const wide = l => { let m = l.length; while (m > 0 && !l[m - 1]) m--; return m; };
       lines = lines.filter(l => wide(l) > 0);
+      // a plain run of tiles that would leave a ragged last row is squared up instead (four tiles in a
+      // three-wide grid sit two by two), so the blue holds no empty places and another panel fits beside it
+      if (!laid.includes(null) && laid.length > cols && laid.length % cols) {
+        let w = 0;
+        for (let k = cols - 1; k >= 2; k--) if (laid.length % k === 0 && laid.length / k <= Math.ceil(laid.length / cols) + 1) { w = k; break; }
+        if (w) { lines = []; for (let k = 0; k < laid.length; k += w) lines.push(laid.slice(k, k + w)); }
+      }
       let span = Math.min(cols, Math.max(1, ...lines.map(wide)));
       let tall = shut ? 1 : lines.length;
       let at = firstFit(span, tall);
