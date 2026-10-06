@@ -634,6 +634,18 @@
      out of sight (a fade at the top says they are there) and come back with a swipe down */
   .phrase-bar .pb-words { max-height: calc(2.3em + 10px); overflow-y: auto; scrollbar-width: none; overscroll-behavior: contain; }
   .phrase-bar .pb-words::-webkit-scrollbar { display: none; }
+  /* scrolled down a page: the key bar draws in to one slim line, and opens out again at the top */
+  .view-home.bar-min .phrase-bar { min-height: 0; height: 50px; flex: none; padding-top: 4px; padding-bottom: 4px; font-size: 22px; overflow: hidden; }
+  .view-home.bar-min .phrase-bar .pb-words { max-height: 1.35em; }
+  .view-home.bar-min .phrase-bar .home-enter { min-height: 0; height: 38px; width: 64px; font-size: 20px; }
+  .view-home.bar-min .phrase-bar .display-clear { transform: scale(0.75); }
+  /* a tile was chosen: for two seconds the whole page is the sentence, then the page comes back */
+  .bar-flash { position: fixed; inset: 0; z-index: 40; background: var(--page, #aeb0b5); padding: 16px; display: flex; }
+  .bar-flash .bf-card { flex: 1; background: #fff; border-radius: 28px; padding: 28px; display: flex; flex-direction: column; justify-content: center; gap: 28px; overflow: hidden; }
+  .bar-flash .bf-words { display: flex; flex-wrap: wrap; gap: 10px 4px; font-size: clamp(40px, 11vh, 110px); font-weight: 900; }
+  .bar-flash .bf-magic > * { font-size: 1em !important; padding: 0.25em 0.6em !important; height: auto !important; }
+  .bar-flash .bf-words .pb-chip { font-size: 1em; background: var(--prompt-soft); border-radius: 16px; padding: 2px 18px; margin-right: 10px; line-height: 1.15; }
+  .bar-flash .bf-magic { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: clamp(22px, 5vh, 44px); font-weight: 900; pointer-events: none; }
   .phrase-bar .pb-words.clipped { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.25) 0, #000 0.2em); mask-image: linear-gradient(to bottom, rgba(0,0,0,0.25) 0, #000 0.2em); }
   .phrase-bar .pb-words:empty { display: none; }
   .pb-empty { color: var(--muted); font-size: 14px; font-weight: 700; }
@@ -2412,7 +2424,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 330 - 6 Oct';
+const BUILD = 'build 331 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4574,6 +4586,55 @@ function setView(name) {
 }
 function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
+// The height the page's tiles are sized from: with the key bar drawn in the grid is taller, but the
+// tiles keep the size they had with the bar open, so nothing jumps
+let gridHFull = 0;
+function gridH(grid) {
+  if (grid.id === 'homeGrid' && gridHFull && document.getElementById('viewHome').classList.contains('bar-min')) return gridHFull;
+  return grid.clientHeight;
+}
+document.getElementById('homeGrid').addEventListener('scroll', () => {
+  const grid = document.getElementById('homeGrid'), view = document.getElementById('viewHome');
+  const min = view.classList.contains('bar-min');
+  if (state.builderMode) { if (min) view.classList.remove('bar-min'); return; }
+  if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 260) { gridHFull = grid.clientHeight; view.classList.add('bar-min'); }
+  else if (min && grid.scrollTop <= 0) view.classList.remove('bar-min');
+});
+let barFlashTimer = null;
+function hideBarFlash() { clearTimeout(barFlashTimer); barFlashTimer = null; const f = document.getElementById('barFlash'); if (f) f.remove(); }
+function flashBar() {
+  hideBarFlash();
+  if (state.builderMode || !homePhrase.length || !document.getElementById('viewHome').classList.contains('active')) return;
+  const f = document.createElement('div');
+  f.className = 'bar-flash'; f.id = 'barFlash';
+  const card = document.createElement('div'); card.className = 'bf-card';
+  const w = document.createElement('div'); w.className = 'bf-words';
+  w.innerHTML = document.getElementById('pbWords').innerHTML;
+  card.appendChild(w);
+  if (document.getElementById('magicBox').classList.contains('show')) {
+    const m = document.createElement('div'); m.className = 'bf-magic';
+    m.innerHTML = document.getElementById('magicRow').innerHTML;
+    card.appendChild(m);
+  }
+  f.appendChild(card);
+  f.addEventListener('click', hideBarFlash);       // a tap brings the page straight back
+  document.getElementById('viewHome').appendChild(f);
+  barFlashTimer = setTimeout(hideBarFlash, 2000);
+}
+// a tap on the key bar itself (not its buttons) opens the keyboard page, to type there
+document.getElementById('phraseBar').addEventListener('click', e => {
+  if (e.target.closest('button, .pb-suggest')) return;
+  document.getElementById('pbInput').blur();
+  hideBarFlash();
+  showKeyboard();
+  // opened from the bar and left alone for three seconds, the keyboard closes and the page comes back
+  clearTimeout(kbIdleTimer);
+  kbIdleTimer = setTimeout(() => { kbIdleTimer = null; if (document.getElementById('viewKeyboard').classList.contains('active')) showHome(); }, 3000);
+});
+let kbIdleTimer = null;
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, e => {
+  if (kbIdleTimer && (ev === 'keydown' || e.target.closest('#viewKeyboard'))) { clearTimeout(kbIdleTimer); kbIdleTimer = null; }
+}, true));
 function showHome() { if (kbSearch) closeLetterSearch(); setView('home'); touchSession(); renderHome(true); }
 function showKeyboard() {
   if (kbSearch) closeLetterSearch();     // arrive ready to type, never mid-search
@@ -5905,7 +5966,7 @@ function fitGrid(grid) {
   const cards = Array.from(grid.querySelectorAll('.home-card'));
   const n = cards.length;
   if (!n) return;
-  const W = grid.clientWidth, H = grid.clientHeight;
+  const W = grid.clientWidth, H = gridH(grid);
   if (!W || !H) return;
   const gap = 16, padX = 30;
   const labels = cards.map(c => ((c.querySelector('.hw') || {}).textContent || '').trim());
@@ -6615,7 +6676,7 @@ function renderPhraseBar() {
   renderSpeakBtn();
   refreshSmallStrips();
   // a tile was chosen: the pop-out of switches has done its job
-  { const grew = homePhrase.length > phraseLenSeen; phraseLenSeen = homePhrase.length; if (grew && state.iconsOpen) { closeIcons(); return; } }
+  { const grew = homePhrase.length > phraseLenSeen; phraseLenSeen = homePhrase.length; if (grew) setTimeout(flashBar, 40); if (grew && state.iconsOpen) { closeIcons(); return; } }
   const bar = document.getElementById('phraseBar');
   const box = document.getElementById('pbWords');
   // Same size settings as the keyboard's typing bar
@@ -7243,7 +7304,7 @@ function fitTiles(grid) {
   const tiles = Array.from(grid.children);
   const n = tiles.length;
   if (!n) return;
-  const W = grid.clientWidth, H = grid.clientHeight;
+  const W = grid.clientWidth, H = gridH(grid);
   if (!W || !H) return;
   const gap = parseFloat(getComputedStyle(grid).gap) || 18;
   let best = null;
@@ -8256,7 +8317,7 @@ function renderBuilder(grid) {
   };
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
-  const W = grid.clientWidth, H = grid.clientHeight;
+  const W = grid.clientWidth, H = gridH(grid);
   const cellW = Math.max(60, (W - gap * (cols - 1)) / cols);
   const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
   const room = cellW - 30;
@@ -10154,7 +10215,7 @@ function renderSlotGrid(grid, cat, folders) {
   magicSigShown = '';
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
-  const W = grid.clientWidth, H = grid.clientHeight;
+  const W = grid.clientWidth, H = gridH(grid);
   // only a real folder can be arranged; Recents / Popular just lists its words in order
   const arrange = !!(cat && !cat.rule);
   const plusW = 0;   // the plus lives on the menu bar now, so every column is a tile
@@ -11092,7 +11153,7 @@ function openTargetSettings() {
 function renderTargets(grid, cat) {
   const { cols, rows: screenRows } = slotShape();
   const gap = 16;
-  const W = grid.clientWidth, H = grid.clientHeight;
+  const W = grid.clientWidth, H = gridH(grid);
   const cellW = Math.max(60, (W - gap * (cols - 1)) / cols);
   const rowH = Math.max(60, (H - gap * (screenRows - 1)) / screenRows);
   const room = cellW - 30;
