@@ -2380,7 +2380,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 303 - 6 Oct';
+const BUILD = 'build 304 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9879,7 +9879,7 @@ function stackLabel(t, label, room, base) {
 // Choices can keep a short list of tiles picked from all its folders. While there are any, opening
 // Choices shows them together as one page; the Library tile at the end opens the folders.
 let libraryOpen = null;      // the Choices folder whose folders (its library) are showing in place of the feed
-function feedHost(cat) { return !!cat && !cat.target && !!cat.parent && !catAllowsPhrases(cat) && childrenOf(cat.id).length > 0; }
+function feedHost(cat) { return !!cat && !cat.target && !cat.small && !cat.smallSec && (!!cat.parent || catAllowsPhrases(cat)) && childrenOf(cat.id).length > 0; }
 function feedFolders(cat) { const out = []; const walk = id => childrenOf(id).forEach(c => { out.push(c); walk(c.id); }); walk(cat.id); return out; }
 function feedWords(cat) {
   const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
@@ -9933,13 +9933,15 @@ function renderSlotGrid(grid, cat, folders) {
   if (sec) folders = folders.filter(f => f !== sec);
   const smalls = sec ? punctLast((sec.words || []).filter(w => !state.hiddenWords[w])) : [];
   // My Stuff: titles are long, so its words are a list - one to a row, A to Z, as many as there are
-  const listMode = arrange && !sec && (catAllowsPhrases(cat) || !!cat.target);
+  // (My Stuff, or a folder of folders inside it, showing its custom page is laid out as that page, not as a list)
+  const stuffFeed = arrange && !sec && catAllowsPhrases(cat) && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && !cat.feedOff && feedWords(cat).length > 0;
+  const listMode = arrange && !sec && !stuffFeed && (catAllowsPhrases(cat) || !!cat.target);
   const listWords = listMode ? words.slice().sort((a, b) => bankLabel(a).localeCompare(bankLabel(b), undefined, { sensitivity: 'base' })) : [];
   // folders in Categories (Food, Actions ...) keep their words A to Z, with no gaps
   const alpha = arrange && !listMode && hasSmallStrip(cat);
   // Choices: once tiles have been picked for it, the page opens as that short feed of tiles from
   // across its folders; a Library tile at the end opens the folders themselves
-  const feedMode = alpha && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && !cat.feedOff && feedWords(cat).length > 0;
+  const feedMode = (alpha || stuffFeed) && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && !cat.feedOff && feedWords(cat).length > 0;
   if (feedMode) { words = feedWords(cat); folders = []; }
   const slots = (listMode || feedMode) ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
   // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
@@ -10347,7 +10349,7 @@ function renderSlotGrid(grid, cat, folders) {
           card.style.height = rowH + 'px';
           const t = document.createElement('span');
           t.className = 'hw';
-          const label = plainLabel(w);
+          const label = catAllowsPhrases(f) ? bankLabel(w) : plainLabel(w);      // titles and names keep their capitals
           t.textContent = label;
           card.appendChild(t);
           card.addEventListener('click', () => {
