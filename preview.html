@@ -2396,7 +2396,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 320 - 6 Oct';
+const BUILD = 'build 321 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6992,6 +6992,14 @@ function tintFor(cat, amount) {
   return mixHex(def.solid, '#ffffff', amount);
 }
 let lastTabTap = { id: null, t: 0 };
+// One step back from the page that is open; all = straight to the first page (Popular / Recents)
+function homeStepBack(all) {
+  const here = currentCat();
+  if (all) { homePath = []; tileGroup = null; libraryOpen = null; return; }
+  if (tileGroup) tileGroup = null;                                              // out of a group's page of tiles
+  else if (libraryOpen && here && here.id === libraryOpen) libraryOpen = null;  // out of the Library, back to the custom page
+  else homePath = homePath.slice(0, -1);
+}
 function renderCatTiles(containerId, rerender) {
   const host = document.getElementById(containerId || 'catTiles');
   if (!host) return;
@@ -7030,13 +7038,9 @@ function renderCatTiles(containerId, rerender) {
       const mine = homePath[level] === c.id;
       const twice = mine && lastTabTap.id === c.id && now - lastTabTap.t < 450;
       lastTabTap = { id: c.id, t: now };
-      const lastId = homePath[homePath.length - 1];
-      if (mine && !twice && libraryOpen && libraryOpen === lastId && !tileGroup) { libraryOpen = null; again(); return; }
-      if (mine && !twice && (tileGroup || homePath.length > level + 1)) {
-        if (tileGroup) tileGroup = null; else homePath = homePath.slice(0, -1);
-        again();
-        return;
-      }
+      // (with a page open the bar holds only this tab: one tap steps back a page - from a top page,
+      //  back to the first page with all the tabs - and a quick second tap goes straight there)
+      if (mine) { homeStepBack(twice); again(); return; }
       tileGroup = null;
       // stay on the bar: pick at this level, drop anything deeper
       homePath = homePath.slice(0, level);
@@ -7057,7 +7061,9 @@ function renderCatTiles(containerId, rerender) {
     const row = document.createElement('div');
     row.className = 'folder-strip-row';
 
-    if (level === 0) {
+    // a page is open: the menu folds down to just its tab (the back arrow sits to its left)
+    const folded = level === 0 && homePath.length > 0 && !state.builderMode;
+    if (level === 0 && !folded) {
       const all = document.createElement('button');
       all.className = 'cat-tile plain' + (homePath.length === 0 ? ' selected' : '');
       // named for what it shows: the latest words, or the most used ones
@@ -7066,7 +7072,7 @@ function renderCatTiles(containerId, rerender) {
       row.appendChild(all);
     }
     // the targets tab only shows while the settings arrow is open
-    kids.filter(c => !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
+    kids.filter(c => folded ? c.id === homePath[0] : !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
 
     host.appendChild(row);
   });
@@ -7279,7 +7285,7 @@ function renderHome(reset) {
     // that space holds just the back arrow and the plus.
     // Menu mode does the same inside a sub-folder: the back arrow takes the settings arrow's place.
     const inSub = !state.builderMode && homePath.length > 1;
-    document.getElementById('homeBackBtn').style.display = inSub ? '' : 'none';
+    document.getElementById('homeBackBtn').style.display = (!state.builderMode && homePath.length > 0) ? '' : 'none';
     // on the targets page a gear sits beside the plus: the prompting options for practising them
     document.getElementById('targetGearBtn').style.display = (state.iconsOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
@@ -9077,11 +9083,12 @@ document.getElementById('builderBackBtn').addEventListener('click', () => {
 document.getElementById('builderAddBtn').addEventListener('click', openBuilderAdd);
 document.getElementById('targetGearBtn').addEventListener('click', () => { targetSetOpen = 'when'; openTargetSettings(); });
 // menu mode: back up one folder
+let lastBackTap = 0;
 document.getElementById('homeBackBtn').addEventListener('click', () => {
-  const here0 = currentCat();
-  if (tileGroup) tileGroup = null;                      // out of a group's page of tiles, back to the page of groups
-  else if (libraryOpen && here0 && here0.id === libraryOpen) libraryOpen = null;      // out of the Library, back to the feed
-  else if (homePath.length > 1) homePath = homePath.slice(0, -1);
+  // the same as the green tab: one tap back a page, a quick second tap back to the first page
+  const now = Date.now(), twice = now - lastBackTap < 450;
+  lastBackTap = now;
+  homeStepBack(twice);
   buzz(10);
   renderHome(true);
 });
