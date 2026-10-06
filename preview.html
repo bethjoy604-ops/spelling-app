@@ -658,6 +658,7 @@
   .magic-chip:active { transform: scale(0.97); }
   .magic-chip.word, .magic-chip.folder { background: var(--bg); }
   .magic-chip.phrase { background: var(--green-soft, #e6f6e9); border-color: transparent; }
+  .magic-chip.fill { background: #bfd8ff; border-color: transparent; }
   .magic-small { display: none; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; flex-shrink: 0; }
   .magic-small.show { display: grid; }
   .magic-strip { display: grid; gap: 10px; background: #bfd8ff; border-radius: 16px; padding: 12px 14px; box-sizing: border-box; }
@@ -2375,7 +2376,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 309 - 6 Oct';
+const BUILD = 'build 310 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6458,7 +6459,8 @@ function renderMagic(word) {
   strip.className = 'magic-strip';
   const small = document.getElementById('magicSmall');
   small.innerHTML = ''; small.classList.remove('show');
-  small.appendChild(strip);
+  // (the simple set-up: the sentence, then its missing small words as blue chips, all in the one bar)
+  const MAGIC_SIMPLE = true;
   const mp = magicPhraseNow();
   if (mp) {
     const whole = document.createElement('button');
@@ -6484,7 +6486,7 @@ function renderMagic(word) {
         warmSpeech(); speakWord(w, 0.95); buzz(10); save();
         renderPhraseBar();
       });
-      strip.appendChild(b);
+      (MAGIC_SIMPLE ? row : strip).appendChild(b);
     });
   }
 
@@ -6493,14 +6495,14 @@ function renderMagic(word) {
   const sentenceOnly = !!mp && homePhrase.length > 1;
   // after an action word ("I want to climb"): the small words that carry it on - up, the, that,
   // now - and then the folders to find the thing in. After "the", "my", "that": the folders.
-  let folders = sentenceOnly ? [] : magicFolders(word);
+  let folders = sentenceOnly || MAGIC_SIMPLE ? [] : magicFolders(word);      // folder prompts are parked for now
   const carryOn = !sentenceOnly && kindOfWord(word) === 'action' && !MAGIC_WANTS.includes(word) && !Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))
     ? followWords(word, []).filter(w => !isPunct(w))
     : (!sentenceOnly && homePhrase.length > 1 && MAGIC_PREPS.includes(word) && !(word === 'TO' && MAGIC_WANTS.includes(homePhrase[homePhrase.length - 2])) ? ['THE', 'THAT', 'MY', 'THERE', 'NOW'] : []);
   // every word gets a blue row: its own rule if it has one, the words that carry an action on,
   // and failing those the small words that most often follow a word of its kind
-  let blue = sentenceOnly ? [] : magicSmallNext(word).concat(carryOn);
-  if (!sentenceOnly && !strip.children.length && !blue.length) blue = followWords(word, ['PLEASE', 'AND', 'I', 'WANT', 'MORE', 'NOW']).filter(w => !isPunct(w));
+  let blue = sentenceOnly || MAGIC_SIMPLE ? [] : magicSmallNext(word).concat(carryOn);
+  if (!MAGIC_SIMPLE && !sentenceOnly && !strip.children.length && !blue.length) blue = followWords(word, ['PLEASE', 'AND', 'I', 'WANT', 'MORE', 'NOW']).filter(w => !isPunct(w));
   blue.filter((w, i) => blue.indexOf(w) === i && (!homePhrase.includes(w) || ['TO', 'THE'].includes(w))).slice(0, 6).forEach(next => {
     const b = document.createElement('button');
     b.className = 'magic-chip fill';
@@ -6508,8 +6510,9 @@ function renderMagic(word) {
     b.addEventListener('click', () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); });
     strip.appendChild(b);
   });
-  const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
-  const nextWords = sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word);
+  // (in the simple set-up only a word with a clear lead offers words: go -> places, eat -> food, hi -> people)
+  const byRule = sentenceOnly || folders.length || (MAGIC_SIMPLE && !Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))) ? [] : magicNext(word);
+  const nextWords = sentenceOnly || folders.length ? [] : byRule.length ? byRule : (MAGIC_SIMPLE ? [] : relatedWords(word));
   // the words or folders to pick from next are not chips in the bar: they take the place of the
   // page's own tiles (see renderMagicTiles), and the page comes back once one is picked
   const tiles = [];
@@ -6523,7 +6526,11 @@ function renderMagic(word) {
     homePath = path; libraryOpen = null; tileGroup = null;
     buzz(10); renderHome(true);
   } }));
-  magicTilesNow = tiles;
+  if (MAGIC_SIMPLE) {
+    // the words that fit next ("go" -> the places) are plain chips in the bar; the page keeps its own tiles
+    tiles.forEach(it => { const b = document.createElement('button'); b.className = 'magic-chip word'; b.textContent = it.label; b.addEventListener('click', it.tap); row.appendChild(b); });
+    magicTilesNow = [];
+  } else magicTilesNow = tiles;
 
   // Whole phrases already modelled — tap to spell the lot
   (mp ? [] : magicPhrasesFor(word).slice(0, 1)).forEach(phrase => {
