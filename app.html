@@ -2363,7 +2363,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 276 - 6 Oct';
+const BUILD = 'build 277 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7619,9 +7619,11 @@ function builderHidden(key) {
 }
 function startBuilderEdit() { builderEdit = builderPageKey(); closeWordSheet(); buzz(10); renderHome(true); }
 function builderEditBtn() { return sheetBtn('Edit this page (show or hide tiles)', '', startBuilderEdit); }
-// A tile with nowhere further to go: two seconds later the builder is back on its first page,
+// A tile with nowhere further to go: three seconds later the builder is back on its first page,
 // ready for the next sentence (what is in the bar stays). Another tap in that time starts over.
 let builderHomeTimer = null;
+// any touch on the screen calls the return off; a tile with nothing after it sets it going again
+document.addEventListener('pointerdown', () => { clearTimeout(builderHomeTimer); builderHomeTimer = null; }, true);
 function builderIdleHome() {
   clearTimeout(builderHomeTimer);
   builderHomeTimer = setTimeout(() => {
@@ -7630,7 +7632,7 @@ function builderIdleHome() {
     if (!state.builderMode || !builderPath.length || builderEdit || (sheet && sheet.classList.contains('show'))) return;
     builderPath = [];
     renderHome(true);
-  }, 2000);
+  }, 3000);
 }
 function builderSay(word) {
   clearTimeout(builderHomeTimer); builderHomeTimer = null;
@@ -7844,6 +7846,7 @@ function renderBuilder(grid) {
         if (g && !g.hidden) { builderPath.push({ cat: n.go, via: w }); renderHome(true); }
         else if (n) { builderPath.push(n); renderHome(true); }
         else {
+          builderIdleHome();      // nothing is linked after this word: the first page comes back shortly
           // a plain word from a group of words: step back to the choice board it was opened from
           // (Actions, Food ...), ready for the next pick
           const prev = builderPath.length > 1 ? builderPath[builderPath.length - 2] : null;
@@ -7856,7 +7859,7 @@ function renderBuilder(grid) {
             if (up && !up.hidden && isBoardMenu(up)) {
               builderPath[builderPath.length - 1] = { cat: up.id };
               renderHome(true);
-            } else builderIdleHome();
+            }
           }
         }
       }, () => stuff
