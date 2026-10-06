@@ -2397,7 +2397,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 322 - 6 Oct';
+const BUILD = 'build 323 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9343,13 +9343,14 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   if (pageEdit === cat.id) {
     let gap = false;
     // the groups first: a hidden group's tile (and so its titles) is off the page
-    groups.forEach(g => {
+    // (inside a group's own page, only that group's titles are ticked or unticked)
+    (inGroup ? [] : groups).forEach(g => {
       const card = mk(g.name, 'group-tile');
       editToggle(grid, card, null, !g.hidden, () => { if (g.hidden) delete g.hidden; else g.hidden = true; });
       put(card);
     });
     while (i % cols) i++;
-    editTitles(cat).forEach(([w, on]) => {
+    editTitles(cat).filter(([w]) => !inGroup || inGroup.words.includes(w)).forEach(([w, on]) => {
       if (!on && !gap) { gap = true; while (i % cols) i++; }      // the hidden ones start a row of their own
       const card = mk(bankLabel(w));
       editToggle(grid, card, w, on);
@@ -9359,7 +9360,10 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   }
   if (inGroup) {
     // a group's own page: its titles as tiles, in the order they were put in
-    inGroup.words.filter(w => listWords.includes(w)).forEach(w => titleTile(w, inGroup.words));
+    // A to Z, until a tile is dragged: after that the group keeps the order it was given
+    const shownG = inGroup.words.filter(w => listWords.includes(w));
+    if (!inGroup.custom) shownG.sort(byLabel);
+    shownG.forEach(w => titleTile(w, shownG, l => { inGroup.words = l.concat(inGroup.words.filter(x => !l.includes(x))); inGroup.custom = true; }));
     ghost('+ title', () => askText('New title in ' + inGroup.name, 'Add', '', typed => addTitleTo(cat, inGroup, typed)));
     return;
   }
@@ -9431,7 +9435,7 @@ function openTitleActions(word, cat, extra) {
     if (cat.target) body.appendChild(targetPauseBtn(word));
     if (extra) extra(body);
     if (!cat.target && usesGroups(cat)) body.appendChild(layoutSwitchBtn(cat));
-    if (!cat.target && !state.builderMode) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; tileGroup = null; closeWordSheet(); renderHome(true); }));
+    if (!cat.target && !state.builderMode) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; if (!tilesPage(cat)) tileGroup = null; closeWordSheet(); renderHome(true); }));
     if (!cat.target && state.builderMode) body.appendChild(builderEditBtn());
     const groups = usesGroups(cat) ? listGroups(cat) : [];
     if (groups.length) {
