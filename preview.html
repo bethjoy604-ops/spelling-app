@@ -665,6 +665,7 @@
     border-radius: 16px; padding: 12px;
   }
   .magic-box.show { display: flex; }
+  .magic-box .magic-x { display: flex; }
   /* the suggested sentence sits right under the key bar, above the folder menu, in large type */
   .magic-box .magic-chip.phrase { font-size: clamp(26px, 5vmin, 46px); padding: 14px 22px; border-radius: 18px; }
   .magic-box .mbtn.action { flex: none; padding: 12px 18px; margin: 0; }
@@ -1750,7 +1751,7 @@
 
   <div class="magic-box" id="magicBox">
     <div class="magic-row" id="magicRow"></div>
-    <button class="mbtn action" id="magicSkip">Skip</button>
+    <button class="display-clear magic-x" id="magicSkip" aria-label="Skip this suggestion">&times;</button>
   </div>
 
   <div class="controls-row home-row">
@@ -2430,7 +2431,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 333 - 6 Oct';
+const BUILD = 'build 334 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
