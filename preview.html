@@ -2370,7 +2370,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 294 - 6 Oct';
+const BUILD = 'build 295 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4473,7 +4473,17 @@ function displayWord(w) {
 function speakWord(word, rate) {
   const key = (word || '').toUpperCase().trim();
   if (recordings.word[key] && playClip(recordings.word[key])) return;
-  speak(word, rate);
+  speak(spokenText(word), rate);
+}
+// Words are kept in capitals inside the app, and some voices read a short word in capitals out
+// letter by letter ("A D D"). So what is handed to the voice is written the way it reads: small
+// letters, with I, names and titles as they are shown.
+function spokenText(text) {
+  const t = String(text || '');
+  if (!t || t !== t.toUpperCase() || t.length < 2) return t;
+  const one = k => { try { return (state.words || []).includes(k) ? sentenceLabel(k) : (k === 'I' ? 'I' : k.toLowerCase()); } catch (e) { return k.toLowerCase(); } };
+  if ((state.words || []).includes(t.trim())) return one(t.trim());
+  return t.split(' ').map(w => w ? one(w) : w).join(' ');
 }
 
 let kbSearch = false, searchPrefix = '';
@@ -6141,9 +6151,11 @@ function kindByName(c) {
 }
 // After "want" and words like it (or any action word with no kind of its own to lead to), the
 // row offers the folders to look in - food, music, tv, actions, choices - rather than single words
+const MAGIC_PREPS = ['UP', 'DOWN', 'ON', 'IN', 'AT', 'OVER', 'UNDER', 'INTO', 'OFF', 'OUT', 'TO', 'FROM', 'BY', 'FOR'];
+const MAGIC_POINTERS = ['THE', 'A', 'AN', 'MY', 'YOUR', 'THAT', 'THIS', 'SOME', 'ANOTHER', 'WITH'].concat(MAGIC_PREPS);
 function magicFolders(word) {
   if (Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))) return [];
-  if (!MAGIC_WANTS.includes(word) && kindOfWord(word) !== 'action') return [];
+  if (!MAGIC_WANTS.includes(word) && kindOfWord(word) !== 'action' && !MAGIC_POINTERS.includes(word)) return [];
   const ok = c => c && !c.hidden && !c.target && !c.small && !c.smallSec;
   const stuff = state.categories.find(c => !c.parent && c.phrases && ok(c));
   const out = stuff ? childrenOf(stuff.id).filter(ok) : [];
@@ -6308,7 +6320,28 @@ function renderMagic(word) {
   // Single words that have gone with this one before — tap to keep building
   // (with two or more words in the bar and a sentence to offer, the sentence takes this row's place)
   const sentenceOnly = !!mp && homePhrase.length > 1;
+  // after an action word ("I want to climb"): the small words that carry it on - up, the, that,
+  // now - and then the folders to find the thing in. After "the", "my", "that": the folders.
   const folders = sentenceOnly ? [] : magicFolders(word);
+  const carryOn = !sentenceOnly && kindOfWord(word) === 'action' && !MAGIC_WANTS.includes(word) && !Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word))
+    ? followWords(word, []).filter(w => !isPunct(w))
+    : (!sentenceOnly && homePhrase.length > 1 && MAGIC_PREPS.includes(word) ? ['THE', 'THAT', 'MY', 'THERE', 'NOW'] : []);
+  const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
+  carryOn.concat(sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
+    const b = document.createElement('button');
+    b.className = 'magic-chip word';
+    const t = document.createElement('span');
+    t.textContent = sentenceLabel(next);
+    b.appendChild(t);
+    b.addEventListener('click', () => {
+      magicKnow(next);
+      homePhrase.push(next);
+      warmSpeech();
+      speakWord(next, 0.95);
+      renderPhraseBar();
+    });
+    row.appendChild(b);
+  });
   folders.forEach(c => {
     const b = document.createElement('button');
     b.className = 'magic-chip folder';
@@ -6318,22 +6351,6 @@ function renderMagic(word) {
       while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
       homePath = path; libraryOpen = null; tileGroup = null;
       buzz(10); renderHome(true);
-    });
-    row.appendChild(b);
-  });
-  const byRule = sentenceOnly || folders.length ? [] : magicNext(word);
-  (sentenceOnly || folders.length ? [] : byRule.length ? byRule : relatedWords(word)).forEach(next => {
-    const b = document.createElement('button');
-    b.className = 'magic-chip word';
-    const t = document.createElement('span');
-    t.textContent = bankLabel(next);
-    b.appendChild(t);
-    b.addEventListener('click', () => {
-      homePhrase.push(next);
-      warmSpeech();
-      speakWord(next, 0.95);
-      renderPhraseBar();
-      renderMagic(next);
     });
     row.appendChild(b);
   });
@@ -7370,6 +7387,10 @@ function hasSmallStrip(cat) {
 // set for its kind of word, and last the page's usual row to fill any places left.
 const FOLLOW_ACTION = ['IT', 'THAT', 'THIS', 'THE', 'MY', 'MORE', 'AGAIN', 'NOW', 'WITH', 'TO'];
 const FOLLOW_BY_WORD = {
+  CLIMB: ['UP', 'DOWN', 'ON', 'THE', 'THAT', 'NOW'], JUMP: ['ON', 'IN', 'UP', 'OVER', 'THE', 'NOW'], SIT: ['ON', 'DOWN', 'HERE', 'WITH', 'THE', 'NOW'],
+  LOOK: ['AT', 'THE', 'THAT', 'HERE', 'UP', 'NOW'], OPEN: ['THE', 'IT', 'THAT', 'THIS', 'MY', 'NOW'], CLOSE: ['THE', 'IT', 'THAT', 'THIS', 'MY', 'NOW'],
+  PLAY: ['WITH', 'THE', 'MORE', 'AGAIN', 'OUTSIDE', 'NOW'], HELP: ['ME', 'PLEASE', 'WITH', 'THE', 'NOW'], TURN: ['ON', 'OFF', 'IT', 'THE', 'UP', 'DOWN'],
+  GET: ['THE', 'MY', 'IT', 'THAT', 'MORE', 'NOW'], PUT: ['ON', 'IN', 'IT', 'THE', 'THAT', 'AWAY'], WALK: ['TO', 'WITH', 'OUTSIDE', 'THE', 'NOW'],
   I: ['WANT', 'AM', 'LIKE', 'NEED', 'CAN', 'SEE'], YOU: ['ARE', 'CAN', 'WANT', 'LIKE'], WE: ['ARE', 'CAN', 'WANT', 'GO'],
   IT: ['IS', 'AGAIN', 'NOW', 'PLEASE', '.', '?'], THAT: ['IS', 'ONE', 'AGAIN', 'PLEASE', '.'], THIS: ['IS', 'ONE', 'AGAIN', 'PLEASE', '.'],
   IS: ['IT', 'THAT', 'THE', 'MY', 'NOT', 'A'], AM: ['NOT', 'A', 'THE', 'ALL DONE'], ARE: ['YOU', 'WE', 'NOT', 'THE'],
