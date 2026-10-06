@@ -640,9 +640,10 @@
   .view-home.bar-min .phrase-bar .home-enter { min-height: 0; height: 38px; width: 64px; font-size: 20px; }
   .view-home.bar-min .phrase-bar .display-clear { transform: scale(0.75); }
   /* a tile was chosen: for two seconds the whole page is the sentence, then the page comes back */
-  .bar-flash { position: fixed; inset: 0; z-index: 40; background: var(--page, #aeb0b5); padding: 16px; display: flex; }
-  .bar-flash .bf-card { flex: 1; background: #fff; border-radius: 28px; padding: 28px; display: flex; flex-direction: column; justify-content: center; gap: 28px; overflow: hidden; }
-  .bar-flash .bf-words { display: flex; flex-wrap: wrap; gap: 10px 4px; font-size: clamp(40px, 11vh, 110px); font-weight: 900; }
+  .bar-flash { position: fixed; inset: 0; z-index: 40; background: rgba(174,176,181,0.45); padding: 16px; display: flex; animation: barFlash 1s ease both; }
+  @keyframes barFlash { 0% { opacity: 0; } 22% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+  .bar-flash .bf-card { flex: 1; background: rgba(255,255,255,0.86); border-radius: 28px; padding: 28px; display: flex; flex-direction: column; justify-content: center; gap: 28px; overflow: hidden; }
+  .bar-flash .bf-words { display: flex; flex-wrap: wrap; gap: 10px 4px; font-size: clamp(36px, 9vh, 90px); font-weight: 900; }
   .bar-flash .bf-magic > * { font-size: 1em !important; padding: 0.25em 0.6em !important; height: auto !important; }
   .bar-flash .bf-words .pb-chip { font-size: 1em; background: var(--prompt-soft); border-radius: 16px; padding: 2px 18px; margin-right: 10px; line-height: 1.15; }
   .bar-flash .bf-magic { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: clamp(22px, 5vh, 44px); font-weight: 900; pointer-events: none; }
@@ -2431,7 +2432,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 334 - 6 Oct';
+const BUILD = 'build 335 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4621,7 +4622,7 @@ function flashBar() {
   f.appendChild(card);
   f.addEventListener('click', hideBarFlash);       // a tap brings the page straight back
   document.getElementById('viewHome').appendChild(f);
-  barFlashTimer = setTimeout(hideBarFlash, 2000);
+  barFlashTimer = setTimeout(hideBarFlash, 1000);
 }
 // a tap on the key bar itself (not its buttons) opens the keyboard page, to type there
 document.getElementById('phraseBar').addEventListener('click', e => {
@@ -7369,7 +7370,7 @@ function renderHome(reset) {
     // that space holds just the back arrow and the plus.
     // Menu mode does the same inside a sub-folder: the back arrow takes the settings arrow's place.
     const inSub = !state.builderMode && homePath.length > 1;
-    document.getElementById('homeBackBtn').style.display = (!state.builderMode && homePath.length > 0) ? '' : 'none';
+    document.getElementById('homeBackBtn').style.display = 'none';      // retired: the green tab itself steps back (one tap) or home (two)
     // on the targets page a gear sits beside the plus: the prompting options for practising them
     document.getElementById('targetGearBtn').style.display = (state.iconsOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
