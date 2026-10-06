@@ -2459,7 +2459,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 353 - 6 Oct';
+const BUILD = 'build 354 - 6 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4644,11 +4644,10 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   if (state.builderMode) { if (min) view.classList.remove('bar-min'); return; }
   // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
   // until the page is back at its top)
-  if (grid.scrollTop > 30 && document.querySelector('#magicBox.show:not(.folded)')) { magicFold(); barHold = Date.now(); return; }
-  if (grid.scrollTop > 30 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); barHold = Date.now(); return; }
-  if (barHold) { if (grid.scrollTop <= 0 && Date.now() - barHold > 500) barHold = false; return; }
+  if (grid.scrollTop > 30 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
+  if (grid.scrollTop > 30 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   const was = barPrevTop; barPrevTop = grid.scrollTop;
-  if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 260) {
+  if (!min && grid.scrollTop > 30 && grid.scrollHeight - grid.clientHeight > 60) {
     // the room the menu and bars give up goes to the page: the tiles stay where they were on screen
     // (so the row being scrolled is shown whole, not cut off under the bar)
     const y0 = grid.getBoundingClientRect().top;
