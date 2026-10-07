@@ -2609,7 +2609,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 420 - 7 Oct';
+const BUILD = 'build 421 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9053,6 +9053,12 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     if (more) {
       more.style.height = ''; more.textContent = ''; more.classList.add('strip-edge'); more.setAttribute('aria-label', 'More small words');
       strip.appendChild(more);      // last in the row, held at the right edge
+      // one tap folds the row away; a double tap opens the whole small-words folder
+      more.addEventListener('click', e => {
+        if (edgeTapTimer) { clearTimeout(edgeTapTimer); edgeTapTimer = null; return; }      // second tap: on to the folder
+        e.stopImmediatePropagation(); e.preventDefault();
+        edgeTapTimer = setTimeout(() => { edgeTapTimer = null; clearTimeout(blueShutTimer); setBlue(false); }, 350);
+      }, true);
     }
     // swiped (or pushed) on to the third page: the whole library drops down instead
     let settle = null;
@@ -12064,9 +12070,17 @@ function smallRowPop() {
   // a green tile was chosen: the small words stay open for five seconds, then fold away by themselves if nothing else is done
   clearTimeout(blueShutTimer);
   if (viaMagic) blueShutTimer = setTimeout(() => { if (!stripFull && !state.builderMode) setBlue(false); }, 5000);
+  else greenIdleArm();
   hintArm();
 }
-let blueShutTimer = null;
+let blueShutTimer = null, greenShutTimer = null, edgeTapTimer = null;
+// the green tiles too: left alone for five seconds, they fold back to their green bar
+function greenIdleArm() {
+  clearTimeout(greenShutTimer);
+  greenShutTimer = setTimeout(() => { if (!suggShut && !state.builderMode && document.querySelector('#suggHost .sugg-row')) { suggShut = true; suggRender(); } }, 5000);
+}
+document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#suggHost')) greenIdleArm(); }, true);
+document.addEventListener('scroll', e => { if (e.target && e.target.classList && e.target.classList.contains('sugg-row')) greenIdleArm(); }, true);
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#smallHost, #magicSmall')) clearTimeout(blueShutTimer); }, true);
 let hintTimer = null, hintDone = false;
 function hintArm() {
@@ -12079,7 +12093,7 @@ function hintArm() {
     if (!bar || !bar.offsetParent || document.getElementById('homeGrid').scrollTop > 20) return;
     hintDone = true;
     setBlue(true);
-    hintTimer = setTimeout(() => { if (!stripFull) setBlue(false); }, 1300);
+    hintTimer = setTimeout(() => { if (!stripFull) setBlue(false); }, 3000);
   }, 3000);
 }
 document.getElementById('viewHome').addEventListener('pointerdown', () => hintArm(), true);
