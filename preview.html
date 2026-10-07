@@ -1030,12 +1030,15 @@
   .small-host .small-strip { align-self: stretch; width: 100%; max-width: none; justify-self: stretch; align-content: center; padding-right: 52px; }
   .small-host .small-strip .strip-more { left: auto; right: 4px; width: 36px; }
   /* one row that slides sideways: six tiles show, the rest follow to the right */
-  .small-host .small-strip.slides { grid-auto-flow: column; grid-auto-columns: calc((100% - 5 * 16px - 80px) / 6); grid-template-rows: auto; overflow-x: auto; overflow-y: hidden;
-    scrollbar-width: none; scroll-snap-type: x proximity; padding-right: 0; overscroll-behavior-x: contain; }
+  .small-host .small-strip.slides { grid-auto-flow: column; grid-auto-columns: calc((100% - 5 * 16px - var(--tail, 18px)) / 6); grid-template-rows: auto; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; scroll-snap-type: x mandatory; padding-right: 0; overscroll-behavior-x: contain; }
   .small-host .small-strip.slides::-webkit-scrollbar { display: none; }
-  .small-host .small-strip.slides .small-tile { scroll-snap-align: start; grid-row: 1; }
+  /* exactly six show; a swipe brings the next six in their place */
+  .small-host .small-strip.slides .small-tile { scroll-snap-align: none; grid-row: 1; }
+  .small-host .small-strip.slides .small-tile.snap { scroll-snap-align: start; scroll-snap-stop: always; }
+  .small-host .small-strip.slides .sp { grid-row: 1; }
   .small-host .small-strip.slides .strip-more { position: sticky; right: 0; left: auto; bottom: auto; grid-row: 1; width: 44px; height: auto; align-self: stretch; background: #bfd8ff; margin: -18px 0; z-index: 1; box-shadow: -10px 0 10px -6px rgba(0,0,0,0.12); }
-  .small-host .small-strip.slides { scroll-padding-left: 18px; }
+  .small-host .small-strip.slides { scroll-padding-left: 14px; }
   /* six even columns across the whole panel, the same space left and right */
   .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
   .small-host .small-strip { min-height: 0; gap: 16px; padding: 18px 44px 18px 18px; }
@@ -2473,7 +2476,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 371 - 7 Oct';
+const BUILD = 'build 372 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6685,6 +6688,13 @@ function hideMagic() {
   if (stripMagic) { stripMagic = false; if (stripKey !== null) stripCountdown(stripKey); if (smallHostRedo) smallHostRedo(); }
 }
 let magicShowNow = false, magicOfferedFor = null;
+let magicStickPool = null;       // the related words standing in for the page's tiles, kept until the folder button is tapped
+// the green folder button was tapped while they were up: the page's own tiles come back
+function magicUnstick() {
+  if (!magicStickPool && !magicTilesNow.length) return false;
+  magicStickPool = null; magicTilesNow = []; magicSkipped = homePhrase.join(' ');
+  return true;
+}
 let magicSolo = false;       // the green bar was tapped by hand: the phrase opens alone, the blue row stays as it is
 let magicFoldTimer = null, magicFoldedFor = null, magicOpenAt = { phrase: null, t: 0 };
 function magicFold() {
@@ -6719,7 +6729,11 @@ function renderMagic(word) {
     // ... but the words that go with the last one chosen (hi -> people, go -> places, eat -> food)
     // take the place of the page's own tiles until one is picked or the bar changes
     const lead = MAGIC_WANTS.includes(word) || Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word));
-    magicTilesNow = lead ? magicNext(word, 18).map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } })) : [];
+    // (once they are up they stay - through a pick, through small words - so a second one can be
+    //  added; the green folder button brings the page back, and so does emptying the bar)
+    let pool = lead ? magicNext(word, 18) : [];
+    if (pool.length) magicStickPool = pool.slice(); else if (magicStickPool) pool = magicStickPool.filter(w => !homePhrase.includes(w));
+    magicTilesNow = pool.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } }));
     return;
   }
 
@@ -6880,7 +6894,7 @@ function renderPhraseBar() {
   if (!box._clipWatch) { box._clipWatch = true; box.addEventListener('scroll', () => box.classList.toggle('clipped', box.scrollTop > 2)); }
   if (!homePhrase.length) magicPathIn = []; else magicPathIn = magicPathIn.filter(p => homePhrase.includes(p.key));
   { const ph = homePhrase.join(' '); if (ph !== magicAt.phrase) { magicAt = { phrase: ph, nav: magicNavKey() }; magicSkipped = null; } }
-  if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; }      // a cleared bar starts the next sentence afresh
+  if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; magicStickPool = null; }      // a cleared bar starts the next sentence afresh
   if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   // the page's tiles give way to the suggested ones, and come back, as the bar changes
   { const sig = magicActive() ? magicTilesNow.map(t => t.label).join('|') : '';
@@ -7322,6 +7336,9 @@ function renderCatTiles(containerId, rerender) {
       lastTabTap = { id: c.id, t: now };
       // (with a page open the bar holds only this tab: one tap steps back a page - from a top page,
       //  back to the first page with all the tabs - and a quick second tap goes straight there)
+      // with suggested tiles standing in for the page, the first tap just brings the page back
+      if (mine && magicUnstick()) { buzz(10); renderPhraseBar(); again(); return; }
+      magicUnstick();
       if (mine) { homeStepBack(twice); again(); return; }
       tileGroup = null;
       // stay on the bar: pick at this level, drop anything deeper
@@ -7360,7 +7377,7 @@ function renderCatTiles(containerId, rerender) {
       all.className = 'cat-tile plain' + (homePath.length === 0 ? ' selected' : '');
       // named for what it shows: the latest words, or the most used ones
       all.textContent = state.bankSort === 'used' ? 'Popular' : 'Recents';
-      all.addEventListener('click', () => { if (rootShut) { buzz(10); rootMenuUntil = Date.now() + 3000; renderCatTiles(containerId, rerender); return; } homePath = []; again(); });
+      all.addEventListener('click', () => { if (magicUnstick()) { buzz(10); rootMenuUntil = Date.now() + 3000; renderPhraseBar(); renderHome(true); return; } if (rootShut) { buzz(10); rootMenuUntil = Date.now() + 3000; renderCatTiles(containerId, rerender); return; } homePath = []; again(); });
       row.appendChild(all);
     }
     // the targets tab only shows while the settings arrow is open
@@ -8249,6 +8266,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     strip.classList.add('slides');
     strip.style.setProperty('grid-template-columns', 'none', 'important');
     const more = strip.querySelector('.strip-more');
+    // six to a page: every sixth tile is where a swipe comes to rest, and the last page is padded out
+    const ts = [...strip.querySelectorAll('.small-tile')];
+    ts.forEach((t, i) => { if (i % 6 === 0) t.classList.add('snap'); });
+    for (let k = (6 - ts.length % 6) % 6; k > 0; k--) { const sp = document.createElement('i'); sp.className = 'sp'; strip.appendChild(sp); }
+    strip.style.setProperty('--tail', more ? '60px' : '18px');
     if (more) { more.style.height = ''; strip.appendChild(more); }      // last in the row, held at the right edge
   }
   // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
