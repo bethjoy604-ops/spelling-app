@@ -788,6 +788,8 @@
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
   .read-back { position: fixed; inset: 0; z-index: 60; background: #aeb0b5; padding: 16px; display: flex; animation: rbIn 0.25s ease both; }
   @keyframes rbIn { from { opacity: 0; } to { opacity: 1; } }
+  .read-back.out { animation: rbOut 0.36s ease both; pointer-events: none; }
+  @keyframes rbOut { from { opacity: 1; } to { opacity: 0; } }
   .rb-card { position: relative; flex: 1; background: var(--surface); border-radius: 24px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; padding: 5vmin; overflow: hidden; }
   .rb-words { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.2vmin 1.6vmin; font-size: clamp(44px, 11vmin, 120px); font-weight: 900; line-height: 1.1; color: var(--ink); }
   .rb-word { padding: 0.08em 0.22em; border-radius: 0.2em; transition: background 0.15s ease, transform 0.15s ease; }
@@ -2498,7 +2500,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 396 - 7 Oct';
+const BUILD = 'build 397 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5701,7 +5703,8 @@ function readBack(words, target, force) {
   const chips = shown.map(t => { const c = document.createElement('span'); c.className = 'rb-word'; c.textContent = t; line.appendChild(c); return c; });
   card.appendChild(line); f.appendChild(card);
   // when it is done the home page is already there underneath: nothing else shows in between
-  const done = () => { clearTimeout(readBackTimer); if (target) goHomeNow(target); f.remove(); };
+  let ending = false;
+  const done = () => { if (ending) return; ending = true; clearTimeout(readBackTimer); if (target) goHomeNow(target); f.id = ''; requestAnimationFrame(() => { f.classList.add('out'); setTimeout(() => f.remove(), 380); }); };
   f.addEventListener('click', done);
   document.body.appendChild(f);
   let i = 0;
@@ -6879,9 +6882,14 @@ function renderMagic(word) {
     const lead = MAGIC_WANTS.includes(word) || Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word));
     // (once they are up they stay - through a pick, through small words - so a second one can be
     //  added; the green folder button brings the page back, and so does emptying the bar)
-    let pool = magicAsking() ? magicActionPool(18) : (lead ? magicNext(word, 18) : []);
+    const prevW = homePhrase.length > 1 ? homePhrase[homePhrase.length - 2] : '';
+    const afterTo = word === 'TO' && MAGIC_WANTS.includes(prevW);      // "I want to ..." -> the doing words
+    let pool = magicAsking() || afterTo ? magicActionPool(18) : (lead ? magicNext(word, 18) : []);
     if (pool.length) magicStickPool = pool.slice(); else if (magicStickPool) pool = magicStickPool.filter(w => !homePhrase.includes(w));
     magicTilesNow = pool.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } }));
+    // a direction on its own ("up"): its doing words are the tiles, and the one tapped goes in front - "go up"
+    { const li = leadIns(word);
+      if (li.length && !pool.length) { magicStickPool = null; magicTilesNow = li.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.splice(homePhrase.length - 1, 0, next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } })); } }
     // after a wanting word (want, need, like...) the tiles are the folders themselves - music, movies,
     // food - each opening its own page, and its name joining the sentence where it fits ("want music ...")
     if (MAGIC_WANTS.includes(word)) {
@@ -7063,7 +7071,7 @@ function renderPhraseBar() {
   if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   magicIntoBar();
   // the page's tiles give way to the suggested ones, and come back, as the bar changes
-  { const sig = magicActive() ? magicTilesNow.map(t => t.label).join('|') : '';
+  { const sig = magicActive() ? magicTilesNow.map(t => t.label).join('|') : (!state.builderMode && !homePath.length && state.bankSort === 'used' ? 'P:' + homePhrase.filter(w => (state.recentTiles || []).includes(w)).join('|') : '');
     if (sig !== magicSigShown) { magicSigShown = sig; if (!magicInHome && !state.builderMode) { renderHome(true); return; } } }
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
@@ -7146,8 +7154,11 @@ function renderTypeSuggest() {
   });
 }
 document.getElementById('pbInput').addEventListener('input', () => { renderTypeSuggest(); renderPhraseBar(); });
+let typedEnter = false;
 document.getElementById('pbGo').addEventListener('click', () => {
-  if (!commitTypedWord()) homeEnter();
+  // speak mode: what was typed is said straight away on the message screen, with no spelling practice
+  if (commitTypedWord()) { if (state.speakMode && !state.chatMode && !state.builderMode) { closeAllMenus(); typedEnter = true; try { homeEnter(); } finally { typedEnter = false; } } }
+  else homeEnter();
 });
 // Enter on home: in speak mode the tiles in the bar are read aloud and the bar
 // clears; otherwise they go to the spelling page
@@ -7187,7 +7198,7 @@ function homeEnter() {
     state.wordHistory[w] = h;
   });
   // any target words in what was said now come up for practice, with their prompting
-  const due = activeTargets(homePhrase);
+  const due = typedEnter ? [] : activeTargets(homePhrase);
   if (due.length) {
     homePhrase = due;
     save();
@@ -7571,7 +7582,7 @@ function bankRows() {
   if (state.bankSort === 'used') {
     // Popular is a fresh feed: the tiles in the last thirty entered with the green button, the ones
     // entered most often first (small words count like any other), newest first among equals
-    const log = (state.recentTiles || []).filter(w => state.words.includes(w));
+    const log = (state.recentTiles || []).filter(w => state.words.includes(w) && !isSmallWord(w) && !homePhrase.includes(w));      // small words live in the blue row; a word already in the message is not offered again
     if (log.length) {
       const n = {}, at = {};
       log.forEach((w, i) => { n[w] = (n[w] || 0) + 1; at[w] = i; });
@@ -8365,10 +8376,10 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const ctx = magicAsking() && MAGIC_SUBJ.includes(last) ? ['HELP', 'GET', 'FIND', 'COME', 'GO', 'OPEN']
       : MAGIC_ASK.includes(last) ? ['YOU', 'I', 'WE', 'HELP', 'GO', 'GET']
       : greeted ? ['I', 'CAN', 'YOU', 'WE', 'PLEASE'] : null;
-    if (ctx) ctx.forEach(magicKnow);
-    (ctx || leads.concat(need.slice(0, leads.length ? 2 : 3), followSpecific(last), kindNext)).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w]) six.push(w); });
+    const smAll = allSmallWords(), okS = w => smAll.includes(w);      // the blue row only ever holds small words; doing words and things are large tiles
+    (ctx || leads.concat(need.slice(0, leads.length ? 2 : 3), followSpecific(last), kindNext)).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w] && okS(w)) six.push(w); });
     [].forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
-    if (!six.length) followWords(last, []).forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
+    if (!six.length) followWords(last, []).forEach(w => { if (okS(w) && !isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     // never an empty row: failing all that, the page's own small words and then the most used ones
     if (!six.length) {
       const used = w => (state.wordHistory[w] || {}).n || 0;
