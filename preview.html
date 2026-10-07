@@ -824,6 +824,7 @@
   .small-host .small-head:not(.group-head) { background-color: #bfd8ff !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") !important; }
   .small-host .band-bar { background-color: #bfd8ff; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
   .view-home.band-green .small-host, .view-home.band-green .grid-bar, .view-home.band-blue .sugg-host, .view-home.band-blue .grid-bar { display: none !important; }      /* a row that is open has the page to itself: the other bars step away until it is folded */
+  .view-home.scrolled .sugg-host, .view-home.scrolled .small-host { display: none !important; }
   .view-home.no-bars .grid-bar, .view-home.no-bars .sugg-host, .view-home.no-bars .small-host { display: none !important; }      /* a choice board: just its folders */
   .view-home .grid-bar { background-color: rgba(0,0,0,0.07); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
   .view-home.grid-shut .grid-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
@@ -2646,7 +2647,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 436 - 7 Oct';
+const BUILD = 'build 437 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4883,6 +4884,10 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   if (big && grid.scrollTop > 20 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
   if (grid.scrollTop > 20 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
   if (grid.scrollTop > 20 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
+  // scrolled down, the page's tiles run right up under the key bar: the green and blue bars step out of the way (and are back at the top)
+  { const v = document.getElementById('viewHome'), on = v.classList.contains('scrolled');
+    if (!on && grid.scrollTop > 6 && grid.scrollHeight - grid.clientHeight > 170) v.classList.add('scrolled');
+    else if (on && grid.scrollTop <= 0) v.classList.remove('scrolled'); }
   if (grid.scrollTop > 20 && !suggShut) { suggShut = true; magicKeep = true; clearTimeout(blueShutTimer); suggRender(); }      // scrolling down the page folds the green row; the tiles suggested for the page stay
   const was = barPrevTop; barPrevTop = grid.scrollTop;
   if (!min && big && grid.scrollTop > 20 && grid.scrollHeight - grid.clientHeight > 300) {
@@ -7497,9 +7502,19 @@ function renderMagic(word) {
     // after a wanting word (want, need, like...) the tiles are the folders themselves - music, movies,
     // food - each opening its own page, and its name joining the sentence where it fits ("want music ...")
     if (MAGIC_WANTS.includes(word) || !magicTilesNow.length) {
-      const LEADF = { HI: ['People'], HELLO: ['People'], BYE: ['People'], HELP: ['People'], GO: ['Places'], EAT: ['Food'], DRINK: ['Food'], WATCH: ['Movies', 'TV'], LISTEN: ['Music'], READ: ['Books'], PLAY: ['Games', 'Stuff'], SEE: ['People', 'Places'] };
-      const lw = homePhrase.slice().reverse().find(w => LEADF[w]), first = lw ? LEADF[lw] : [];
-      const rk = c => { const k = first.indexOf(c.name); return k < 0 ? 99 : k; };
+      // each doing word has the folders it most likely leads to, in order; the rest follow, and the unlikely ones go last
+      // ("play" -> games, things, music, tv, movies ... and food at the very end)
+      const LEADF = {
+        PLAY: ['games', 'stuff', 'things', 'music', 'tv', 'movies', 'people', 'places', 'characters', 'books'],
+        WATCH: ['tv', 'movies', 'characters', 'people'], LISTEN: ['music', 'people'], READ: ['books', 'characters'],
+        EAT: ['food'], DRINK: ['food'], MAKE: ['food', 'stuff', 'things'], COOK: ['food'],
+        GO: ['places', 'people'], COME: ['people', 'places'], WALK: ['places'], RIDE: ['places', 'stuff', 'things'],
+        SEE: ['people', 'places', 'movies', 'tv', 'characters'], FIND: ['stuff', 'things', 'people', 'books', 'games'], LOOK: ['stuff', 'things', 'people', 'places', 'books'],
+        HELP: ['people'], HUG: ['people'], CALL: ['people'], HI: ['people'], HELLO: ['people'], BYE: ['people'],
+        OPEN: ['stuff', 'things', 'food', 'books', 'games'], GET: ['stuff', 'things', 'food', 'clothes'], WEAR: ['clothes'], SING: ['music'], DANCE: ['music'] };
+      const LASTF = { PLAY: ['food', 'clothes', 'routines'], WATCH: ['food', 'clothes'], LISTEN: ['food', 'clothes', 'places'], READ: ['food', 'clothes', 'music'], EAT: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], DRINK: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], GO: ['food', 'clothes'], WEAR: ['food', 'music', 'tv', 'movies', 'books', 'games'] };
+      const lw = homePhrase.slice().reverse().find(w => LEADF[w]), first = lw ? LEADF[lw] : [], lastF = (lw && LASTF[lw]) || [];
+      const rk = c => { const n = String(c.name || '').trim().toLowerCase(), k = first.indexOf(n); return k >= 0 ? k : (lastF.includes(n) ? 200 : 99); };
       const fs = magicFolders(word, true).filter(c => c.phrases || catAllowsPhrases(c)).map((c, i) => [c, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]);
       if (fs.length) {
         magicStickPool = null;
