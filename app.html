@@ -796,6 +796,8 @@
   .sugg-host.show { display: grid; }
   .sugg-tile { border: none; border-radius: 20px; background: #d9f2dc; color: var(--ink); font-family: inherit; font-weight: 900; font-size: clamp(22px, 4vmin, 38px); height: clamp(64px, 12vh, 110px); box-shadow: var(--shadow); cursor: pointer; overflow: hidden; }
   .sugg-tile:active { transform: scale(0.97); }
+  .chat-log .bl-line { background: #8f9299 !important; opacity: 1 !important; }
+  .chat-log .chat-mini { color: #5d6067 !important; }
   .sugg-hl { background: #d3f0d7; border-radius: 0.3em; padding: 0.08em 0.35em; }
   .view-home.keys-open .sugg-host { display: none; }
   .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next { color: transparent !important; }
@@ -1184,7 +1186,7 @@
   .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn { display: none !important; }
   #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* three quiet dots, grey like the tabs that are not open; a little clearer while the pop-out is out */
-  .cat-tile.menu-peek { min-width: 0; width: 44px; padding-left: 0; padding-right: 0; font-size: 26px; line-height: 1; color: rgba(0,0,0,0.45); background: rgba(255,255,255,0.45); box-shadow: none; }
+  .cat-tile.menu-peek { min-width: 0; width: 34px; padding-left: 0; padding-right: 0; font-size: 24px; line-height: 1; color: rgba(0,0,0,0.32) !important; background: none !important; box-shadow: none !important; }
   #homeIconsToggle { font-size: 30px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.5); box-shadow: none; }
   /* while a message is being built the gear steps out of the way */
   .view-home:not(.menu-open):has(.phrase-bar.has-text) #homeIconsToggle { visibility: hidden; }
@@ -2579,7 +2581,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 408 - 7 Oct';
+const BUILD = 'build 409 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7052,19 +7054,25 @@ let magicStallTimer = null;
 // They are tiles like any other, first in the page's grid, with the word marked in green; three more
 // sit after the page's own tiles, found by scrolling down.
 let suggBusy = false, suggObs = null;
+function hgtOf(grid) { const c = grid.querySelector('.home-card:not(.sugg-card)'); return c ? (parseInt(c.style.height) || c.offsetHeight || 0) : 0; }
 function suggRender() {
   const grid = document.getElementById('homeGrid');
   if (!grid || suggBusy) return;
   suggBusy = true;
   try {
     grid.querySelectorAll(':scope > .sugg-card').forEach(x => x.remove());
-    const kids = [...grid.children];
+    grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = ''; });
+    if (grid.dataset.sgTpl != null) { if (!grid.style.gridTemplateRows) { grid.style.gridTemplateRows = grid.dataset.sgTpl; grid.style.gridAutoRows = grid.dataset.sgAuto || ''; } delete grid.dataset.sgTpl; delete grid.dataset.sgAuto; }
+    const kids = [...grid.children].filter(c => !c.classList.contains('chat-log'));      // (the chat line is not a tile: it steps aside while suggestions are up)
     kids.forEach(c => { if (c.dataset.sgs) { c.style.gridRowStart = String((parseInt(c.style.gridRowStart) || 2) - 1); delete c.dataset.sgs; } });
     let opts = [];
     try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords && getComputedStyle(grid).display === 'grid') opts = magicOptions(6); } catch (e) { opts = []; }
     if (!opts.length || !kids.length) return;
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
     const hgt = like ? like.offsetHeight : 0, fs = likeHw ? likeHw.style.fontSize : '';
+    grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = 'none'; });
+    // (rows the page had sized one by one would squash the added ones: every row takes the tile height instead)
+    if (grid.style.gridTemplateRows) { grid.dataset.sgTpl = grid.style.gridTemplateRows; grid.dataset.sgAuto = grid.style.gridAutoRows; grid.style.gridTemplateRows = ''; if (hgt) grid.style.gridAutoRows = hgt + 'px'; }
     // (a page whose tiles simply flow, with no places of their own, takes the new tiles at its start and end)
     const placedGrid = kids.every(c => parseInt(c.style.gridRowStart) > 0);
     let maxRow = 1;
@@ -7833,7 +7841,9 @@ function renderCatTiles(containerId, rerender) {
     if (level === 0 && homePath[0] === c.id && !state.builderMode) {
       const nm = c.name.trim().toLowerCase(), tops = childrenOf(null).filter(x => !x.target && !x.hidden);
       const col = nm === 'chat' ? '#f08a24' : nm === 'categories' ? '#8e5bd6' : nm === 'my stuff' ? '#e0473c' : ['#f08a24', '#8e5bd6', '#e0473c', '#2f9bd8', '#d9a400'][Math.max(0, tops.indexOf(c)) % 5];
-      b.style.setProperty('background', col, 'important'); b.style.setProperty('color', '#fff', 'important');
+      // (inside one of its folders the tab is a lighter shade of the same colour)
+      const deep = homePath.length > 1 || !!tileGroup;
+      b.style.setProperty('background', deep ? mixHex(col, '#ffffff', 0.45) : col, 'important'); b.style.setProperty('color', deep ? '#1d1d1f' : '#fff', 'important');
     }
     b.textContent = c.name;
     // inside one of its folders the tab names the folder that is open (Actions); tapping it goes
@@ -7922,7 +7932,9 @@ function renderCatTiles(containerId, rerender) {
         buzz(10);
         if (homePath.length === 0) rootMenuUntil = Date.now() + 3000;
         else { menuPeekUntil = Date.now() + 3000; clearTimeout(menuPeekTimer); menuPeekTimer = setTimeout(() => renderCatTiles(containerId, rerender), 3040); }
-        renderCatTiles(containerId, rerender);
+        // ... and the pop-out of switches opens on the other side with it
+        state.iconsOpen = true;
+        renderHome(true); armIcons();
       });
       row.appendChild(pk);
     }
