@@ -823,7 +823,9 @@
   .sugg-host .sugg-head.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%236fb07a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
   .small-host .small-head:not(.group-head) { background-color: #bfd8ff !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") !important; }
   .small-host .band-bar { background-color: #bfd8ff; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
-  .view-home .grid-bar { background-color: rgba(255,255,255,0.22); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
+  .view-home.band-green .small-host, .view-home.band-green .grid-bar, .view-home.band-blue .sugg-host, .view-home.band-blue .grid-bar { display: none !important; }      /* a row that is open has the page to itself: the other bars step away until it is folded */
+  .view-home.no-bars .grid-bar, .view-home.no-bars .sugg-host, .view-home.no-bars .small-host { display: none !important; }      /* a choice board: just its folders */
+  .view-home .grid-bar { background-color: rgba(0,0,0,0.07); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
   .view-home.grid-shut .grid-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
   .small-host .small-strip.slides .strip-edge { display: none !important; }
   .small-host .small-strip.slides { --tail: 0px !important; }
@@ -2644,7 +2646,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 432 - 7 Oct';
+const BUILD = 'build 433 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7261,18 +7263,23 @@ function gridSync() {
   }
   const blue = !!stripFull || (stripKey !== null ? !stripShut : smallFullHook ? !!state.smallOpen : popRowUntil ? !popRowShut : false);
   const green = !!document.querySelector('#suggHost .sugg-row');
+  const board = !!grid.querySelector('.folder-card') && !grid.querySelector('.home-card[data-word], .feed-group, .small-section');
+  view.classList.toggle('no-bars', board && !state.builderMode);
+  view.classList.toggle('band-green', green && !board);
+  view.classList.toggle('band-blue', blue && !green && !board);
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
   const plain = !state.builderMode && !selWords && !onTargetsPage();
   view.classList.toggle('has-grid-edge', plain);
   // one band open at a time: a row opened by its bar (or, on Popular, by a word going in) folds the page tiles; both rows shut brings them back
-  view.classList.toggle('grid-shut', plain && (gridManual || ((blue || green) && (rowsByTap || (homePath.length === 0 && homePhrase.length > 0)))));
+  view.classList.toggle('grid-shut', plain && !board && (gridManual || ((blue || green) && (rowsByTap || (homePath.length === 0 && homePhrase.length > 0)))));
 }
 let gridManual = false, gridPage = '', rowsByTap = false;
 document.addEventListener('click', e => {      // the blue bar opening its row: the green tiles fold
   if (!e.target.closest || !e.target.closest('#smallHost .small-head:not(.group-head)')) return;
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
   rowsByTap = true; if (!suggShut) { suggShut = true; suggRender(); }
-  setTimeout(() => { try { gridSync(); } catch (e) {} }, 0);
+  // (opened by its bar it has the page to itself, so the whole small-words folder shows, not just six)
+  setTimeout(() => { try { const more = document.querySelector('#smallHost .small-strip.slides .strip-more'); if (more && !stripFull) more.click(); gridSync(); } catch (e) {} }, 0);
 }, true);
 // the small words: their blue bar floats above the open row too (a tap folds it), and each word is marked in blue
 (function () {
