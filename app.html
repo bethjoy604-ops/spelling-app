@@ -2466,7 +2466,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 368 - 7 Oct';
+const BUILD = 'build 369 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4722,6 +4722,7 @@ function showHome() {
 function showKeyboard() {
   if (kbSearch) closeLetterSearch();     // arrive ready to type, never mid-search
   setView('keyboard');
+  document.getElementById('displayContent').classList.remove('wiping');
   touchSession(); armPrompt(); render();
   try { kbIdleArm(); } catch (e) {}
 }
@@ -13290,6 +13291,7 @@ document.getElementById('displayClear').addEventListener('click', () => {
     state.targetProgress = [];
     state.targetPromptedFlags = [];
     state.pendingLetterCounts = {}; // abandoned attempts don't count
+    content.classList.remove('wiping');      // the wipe is over: what is typed next shows again
     armPrompt();
     save();
     if (doRotate) rotateToNextWord();
