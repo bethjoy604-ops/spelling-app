@@ -522,6 +522,9 @@
   .feed-group.drop-after { box-shadow: 8px 0 0 var(--green); }
   .feed-group.drag-src { opacity: 0.35; }
   .feed-group .feed-head { touch-action: none; }
+  /* the group's name as a tile of its own, in a deeper grey than the panel: tap it to say the word */
+  .feed-group .feed-head.name-tile[aria-expanded="true"] { background: #b4b7be; color: var(--ink); border-radius: 14px; padding: 16px 20px; margin: 0 0 10px; font-size: clamp(22px, 3.6vmin, 34px); text-transform: lowercase; box-shadow: var(--shadow); cursor: pointer; width: 100%; box-sizing: border-box; }
+  .feed-group .feed-head.name-tile[aria-expanded="true"]:active { transform: scale(0.98); }
   .library-dots { align-self: center; justify-self: start; width: 34px; height: 64px; border: none; border-radius: 12px; background: none;
     color: rgba(0,0,0,0.28); font-size: 40px; line-height: 1; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 0 6px; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
@@ -789,6 +792,11 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  .sugg-host { display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; flex-shrink: 0; }
+  .sugg-host.show { display: grid; }
+  .sugg-tile { border: none; border-radius: 20px; background: #d9f2dc; color: var(--ink); font-family: inherit; font-weight: 900; font-size: clamp(22px, 4vmin, 38px); height: clamp(64px, 12vh, 110px); box-shadow: var(--shadow); cursor: pointer; overflow: hidden; }
+  .sugg-tile:active { transform: scale(0.97); }
+  .view-home.keys-open .sugg-host { display: none; }
   .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next { color: transparent !important; }
   .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
   .home-keys { display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 54vh; z-index: 30; padding: 14px 16px 16px; background: #aeb0b5; box-shadow: 0 -8px 18px rgba(0,0,0,0.16); border-radius: 20px 20px 0 0; }
@@ -1870,6 +1878,8 @@
 
   <div class="magic-small" id="magicSmall"></div>
 
+  <div class="sugg-host" id="suggHost"></div>
+
   <div class="bank-area">
     <div class="home-grid" id="homeGrid"></div>
     <div class="folder-view" id="folderView" style="display:none;">
@@ -2562,7 +2572,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 403 - 7 Oct';
+const BUILD = 'build 404 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4767,7 +4777,7 @@ function gridH(grid) {
   // (tiles are sized as if the small words row were folded, so opening it never shrinks them)
   if (grid.id === 'homeGrid') {
     const view = document.getElementById('viewHome'), gap = parseFloat(getComputedStyle(view).rowGap) || 16;
-    const hh = document.getElementById('smallHost').offsetHeight, mh = document.getElementById('magicBox').offsetHeight;
+    const hh = document.getElementById('smallHost').offsetHeight + (document.getElementById('suggHost').offsetHeight ? document.getElementById('suggHost').offsetHeight + gap : 0), mh = document.getElementById('magicBox').offsetHeight;
     const menu = document.querySelector('#viewHome .home-row');
     if (menu.offsetHeight) menuHLast = menu.offsetHeight;
     return grid.clientHeight + (hh ? hh + gap : 0) + (mh ? mh + gap : 0) - (menu.offsetHeight ? 0 : menuHLast + gap);
@@ -6906,7 +6916,8 @@ function magicExtend() {
 // offered its doing words ("bird" -> I want / need / see); a doing word is offered things that go
 // with it ("eat" -> apple / cookies); anything else, the words that most naturally come next
 // ("Hi Dad" -> help / play / go). Each green chip shows just the word it would add.
-function magicOptions() {
+function magicOptions(max) {
+  max = max || 3;
   const full = magicPhraseFull();
   const n = homePhrase.length;
   if (!n) return [];
@@ -6916,7 +6927,7 @@ function magicOptions() {
   const k = kindOfWordG(last), okW = w => !isPunct(w) && !state.hiddenWords[w] && !homePhrase.includes(w);
   const all = homePhrase.map((_, i) => i);
   const out = [], seen = {};
-  const add = m => { const key = m.phrase.join(' '); if (!seen[key] && out.length < 3) { seen[key] = 1; out.push(m); } };
+  const add = m => { const key = m.phrase.join(' '); if (!seen[key] && out.length < max) { seen[key] = 1; out.push(m); } };
   const after = w => add({ phrase: homePhrase.concat([w]), used: all });
   const greeting = Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(homePhrase[0]));
   if (!isSmallWord(last) && !homePhrase.some(doing) && k !== 'people' && !greeting) {
@@ -6924,7 +6935,7 @@ function magicOptions() {
   } else if (Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(last)) && kindOfWord(last) === 'action') {      // a doing word that leads somewhere: go -> places, eat -> food
     magicNext(last, 3).filter(okW).forEach(after);
   }
-  if (!out.length) {
+  if (out.length < max) {
     // the fuller sentence, when it is exactly one step on - or its one missing word at the front ("want" -> "I want")
     if (full && full.phrase.length === n + 1) add(full);
     else if (full && !full.ext && full.used.length === n && full.used[0] === 1) { const keep = [0].concat(full.used); add({ phrase: full.phrase.filter((_, j) => keep.includes(j)), used: full.used.map((_, i) => i + 1) }); }
@@ -7012,9 +7023,39 @@ function magicIntoBar() {
 // The suggested sentence waits for a stall: three seconds after a word goes in with nothing else
 // touched or scrolled, it appears in the key bar; three seconds more and it is gone again
 let magicStallTimer = null;
+// The suggestions are a row of green tiles that stays put above the page's tiles: three of them, and
+// three more once the page is scrolled down. Each shows the word it would add; a tap adds it.
+let suggMore = false;
+function suggRender() {
+  const host = document.getElementById('suggHost');
+  if (!host) return;
+  host.innerHTML = '';
+  let opts = [];
+  try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage()) opts = magicOptions(suggMore ? 6 : 3); } catch (e) { opts = []; }
+  opts.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'sugg-tile';
+    const added = m.phrase.filter((_, j) => !m.used.includes(j));
+    b.textContent = added.map(sentenceLabel).join(' ');
+    b.addEventListener('click', () => {
+      m.phrase.forEach(magicKnow);
+      homePhrase = m.phrase.slice();
+      magicAccepted = homePhrase.join(' '); magicTarget = null;
+      warmSpeech(); speakWord(added.join(' '), 0.95); buzz(10); save();
+      renderPhraseBar();
+    });
+    host.appendChild(b);
+  });
+  host.classList.toggle('show', opts.length > 0);
+}
+document.getElementById('homeGrid').addEventListener('scroll', () => {
+  const g = document.getElementById('homeGrid'), want = g.scrollTop > 20;
+  if (want !== suggMore) { suggMore = want; suggRender(); }
+}, { passive: true });
 function magicStallArm() {
   clearTimeout(magicStallTimer);
   magicShowNow = false;
+  return;      // (retired: the suggestions are the green tiles now, not chips that come and go in the key bar)
   if (!state.magicType || state.builderMode || !homePhrase.length) return;
   const ph = homePhrase.join(' ');
   magicStallTimer = setTimeout(() => {
@@ -7294,6 +7335,7 @@ function renderPhraseBar() {
   if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; magicStickPool = null; }      // a cleared bar starts the next sentence afresh
   if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   magicIntoBar();
+  suggRender();
   // the page's tiles give way to the suggested ones, and come back, as the bar changes
   { const sig = magicActive() ? magicTilesNow.map(t => t.label).join('|') : (!state.builderMode && !homePath.length && state.bankSort === 'used' ? 'P:' + homePhrase.filter(w => (state.recentTiles || []).includes(w)).join('|') : '');
     if (sig !== magicSigShown) { magicSigShown = sig; if (!magicInHome && !state.builderMode) { renderHome(true); return; } } }
@@ -11586,9 +11628,13 @@ function renderSlotGrid(grid, cat, folders) {
         sec.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
         ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => sec.addEventListener(ev, cancel));
         sec.addEventListener('contextmenu', e => e.preventDefault()); }
+      hd.classList.add('name-tile');
       hd.addEventListener('click', () => {
         if (suppressTileClick) { suppressTileClick = false; return; }
-        if (shut) delete cat.feedShut[f.id]; else cat.feedShut[f.id] = 1;
+        // the name of the group is a word too: a tap puts it in the message (a folded panel opens first;
+        // folding one away is in its hold menu)
+        if (!shut) { const key = normaliseWord(f.name); if (key) { magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); buzz(10); renderPhraseBar(); } return; }
+        delete cat.feedShut[f.id];
         buzz(10); save();
         const top = grid.scrollTop;
         renderHome(true);
