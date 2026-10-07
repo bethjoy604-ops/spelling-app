@@ -1029,6 +1029,13 @@
   .magic-box.show:not(.folded), .small-host .small-strip { min-height: clamp(96px, 16vmin, 130px); box-sizing: border-box; }
   .small-host .small-strip { align-self: stretch; width: 100%; max-width: none; justify-self: stretch; align-content: center; padding-right: 52px; }
   .small-host .small-strip .strip-more { left: auto; right: 4px; width: 36px; }
+  /* one row that slides sideways: six tiles show, the rest follow to the right */
+  .small-host .small-strip.slides { grid-auto-flow: column; grid-auto-columns: calc((100% - 5 * 16px - 80px) / 6); grid-template-rows: auto; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; scroll-snap-type: x proximity; padding-right: 0; overscroll-behavior-x: contain; }
+  .small-host .small-strip.slides::-webkit-scrollbar { display: none; }
+  .small-host .small-strip.slides .small-tile { scroll-snap-align: start; grid-row: 1; }
+  .small-host .small-strip.slides .strip-more { position: sticky; right: 0; left: auto; bottom: auto; grid-row: 1; width: 44px; height: auto; align-self: stretch; background: #bfd8ff; margin: -18px 0; z-index: 1; box-shadow: -10px 0 10px -6px rgba(0,0,0,0.12); }
+  .small-host .small-strip.slides { scroll-padding-left: 18px; }
   /* six even columns across the whole panel, the same space left and right */
   .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
   .small-host .small-strip { min-height: 0; gap: 16px; padding: 18px 44px 18px 18px; }
@@ -2466,7 +2473,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 369 - 7 Oct';
+const BUILD = 'build 370 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8153,6 +8160,15 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     if (gutter && list.length < 6) allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w) && !isPunct(w)).sort((a, b) => used(b) - used(a)).forEach(w => { if (list.length < 6 && !list.includes(w)) list.push(w); });
     shown = [list.slice(0, gutter ? 6 : rowMax())];
   }
+  // the one row carries on to the right: after the six that fit come the rest of the small words,
+  // most used first, reached by sliding the row along (the plus still opens them all at once)
+  let slides = false;
+  if (gutter && !full && (shown[0] || []).length) {
+    const have = shown[0], usedN = w => (state.wordHistory[w] || {}).n || 0;
+    const extra = allSmallWords().filter(w => !isPunct(w) && !state.hiddenWords[w] && state.words.includes(w) && !have.includes(w) && !homePhrase.includes(w))
+      .map((w, i) => [w, i]).sort((a, b) => usedN(b[0]) - usedN(a[0]) || a[1] - b[1]).map(x => x[0]);
+    if (extra.length) { shown = [have.concat(extra)]; slides = true; }
+  }
   const words = [].concat(...shown);
   const mk = (label, onTap) => {
     const hold = edit;
@@ -8228,8 +8244,14 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     });
     strip.appendChild(m);
   }
+  if (slides) {
+    strip.classList.add('slides');
+    strip.style.setProperty('grid-template-columns', 'none', 'important');
+    const more = strip.querySelector('.strip-more');
+    if (more) { more.style.height = ''; strip.appendChild(more); }      // last in the row, held at the right edge
+  }
   // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
-  if (gutter && words.length) {
+  if (gutter && words.length && !slides) {
     const n = Math.min(6, words.length), plus = !!strip.querySelector('.strip-more');
     if (!plus) strip.style.paddingRight = '18px';
     if (n < 6) { strip.style.setProperty('grid-template-columns', 'repeat(' + n + ', minmax(0, 1fr))', 'important'); strip.style.width = 'calc(' + (n / 6 * 100) + '% + ' + (plus ? 40 : 30) + 'px)'; strip.style.alignSelf = 'flex-start'; }
