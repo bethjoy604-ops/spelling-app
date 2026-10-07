@@ -804,7 +804,12 @@
   .sugg-tile:active { transform: scale(0.97); }
   .chat-log .bl-line { background: #8f9299 !important; opacity: 1 !important; }
   .chat-log .chat-mini { color: #5d6067 !important; }
-  .sugg-hl { background: #d3f0d7; border-radius: 0.3em; padding: 0.08em 0.35em; }
+  .sugg-hl { background: #d3f0d7; border-radius: 0.3em; padding: 0.08em 0.35em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .sugg-row { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 4px; }
+  .sugg-row::-webkit-scrollbar { display: none; }
+  .sugg-row .sugg-card { flex: 0 0 calc((100% - 32px) / 3); scroll-snap-align: start; min-width: 0; }
+  .sugg-row .sugg-card:nth-child(3n+1) { scroll-snap-stop: always; }
+  .sugg-card .hw { white-space: normal; text-align: center; line-height: 1.5; padding: 0 14px; overflow-wrap: anywhere; }
   .view-home.keys-open .sugg-host { display: none; }
   .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next { color: transparent !important; }
   .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
@@ -1894,11 +1899,11 @@
     <button class="display-clear magic-x" id="magicSkip" aria-label="Skip this suggestion">&times;</button>
   </div>
 
+  <div class="sugg-host" id="suggHost"></div>
+
   <div class="small-host" id="smallHost"></div>
 
   <div class="magic-small" id="magicSmall"></div>
-
-  <div class="sugg-host" id="suggHost"></div>
 
   <div class="bank-area">
     <div class="home-grid" id="homeGrid"></div>
@@ -2592,7 +2597,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 415 - 7 Oct';
+const BUILD = 'build 416 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7143,47 +7148,45 @@ function collapseRows() {
 }
 function hgtOf(grid) { const c = grid.querySelector('.home-card:not(.sugg-card)'); return c ? (parseInt(c.style.height) || c.offsetHeight || 0) : 0; }
 function suggRender() {
-  const grid = document.getElementById('homeGrid');
-  if (!grid || suggBusy) return;
+  const grid = document.getElementById('homeGrid'), host = document.getElementById('suggHost');
+  if (!grid || !host || suggBusy) return;
   suggBusy = true;
-  let hadTop = 0, hadH = 0;
   try {
-    hadTop = grid.scrollTop; hadH = grid.scrollHeight;
+    // (tiles an older build put into the page's own grid are taken back out)
     grid.querySelectorAll(':scope > .sugg-card').forEach(x => x.remove());
-    grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = ''; });
-    if (grid.dataset.sgTpl != null) { if (!grid.style.gridTemplateRows) { grid.style.gridTemplateRows = grid.dataset.sgTpl; grid.style.gridAutoRows = grid.dataset.sgAuto || ''; } delete grid.dataset.sgTpl; delete grid.dataset.sgAuto; }
-    const kids = [...grid.children].filter(c => !c.classList.contains('chat-log'));      // (the chat line is not a tile: it steps aside while suggestions are up)
-    kids.forEach(c => { if (c.dataset.sgs) { const by = parseInt(c.dataset.sgs) || 1; c.style.gridRowStart = String(Math.max(1, (parseInt(c.style.gridRowStart) || by + 1) - by)); delete c.dataset.sgs; } });
+    [...grid.children].forEach(c => { if (c.dataset.sgs) { const by = parseInt(c.dataset.sgs) || 1; c.style.gridRowStart = String(Math.max(1, (parseInt(c.style.gridRowStart) || by + 1) - by)); delete c.dataset.sgs; } });
     let opts = [];
-    try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords && getComputedStyle(grid).display === 'grid') opts = magicTwoRows(); } catch (e) { opts = []; }      // a row of things, then a row of things to do
-    // folded: a green bar under the blue one, there to drop them down again
-    { const host = document.getElementById('suggHost'); host.innerHTML = '';
-      const folded = opts.length > 0 && suggShut;
-      if (folded) { const bar = document.createElement('button'); bar.className = 'sugg-head'; bar.setAttribute('aria-label', 'Suggested words'); bar.addEventListener('click', () => { buzz(10); suggShut = false; suggRender(); rowIdleArm(3000); }); host.appendChild(bar); }
-      host.classList.toggle('show', folded);
-      if (folded) opts = []; }
-    if (!opts.length || !kids.length) return;
+    try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords) opts = magicTwoRows(); } catch (e) { opts = []; }
+    // a message with no doing word yet is offered the doing words first; otherwise the things come first
+    { const doing = w => MAGIC_WANTS.includes(w) || kindOfWord(w) === 'action' || MAGIC_ASK.includes(w);
+      if (!homePhrase.some(doing)) opts = opts.filter(m => m.row === 2).concat(opts.filter(m => m.row !== 2)); }
+    const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|');
+    if (host.dataset.sig === sig && host.firstChild) return;
+    host.dataset.sig = sig;
+    host.innerHTML = '';
+    host.classList.toggle('show', opts.length > 0);
+    grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
+    if (!opts.length) return;
+    if (suggShut) {
+      const bar = document.createElement('button'); bar.className = 'sugg-head'; bar.setAttribute('aria-label', 'Suggested words');
+      bar.addEventListener('click', () => { buzz(10); suggShut = false; suggRender(); rowIdleArm(6000); });
+      host.appendChild(bar);
+      return;
+    }
+    // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
-    const hgt = like ? like.offsetHeight : 0, fs = likeHw ? likeHw.style.fontSize : '';
-    grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = 'none'; });
-    // (rows the page had sized one by one would squash the added ones: every row takes the tile height instead)
-    if (grid.style.gridTemplateRows) { grid.dataset.sgTpl = grid.style.gridTemplateRows; grid.dataset.sgAuto = grid.style.gridAutoRows; grid.style.gridTemplateRows = ''; if (hgt) grid.style.gridAutoRows = hgt + 'px'; }
-    // (a page whose tiles simply flow, with no places of their own, takes the new tiles at its start and end)
-    const placedGrid = kids.every(c => parseInt(c.style.gridRowStart) > 0);
-    const sRows = Math.max(...opts.map(m => m.row || 1));      // every suggestion sits before the page's own tiles
-    const colOf = {};
-    if (placedGrid) kids.forEach(c => {
-      const r = parseInt(c.style.gridRowStart) || 1, sp = /span\s+(\d+)/.exec(c.style.gridRowEnd || '');
-      c.style.gridRowStart = String(r + sRows); c.dataset.sgs = String(sRows);
-    });
-    opts.forEach((m, i) => {
+    const hgt = like ? Math.max(96, Math.round(like.offsetHeight * 0.7)) : 0,      // a little shorter than the page's tiles, so those stay in view under both rows
+       fs = likeHw ? likeHw.style.fontSize : '';
+    const rowEl = document.createElement('div'); rowEl.className = 'sugg-row';
+    opts.forEach(m => {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
       if (hgt) b.style.height = hgt + 'px';
-      { const rw = m.row || 1; colOf[rw] = (colOf[rw] || 0) + 1; if (placedGrid) { b.style.gridRow = String(rw); b.style.gridColumn = String(colOf[rw]); } }
       const added = m.phrase.filter((_, j) => !m.used.includes(j));
       const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
-      const hl = document.createElement('span'); hl.className = 'sugg-hl'; hl.textContent = added.map(sentenceLabel).join(' ');
+      const label = added.map(sentenceLabel).join(' ');
+      if (label.length > 11 && fs) t.style.fontSize = Math.round(parseFloat(fs) * (label.includes(' ') ? 0.86 : Math.max(0.6, 11 / label.length))) + 'px';      // a long one is set a little smaller, and may take two lines
+      const hl = document.createElement('span'); hl.className = 'sugg-hl'; hl.textContent = label;
       t.appendChild(hl); b.appendChild(t);
       b.addEventListener('click', e => {
         e.stopPropagation();
@@ -7193,12 +7196,11 @@ function suggRender() {
         warmSpeech(); speakWord(added.join(' '), 0.95); buzz(10); save();
         renderPhraseBar();
       });
-      grid.insertBefore(b, grid.children[i] || null);
+      rowEl.appendChild(b);
     });
-  } finally {
-    // (rows coming or going above a page that is scrolled down do not move what is being looked at)
-    if (hadTop > 0) { const d = grid.scrollHeight - hadH; if (d) grid.scrollTop = Math.max(0, hadTop + d); }
-    suggBusy = false; if (suggObs) suggObs.takeRecords(); }      // (its own changes to the grid are not a reason to run again)
+    ['pointerdown', 'touchstart', 'wheel', 'scroll'].forEach(ev => rowEl.addEventListener(ev, () => rowIdleArm(6000), { passive: true }));      // being looked through: it stays
+    host.appendChild(rowEl);
+  } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
 { let t = null; suggObs = new MutationObserver(() => { if (suggBusy) return; clearTimeout(t); t = setTimeout(suggRender, 0); }); suggObs.observe(document.getElementById('homeGrid'), { childList: true }); }
@@ -7953,7 +7955,7 @@ function renderCatTiles(containerId, rerender) {
       const col = nm === 'chat' ? '#f08a24' : nm === 'categories' ? '#8e5bd6' : nm === 'my stuff' ? '#e0473c' : ['#f08a24', '#8e5bd6', '#e0473c', '#2f9bd8', '#d9a400'][Math.max(0, tops.indexOf(c)) % 5];
       // (inside one of its folders the tab is a lighter shade of the same colour)
       const deep = homePath.length > 1 || !!tileGroup;
-      b.style.setProperty('background', deep ? mixHex(col, '#a9abb2', 0.42) : col, 'important'); b.style.setProperty('color', '#fff', 'important');
+      b.style.setProperty('background', deep ? mixHex(col, '#ffffff', 0.3) : col, 'important'); b.style.setProperty('color', '#fff', 'important');
     }
     b.textContent = c.name;
     // inside one of its folders the tab names the folder that is open (Actions); tapping it goes
