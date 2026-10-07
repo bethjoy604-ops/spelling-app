@@ -625,6 +625,9 @@
     padding: 12px 14px; font-family: inherit; font-size: 17px; font-weight: 800; color: var(--ink); cursor: pointer;
   }
   .pick-row.on { background: var(--green); border-color: var(--green); color: #fff; }
+  .pick-list.pick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pick-grid .pick-head { grid-column: 1 / -1; margin: 12px 0 2px; font-weight: 900; }
+  .pick-grid .pick-row { text-align: center; }
 
   .home-bar .ctl.icon { flex: none; }
   /* Chosen words take the room they need; the typing box fills what is left.
@@ -666,7 +669,7 @@
   }
   .magic-box.show { display: flex; }
   .magic-box.inbar { display: none !important; }
-  .pb-words .magic-chip { display: inline-block; font-size: inherit; line-height: inherit; padding: 0 0.3em; border-radius: 14px; margin: 0; vertical-align: baseline; }
+  .pb-words .magic-chip { display: inline-block; font-size: 0.62em; line-height: inherit; padding: 0 0.3em; border-radius: 14px; margin: 0; vertical-align: baseline; }
   .magic-box .magic-x { display: flex; }
   /* while a sentence is offered it stands in for the folder menu */
   .view-home:not(.at-root):has(#magicBox.show:not(.folded):not(.inbar)) .home-row { display: none; }      /* (the first page keeps its menu: a folder may be wanted next) */
@@ -786,6 +789,12 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  .home-keys { display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 54vh; z-index: 30; padding: 14px 16px 16px; background: #aeb0b5; box-shadow: 0 -8px 18px rgba(0,0,0,0.16); border-radius: 20px 20px 0 0; }
+  .home-keys.open { display: flex; animation: hkUp 0.22s ease both; }
+  @keyframes hkUp { from { transform: translateY(30%); opacity: 0; } to { transform: none; opacity: 1; } }
+  .home-keys .key.space { flex: 1; }
+  .pb-back { color: var(--red); background: var(--red-tint); }
+  .pb-back svg { width: 60%; height: 60%; display: block; margin: auto; }
   .home-card.sel-on { outline: 5px solid var(--prompt); outline-offset: -5px; background: var(--prompt-soft); }
   .view-home.selecting .home-card:not(.sel-on) { opacity: 0.75; }
   .sel-bar { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 45; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border-radius: 20px; box-shadow: 0 6px 24px rgba(0,0,0,0.25); }
@@ -1821,6 +1830,7 @@
            autocomplete="off" autocapitalize="off" spellcheck="false"
            aria-label="Type a word">
     <div class="pb-suggest" id="typeSuggest" style="display:none"></div>
+    <button class="display-clear pb-back" id="pbBack" aria-label="Delete a letter, or put the keyboard away" style="display:none"><svg viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2H23a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H9.5a3 3 0 0 1-2.3-1.1L1.5 11l5.7-7.9A3 3 0 0 1 9.5 2z"/><path d="M12.5 7.5l7 7M19.5 7.5l-7 7"/></svg></button>
     <button class="display-clear" id="pbClear" aria-label="Clear phrase">&times;</button>
     <button class="key enter home-enter" id="pbGo" aria-label="Go">&#9166;</button>
   </div>
@@ -2509,7 +2519,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 401 - 7 Oct';
+const BUILD = 'build 402 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4775,8 +4785,57 @@ document.getElementById('phraseBar').addEventListener('click', e => {
   if (e.target.closest('button, .pb-suggest')) return;
   document.getElementById('pbInput').blur();
   hideBarFlash();
-  showKeyboard();
+  if (state.builderMode) { showKeyboard(); return; }
+  if (homeKeysUp()) return;
+  homeKeysOpen();
 });
+// ---- The keyboard over the page: a tap on the key bar brings the letters up over the lower half of
+// whatever page is open (the page itself stays). The delete key sits in the key bar; with nothing
+// typed, it puts the keyboard away. No home key or enter here - the key bar has the green enter.
+let homeKeysTimer = null;
+function homeKeysUp() { const k = document.getElementById('homeKeys'); return !!k && k.classList.contains('open'); }
+function homeKeysIdle() {
+  clearTimeout(homeKeysTimer);
+  homeKeysTimer = setTimeout(() => { if (homeKeysUp() && !document.getElementById('pbInput').value) homeKeysClose(); }, 7000);
+}
+function homeKeysOpen() {
+  let k = document.getElementById('homeKeys');
+  const inp = document.getElementById('pbInput');
+  if (!k) {
+    k = document.createElement('div'); k.id = 'homeKeys'; k.className = 'keyboard home-keys';
+    const key = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'key ' + cls; b.textContent = label; b.addEventListener('click', () => { buzz(8); fn(); homeKeysIdle(); }); return b; };
+    const put = () => { renderTypeSuggest(); renderPhraseBar(); };
+    LAYOUT.forEach(letters => {
+      const row = document.createElement('div'); row.className = 'row';
+      letters.forEach(L => row.appendChild(key(L.toLowerCase(), 'letter', () => { if (inp.value.length < 40) inp.value += L.toLowerCase(); put(); })));
+      k.appendChild(row);
+    });
+    const last = document.createElement('div'); last.className = 'row';
+    const sp = key('', 'space space-blank', () => { if (inp.value.trim()) commitTypedWord(); }); sp.setAttribute('aria-label', 'Space');
+    last.appendChild(sp); k.appendChild(last);
+    document.getElementById('viewHome').appendChild(k);
+  }
+  inp.readOnly = true;
+  k.classList.add('open');
+  document.getElementById('viewHome').classList.add('keys-open');
+  document.getElementById('pbBack').style.display = '';
+  homeKeysIdle();
+}
+function homeKeysClose() {
+  clearTimeout(homeKeysTimer);
+  const k = document.getElementById('homeKeys');
+  if (k) k.classList.remove('open');
+  document.getElementById('viewHome').classList.remove('keys-open');
+  document.getElementById('pbBack').style.display = 'none';
+  document.getElementById('pbInput').readOnly = false;
+}
+document.getElementById('pbBack').addEventListener('click', () => {
+  const inp = document.getElementById('pbInput');
+  buzz(8);
+  if (inp.value) { inp.value = inp.value.slice(0, -1); renderTypeSuggest(); renderPhraseBar(); homeKeysIdle(); }
+  else homeKeysClose();
+});
+document.getElementById('pbGo').addEventListener('click', () => { if (homeKeysUp()) homeKeysClose(); });
 // the keyboard page, however it was opened: left empty and untouched for three seconds (and with no
 // word set to practise), it closes and the page it came from is back
 function kbIdleArm() {
@@ -6760,9 +6819,28 @@ function magicExtend() {
 }
 // The green suggestion follows the one-up rule: the message as it stands plus ONE more word, never a
 // whole sentence ahead - "attach" offers "attach it", "hi" offers "hi there", "want" offers "I want"
+// More than one offer where it helps, each one step on: a thing with no doing word yet is offered its
+// doing words ("green box" -> I want green box / need green box / see green box); a doing word is
+// offered the things that go with it ("eat" -> eat apple / eat cookies ...)
+function magicOptions() {
+  const n = homePhrase.length;
+  if (!n) return [];
+  const last = homePhrase[n - 1];
+  if (isPunct(last) || isSmallWord(last)) return [];
+  const doing = w => MAGIC_WANTS.includes(w) || kindOfWord(w) === 'action' || MAGIC_ASK.includes(w);
+  const k = kindOfWordG(last), okW = w => !state.hiddenWords[w] && !homePhrase.includes(w);
+  const out = [];
+  if (!homePhrase.some(doing) && k !== 'people' && !Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(homePhrase[0]))) {
+    [['I', 'WANT'], ['NEED'], ['SEE']].filter(l => l.every(okW)).forEach(l => out.push({ phrase: l.concat(homePhrase), used: homePhrase.map((_, i) => i + l.length) }));
+  } else if (kindOfWord(last) === 'action' && !MAGIC_WANTS.includes(last) && !MAGIC_ASK.includes(last)) {
+    magicNext(last, 3).filter(okW).forEach(w => out.push({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
+  }
+  return out.slice(0, 3);
+}
 function magicPhraseNow() {
   const full = magicPhraseFull();
   if (!homePhrase.length) return null;
+  { const opts = magicOptions(); if (opts.length) return opts[0]; }
   if (full && full.phrase.length === homePhrase.length + 1) return full;
   const last = homePhrase[homePhrase.length - 1];
   if (isPunct(last)) return null;
@@ -6984,6 +7062,20 @@ function renderMagic(word) {
       renderPhraseBar();
     });
     row.appendChild(whole);
+    // (the other offers, each a different one-step-on sentence)
+    magicOptions().slice(1).forEach(m => {
+      const c = document.createElement('button');
+      c.className = 'magic-chip phrase';
+      c.textContent = sentenceWords(m.phrase).join(' ');
+      c.addEventListener('click', () => {
+        m.phrase.forEach(magicKnow);
+        homePhrase = m.phrase.slice();
+        magicAccepted = homePhrase.join(' '); magicShowNow = false; magicOfferedFor = magicAccepted; magicTarget = null;
+        warmSpeech(); speakWord(homePhrase.join(' '), 0.95); buzz(10); save();
+        renderPhraseBar();
+      });
+      row.appendChild(c);
+    });
     mp.phrase.forEach((w, i) => {
       if (mp.used.includes(i)) return;
       const b = document.createElement('button');
@@ -9986,17 +10078,10 @@ function usesGroups(cat) {
   return foldersShownIn(cat).length === 0;
 }
 function listGroups(cat) {
-  // the targets page starts with three groups; a word added to targets lands in New
-  if (cat.target && !Array.isArray(cat.groups)) {
-    const was = state.targetState || {};
-    const pick = v => (cat.words || []).filter(w => was[w] === v);
-    cat.groups = [
-      { id: 1, name: 'Established', words: pick('independent'), open: true },
-      { id: 2, name: 'Emerging', words: pick('prompted'), open: true },
-      { id: 3, name: 'New', words: pick('waiting'), open: true },
-    ];
-  }
+  // (the targets page starts with no groups of its own: they are added as they are wanted)
   // no headings until one is added: titles start out ungrouped
+  // (the three starter groups of the old targets page go, once, where they were left empty)
+  if (cat.target && !cat.groupsTidied) { cat.groupsTidied = 1; if (Array.isArray(cat.groups)) cat.groups = cat.groups.filter(g => !(/^(established|emerging|new)$/i.test(String(g.name || '').trim()) && !(g.words || []).length)); }
   if (!Array.isArray(cat.groups)) cat.groups = [];
   const inCat = cat.words || [];
   const seen = new Set();
@@ -10533,6 +10618,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     // targets always end with the two prompts: a new target (unsorted, it shows at the top) and a new group
     const at = addRow(null);
     at.querySelector('.hw').textContent = '+ target';
+    at.addEventListener('click', e => { e.stopImmediatePropagation(); e.preventDefault(); openTargetPicker(cat); }, true);
     put(mark(at, -1));
   } else put(mark(addRow(null), -1));      // one add row for the whole page, at the very end
   const ng = document.createElement('button');
@@ -10885,6 +10971,43 @@ function feedHiddenButtons(body, cat) {
       delete cat.feedHid[id];
       save(); closeWordSheet(); renderHome(true);
     }));
+  });
+}
+// "+ target": every tile in the library as a grid, the ones already targets ticked. A tap ticks or
+// unticks one - the same way tiles are chosen for a custom page.
+function openTargetPicker(cat) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Target words');
+    const n = document.createElement('div');
+    n.className = 'help-note'; n.style.margin = '4px 0 8px';
+    n.textContent = 'Tick the tiles to practise as targets. Tap one again to take it off the list.';
+    body.appendChild(n);
+    body.appendChild(sheetBtn('Type a new word', '', () => askText('New target', 'Add', '', typed => { if (!addTitleTo(cat, null, typed)) return false; save(); renderHome(true); })));
+    const list = document.createElement('div');
+    list.className = 'pick-list pick-grid';
+    list.style.maxHeight = '52vh'; list.style.overflowY = 'auto';
+    body.appendChild(list);
+    const done = new Set();
+    state.categories.filter(c => !c.target && !c.hidden && (c.words || []).length).forEach(f => {
+      const ws = (f.words || []).filter(w => !state.hiddenWords[w] && !isPunct(w) && !done.has(w) && (done.add(w), true));
+      if (!ws.length) return;
+      const h = document.createElement('div');
+      h.className = 'help-note pick-head'; h.textContent = f.name;
+      list.appendChild(h);
+      ws.forEach(w => {
+        const r = document.createElement('button');
+        r.className = 'pick-row';
+        const paint = () => { const on = (cat.words || []).includes(w); r.classList.toggle('on', on); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w); };
+        r.addEventListener('click', () => {
+          if ((cat.words || []).includes(w)) { cat.words = cat.words.filter(x => x !== w); listGroups(cat); }
+          else addTitleTo(cat, null, sentenceLabel(w));
+          save(); paint();
+        });
+        paint();
+        list.appendChild(r);
+      });
+    });
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); renderHome(true); }));
   });
 }
 function openFeedPicker(cat) {
