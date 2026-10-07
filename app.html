@@ -2498,7 +2498,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 395 - 7 Oct';
+const BUILD = 'build 396 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4665,6 +4665,24 @@ function showSplash() { setView('splash'); }
 function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
 // The height the page's tiles are sized from: with the key bar drawn in the grid is taller, but the
 // tiles keep the size they had with the bar open, so nothing jumps
+// Back at the top after scrolling: the small words row is open again for three seconds (the word
+// not found among the tiles may be there), then folds back to its blue bar
+let rowBackTimer = null;
+function rowBackAtTop() {
+  clearTimeout(rowBackTimer);
+  if (state.builderMode || state.smallRowsOn === false) return;
+  const host = document.getElementById('smallHost');
+  if (!host.querySelector('.small-head')) return;      // nothing folded there to open
+  const pop = stripKey === null && !!popRowUntil;
+  if (pop) popRowShut = false; else if (stripKey !== null) { stripShut = false; stripFull = null; clearTimeout(stripTimer); stripTimer = null; } else return;
+  if (smallHostRedo) smallHostRedo();
+  rowBackTimer = setTimeout(() => {
+    if (stripFull) return;
+    if (pop) { if (popRowUntil) popRowShut = true; } else if (stripKey !== null) stripShut = true;
+    if (smallHostRedo) smallHostRedo();
+  }, 3000);
+}
+document.getElementById('smallHost').addEventListener('pointerdown', () => clearTimeout(rowBackTimer), true);
 let gridHFull = 0, barHold = false, menuHLast = 54;
 function gridH(grid) {
   if (grid.id === 'homeGrid' && gridHFull && document.getElementById('viewHome').classList.contains('bar-min')) return gridHFull;
@@ -4682,7 +4700,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   const grid = document.getElementById('homeGrid'), view = document.getElementById('viewHome');
   const min = view.classList.contains('bar-min');
   const yStart = grid.getBoundingClientRect().top;      // where the page sat before anything folds away
-  if (state.builderMode) { if (min) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = ''); return; }
+  if (state.builderMode) { if (min) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = '', rowBackAtTop()); return; }
   // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
   // until the page is back at its top)
   if (grid.scrollTop > 2 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
@@ -4703,12 +4721,12 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
       requestAnimationFrame(() => requestAnimationFrame(() => { if (!view.classList.contains('bar-min')) return; grid.style.transition = 'padding-top 0.28s ease'; grid.style.paddingTop = '0px'; }));
     }
   }
-  else if (min && grid.scrollTop <= 0 && was > 0 && Date.now() - barMinAt > 400) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = '');
+  else if (min && grid.scrollTop <= 0 && was > 0 && Date.now() - barMinAt > 400) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = '', rowBackAtTop());
 });
 // at the very top with the bar drawn in: pulling down again (wheel or finger) opens everything out
 let barPrevTop = 0, barMinAt = 0;
 { const grid = document.getElementById('homeGrid'), view = document.getElementById('viewHome');
-  const open = () => { if (view.classList.contains('bar-min') && grid.scrollTop <= 0 && Date.now() - barMinAt > 400) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = ''); };
+  const open = () => { if (view.classList.contains('bar-min') && grid.scrollTop <= 0 && Date.now() - barMinAt > 400) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = '', rowBackAtTop()); };
   grid.addEventListener('wheel', e => { if (e.deltaY < 0) open(); }, { passive: true });
   let ty = 0;
   grid.addEventListener('touchstart', e => { ty = e.touches[0].clientY; }, { passive: true });
@@ -6753,7 +6771,7 @@ function magicNavKey() { return homePath.join('/') + '|' + (tileGroup ? tileGrou
 // they show until one is picked, Skip is pressed, or the page is changed some other way
 function magicActive() {
   const ph = homePhrase.join(' ');
-  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph && magicFoldedFor !== ph;
+  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph;      // (the green offer coming and going never changes the tiles)
 }
 function renderMagicTiles(grid) {
   const { cols, rows: screenRows } = slotShape();
@@ -6885,6 +6903,7 @@ function renderMagic(word) {
   // one phrase made from what is in the bar, then the small words it still needs, in order
   // the small words to tap next sit first, in a blue row of tiles like the small words rows;
   // the whole sentence comes after it
+  const tilesWere = magicTilesNow;      // the offer adds itself to the key bar and nothing else: the tiles stay as they are
   const strip = document.createElement('div');
   strip.className = 'magic-strip';
   const small = document.getElementById('magicSmall');
@@ -6960,7 +6979,7 @@ function renderMagic(word) {
   } }));
   // the words that fit next ("go" -> the places) are a grid of tiles under the sentence, in place of
   // the page's own tiles, for as long as the offer is open
-  magicTilesNow = tiles;
+  magicTilesNow = tilesWere;
 
   // Whole phrases already modelled — tap to spell the lot
   (mp ? [] : magicPhrasesFor(word).slice(0, 1)).forEach(phrase => {
