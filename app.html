@@ -1139,7 +1139,7 @@
   /* three quiet dots, grey like the tabs that are not open; a little clearer while the pop-out is out */
   #homeIconsToggle { font-size: 30px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.5); box-shadow: none; }
   /* while a message is being built the gear steps out of the way */
-  .view-home:has(.phrase-bar.has-text) #homeIconsToggle { visibility: hidden; }
+  .view-home:not(.menu-open):has(.phrase-bar.has-text) #homeIconsToggle { visibility: hidden; }
   /* the one green tab keeps its size when the switches pop out beside it */
   .home-row.tools .folder-strip-row .cat-tile:only-child { padding: 0 18px; }
   .home-row.icons-open #homeIconsToggle { color: rgba(0,0,0,0.7); background: rgba(255,255,255,0.8); }
@@ -2486,7 +2486,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 385 - 7 Oct';
+const BUILD = 'build 386 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6766,7 +6766,6 @@ function magicFold() {
   const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
   if (magicTilesNow.length) renderPhraseBar();      // the page's own tiles come back
   // back on the first page with the offer gone: the folder menu opens out again for three seconds
-  if (!state.builderMode && homePath.length === 0) { rootMenuUntil = Date.now() + 3000; renderCatTiles(); }
 }
 document.getElementById('magicBox').addEventListener('click', e => {
   const box = e.currentTarget;
@@ -6946,7 +6945,7 @@ function renderPhraseBar() {
     phraseLenSeen = homePhrase.length; if (grew) setTimeout(flashBar, 40);
     if (grew) setTimeout(smallRowPop, 0);
     // on the first page a chosen tile opens the folder menu out for three seconds, in case the next word is in a folder
-    if (grew && !state.builderMode && homePath.length === 0) { rootMenuUntil = Date.now() + 3000; renderCatTiles(); } if (grew && state.iconsOpen) { closeIcons(); return; } }
+    if (grew && state.iconsOpen) { closeIcons(); return; } }
   const bar = document.getElementById('phraseBar');
   const box = document.getElementById('pbWords');
   // Same size settings as the keyboard's typing bar
@@ -7453,6 +7452,7 @@ function renderCatTiles(containerId, rerender) {
     }
     if (level === 0 && (!containerId || containerId === 'catTiles')) { rootMenuWas = homePath.length; document.getElementById('viewHome').classList.toggle('at-root', homePath.length === 0 && !state.builderMode); }
     const rootShut = mainBar && Date.now() >= rootMenuUntil;
+    if (level === 0 && (!containerId || containerId === 'catTiles')) document.getElementById('viewHome').classList.toggle('menu-open', mainBar && !rootShut);      // the + for the switches shows with the opened menu
     if (level === 0 && !folded) {
       const all = document.createElement('button');
       all.className = 'cat-tile plain' + (homePath.length === 0 ? ' selected' : '');
