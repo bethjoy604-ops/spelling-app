@@ -2466,7 +2466,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 367 - 6 Oct';
+const BUILD = 'build 368 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6613,6 +6613,7 @@ function magicPhraseNow() {
     // as entered, or (two words put in the other way round) turned about
     // (a longer bar is read by its main words: "I want to go park" is want + go + park)
     const main = homePhrase.filter((w, i) => !['TO', 'THE', 'A', 'AN'].includes(w) && !(w === 'I' && i > 0));
+    magicTargetExt = false;
     magicTarget = magicExpand(homePhrase) || (homePhrase.length === 2 ? magicExpand(homePhrase.slice().reverse()) : null)
       || (main.length < homePhrase.length ? magicExpand(main) : null);
     used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
@@ -8121,19 +8122,22 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     // beside a magic phrase: the six that fit best - the small words the sentence still needs, then
     // the ones that usually follow the last word, then the page's own
     const mp = magicPhraseNow();
-    const need = mp ? mp.phrase.filter((w, i) => !mp.used.includes(i)) : [];
+    // (the words a sentence is still missing - I, want, to, the - never the guessed-at next thing of a
+    //  sentence that is already whole: "I want to attach" does not offer "the park")
+    const core = ['I', 'TO', 'THE', 'A', 'AN', 'WANT', 'FEEL', 'AM', 'IS', 'ARE'];
+    const need = mp && !mp.ext ? mp.phrase.filter((w, i) => !mp.used.includes(i) && (core.includes(w) || isSmallWord(w))) : [];
     // only the ones that really fit: what the sentence still needs, and what belongs after the last
     // word. No padding out to six - the blue is as short as the words that make sense. (A word with
     // nothing of its own falls back to the usual followers for its kind.)
     const last = homePhrase[homePhrase.length - 1];
     const six = [];
-    need.concat(followSpecific(last)).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
-    if (!six.length) followWords(last, []).forEach(w => { if (!isPunct(w) && !six.includes(w) && !homePhrase.includes(w)) six.push(w); });
+    need.concat(followSpecific(last)).forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
+    if (!six.length) followWords(last, []).forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     // never an empty row: failing all that, the page's own small words and then the most used ones
     if (!six.length) {
       const used = w => (state.wordHistory[w] || {}).n || 0;
       [].concat(...shown, ...rows).concat(allSmallWords().slice().sort((a, b) => used(b) - used(a)))
-        .forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
+        .forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w))) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
     }
     shown = [six.slice(0, 6)];
   }
