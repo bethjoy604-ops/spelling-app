@@ -2626,7 +2626,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 428 - 7 Oct';
+const BUILD = 'build 429 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -12218,8 +12218,11 @@ function greenIdleArm() {
   clearTimeout(greenShutTimer);
   greenShutTimer = setTimeout(() => { if (!suggShut && !state.builderMode && document.querySelector('#suggHost .sugg-row')) { suggShut = true; suggRender(); } }, 5000);
 }
-document.addEventListener('pointerdown', e => { if (!e.target.closest) return; if (e.target.closest('#suggHost')) { clearTimeout(blueShutTimer); greenIdleArm(); } }, true);
-document.addEventListener('scroll', e => { if (e.target && e.target.classList && e.target.classList.contains('sugg-row')) greenIdleArm(); }, true);
+// a row being touched or swiped through stays as it is: every fold-by-the-clock timer stops
+['pointerdown', 'touchstart', 'touchmove', 'wheel'].forEach(ev => document.addEventListener(ev, e => {
+  if (!e.target.closest || !e.target.closest('#suggHost, #smallHost, #magicSmall')) return;
+  clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); clearTimeout(hintTimer);
+}, { capture: true, passive: true }));
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#smallHost, #magicSmall')) clearTimeout(blueShutTimer); }, true);
 let hintTimer = null, hintDone = false;
 function hintArm() {
