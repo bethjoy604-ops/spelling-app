@@ -1057,7 +1057,7 @@
   /* the thick blue edge with its grip lines: push it (or swipe the row) for the next words */
   .small-host .small-strip.slides .strip-edge { width: 46px; border-radius: 0 16px 16px 0; cursor: pointer;
     box-shadow: -6px 0 8px -6px rgba(0,0,0,0.08) !important;
-    background: #b9cff8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l9 10-9 10'/%3E%3C/svg%3E") center / 18px auto no-repeat; }
+    background: #b9cff8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") center / 24px auto no-repeat; }
   .small-host .small-strip.slides .strip-edge:active { background-color: #a6c1f5; }
   /* six even columns across the whole panel, the same space left and right */
   .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
@@ -2500,7 +2500,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 397 - 7 Oct';
+const BUILD = 'build 398 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6737,7 +6737,26 @@ function magicExtend() {
   if (!homePhrase.includes('PLEASE') && !isPunct(last) && homePhrase.some(w => MAGIC_WANTS.includes(w))) return homePhrase.concat(['PLEASE']);
   return null;
 }
+// The green suggestion follows the one-up rule: the message as it stands plus ONE more word, never a
+// whole sentence ahead - "attach" offers "attach it", "hi" offers "hi there", "want" offers "I want"
 function magicPhraseNow() {
+  const full = magicPhraseFull();
+  if (!homePhrase.length) return null;
+  if (full && full.phrase.length === homePhrase.length + 1) return full;
+  const last = homePhrase[homePhrase.length - 1];
+  if (isPunct(last)) return null;
+  // one word the fuller sentence is missing at the front ("want" -> "I want") ...
+  if (full && !full.ext && full.used.length === homePhrase.length && full.used[0] === 1) {
+    const keep = [0].concat(full.used);
+    return { phrase: full.phrase.filter((_, j) => keep.includes(j)), used: full.used.map((_, k) => k + 1) };
+  }
+  // ... or else the word that most naturally comes next
+  const pool = followSpecific(last).concat(isSmallWord(last) ? [] : (FOLLOW_KIND[kindOfWordG(last)] || []));
+  const next = pool.find(w => !isPunct(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && !['IS', 'AND', 'CAN', 'WITH', 'BECAUSE', 'ABOUT', 'TO', 'THE', 'A', 'MY'].includes(w));      // (never left hanging on a joining word)
+  if (!next) return null;
+  return { phrase: homePhrase.concat([next]), used: homePhrase.map((_, i) => i) };
+}
+function magicPhraseFull() {
   if (!homePhrase.length) { magicTarget = null; magicTargetExt = false; return null; }
   if (magicTarget && !magicMatch(magicTarget, homePhrase)) magicTargetExt = false;
   let used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
@@ -8300,6 +8319,15 @@ function addStripToggle(strip, onClose) {
   t.addEventListener('click', e => { e.stopPropagation(); onClose(); });
   strip.appendChild(t);
 }
+// Holding a small word: change the word itself, or choose which words the row holds
+function smallWordMenu(w, rowEdit) {
+  if (isPunct(w)) { rowEdit(); return; }
+  openWordSheet(body => {
+    sheetTitle(body, 'This small word', w);
+    body.appendChild(sheetBtn('Edit the word or its capitals', '', () => openWordEdit(w)));
+    body.appendChild(sheetBtn('Choose the words in this row', '', () => { closeWordSheet(); rowEdit(); }));
+  });
+}
 function makeSmallStrip(rowH, base, owner, gutter) {
   // rows are kept in one list, with '\n' marking where a new row starts
   const rows = smallRows(owner);
@@ -8353,7 +8381,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   else if (gutter && homePhrase.length) {
     // beside a magic phrase: the six that fit best - the small words the sentence still needs, then
     // the ones that usually follow the last word, then the page's own
-    const mp = magicPhraseNow();
+    const mp = magicPhraseFull();
     // (the words a sentence is still missing - I, want, to, the - never the guessed-at next thing of a
     //  sentence that is already whole: "I want to attach" does not offer "the park")
     const core = ['I', 'TO', 'THE', 'A', 'AN', 'WANT', 'FEEL', 'AM', 'IS', 'ARE'];
@@ -8439,11 +8467,11 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     return b;
   };
   shown.forEach((row, r) => row.forEach((w, i) => {
-    edit = () => editRow(r);
+    edit = () => smallWordMenu(w, () => editRow(r));
     const b = mk(sentenceLabel(w), () => {      // the blue row is always small letters (I and names aside)
       if (!state.words.includes(w)) { state.words.push(w); if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 }; save(); }
       // with magic on, a small word goes where the sentence wants it ("want" + I reads "I want"), not on the end
-      const mp = state.magicType && !state.builderMode ? magicPhraseNow() : null;
+      const mp = state.magicType && !state.builderMode ? magicPhraseFull() : null;
       const at = mp ? mp.phrase.findIndex((x, j) => x === w && !mp.used.includes(j)) : -1;
       if (at >= 0) { const keep = mp.used.concat([at]); homePhrase = mp.phrase.filter((_, j) => keep.includes(j)); }
       else if ((strip._leads || []).includes(w) && homePhrase.length) homePhrase.splice(homePhrase.length - 1, 0, w);      // "up" + go reads "go up"
@@ -8484,7 +8512,6 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       buzz(10);
       // on the sliding row this is the edge handle: a push brings in the next six (the second page
       // on, the whole library drops down - see the scroll watcher below)
-      if (slides && !full && strip.scrollLeft < strip.scrollWidth - strip.clientWidth - 4) { const pw = strip._pageW || strip.clientWidth; strip.scrollBy({ left: pw, behavior: 'smooth' }); return; }
       stripFull = full ? null : fullKey;
       clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null;
       if (full) { if (stripKey !== null) stripCountdown(stripKey); else if (smallFullHook) chatRowArm(); }
@@ -8514,13 +8541,12 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       settle = setTimeout(() => {
         const pw = ts[6] ? ts[6].offsetLeft - ts[0].offsetLeft : 0;
         strip._pageW = pw;
-        if (pw && strip.scrollLeft >= pw * 2.5 && strip.isConnected) {
-          stripFull = fullKey;
-          clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null;
-          buzz(10); followKey = null; refreshSmallStrips();
-        }
       }, 220);
+      // (swiping only moves the row along - the button at the right opens the whole library - and a
+      //  row being looked through does not fold away under the finger)
+      clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null; clearTimeout(rowBackTimer);
     });
+    strip.addEventListener('pointerdown', () => { clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null; clearTimeout(rowBackTimer); });
     setTimeout(() => { if (ts[6]) strip._pageW = ts[6].offsetLeft - ts[0].offsetLeft; }, 0);
   }
   // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
