@@ -817,7 +817,16 @@
   .band-bar { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #bfd8ff; cursor: pointer; margin-bottom: 10px; }
   .small-host .small-strip.slides { background: transparent !important; box-shadow: none !important; padding: 0 0 4px 0 !important; scroll-padding-left: 0 !important; }
   .small-host .small-strip.slides .strip-edge { margin: 0 !important; border-radius: 16px !important; }
-  .sugg-host .sugg-head, .small-host .band-bar, .view-home .grid-bar, .small-host > .small-head:not(.group-head) { height: 44px; }
+  /* the three header bars are one size, each with its arrow at the far right: down to open, up to fold */
+  .sugg-host .sugg-head, .small-host .band-bar, .view-home .grid-bar, .small-host .small-head:not(.group-head) { height: 48px !important; min-height: 48px; border-radius: 16px !important; padding: 0 !important; box-shadow: none !important; background-repeat: no-repeat !important; background-position: right 20px center !important; background-size: 24px auto !important; }
+  .sugg-host .sugg-head { background-color: #cdebd1; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%236fb07a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
+  .sugg-host .sugg-head.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%236fb07a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
+  .small-host .small-head:not(.group-head) { background-color: #bfd8ff !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") !important; }
+  .small-host .band-bar { background-color: #bfd8ff; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
+  .view-home .grid-bar { background-color: rgba(255,255,255,0.8); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
+  .view-home.grid-shut .grid-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
+  .small-host .small-strip.slides .strip-edge { display: none !important; }
+  .small-host .small-strip.slides { --tail: 0px !important; }
   .sm-hl { background: #d6e4fd; border-radius: 0.3em; padding: 0.08em 0.4em; }
   .sugg-host { display: none; flex-shrink: 0; }
   .sugg-host.show { display: block; }
@@ -2633,7 +2642,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 430 - 7 Oct';
+const BUILD = 'build 431 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7268,7 +7277,11 @@ let gridManual = false, gridPage = '';
       let bar = host.querySelector(':scope > .band-bar');
       if (open && !state.builderMode) {
         if (!bar) { bar = document.createElement('button'); bar.className = 'band-bar'; bar.setAttribute('aria-label', 'Fold the small words away');
-          bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } }); }
+          // (tap by tap: the row of six, then the whole small-words folder, then folded away)
+          bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
+            const more = host.querySelector('.small-strip.slides .strip-more');
+            if (more && !stripFull) { more.click(); return; }
+            const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } }); }
         if (host.firstChild !== bar) host.insertBefore(bar, host.firstChild);
       } else if (bar) bar.remove();
     } finally { obs.takeRecords(); busy = false; }
@@ -7335,7 +7348,7 @@ function suggRender0() {
     host.classList.toggle('show', opts.length > 0);
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
     if (!opts.length) return;
-    { const bar = document.createElement('button'); bar.className = 'sugg-head'; bar.setAttribute('aria-label', 'Suggested words');
+    { const bar = document.createElement('button'); bar.className = 'sugg-head' + (suggShut ? '' : ' open'); bar.setAttribute('aria-label', 'Suggested words');
       bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; suggRender(); });
       host.appendChild(bar);
       if (suggShut) return; }
