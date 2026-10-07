@@ -639,7 +639,7 @@
   .view-home.bar-min .phrase-bar .pb-words { max-height: 1.35em; }
   .view-home.bar-min .phrase-bar .home-enter { min-height: 0; height: 64px; }
   /* (the folder menu and the switches step aside too, and their room goes to the bar) */
-  .view-home.bar-min .home-row { display: none; }
+  .view-home.bar-min:not(.targets-page) .home-row { display: none; }
   /* a tile was chosen: for two seconds the whole page is the sentence, then the page comes back */
   .bar-flash { position: fixed; inset: 0; z-index: 40; background: #aeb0b5; padding: 16px; display: flex; animation: barFlash 1s ease both; }
   @keyframes barFlash { 0% { opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
@@ -2491,7 +2491,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 387 - 7 Oct';
+const BUILD = 'build 388 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4587,6 +4587,7 @@ function targetCapAt(index) {
   if (!state.currentTarget) return false;
   if (state.caseMode === 2) return index === 0;
   if (state.caseMode === 3) {
+    if (index === 0 && state.currentTarget.includes(' ')) return true;      // two words or more read as a sentence: it starts with a capital
     const c = casedText(state.currentTarget)[index];
     return !!c && c !== c.toLowerCase();
   }
@@ -6959,7 +6960,7 @@ function renderPhraseBar() {
   bar.classList.toggle('has-text', homePhrase.length > 0 || !!document.getElementById('pbInput').value);
   box.innerHTML = '';
   // a whole sentence: more than one word, and nothing the magic phrase would still add to it
-  const whole = (() => { if (homePhrase.length < 2) return false; try { const mp = magicPhraseNow(); return !mp || !!mp.ext || mp.phrase.length <= homePhrase.length; } catch (e) { return true; } })();
+  const whole = homePhrase.length >= 2;      // two words or more: it starts with a capital
   homePhrase.forEach((w, i) => {
     const c = document.createElement('span');
     c.className = 'pb-chip';
@@ -7467,7 +7468,7 @@ function renderCatTiles(containerId, rerender) {
       row.appendChild(all);
     }
     // the targets tab only shows while the settings arrow is open
-    kids.filter(c => rootShut ? false : folded ? c.id === homePath[0] : !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
+    kids.filter(c => rootShut ? false : folded ? (c.id === homePath[0] && !c.target) : !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
 
     host.appendChild(row);
   });
@@ -7691,7 +7692,8 @@ function renderHome(reset) {
     const inSub = !state.builderMode && homePath.length > 1;
     document.getElementById('homeBackBtn').style.display = 'none';      // retired: the green tab itself steps back (one tap) or home (two)
     // on the targets page a gear sits beside the plus: the prompting options for practising them
-    document.getElementById('targetGearBtn').style.display = (state.iconsOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
+    document.getElementById('targetGearBtn').style.display = 'none';      // retired: prompting is reached by a long press on a group or a target
+    document.getElementById('viewHome').classList.toggle('targets-page', onTargetsPage());
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
     document.getElementById('homeModesToggle').style.display = 'none';     // retired: everything it opened is in the pop-out on the right
     document.getElementById('homeSettingsBtn').style.display = ''; document.getElementById('homeSettingsBtn').classList.add('off');      // grey: settings is not open (it opens over the page)     // it shows with the other switches, in the pop-out on the right
@@ -9972,6 +9974,7 @@ function openGroupHead(cat, group) {
     })));
     body.appendChild(sheetBtn('Add a title under it', '', () => askText('New title under ' + group.name, 'Add', '', typed => addTitleTo(cat, group, typed))));
     body.appendChild(sheetBtn('Add another heading', '', () => addGroupHeading(cat)));
+    if (cat.target) body.appendChild(sheetBtn('Prompting settings', '', () => { closeWordSheet(); targetSetOpen = 'when'; openTargetSettings(); }));
     if (!cat.target) body.appendChild(layoutSwitchBtn(cat));
     if (!cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; tileGroup = null; closeWordSheet(); renderHome(true); }));
     body.appendChild(sheetBtn('Remove this heading', 'danger', () => {
@@ -10007,6 +10010,7 @@ function openTitleActions(word, cat, extra) {
     sheetTitle(body, 'This ' + noun, word);
     body.appendChild(sheetBtn(cat.target ? 'Edit spelling or capitals' : 'Edit the title or its capitals', '', () => openWordEdit(word)));
     if (cat.target) body.appendChild(targetPauseBtn(word));
+    if (cat.target) body.appendChild(sheetBtn('Prompting settings', '', () => { closeWordSheet(); targetSetOpen = 'when'; openTargetSettings(); }));
     if (extra) extra(body);
     if (!cat.target && usesGroups(cat)) body.appendChild(layoutSwitchBtn(cat));
     if (!cat.target && !state.builderMode) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; if (!tilesPage(cat)) tileGroup = null; closeWordSheet(); renderHome(true); }));
@@ -12063,9 +12067,12 @@ document.getElementById('homeIconsToggle').addEventListener('click', () => {
 // The pop-out folds itself away: five seconds after it was opened or one of its icons was last used,
 // and as soon as a tile is chosen
 let iconsTimer = null;
+// the targets page keeps the pop-out up: it stays until the target icon is tapped off again
+function onTargetsPage() { try { return !state.builderMode && homePath.length > 0 && !!(catById(homePath[0]) || {}).target; } catch (e) { return false; } }
 function closeIcons() {
   clearTimeout(iconsTimer); iconsTimer = null;
   if (!state.iconsOpen) return;
+  if (onTargetsPage()) return;
   state.iconsOpen = false;
   const g = document.getElementById('homeGrid'); const top = g.scrollTop;
   renderHome(true);
