@@ -1038,7 +1038,7 @@
   .small-host .small-strip.slides .small-tile.snap { scroll-snap-align: start; scroll-snap-stop: always; }
   .small-host .small-strip.slides .sp { grid-row: 1; }
   .small-host .small-strip.slides .strip-more { position: sticky; right: 0; left: auto; bottom: auto; grid-row: 1; width: 44px; height: auto; align-self: stretch; background: #bfd8ff; margin: -18px 0; z-index: 1; box-shadow: -10px 0 10px -6px rgba(0,0,0,0.12); }
-  .small-host .small-strip.slides { scroll-padding-left: 14px; }
+  .small-host .small-strip.slides { scroll-padding-left: 16px; }
   /* six even columns across the whole panel, the same space left and right */
   .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
   .small-host .small-strip { min-height: 0; gap: 16px; padding: 18px 44px 18px 18px; }
@@ -1121,13 +1121,13 @@
     max-width: 1200px; opacity: 1;
   }
   /* the mode switches stay tucked away until the arrow at the end of the bar is tapped */
-  #homeTargetBtn.off { filter: grayscale(1); opacity: 0.4; }
+  #homeTargetBtn.off, #homeSettingsBtn.off, #homeHelpBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* a target whose prompting is switched off */
   .home-card.list-row.paused .hw { opacity: 0.35; }
   .home-card.list-row.paused::after { content: 'off'; margin-left: auto; font-weight: 800; font-size: 16px; color: rgba(0,0,0,0.4); }
   .home-row:not(.icons-open) #homeSettingsBtn, .home-row:not(.icons-open) #homeTargetBtn,
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
-  .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn { display: none !important; }
+  .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn { display: none !important; }
   #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* three quiet dots, grey like the tabs that are not open; a little clearer while the pop-out is out */
   #homeIconsToggle { font-size: 30px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.5); box-shadow: none; }
@@ -2299,7 +2299,7 @@
         <div class="sublabel">On-screen buttons</div>
         <div class="settings-list">
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
-          <div class="setting-row"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
+          <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
         </div>
@@ -2476,7 +2476,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 372 - 7 Oct';
+const BUILD = 'build 373 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7608,8 +7608,8 @@ function renderHome(reset) {
     document.getElementById('targetGearBtn').style.display = (state.iconsOpen && !state.builderMode && cat && cat.target) ? '' : 'none';
     const deep = (state.builderMode && builderPath.length > 0) || inSub;
     document.getElementById('homeModesToggle').style.display = 'none';     // retired: everything it opened is in the pop-out on the right
-    document.getElementById('homeSettingsBtn').style.display = '';     // it shows with the other switches, in the pop-out on the right
-    { const tb = document.getElementById('homeTargetBtn'); const on = !state.builderMode && !!cat && !!cat.target; tb.style.display = newFolder() ? '' : 'none'; tb.classList.toggle('off', on); tb.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+    document.getElementById('homeSettingsBtn').style.display = ''; document.getElementById('homeSettingsBtn').classList.add('off');      // grey: settings is not open (it opens over the page)     // it shows with the other switches, in the pop-out on the right
+    { const tb = document.getElementById('homeTargetBtn'); const on = !state.builderMode && !!cat && !!cat.target; tb.style.display = newFolder() ? '' : 'none'; tb.classList.toggle('off', !on); tb.setAttribute('aria-pressed', on ? 'true' : 'false'); }
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
     document.querySelector('.home-row').classList.toggle('tools', !!state.iconsOpen);     // the tabs sit closer while the pop-out is open
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
@@ -7651,7 +7651,8 @@ function renderHome(reset) {
     document.getElementById('homeAddFolderBtn').style.display =
       'none';     // retired: every page has its own grey tiles for adding
     document.getElementById('homeSearchBtn').style.display = state.showSearchBtn ? '' : 'none';
-    document.getElementById('homeHelpBtn').style.display = 'none';   // never on home
+    // the star is one of the switches in the pop-out: lit while help mode is on, grey while it is off
+    { const hb = document.getElementById('homeHelpBtn'); hb.style.display = ''; hb.classList.toggle('off', !state.helpMode); hb.setAttribute('aria-pressed', state.helpMode ? 'true' : 'false'); hb.setAttribute('aria-label', 'Help mode: ' + (state.helpMode ? 'on' : 'off')); }
 
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows())
@@ -8270,7 +8271,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const ts = [...strip.querySelectorAll('.small-tile')];
     ts.forEach((t, i) => { if (i % 6 === 0) t.classList.add('snap'); });
     for (let k = (6 - ts.length % 6) % 6; k > 0; k--) { const sp = document.createElement('i'); sp.className = 'sp'; strip.appendChild(sp); }
-    strip.style.setProperty('--tail', more ? '60px' : '18px');
+    strip.style.setProperty('--tail', more ? '56px' : '10px');
     if (more) { more.style.height = ''; strip.appendChild(more); }      // last in the row, held at the right edge
   }
   // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
@@ -11975,15 +11976,13 @@ document.getElementById('homeSearchBtn').addEventListener('click', () => {
   buzz(10); save(); renderHome(true); renderTypeSuggest();
 });
 document.getElementById('homeHelpBtn').addEventListener('click', () => {
-  // On home the star takes you to the keys with help already granted
-  showKeyboard();
-  if (state.currentTarget && !isWordComplete()) {
-    helpRequested = true;
-    revealPromptNow();
-    render();
-  }
+  // a switch: on, prompts wait for the star on the keys (and come after the help delay); off, prompting
+  // goes by the prompting settings alone
+  state.helpMode = !state.helpMode;
+  state.showHelpBtn = state.helpMode;
+  helpRequested = false;
+  buzz(10); save(); render(); renderHome(true);
 });
-document.getElementById('homeBtn').addEventListener('click', () => { touchSession(); showHome(); });
 document.getElementById('homeSettingsBtn').addEventListener('click', openSettingsSheet);
 
 // ===== Search by tapping letters =====
