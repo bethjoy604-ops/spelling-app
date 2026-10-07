@@ -526,7 +526,9 @@
   .feed-group.drag-src { opacity: 0.35; }
   .feed-group .feed-head { touch-action: none; }
   /* the group's name as a tile of its own, in a deeper grey than the panel: tap it to say the word */
-  .feed-group .feed-head.name-tile[aria-expanded="true"] { display: none; }
+  .feed-group .feed-head.name-tile { align-self: flex-start; max-width: 100%; height: 40px !important; margin: -4px 0 10px -4px; padding: 0 18px; border-radius: 12px; background: #eef0f3; color: var(--ink); font-size: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+  .feed-group .feed-head.name-tile[aria-expanded="false"] { margin-bottom: 0; }
+  .feed-group.wide-open .feed-head.name-tile { background: #fff; }
   /* a white tile like the rest, its word marked in grey (the way a suggestion's is marked in green) */
   .sugg-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .home-card.name-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; }
@@ -2614,7 +2616,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 426 - 7 Oct';
+const BUILD = 'build 427 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6563,7 +6565,7 @@ function makeFolderCard(c, rerender) {
   // a folder of names (Food, Music ...) has its name marked in grey and puts it in the message when tapped
   // (the top pages themselves - Categories, My Stuff - are choice boards: every folder on them has the blue dot and adds nothing)
   const top = currentCat();
-  const board = !catAllowsPhrases(c) || !top || !top.parent;
+  const board = true;      // every folder tile: blue dot, adds nothing to the message
   if (board) card.classList.add('board-card'); else markNameTile(card);
   const host = currentCat();
   const isLink = !!host && (c.parent || null) !== host.id;
@@ -6893,6 +6895,7 @@ function magicDropPath(cat) {
 // opens its page). Picking a tile inside takes the name's place, as before, so the message never
 // reads "actions eat".
 function nameIntoBar(cat, name) {
+  return;      // (retired: opening a folder or a group never adds its name to the message)
   if (state.builderMode || !cat || cat.target) return;
   const key = normaliseWord(name);
   if (!key) return;
@@ -10701,7 +10704,6 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
     if (g.hidden) return;
     const card = mk(g.name, 'group-tile');
     movable(card, groups, g, 'groups', () => { nameIntoBar(cat, g.name); tileGroup = { cat: cat.id, group: g }; buzz(10); renderPhraseBar(); renderHome(true); }, () => openGroupHead(cat, g));
-    markNameTile(card);
     put(card);
   });
   const grouped = new Set([].concat(...groups.map(g => g.words)));
@@ -11338,6 +11340,7 @@ function feedFolders(cat) {
   }
   return out;
 }
+let feedTap = { id: '', at: 0 };
 let feedOpen = null;      // { cat, f }: the group on a custom page that is opened out to all its tiles
 function feedWords(cat) {
   const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
@@ -11896,14 +11899,11 @@ function renderSlotGrid(grid, cat, folders) {
       sec.className = 'feed-group';
       if (feedOpen && feedOpen.cat === cat.id && feedOpen.f === f.id && !shut) {
         sec.classList.add('wide-open');
-        const mn = document.createElement('button'); mn.className = 'feed-min'; mn.textContent = '\u2212'; mn.setAttribute('aria-label', 'Show fewer');
-        mn.addEventListener('click', e => { e.stopPropagation(); buzz(10); feedOpen = null; const top = grid.scrollTop; renderHome(true); grid.scrollTop = top; });
-        sec.appendChild(mn);
       }
       // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
       const NAME_TILE = '\u0001name';
       let laid = sortWords(mine, cols, true);
-      if (!shut) laid = [NAME_TILE].concat(laid);      // the group's own name leads its tiles, as a tile (in a deeper grey)
+      // (the group's name is its tab at the top left again, not a tile)      // the group's own name leads its tiles, as a tile (in a deeper grey)
       // its rows of tiles, and how wide the widest of them really is (the blue is no wider)
       let lines = [];
       for (let k = 0; k < laid.length; k += cols) lines.push(laid.slice(k, k + cols));
@@ -11946,12 +11946,16 @@ function renderSlotGrid(grid, cat, folders) {
         ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => sec.addEventListener(ev, cancel));
         sec.addEventListener('contextmenu', e => e.preventDefault()); }
       hd.classList.add('name-tile');
+      // the tab: a tap opens the group out to all its tiles (and again, back to its usual few); a double tap
+      // folds the group away to just its tab; a tap on a folded one opens it
       hd.addEventListener('click', () => {
         if (suppressTileClick) { suppressTileClick = false; return; }
-        // the name of the group is a word too: a tap puts it in the message (a folded panel opens first;
-        // folding one away is in its hold menu)
-        if (!shut) return;
-        delete cat.feedShut[f.id];
+        const id = cat.id + '/' + f.id, twice = feedTap.id === id && Date.now() - feedTap.at < 450;
+        feedTap = { id, at: twice ? 0 : Date.now() };
+        const wideNow = !!feedOpen && feedOpen.cat === cat.id && feedOpen.f === f.id;
+        if (twice) { cat.feedShut[f.id] = true; feedOpen = null; }
+        else if (shut) delete cat.feedShut[f.id];
+        else feedOpen = wideNow ? null : { cat: cat.id, f: f.id };
         buzz(10); save();
         const top = grid.scrollTop;
         renderHome(true);
