@@ -788,6 +788,12 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  .read-back { position: fixed; inset: 0; z-index: 60; background: #aeb0b5; padding: 16px; display: flex; animation: rbIn 0.25s ease both; }
+  @keyframes rbIn { from { opacity: 0; } to { opacity: 1; } }
+  .rb-card { position: relative; flex: 1; background: var(--surface); border-radius: 24px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; padding: 5vmin; overflow: hidden; }
+  .rb-words { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.2vmin 1.6vmin; font-size: clamp(44px, 11vmin, 120px); font-weight: 900; line-height: 1.1; color: var(--ink); }
+  .rb-word { padding: 0.08em 0.22em; border-radius: 0.2em; transition: background 0.15s ease, transform 0.15s ease; }
+  .rb-word.on { background: var(--prompt); color: var(--prompt-ink); transform: scale(1.06); }
   /* spelling practice: one bar. The target word is the typing bar - each letter typed turns green in
      place and the next one takes the highlight - so the separate typing bar steps aside and this one is larger */
   .view-keyboard:has(#targetBanner.active) #display { display: none; }
@@ -2492,7 +2498,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 389 - 7 Oct';
+const BUILD = 'build 390 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5535,7 +5541,7 @@ function finishPhrase() {
   const words = state.phraseWords.slice();
   const now = Date.now();
 
-  if (state.enterSpeech) speakWord(phrase, 0.95);
+  readBack(words);      // the whole message fills the screen and is read back, word by word
 
   if (state.scoreMode) {
     Object.entries(state.pendingLetterCounts).forEach(([L, c]) => {
@@ -5652,12 +5658,37 @@ function goHomeAfter(word, wordCount) {
     clearPromptTimer(); promptVisible = true;
     save(); render();
     showHome();
-  }, HOME_AFTER_WORD_MS + Math.max(0, (wordCount || 1) - 1) * 450);   // a phrase takes longer to read out
+  }, HOME_AFTER_WORD_MS + Math.max(0, (wordCount || 1) - 1) * 800);   // a phrase takes longer to read out
 }
 
 // ---- Celebration ----
+// The finished message, large on the whole screen: each word lights up in turn as it is said
+let readBackTimer = null;
+function readBack(words) {
+  clearTimeout(readBackTimer);
+  const old = document.getElementById('readBack'); if (old) old.remove();
+  const f = document.createElement('div'); f.className = 'read-back'; f.id = 'readBack';
+  const card = document.createElement('div'); card.className = 'rb-card'; card.id = 'readBackCard';
+  const line = document.createElement('div'); line.className = 'rb-words';
+  const shown = sentenceWords(words);
+  const chips = shown.map(t => { const c = document.createElement('span'); c.className = 'rb-word'; c.textContent = t; line.appendChild(c); return c; });
+  card.appendChild(line); f.appendChild(card);
+  const done = () => { clearTimeout(readBackTimer); f.remove(); };
+  f.addEventListener('click', done);
+  document.body.appendChild(f);
+  let i = 0;
+  const step = () => {
+    chips.forEach((c, k) => c.classList.toggle('on', k === i));
+    if (i >= words.length) { readBackTimer = setTimeout(done, 700); return; }
+    const w = words[i];
+    if (state.enterSpeech && !isPunct(w)) speakWord(w, 0.95);
+    i++;
+    readBackTimer = setTimeout(step, isPunct(w) ? 250 : 520 + 75 * String(w).length);
+  };
+  readBackTimer = setTimeout(step, 350);
+}
 function celebrate(word) {
-  const display = document.getElementById('display');
+  const display = document.getElementById('readBackCard') || (document.getElementById('display').offsetParent ? document.getElementById('display') : document.getElementById('targetBanner'));
   display.classList.add('celebrating');
   setTimeout(() => display.classList.remove('celebrating'), 800);
 
@@ -5680,7 +5711,7 @@ function celebrate(word) {
   }
 
   // Flying word to word bank
-  const dispRect = (display.offsetParent ? display : document.getElementById('targetBanner')).getBoundingClientRect();
+  const dispRect = display.getBoundingClientRect();
   const bankBtn = document.getElementById('homeBtn');
   const bankRect = bankBtn.getBoundingClientRect();
   const fw = document.createElement('div');
