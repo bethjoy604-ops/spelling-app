@@ -786,6 +786,14 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  .home-card.sel-on { outline: 5px solid var(--prompt); outline-offset: -5px; background: var(--prompt-soft); }
+  .view-home.selecting .home-card:not(.sel-on) { opacity: 0.75; }
+  .sel-bar { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 45; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border-radius: 20px; box-shadow: 0 6px 24px rgba(0,0,0,0.25); }
+  .sel-bar .sel-n { flex: 1; font-weight: 900; font-size: 20px; color: var(--ink); }
+  .sel-btn { border: none; border-radius: 14px; padding: 14px 22px; font-family: inherit; font-weight: 900; font-size: 18px; background: #eceef1; color: var(--ink); cursor: pointer; }
+  .sel-btn.warn { background: var(--red-tint); color: var(--red); }
+  .sel-btn.done { background: #34c759; color: #fff; }
+  .sel-btn:disabled { opacity: 0.4; }
   .read-back { position: fixed; inset: 0; z-index: 60; background: #aeb0b5; padding: 16px; display: flex; animation: rbIn 0.25s ease both; }
   @keyframes rbIn { from { opacity: 0; } to { opacity: 1; } }
   .read-back.out { animation: rbOut 0.36s ease both; pointer-events: none; }
@@ -2501,7 +2509,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 400 - 7 Oct';
+const BUILD = 'build 401 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4671,6 +4679,20 @@ function showSetup() { setView('setup'); renderSetup(); refreshVoiceList(); }
 // Back at the top after scrolling: the small words row is open again for three seconds (the word
 // not found among the tiles may be there), then folds back to its blue bar
 let rowBackTimer = null;
+// An open blue row left alone folds back to its bar: three seconds after it opened, a little longer
+// after it was last swiped. (The full library, opened on purpose, stays.)
+function rowIdleArm(ms) {
+  clearTimeout(rowBackTimer);
+  if (state.smallRowsFold === false) return;
+  rowBackTimer = setTimeout(() => {
+    if (stripFull || state.builderMode) return;
+    if (stripKey !== null) { if (stripShut) return; stripShut = true; }
+    else if (smallFullHook) { if (!state.smallOpen || chatFull) return; state.smallOpen = false; chatRowAuto = false; }
+    else if (popRowUntil) { if (popRowShut) return; popRowShut = true; }
+    else return;
+    if (smallHostRedo) smallHostRedo();
+  }, ms || 3000);
+}
 function rowBackAtTop() {
   if (state.builderMode || state.smallRowsOn === false) return;
   const host = document.getElementById('smallHost');
@@ -4679,13 +4701,9 @@ function rowBackAtTop() {
   const pop = stripKey === null && !!popRowUntil;
   if (pop) popRowShut = false; else if (stripKey !== null) { stripShut = false; stripFull = null; clearTimeout(stripTimer); stripTimer = null; } else return;
   if (smallHostRedo) smallHostRedo();
-  rowBackTimer = setTimeout(() => {
-    if (stripFull) return;
-    if (pop) { if (popRowUntil) popRowShut = true; } else if (stripKey !== null) stripShut = true;
-    if (smallHostRedo) smallHostRedo();
-  }, 3000);
+  rowIdleArm(3000);
 }
-document.getElementById('smallHost').addEventListener('pointerdown', () => clearTimeout(rowBackTimer), true);
+
 let gridHFull = 0, barHold = false, menuHLast = 54;
 function gridH(grid) {
   if (grid.id === 'homeGrid' && gridHFull && document.getElementById('viewHome').classList.contains('bar-min')) return gridHFull;
@@ -4703,15 +4721,17 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   const grid = document.getElementById('homeGrid'), view = document.getElementById('viewHome');
   const min = view.classList.contains('bar-min');
   const yStart = grid.getBoundingClientRect().top;      // where the page sat before anything folds away
+  // (a page only a little longer than the screen is left alone: folding the bars away would move it further than the scroll itself)
+  const big = min || grid.scrollHeight - grid.clientHeight > 300;
   if (state.builderMode) { if (min) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = '', rowBackAtTop()); return; }
   // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
   // until the page is back at its top)
-  if (grid.scrollTop > 2 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
-  if (grid.scrollTop > 2 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
-  if (grid.scrollTop > 2 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
-  if (grid.scrollTop > 2 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
+  if (big && grid.scrollTop > 20 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
+  if (big && grid.scrollTop > 20 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
+  if (big && grid.scrollTop > 20 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
+  if (big && grid.scrollTop > 20 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   const was = barPrevTop; barPrevTop = grid.scrollTop;
-  if (!min && grid.scrollTop > 2 && grid.scrollHeight - grid.clientHeight > 60) {
+  if (!min && big && grid.scrollTop > 20 && grid.scrollHeight - grid.clientHeight > 300) {
     // the room the menu and bars give up goes to the page: the tiles stay where they were on screen
     // (so the row being scrolled is shown whole, not cut off under the bar)
     const y0 = yStart;
@@ -4721,7 +4741,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
     if (freed > 0) {
       grid.style.transition = 'none'; grid.style.paddingTop = freed + 'px';
       // ... and then the gap closes smoothly: the tiles slide up into the freed room
-      requestAnimationFrame(() => requestAnimationFrame(() => { if (!view.classList.contains('bar-min')) return; grid.style.transition = 'padding-top 0.28s ease'; grid.style.paddingTop = '0px'; }));
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (!view.classList.contains('bar-min')) return; grid.style.transition = 'padding-top 0.45s cubic-bezier(0.22, 0.61, 0.36, 1)'; grid.style.paddingTop = '0px'; }));
     }
   }
   else if (min && grid.scrollTop <= 0 && was > 0 && Date.now() - barMinAt > 400) (view.classList.remove('bar-min'), document.getElementById('homeGrid').style.paddingTop = '', rowBackAtTop());
@@ -8598,9 +8618,9 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       }, 220);
       // (swiping only moves the row along - the button at the right opens the whole library - and a
       //  row being looked through does not fold away under the finger)
-      if (strip._touched) { clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null; clearTimeout(rowBackTimer); }
+      if (strip._touched) { clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null; rowIdleArm(5000); }
     });
-    ['pointerdown', 'touchstart', 'wheel'].forEach(ev => strip.addEventListener(ev, () => { strip._touched = true; clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null; clearTimeout(rowBackTimer); }, { passive: true }));
+    ['pointerdown', 'touchstart', 'wheel'].forEach(ev => strip.addEventListener(ev, () => { strip._touched = true; clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null; rowIdleArm(5000); }, { passive: true }));
     setTimeout(() => { if (ts[6]) strip._pageW = ts[6].offsetLeft - ts[0].offsetLeft; }, 0);
   }
   // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
@@ -10222,6 +10242,7 @@ function openTitleActions(word, cat, extra) {
   openWordSheet(body => {
     const noun = cat.target ? 'target' : 'title';
     sheetTitle(body, 'This ' + noun, word);
+    if (!cat.target) body.appendChild(selSheetBtn(word));
     body.appendChild(sheetBtn(cat.target ? 'Edit spelling or capitals' : 'Edit the title or its capitals', '', () => openWordEdit(word)));
     if (cat.target) body.appendChild(targetPauseBtn(word));
     if (cat.target) body.appendChild(sheetBtn('Prompting settings', '', () => { closeWordSheet(); targetSetOpen = 'when'; openTargetSettings(); }));
@@ -11093,7 +11114,7 @@ function renderSlotGrid(grid, cat, folders) {
       bar.className = 'small-head';
       bar.setAttribute('aria-expanded', 'false');
       bar.setAttribute('aria-label', 'Small words');
-      bar.addEventListener('click', () => { stripShut = false; buzz(10); stripCountdown(cat.id); paint(); });
+      bar.addEventListener('click', () => { stripShut = false; buzz(10); paint(); rowIdleArm(3000); });
       el.appendChild(bar);
     } else {
       el.appendChild(makeSmallStrip(rowH, base, cat, true));
@@ -11499,13 +11520,14 @@ function popRowDraw() {
   if (popRowShut) {
     const bar = document.createElement('button');
     bar.className = 'small-head'; bar.setAttribute('aria-expanded', 'false'); bar.setAttribute('aria-label', 'Small words');
-    bar.addEventListener('click', () => { popRowShut = false; buzz(10); popRowDraw(); });
+    bar.addEventListener('click', () => { popRowShut = false; buzz(10); popRowDraw(); rowIdleArm(3000); });
     el.appendChild(bar);
   } else el.appendChild(makeSmallStrip(0, 0, currentCat() || null, true));
   smallHostSet(el);
 }
 function smallRowPop() {
   if (state.builderMode || state.smallRowsOn === false) return;
+  rowIdleArm(3000);
   setTimeout(smallRowEmptyCheck, 0);
   // (opened this way it stays until the page is scrolled, the blue is tapped, or the bar is emptied)
   if (stripKey !== null) { stripShut = false; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
@@ -11729,6 +11751,41 @@ document.addEventListener('pointercancel', () => endWordDrag(true));
 document.addEventListener('touchmove', e => { if (wordDrag) e.preventDefault(); }, { passive: false });
 
 // ---- the sheet used for a held word ----
+// ---- Choosing several tiles at once: from a tile's hold menu. Tap tiles to tick or untick them, then
+// hide them or put them on the practice (target) list from the bar at the bottom.
+let selWords = null;
+function selLabelKey(el) { return el.dataset.word || normaliseWord(el.textContent || ''); }
+function selPaint() {
+  document.querySelectorAll('#homeGrid .home-card').forEach(c => c.classList.toggle('sel-on', !!selWords && selWords.includes(selLabelKey(c))));
+  let bar = document.getElementById('selBar');
+  if (!selWords) { if (bar) bar.remove(); document.getElementById('viewHome').classList.remove('selecting'); return; }
+  document.getElementById('viewHome').classList.add('selecting');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'selBar'; bar.className = 'sel-bar'; document.getElementById('viewHome').appendChild(bar); }
+  bar.innerHTML = '';
+  const n = document.createElement('span'); n.className = 'sel-n'; n.textContent = selWords.length + ' chosen'; bar.appendChild(n);
+  const btn = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'sel-btn ' + cls; b.textContent = label; b.addEventListener('click', fn); bar.appendChild(b); return b; };
+  const t = newFolder();
+  btn('Hide', 'warn', () => { selWords.forEach(w => { state.hiddenWords[w] = true; }); selEnd(); }).disabled = !selWords.length;
+  if (t && t.target) btn('Add to practice', '', () => {
+    const fresh = listGroups(t).find(g => /^new$/i.test(String(g.name || '').trim())) || null;
+    selWords.forEach(w => { if (!(t.words || []).includes(w)) addTitleTo(t, fresh, sentenceLabel(w)); });
+    selEnd();
+  }).disabled = !selWords.length;
+  btn('Done', 'done', selEnd);
+}
+function selStart(word) { closeAllMenus(); selWords = word ? [word] : []; selPaint(); }
+function selEnd() { selWords = null; save(); selPaint(); renderHome(true); }
+document.getElementById('homeGrid').addEventListener('click', e => {
+  if (!selWords) return;
+  const card = e.target.closest('.home-card');
+  e.stopPropagation(); e.preventDefault();
+  if (!card) return;
+  const k = selLabelKey(card);
+  if (!k || !state.words.includes(k)) return;      // (folders and add-buttons are not words)
+  if (selWords.includes(k)) selWords = selWords.filter(w => w !== k); else selWords.push(k);
+  buzz(8); selPaint();
+}, true);
+function selSheetBtn(word) { return sheetBtn('Select tiles (hide, add to practice ...)', '', () => selStart(word)); }
 function openWordSheet(build) {
   const body = document.getElementById('wordSheetBody');
   body.innerHTML = '';
@@ -12068,6 +12125,7 @@ function openWordActions(word, cat, extra) {
     const filed = categoriesOf(word).length > 0;
     openWordSheet(body => {
       sheetTitle(body, 'This word', word);
+      body.appendChild(selSheetBtn(word));
       body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
       if (!filed) body.appendChild(sheetBtn('Move to a folder', '', () => openMovePicker(word, null, null)));
       const nb = newListBtn(word);
@@ -12086,6 +12144,7 @@ function openWordActions(word, cat, extra) {
   }
   openWordSheet(body => {
     sheetTitle(body, 'This word', word);
+      body.appendChild(selSheetBtn(word));
     body.appendChild(sheetBtn('Edit spelling or capitals', '', () => openWordEdit(word)));
     body.appendChild(sheetBtn('Move to another folder', '', () => openMovePicker(word, cat, null)));
     const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
