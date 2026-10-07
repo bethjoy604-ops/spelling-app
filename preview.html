@@ -2480,7 +2480,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 376 - 7 Oct';
+const BUILD = 'build 377 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4721,7 +4721,7 @@ function kbIdleArm() {
   kbIdleTimer = setTimeout(() => {
     kbIdleTimer = null;
     if (document.getElementById('viewKeyboard').classList.contains('active') && !(state.text || '').length && !state.currentTarget) showHome();
-  }, 3000);
+  }, 7000);
 }
 let kbIdleTimer = null;
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, e => {
