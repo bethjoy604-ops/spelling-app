@@ -2473,7 +2473,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 370 - 7 Oct';
+const BUILD = 'build 371 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7984,7 +7984,8 @@ const PAGE_START = {
 };
 function startWords(cat, usual) {
   const out = [];
-  (PAGE_START[kindOfCat(cat)] || PAGE_DEFAULT).concat(usual || []).forEach(w => { if (!state.hiddenWords[w] && !out.includes(w)) out.push(w); });
+  // (a My Stuff board with no kind of its own - Movies, Music, Books, Games - starts from a wanting row)
+  (PAGE_START[kindOfCat(cat)] || (catAllowsPhrases(cat) ? ['I', 'WANT', 'THE', 'MY', 'MORE', 'PLEASE'] : PAGE_DEFAULT)).concat(usual || []).forEach(w => { if (!state.hiddenWords[w] && !out.includes(w)) out.push(w); });
   return punctLast(out.slice(0, 6));
 }
 // Only the small words that belong after this very word: ones set or learned for it, and the app's
@@ -10609,7 +10610,10 @@ function renderSlotGrid(grid, cat, folders) {
   const room = cellW - 30;
   const base = Math.min(rowH * 0.4, room / (12 * 0.62));
   // folders inside Categories carry a row of small words above their tiles
-  const strip = arrange && !sec && hasSmallStrip(cat) && !isBoardMenu(cat) && state.smallRowsOn !== false;
+  // every folder of words and every choice board has its own row of six small words (a page that is
+  // only a menu of folders has none - unless it shows a custom page of words)
+  const hasFeedWords = !!cat && Array.isArray(cat.feed) && cat.feed.length > 0 && !cat.feedOff;
+  const strip = arrange && !sec && !!cat && !cat.small && !cat.target && (!isBoardMenu(cat) || hasFeedWords) && state.smallRowsOn !== false;
   const topRow = false;    // (the small words bar has its own place above the folder menu now)
   smallHostRedo = null;
   grid.style.gridTemplateRows = topRow ? 'auto' : '';
