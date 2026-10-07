@@ -788,6 +788,11 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  /* spelling practice: one bar. The target word is the typing bar - each letter typed turns green in
+     place and the next one takes the highlight - so the separate typing bar steps aside and this one is larger */
+  .view-keyboard:has(#targetBanner.active) #display { display: none; }
+  .view-keyboard #targetBanner.active { --tile: clamp(40px, 8vh, 84px); min-height: clamp(110px, 20vh, 190px); padding: 16px 24px; }
+  .view-keyboard #targetBanner.active .tletter { padding: 8px 16px; }
   .tletter.next {
     background: var(--prompt); color: var(--prompt-ink);
   }
@@ -2486,7 +2491,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 386 - 7 Oct';
+const BUILD = 'build 387 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5673,7 +5678,7 @@ function celebrate(word) {
   }
 
   // Flying word to word bank
-  const dispRect = display.getBoundingClientRect();
+  const dispRect = (display.offsetParent ? display : document.getElementById('targetBanner')).getBoundingClientRect();
   const bankBtn = document.getElementById('homeBtn');
   const bankRect = bankBtn.getBoundingClientRect();
   const fw = document.createElement('div');
