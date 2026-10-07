@@ -2646,7 +2646,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 435 - 7 Oct';
+const BUILD = 'build 436 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4883,7 +4883,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   if (big && grid.scrollTop > 20 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
   if (grid.scrollTop > 20 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
   if (grid.scrollTop > 20 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
-  if (grid.scrollTop > 20 && !suggShut) { suggShut = true; suggRender(); }
+  if (grid.scrollTop > 20 && !suggShut) { suggShut = true; magicKeep = true; clearTimeout(blueShutTimer); suggRender(); }      // scrolling down the page folds the green row; the tiles suggested for the page stay
   const was = barPrevTop; barPrevTop = grid.scrollTop;
   if (!min && big && grid.scrollTop > 20 && grid.scrollHeight - grid.clientHeight > 300) {
     // the room the menu and bars give up goes to the page: the tiles stay where they were on screen
@@ -7189,12 +7189,12 @@ function magicKnow(w) {
 let magicTilesNow = [];                       // { label, tap, folder } for the word in the bar
 let magicAt = { phrase: '', nav: '' };        // where the page was when the bar last changed
 let magicSkipped = null;                      // the bar's words when Skip was pressed
-let magicSigShown = '', magicInHome = false;
+let magicSigShown = '', magicInHome = false, magicKeep = false;
 function magicNavKey() { return homePath.join('/') + '|' + (tileGroup ? tileGroup.group.name : '') + '|' + (libraryOpen || ''); }
 // they show until one is picked, Skip is pressed, or the page is changed some other way
 function magicActive() {
   const ph = homePhrase.join(' ');
-  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph && !suggShut && !!document.querySelector('#suggHost .sugg-head');      // (the green offer coming and going never changes the tiles)
+  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph && (!suggShut || magicKeep) && !!document.querySelector('#suggHost .sugg-head');      // (the green offer coming and going never changes the tiles)
 }
 function renderMagicTiles(grid) {
   const { cols, rows: screenRows } = slotShape();
@@ -7265,7 +7265,7 @@ function gridSync() {
   const green = !!document.querySelector('#suggHost .sugg-row');
   const board = !!grid.querySelector('.folder-card') && !grid.querySelector('.home-card[data-word], .feed-group, .small-section');
   view.classList.toggle('no-bars', board && !state.builderMode);
-  view.classList.toggle('band-green', false);
+  view.classList.toggle('band-green', green && !board);      // green open: the blue bar steps away until a green tile is chosen or the row is folded
   view.classList.toggle('band-blue', blue && !green && !board);
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
   const plain = !state.builderMode && !selWords && !onTargetsPage();
@@ -7356,6 +7356,9 @@ function suggRender0() {
         opts = things.slice(0, 1).concat(folders, things.slice(1), acts);
       } else opts = acts.concat(things);
       opts = acts;      // the green row is the doing words; things and their folders are the page's own tiles below
+      // ... and it slides on through every doing word that is not hidden, most used first, then stops
+      { const have = new Set(opts.map(m => m.phrase[m.phrase.length - 1])), idx = homePhrase.map((_, i) => i);
+        if (opts.length) magicActionPool(500).forEach(w => { if (!have.has(w)) { have.add(w); opts.push({ phrase: homePhrase.concat([w]), used: idx, act: true }); } }); }
     }
     const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
@@ -7365,7 +7368,7 @@ function suggRender0() {
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
     if (!opts.length) return;
     { const bar = document.createElement('button'); bar.className = 'sugg-head' + (suggShut ? '' : ' open'); bar.setAttribute('aria-label', 'Suggested words');
-      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; if (!suggShut) { rowsByTap = true; setBlue(false); } suggRender(); magicTilesSync(); });
+      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; magicKeep = false; if (!suggShut) { rowsByTap = true; setBlue(false); } suggRender(); magicTilesSync(); });
       host.appendChild(bar);
       if (suggShut) return; }
     // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
@@ -12243,7 +12246,7 @@ function smallRowPop() {
   if (moved) { try { renderPhraseBar(); } catch (e) {} }
   smallRowPop0();
   if (state.builderMode) return;
-  rowsByTap = false;
+  rowsByTap = false; magicKeep = false;
   suggShut = viaMagic; suggRender();
   setBlue(viaMagic);      // the small words open by themselves only after a green tile is chosen; otherwise their blue bar opens them
   // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
