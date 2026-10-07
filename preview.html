@@ -810,7 +810,7 @@
   .grid-edge { display: none; position: absolute; right: 0; top: 0; height: 110px; background: rgba(255,255,255,0.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") center / 24px auto no-repeat; z-index: 3; }
   .bank-area { position: relative; }
   /* each band has its bar floating above it - green, blue, white: tap it to fold the band away or bring it back */
-  .view-home.has-grid-edge .grid-bar { display: block; }
+  .view-home .grid-bar { display: none !important; }      /* the page tiles have no bar of their own */
   .grid-bar { background: rgba(255,255,255,0.8); }
   .sugg-host .sugg-head { margin-bottom: 10px; }
   .sugg-host .sugg-head:last-child { margin-bottom: 0; }
@@ -825,10 +825,6 @@
   .small-host .band-bar { background-color: #bfd8ff; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
   .view-home.band-green .small-host, .view-home.band-green .grid-bar, .view-home.band-blue .sugg-host, .view-home.band-blue .grid-bar { display: none !important; }      /* a row that is open has the page to itself: the other bars step away until it is folded */
   .view-home.no-bars .grid-bar, .view-home.no-bars .sugg-host, .view-home.no-bars .small-host { display: none !important; }      /* a choice board: just its folders */
-  .view-home.grid-row #homeGrid { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; flex: none !important; overflow-x: auto !important; overflow-y: hidden !important; gap: 16px; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 4px; align-items: stretch; }
-  .view-home.grid-row #homeGrid::-webkit-scrollbar { display: none; }
-  .view-home.grid-row #homeGrid > * { flex: 0 0 calc((100% - 32px) / 3) !important; min-width: 0; scroll-snap-align: start; margin: 0 !important; min-height: clamp(96px, 13vh, 150px); }
-  .view-home.grid-row #homeGrid > :not(.home-card) { display: none !important; }
   .view-home .grid-bar { background-color: rgba(0,0,0,0.07); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E"); }
   .view-home.grid-shut .grid-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
   .small-host .small-strip.slides .strip-edge { display: none !important; }
@@ -2650,7 +2646,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 434 - 7 Oct';
+const BUILD = 'build 435 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7198,7 +7194,7 @@ function magicNavKey() { return homePath.join('/') + '|' + (tileGroup ? tileGrou
 // they show until one is picked, Skip is pressed, or the page is changed some other way
 function magicActive() {
   const ph = homePhrase.join(' ');
-  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph;      // (the green offer coming and going never changes the tiles)
+  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph && !suggShut && !!document.querySelector('#suggHost .sugg-head');      // (the green offer coming and going never changes the tiles)
 }
 function renderMagicTiles(grid) {
   const { cols, rows: screenRows } = slotShape();
@@ -7261,7 +7257,7 @@ function gridSync() {
   let bar = document.getElementById('gridBar');
   if (!bar) {
     bar = document.createElement('button'); bar.id = 'gridBar'; bar.className = 'grid-bar'; bar.setAttribute('aria-label', 'Show the page tiles');
-    bar.addEventListener('click', () => { buzz(10); if (view.classList.contains('grid-shut')) { gridManual = false; if (!homePhrase.length) { rowsByTap = false; collapseRows(); } } else gridManual = true; gridSync(); });
+    bar.addEventListener('click', () => { buzz(10); if (view.classList.contains('grid-shut')) { gridManual = false; rowsByTap = false; clearTimeout(blueShutTimer); collapseRows(); } else gridManual = true; gridSync(); });
     grid.parentNode.insertBefore(bar, grid);
 
   }
@@ -7269,25 +7265,22 @@ function gridSync() {
   const green = !!document.querySelector('#suggHost .sugg-row');
   const board = !!grid.querySelector('.folder-card') && !grid.querySelector('.home-card[data-word], .feed-group, .small-section');
   view.classList.toggle('no-bars', board && !state.builderMode);
-  const going = homePhrase.length > 0;
-  view.classList.toggle('band-green', green && !board && !going);
-  view.classList.toggle('band-blue', blue && !green && !board && !going);
+  view.classList.toggle('band-green', false);
+  view.classList.toggle('band-blue', blue && !green && !board);
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
   const plain = !state.builderMode && !selWords && !onTargetsPage();
   view.classList.toggle('has-grid-edge', plain);
   // one band open at a time: a row opened by its bar (or, on Popular, by a word going in) folds the page tiles; both rows shut brings them back
-  view.classList.toggle('grid-shut', plain && !board && (gridManual || (!going && (blue || green) && rowsByTap)));
-  // with a message under way the page's tiles are one row too, sliding sideways like the rows above
-  view.classList.toggle('grid-row', plain && !board && going && (blue || green) && !grid.querySelector('.feed-group, .small-section'));
+  gridManual = false;
+  view.classList.toggle('grid-shut', plain && !board && blue);      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
 }
 let gridManual = false, gridPage = '', rowsByTap = false;
 document.addEventListener('click', e => {      // the blue bar opening its row: the green tiles fold
   if (!e.target.closest || !e.target.closest('#smallHost .small-head:not(.group-head)')) return;
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
-  if (homePhrase.length) { setTimeout(() => { try { gridSync(); } catch (e) {} }, 0); return; }      // a message under way: each bar only opens or folds its own row
   rowsByTap = true; if (!suggShut) { suggShut = true; suggRender(); }
   // (opened by its bar it has the page to itself, so the whole small-words folder shows, not just six)
-  setTimeout(() => { try { const more = document.querySelector('#smallHost .small-strip.slides .strip-more'); if (more && !stripFull) more.click(); gridSync(); } catch (e) {} }, 0);
+  setTimeout(() => { try { const more = document.querySelector('#smallHost .small-strip.slides .strip-more'); if (more && !stripFull) more.click(); gridSync(); magicTilesSync(); } catch (e) {} }, 0);
 }, true);
 // the small words: their blue bar floats above the open row too (a tap folds it), and each word is marked in blue
 (function () {
@@ -7303,7 +7296,7 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
         if (!bar) { bar = document.createElement('button'); bar.className = 'band-bar'; bar.setAttribute('aria-label', 'Fold the small words away');
           // (the same rule as the other bars: a tap opens, a tap folds; the row swipes along through all its words)
           bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
-            const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } }); }
+            const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } magicTilesSync(); }); }
         if (host.firstChild !== bar) host.insertBefore(bar, host.firstChild);
       } else if (bar) bar.remove();
       try { gridSync(); } catch (e) {}
@@ -7372,7 +7365,7 @@ function suggRender0() {
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
     if (!opts.length) return;
     { const bar = document.createElement('button'); bar.className = 'sugg-head' + (suggShut ? '' : ' open'); bar.setAttribute('aria-label', 'Suggested words');
-      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; if (!suggShut && !homePhrase.length) { rowsByTap = true; setBlue(false); } suggRender(); });
+      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; if (!suggShut) { rowsByTap = true; setBlue(false); } suggRender(); magicTilesSync(); });
       host.appendChild(bar);
       if (suggShut) return; }
     // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
@@ -7500,8 +7493,11 @@ function renderMagic(word) {
       if (li.length && !pool.length) { magicStickPool = null; magicTilesNow = li.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.splice(homePhrase.length - 1, 0, next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } })); } }
     // after a wanting word (want, need, like...) the tiles are the folders themselves - music, movies,
     // food - each opening its own page, and its name joining the sentence where it fits ("want music ...")
-    if (MAGIC_WANTS.includes(word)) {
-      const fs = magicFolders(word).filter(c => c.phrases || catAllowsPhrases(c));
+    if (MAGIC_WANTS.includes(word) || !magicTilesNow.length) {
+      const LEADF = { HI: ['People'], HELLO: ['People'], BYE: ['People'], HELP: ['People'], GO: ['Places'], EAT: ['Food'], DRINK: ['Food'], WATCH: ['Movies', 'TV'], LISTEN: ['Music'], READ: ['Books'], PLAY: ['Games', 'Stuff'], SEE: ['People', 'Places'] };
+      const lw = homePhrase.slice().reverse().find(w => LEADF[w]), first = lw ? LEADF[lw] : [];
+      const rk = c => { const k = first.indexOf(c.name); return k < 0 ? 99 : k; };
+      const fs = magicFolders(word, true).filter(c => c.phrases || catAllowsPhrases(c)).map((c, i) => [c, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]);
       if (fs.length) {
         magicStickPool = null;
         magicTilesNow = fs.map(c => ({ label: c.name.toLowerCase(), folder: true, tap: () => {
@@ -12237,6 +12233,8 @@ function arrangeLast() {
   homePhrase.splice(n - 1, 1); homePhrase.splice(at, 0, w);
   return true;
 }
+// the page's tiles follow the green row: open, they are the folders that go with the message; folded, the page's own
+function magicTilesSync() { try { if (!magicInHome && !state.builderMode) { magicSigShown = '\u0000'; renderPhraseBar(); } } catch (e) {} }
 function smallRowPop() {
   const viaMagic = Date.now() - magicPickAt < 500;
   let moved = false;
@@ -12245,14 +12243,18 @@ function smallRowPop() {
   if (moved) { try { renderPhraseBar(); } catch (e) {} }
   smallRowPop0();
   if (state.builderMode) return;
-  // A message under way: all three bands open, one row each to slide along, and stay open - nothing folds by the clock.
   rowsByTap = false;
+  suggShut = viaMagic; suggRender();
+  setBlue(viaMagic);      // the small words open by themselves only after a green tile is chosen; otherwise their blue bar opens them
+  // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
+  // other opens (a cue to look there too); then that folds as well - both bars shut says "ready to enter".
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
-  const going = homePhrase.length > 0 && state.magicType !== false;
-  if (going) gridManual = false;
-  suggShut = !going; suggRender();
-  setBlue(going);
-  try { gridSync(); } catch (e) {}
+  const still = () => !stripFull && !state.builderMode && document.getElementById('viewHome').classList.contains('active') && !document.querySelector('.overlay.show');
+  const green = open => { suggShut = !open; suggRender(); };
+  // (the green tiles stay open while the message is being made; the small words that opened after a green
+  //  tile fold again after five seconds left alone, and the green tiles come back)
+  if (viaMagic) blueShutTimer = setTimeout(() => { if (!still()) return; setBlue(false); green(true); magicTilesSync(); }, 5000);
+  magicTilesSync();
   hintArm();
 }
 let blueShutTimer = null, greenShutTimer = null, edgeTapTimer = null;
