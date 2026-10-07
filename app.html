@@ -813,6 +813,18 @@
   .view-home.keys-open .sugg-host { display: none; }
   .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next { color: transparent !important; }
   .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
+  .type-layer { display: none; position: fixed; inset: 0; z-index: 40; flex-direction: column; gap: 12px; background: #aeb0b5; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 0; }
+  .type-layer.open { display: flex; animation: tlUp 0.18s ease both; }
+  @keyframes tlUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .tl-top { flex: 1 1 26%; min-height: 110px; display: flex; gap: 12px; background: #fff; border-radius: 22px; padding: 14px 14px 14px 22px; box-shadow: var(--shadow); }
+  .tl-text { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; align-items: baseline; gap: 4px 14px; font-weight: 600; font-size: clamp(30px, 6vmin, 58px); line-height: 1.25; color: var(--ink); }
+  .tl-typing { white-space: pre; }
+  .tl-caret { width: 3px; height: 1em; align-self: center; margin-left: -10px; background: #2f7df6; animation: tlBlink 1s steps(1) infinite; }
+  @keyframes tlBlink { 50% { opacity: 0; } }
+  .tl-x { flex: 0 0 auto; align-self: flex-start; width: clamp(56px, 9vmin, 76px); height: clamp(56px, 9vmin, 76px); border: none; border-radius: 50%; background: #e0473c; color: #fff; font-family: inherit; font-weight: 900; font-size: clamp(32px, 5.5vmin, 46px); line-height: 1; cursor: pointer; }
+  .tl-sugg { flex: 0 0 auto; display: flex; gap: 12px; height: clamp(54px, 9vh, 84px); }
+  .tl-sugg button { flex: 1 1 0; min-width: 0; border: none; border-radius: 16px; background: #fff; color: var(--ink); font-family: inherit; font-weight: 800; font-size: clamp(22px, 4vmin, 36px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: var(--shadow); cursor: pointer; }
+  .type-layer .tl-keys { display: flex; position: static; flex: 2.4 1 0; min-height: 0; padding: 0 0 calc(22px + env(safe-area-inset-bottom, 0px)) !important; background: none; animation: none; }
   .home-keys { display: none; position: fixed; left: 0; right: 0; bottom: 0; top: 160px; z-index: 30; padding: 12px 16px 16px; background: #aeb0b5; transform-origin: top; }
   .home-keys.open { display: flex; animation: hkDown 0.2s ease both; }
   @keyframes hkDown { from { transform: scaleY(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -2597,7 +2609,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 419 - 7 Oct';
+const BUILD = 'build 420 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4887,47 +4899,77 @@ document.getElementById('phraseBar').addEventListener('click', e => {
 // ---- The keyboard over the page: a tap on the key bar brings the letters up over the lower half of
 // whatever page is open (the page itself stays). The delete key sits in the key bar; with nothing
 // typed, it puts the keyboard away. No home key or enter here - the key bar has the green enter.
-let homeKeysTimer = null;
-function homeKeysUp() { const k = document.getElementById('homeKeys'); return !!k && k.classList.contains('open'); }
+// ---- The keyboard page: a layer of its own over the whole screen (it does not lean on the page under
+// it, so nothing there can leave it half open). A big message window on top, three words on offer,
+// then the keys - with the one enter and the one delete. The red X in the corner always puts it away.
+let homeKeysTimer = null, typeLayerQuiet = false;
+function homeKeysUp() { const k = document.getElementById('typeLayer'); return !!k && k.classList.contains('open'); }
 function homeKeysIdle() {
   clearTimeout(homeKeysTimer);
-  homeKeysTimer = setTimeout(() => { if (homeKeysUp() && !document.getElementById('pbInput').value) homeKeysClose(); }, 3000);
+  homeKeysTimer = setTimeout(() => { if (homeKeysUp() && !document.getElementById('pbInput').value && !homePhrase.length) homeKeysClose(); }, 8000);
+}
+function typeLayerPaint() {
+  const L = document.getElementById('typeLayer'); if (!L) return;
+  const inp = document.getElementById('pbInput');
+  const msg = L.querySelector('.tl-text'); msg.innerHTML = '';
+  homePhrase.forEach((w, i) => { const sp = document.createElement('span'); sp.className = 'tl-word'; sp.textContent = (i === 0 && !isPunct(w) ? sentenceLabel(w) : sentenceLabel(w)); msg.appendChild(sp); });
+  const ty = document.createElement('span'); ty.className = 'tl-typing'; ty.textContent = inp.value; msg.appendChild(ty);
+  const car = document.createElement('span'); car.className = 'tl-caret'; msg.appendChild(car);
+  msg.scrollTop = msg.scrollHeight;
+  const sug = L.querySelector('.tl-sugg'); sug.innerHTML = '';
+  try { renderTypeSuggest(); } catch (e) {}
+  [...document.getElementById('typeSuggest').querySelectorAll('button')].slice(0, 3).forEach(src => {
+    const b = document.createElement('button'); b.textContent = src.textContent;
+    b.addEventListener('click', () => { src.click(); inp.blur(); typeLayerPaint(); homeKeysIdle(); });
+    sug.appendChild(b);
+  });
 }
 function homeKeysOpen() {
-  let k = document.getElementById('homeKeys');
+  let L = document.getElementById('typeLayer');
   const inp = document.getElementById('pbInput');
-  if (!k) {
-    k = document.createElement('div'); k.id = 'homeKeys'; k.className = 'keyboard home-keys';
-    const put = () => { renderTypeSuggest(); renderPhraseBar(); homeKeysIdle(); };
-    buildTypeKeys(k, ch => { if (inp.value.length < 40) inp.value += ch; put(); }, () => { if (inp.value.trim()) commitTypedWord(); homeKeysIdle(); },
-      // delete: a letter, then the last word; with the bar empty, the keyboard goes and the page is back
-      () => { if (inp.value) { inp.value = inp.value.slice(0, -1); put(); } else if (homePhrase.length) { homePhrase.pop(); renderPhraseBar(); homeKeysIdle(); } else homeKeysClose(); },
-      // enter: as the green enter in the bar; with the bar empty, the keyboard goes and the page is back
-      () => { if (!inp.value.trim() && !homePhrase.length) { homeKeysClose(); return; } document.getElementById('pbGo').click(); });
-    document.getElementById('viewHome').appendChild(k);
+  if (!L) {
+    L = document.createElement('div'); L.id = 'typeLayer'; L.className = 'type-layer';
+    const top = document.createElement('div'); top.className = 'tl-top';
+    const text = document.createElement('div'); text.className = 'tl-text';
+    const x = document.createElement('button'); x.className = 'tl-x'; x.innerHTML = '&times;'; x.setAttribute('aria-label', 'Close the keyboard');
+    x.addEventListener('click', () => { buzz(8); inp.value = ''; homeKeysClose(); });
+    top.appendChild(text); top.appendChild(x);
+    const sug = document.createElement('div'); sug.className = 'tl-sugg';
+    const k = document.createElement('div'); k.className = 'keyboard home-keys tl-keys';
+    const put = () => { typeLayerPaint(); homeKeysIdle(); };
+    buildTypeKeys(k, ch => { if (inp.value.length < 40) inp.value += ch; put(); }, () => { if (inp.value.trim()) { typeLayerQuiet = true; try { commitTypedWord(); } finally { typeLayerQuiet = false; } } put(); },
+      // delete: a letter, then the last word; with nothing there at all, the keyboard page goes
+      () => { if (inp.value) inp.value = inp.value.slice(0, -1); else if (homePhrase.length) homePhrase.pop(); else { homeKeysClose(); return; } put(); },
+      // enter: nothing written - the keyboard page just goes. Otherwise it closes and the message is entered:
+      // read out on the message screen (speak mode) or taken to its spelling practice, then home
+      () => {
+        const typed = !!inp.value.trim();
+        if (!typed && !homePhrase.length) { inp.value = ''; homeKeysClose(); return; }
+        if (typed) { typeLayerQuiet = true; try { commitTypedWord(); } finally { typeLayerQuiet = false; } }
+        homeKeysClose();
+        closeAllMenus();
+        if (state.speakMode && !state.chatMode && !state.builderMode) { typedEnter = true; try { homeEnter(); } finally { typedEnter = false; } }
+        else homeEnter();
+      });
+    L.appendChild(top); L.appendChild(sug); L.appendChild(k);
+    document.body.appendChild(L);
   }
   inp.readOnly = true; inp.blur();
-  document.getElementById('viewHome').classList.add('keys-open');
-  const place = () => { k.style.top = Math.round(document.getElementById('phraseBar').getBoundingClientRect().bottom + 10) + 'px'; };      // straight under the key bar, down to the bottom of the screen
-  place(); requestAnimationFrame(place);
-  k.classList.add('open');
+  L.classList.add('open');
+  typeLayerPaint();
   homeKeysIdle();
 }
 function homeKeysClose() {
   clearTimeout(homeKeysTimer);
-  const k = document.getElementById('homeKeys');
-  if (k) k.classList.remove('open');
+  const L = document.getElementById('typeLayer');
+  const was = !!L && L.classList.contains('open');
+  if (L) L.classList.remove('open');
   document.getElementById('viewHome').classList.remove('keys-open');
-  document.getElementById('pbBack').style.display = 'none';
-  document.getElementById('pbInput').readOnly = false;
-}
-document.getElementById('pbBack').addEventListener('click', () => {
   const inp = document.getElementById('pbInput');
-  buzz(8);
-  if (inp.value) { inp.value = inp.value.slice(0, -1); renderTypeSuggest(); renderPhraseBar(); homeKeysIdle(); }
-  else homeKeysClose();
-});
-document.getElementById('pbGo').addEventListener('click', () => { if (homeKeysUp()) homeKeysClose(); });
+  document.getElementById('pbBack').style.display = 'none';
+  inp.readOnly = false;
+  if (was) { try { renderTypeSuggest(); renderPhraseBar(); } catch (e) {} }
+}
 // the keyboard page, however it was opened: left empty and untouched for three seconds (and with no
 // word set to practise), it closes and the page it came from is back
 function kbIdleArm() {
@@ -7059,7 +7101,7 @@ function magicTwoRows() {
   let r = 0;
   const out = [];
   if (things.length) { r++; things.forEach(m => out.push(Object.assign({}, m, { row: r }))); }
-  if (acts.length) { r++; acts.forEach(m => out.push(Object.assign({}, m, { row: r }))); }
+  if (acts.length) { r++; acts.forEach(m => out.push(Object.assign({}, m, { row: r, act: true }))); }
   return out;
 }
 function magicPhraseFull() {
@@ -7164,8 +7206,10 @@ function suggRender() {
     let opts = [];
     try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords) opts = magicTwoRows(); } catch (e) { opts = []; }
     // a message with no doing word yet is offered the doing words first; otherwise the things come first
-    { const doing = w => MAGIC_WANTS.includes(w) || kindOfWord(w) === 'action' || MAGIC_ASK.includes(w);
-      if (!homePhrase.some(doing)) opts = opts.filter(m => m.row === 2).concat(opts.filter(m => m.row !== 2)); }
+    // always in the same order: the doing words, then the names of folders and groups (food), then the particular things
+    { const names = new Set(state.categories.map(c => normaliseWord(c.name)));
+      const rank = m => m.act ? 0 : (m.phrase.slice(homePhrase.length).some(w => names.has(w)) ? 1 : 2);
+      opts = opts.map((m, i) => ({ m, i, k: rank(m) })).sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.m); }
     const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
@@ -7895,8 +7939,6 @@ let pbClearAt = 0;
 document.getElementById('pbClear').addEventListener('click', () => {
   const inp = document.getElementById('pbInput');
   // with the keyboard down over the page this is its delete key: a letter at a time
-  if (homeKeysUp() && inp.value) { inp.value = inp.value.slice(0, -1); pbClearAt = 0; renderTypeSuggest(); renderPhraseBar(); homeKeysIdle(); return; }
-  if (homeKeysUp() && !inp.value && !homePhrase.length) { homeKeysClose(); return; }
   const twice = Date.now() - pbClearAt < 450;
   pbClearAt = Date.now();
   if (twice) { inp.value = ''; homePhrase = []; pbClearAt = 0; }
@@ -8255,7 +8297,7 @@ function commitTypedWord() {
   speakWord(raw, 0.95);
   save();
   renderPhraseBar();
-  askCategoryFor(raw, () => { renderHome(true); });
+  if (!typeLayerQuiet) askCategoryFor(raw, () => { renderHome(true); });      // (on the keyboard page nothing pops up over the typing)
   return true;
 }
 
@@ -8895,7 +8937,8 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     if (MAGIC_WANTS.includes(last) && last !== 'MORE' && !six.includes('A') && !state.hiddenWords['A']) { const at = six.indexOf('THE'); six.splice(at >= 0 ? at + 1 : Math.min(1, six.length), 0, 'A'); }      // "I want a ..."
     const open = MAGIC_WANTS.includes(last) || ['I', 'AND', 'TO', 'THE', 'A', 'AN', 'MY', 'WITH', 'IS', 'ARE', 'AM'].includes(last);      // mid-thought: no full stop offered yet
     const done = homePhrase.length > 1 && !isPunct(last) && !magicAsking() && !open && (!mp || !!mp.ext || mp.phrase.length <= homePhrase.length);
-    if (done) { const marks = (greeted ? ['.', '!'] : ['.', '?', '!']).filter(m => allSmallWords().includes(m) && !state.hiddenWords[m]); if (greeted) six.splice(1, 0, ...marks); else six.unshift(...marks); }
+    if (done) { const marks = (greeted ? ['.', '!'] : ['.', '?', '!']).filter(m => allSmallWords().includes(m) && !state.hiddenWords[m]); six.splice(Math.min(3, six.length), 0, ...marks); }      // the marks come after the everyday small words (I, me, it ...), never ahead of them
+
     shown = [six.slice(0, 6)];
   }
   else {
@@ -12018,8 +12061,13 @@ function smallRowPop() {
   const viaMagic = Date.now() - magicPickAt < 500;
   suggShut = viaMagic; suggRender();
   setBlue(viaMagic);
+  // a green tile was chosen: the small words stay open for five seconds, then fold away by themselves if nothing else is done
+  clearTimeout(blueShutTimer);
+  if (viaMagic) blueShutTimer = setTimeout(() => { if (!stripFull && !state.builderMode) setBlue(false); }, 5000);
   hintArm();
 }
+let blueShutTimer = null;
+document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#smallHost, #magicSmall')) clearTimeout(blueShutTimer); }, true);
 let hintTimer = null, hintDone = false;
 function hintArm() {
   clearTimeout(hintTimer); hintDone = false;
