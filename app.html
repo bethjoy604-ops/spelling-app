@@ -813,7 +813,7 @@
   .view-home.keys-open .sugg-host { display: none; }
   .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next { color: transparent !important; }
   .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
-  .type-layer { display: none; position: fixed; inset: 0; z-index: 40; flex-direction: column; gap: 12px; background: #aeb0b5; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 0; }
+  .type-layer { display: none; position: fixed; inset: 0; z-index: 40; flex-direction: column; gap: 12px; background: #aeb0b5; padding: calc(22px + env(safe-area-inset-top, 0px)) 26px 8px; }
   .type-layer.open { display: flex; animation: tlUp 0.18s ease both; }
   @keyframes tlUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
   .tl-top { flex: 1 1 26%; min-height: 110px; display: flex; gap: 12px; background: #fff; border-radius: 22px; padding: 14px 14px 14px 22px; box-shadow: var(--shadow); }
@@ -850,7 +850,7 @@
   .sel-btn.warn { background: var(--red-tint); color: var(--red); }
   .sel-btn.done { background: #34c759; color: #fff; }
   .sel-btn:disabled { opacity: 0.4; }
-  .read-back { position: fixed; inset: 0; z-index: 60; background: #aeb0b5; padding: 16px; display: flex; animation: rbIn 0.25s ease both; }
+  .read-back { position: fixed; inset: 0; z-index: 60; background: #aeb0b5; padding: clamp(40px, 9vmin, 90px) clamp(36px, 8vmin, 84px); display: flex; animation: rbIn 0.25s ease both; }
   @keyframes rbIn { from { opacity: 0; } to { opacity: 1; } }
   .read-back.out { animation: rbOut 0.36s ease both; pointer-events: none; }
   @keyframes rbOut { from { opacity: 1; } to { opacity: 0; } }
@@ -934,6 +934,7 @@
   .view-keyboard .display.ds-large { flex: 1.25 1 0; font-size: clamp(46px, 9.5vh, 98px); }
   /* the keyboard is the point of the page, so it takes the lion's share */
   .view-keyboard .keyboard { flex: 5 1 0; }
+  .view-keyboard { padding: calc(22px + env(safe-area-inset-top, 0px)) 26px calc(30px + env(safe-area-inset-bottom, 0px)) !important; }      /* the keys keep clear of the edges of the screen */
   .view-keyboard .display { min-height: 0; }
   .display.celebrating {
     animation: celebrateBg 0.8s ease-out;
@@ -2609,7 +2610,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 422 - 7 Oct';
+const BUILD = 'build 423 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7203,7 +7204,7 @@ let magicStallTimer = null;
 let suggBusy = false, suggObs = null, suggShut = false;
 // every open row at once: the small words row to its blue bar, the suggestions to their green one
 function collapseRows() {
-  clearTimeout(rowBackTimer);
+  clearTimeout(rowBackTimer); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
   if (stripKey !== null) stripShut = true; else if (smallFullHook) { state.smallOpen = false; chatRowAuto = false; } else if (popRowUntil) popRowShut = true;
   stripFull = null; suggShut = true;
   if (smallHostRedo) smallHostRedo();
@@ -12076,16 +12077,50 @@ function setBlue(open) {
   stripFull = null;
   if (smallHostRedo) smallHostRedo();
 }
+// A word added at the end is put where it reads best: "I" goes in front of the doing word ("Hi I want ..."),
+// "the / a / my / more" in front of the thing it belongs to, "don't / can't" in front of the doing word.
+let arrPrev = [];
+function arrangeLast() {
+  const n = homePhrase.length, prev = arrPrev;
+  if (n < 2 || prev.length !== n - 1 || prev.some((w, i) => w !== homePhrase[i])) return false;
+  const w = homePhrase[n - 1], rest = homePhrase.slice(0, n - 1);
+  const HELLO = ['HI', 'HELLO', 'HEY', 'BYE', 'PLEASE', 'YES', 'NO', 'OK'];
+  const SUBJ = ['I', 'WE', 'YOU', 'HE', 'SHE', 'THEY'], NEG = ["DON'T", "CAN'T", 'DONT', 'CANT'], DET = ['THE', 'A', 'AN', 'MY', 'YOUR', 'MORE', 'SOME'];
+  const verb = x => MAGIC_WANTS.includes(x) && x !== 'MORE' || kindOfWord(x) === 'action' || ['AM', 'IS', 'ARE', 'SEE', 'GO', 'FEEL'].includes(x);
+  const v = rest.findIndex(verb);
+  let at = -1;
+  if (SUBJ.includes(w)) { if (v >= 0 && rest.slice(0, v).every(x => HELLO.includes(x)) && !rest.some(x => MAGIC_ASK.includes(x))) at = v; }
+  else if (NEG.includes(w)) { if (v > 0 && SUBJ.includes(rest[v - 1])) at = v; }
+  else if (DET.includes(w)) {
+    const last = rest[n - 2], k = kindOfWordG(last);
+    if (!isSmallWord(last) && !verb(last) && k && k !== 'describe' && k !== 'action' && !DET.includes(rest[n - 3])) at = n - 2;
+  }
+  if (at < 0) return false;
+  homePhrase.splice(n - 1, 1); homePhrase.splice(at, 0, w);
+  return true;
+}
 function smallRowPop() {
+  const viaMagic = Date.now() - magicPickAt < 500;
+  let moved = false;
+  try { if (!viaMagic && !state.builderMode) moved = arrangeLast(); } catch (e) {}
+  arrPrev = homePhrase.slice();
+  if (moved) { try { renderPhraseBar(); } catch (e) {} }
   smallRowPop0();
   if (state.builderMode) return;
-  const viaMagic = Date.now() - magicPickAt < 500;
   suggShut = viaMagic; suggRender();
   setBlue(viaMagic);
-  // a green tile was chosen: the small words stay open for five seconds, then fold away by themselves if nothing else is done
-  clearTimeout(blueShutTimer);
-  if (viaMagic) blueShutTimer = setTimeout(() => { if (!stripFull && !state.builderMode) setBlue(false); }, 5000);
-  else greenIdleArm();
+  // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
+  // other opens (a cue to look there too); then that folds as well - both bars shut says "ready to enter".
+  clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
+  const still = () => !stripFull && !state.builderMode && document.getElementById('viewHome').classList.contains('active') && !document.querySelector('.overlay.show');
+  const green = open => { suggShut = !open; suggRender(); };
+  if (homePhrase.length && document.querySelector('#suggHost > *')) {
+    blueShutTimer = setTimeout(() => {
+      if (!still()) return;
+      if (viaMagic) { setBlue(false); green(true); } else { green(false); setBlue(true); }
+      blueShutTimer = setTimeout(() => { if (!still()) return; if (viaMagic) green(false); else setBlue(false); }, 5000);
+    }, 5000);
+  }
   hintArm();
 }
 let blueShutTimer = null, greenShutTimer = null, edgeTapTimer = null;
@@ -12094,7 +12129,7 @@ function greenIdleArm() {
   clearTimeout(greenShutTimer);
   greenShutTimer = setTimeout(() => { if (!suggShut && !state.builderMode && document.querySelector('#suggHost .sugg-row')) { suggShut = true; suggRender(); } }, 5000);
 }
-document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#suggHost')) greenIdleArm(); }, true);
+document.addEventListener('pointerdown', e => { if (!e.target.closest) return; if (e.target.closest('#suggHost')) { clearTimeout(blueShutTimer); greenIdleArm(); } }, true);
 document.addEventListener('scroll', e => { if (e.target && e.target.classList && e.target.classList.contains('sugg-row')) greenIdleArm(); }, true);
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#smallHost, #magicSmall')) clearTimeout(blueShutTimer); }, true);
 let hintTimer = null, hintDone = false;
