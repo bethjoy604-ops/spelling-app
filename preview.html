@@ -2482,7 +2482,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 381 - 7 Oct';
+const BUILD = 'build 382 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6437,6 +6437,20 @@ function magicSmallNext(word) {
     .sort((a, b) => used(b) - used(a) || last(b) - last(a)).slice(0, afterTo ? 5 : 3);
   return lead.concat(best);
 }
+// "can you ...", "will you ...", "I can ...", "let's ...": what comes next is something to do, so
+// the tiles are the action words, most used first
+const MAGIC_ASK = ['CAN', 'WILL', 'COULD', 'WOULD', 'SHOULD', "LET'S", 'LETS', 'MAY', 'DO', 'DID', "CAN'T", "DON'T"];
+const MAGIC_SUBJ = ['YOU', 'I', 'WE', 'HE', 'SHE', 'THEY', 'IT'];
+function magicAsking() {
+  const n = homePhrase.length, last = n ? homePhrase[n - 1] : '', prev = n > 1 ? homePhrase[n - 2] : '';
+  return MAGIC_ASK.includes(last) || (MAGIC_SUBJ.includes(last) && MAGIC_ASK.includes(prev));
+}
+function magicActionPool(n) {
+  const pool = [].concat(...state.categories.filter(c => !c.target && !c.hidden && !c.small && !c.smallSec && kindOfCat(c) === 'action').map(c => c.words || []));
+  const used = w => (state.wordHistory[w] || {}).n || 0, last = w => (state.wordHistory[w] || {}).t || 0;
+  return pool.filter((w, i) => pool.indexOf(w) === i && !homePhrase.includes(w) && !state.hiddenWords[w] && !isPunct(w) && !isSmallWord(w))
+    .sort((a, b) => used(b) - used(a) || last(b) - last(a)).slice(0, n || 18);
+}
 function magicNext(word, n) {
   const open = state.categories.filter(c => !c.target && !c.hidden && !c.small && !c.smallSec);
   const of = test => [].concat(...open.filter(test).map(c => c.words || []));
@@ -6742,7 +6756,7 @@ function renderMagic(word) {
     const lead = MAGIC_WANTS.includes(word) || Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(word));
     // (once they are up they stay - through a pick, through small words - so a second one can be
     //  added; the green folder button brings the page back, and so does emptying the bar)
-    let pool = lead ? magicNext(word, 18) : [];
+    let pool = magicAsking() ? magicActionPool(18) : (lead ? magicNext(word, 18) : []);
     if (pool.length) magicStickPool = pool.slice(); else if (magicStickPool) pool = magicStickPool.filter(w => !homePhrase.includes(w));
     magicTilesNow = pool.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } }));
     // after a wanting word (want, need, like...) the tiles are the folders themselves - music, movies,
@@ -8194,7 +8208,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
         .forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w))) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
     }
     // a whole sentence in the bar: the full stop, question mark and exclamation mark lead the row
-    const done = homePhrase.length > 1 && !isPunct(last) && (!mp || !!mp.ext || mp.phrase.length <= homePhrase.length);
+    const done = homePhrase.length > 1 && !isPunct(last) && !magicAsking() && (!mp || !!mp.ext || mp.phrase.length <= homePhrase.length);
     if (done) { const marks = ['.', '?', '!'].filter(m => allSmallWords().includes(m) && !state.hiddenWords[m]); six.unshift(...marks); }
     shown = [six.slice(0, 6)];
   }
