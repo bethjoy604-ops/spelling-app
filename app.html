@@ -667,9 +667,11 @@
     border-radius: 16px; padding: 12px;
   }
   .magic-box.show { display: flex; }
+  .magic-box.inbar { display: none !important; }
+  .pb-words .magic-chip { display: inline-block; font-size: inherit; line-height: inherit; padding: 0 0.3em; border-radius: 14px; margin: 0; vertical-align: baseline; }
   .magic-box .magic-x { display: flex; }
   /* while a sentence is offered it stands in for the folder menu */
-  .view-home:not(.at-root):has(#magicBox.show:not(.folded)) .home-row { display: none; }      /* (the first page keeps its menu: a folder may be wanted next) */
+  .view-home:not(.at-root):has(#magicBox.show:not(.folded):not(.inbar)) .home-row { display: none; }      /* (the first page keeps its menu: a folder may be wanted next) */
   /* ... and the key bar opens out to show every word in it */
   .view-home:has(#magicBox.show:not(.folded)) .phrase-bar .pb-words { max-height: none; }
   /* folded: a slim bar in the sentence's own light green, like the small words bar; a tap opens it again */
@@ -2484,7 +2486,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 383 - 7 Oct';
+const BUILD = 'build 384 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4516,7 +4518,7 @@ document.addEventListener('visibilitychange', () => {
 let currentAudio = null;
 function playClip(dataURL) {
   if (!dataURL) return false;
-  if (state.soundOn === false) return true;      // sound is switched off: nothing is played or spoken
+  if (state.soundOn === false && !sayAnyway) return true;      // sound is switched off: nothing is played or spoken
   try {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     if (currentAudio) { try { currentAudio.pause(); } catch(e){} }
@@ -4787,8 +4789,9 @@ function getVoice() {
   if (!state.voiceName) return null;
   return availableVoices.find(v => v.name === state.voiceName) || null;
 }
+let sayAnyway = false;      // the green enter: the message is said even with sound switched off
 function speak(text, rate = 1) {
-  if (state.soundOn === false) return;           // sound is switched off: no word labels, no spoken prompts
+  if (state.soundOn === false && !sayAnyway) return;           // sound is switched off: no word labels, no spoken prompts
   if (!text || !('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
@@ -6473,6 +6476,16 @@ function suffixOn(box) { return !!box && SUFFIX_NAMES.test(String(box.name || ''
 function withGroup(cat, w) {
   if (!cat || !w || cat.target) return w;
   const g = (cat.groups || []).find(x => (x.words || []).includes(w));
+  // a drink picked after "want" (or need, like, love): "to drink" goes in first - "I want to drink bottle"
+  try {
+    const nm = String((g && g.name) || cat.name || '').trim().toLowerCase();
+    const said = homePhrase.filter(x => !magicPathIn.some(p => p.key === x)), n = said.length;      // (a folder name on its way out of the bar does not count)
+    const last = n ? said[n - 1] : '', prev = n > 1 ? said[n - 2] : '', WANTS = ['WANT', 'NEED', 'LIKE', 'LOVE'];
+    if (state.magicType && !state.builderMode && /^(drinks?|beverages?)$/.test(nm) && !homePhrase.includes('DRINK') && w !== 'DRINK' && (WANTS.includes(last) || (last === 'TO' && WANTS.includes(prev)))) {
+      if (last !== 'TO') { magicKnow('TO'); homePhrase.push('TO'); }
+      magicKnow('DRINK'); homePhrase.push('DRINK');
+    }
+  } catch (e) {}
   const box = g && suffixOn(g) ? g : (suffixOn(cat) && (cat.words || []).includes(w) ? cat : null);
   if (!box) return w;
   const gk = normaliseWord(box.name);
@@ -6706,7 +6719,20 @@ function renderMagicTiles(grid) {
     grid.appendChild(card);
   });
 }
+// The green suggested sentence sits in the key bar itself, after the words, not in a row of its own
+function magicIntoBar() {
+  const mb = document.getElementById('magicBox'), box = document.getElementById('pbWords');
+  box.querySelectorAll('.magic-chip').forEach(x => x.remove());
+  const chips = [...document.querySelectorAll('#magicRow .magic-chip')];
+  const on = mb.classList.contains('show') && !mb.classList.contains('folded') && chips.length > 0;
+  mb.classList.toggle('inbar', on);
+  if (!on) return;
+  chips.forEach(c => { c.addEventListener('click', e => e.stopPropagation()); box.appendChild(c); });
+  box.scrollTop = box.scrollHeight;
+}
 function hideMagic() {
+  document.querySelectorAll('#pbWords .magic-chip').forEach(x => x.remove());
+  document.getElementById('magicBox').classList.remove('inbar');
   magicTilesNow = [];
   { const ms = document.getElementById('magicSmall'); ms.innerHTML = ''; ms.classList.remove('show'); }
   document.getElementById('homeGrid').classList.remove('magic-on');
@@ -6729,7 +6755,8 @@ function magicFold() {
   const box = document.getElementById('magicBox');
   if (!box.classList.contains('show')) return;
   magicFoldedFor = homePhrase.join(' ');
-  box.classList.add('folded');
+  box.classList.add('folded'); box.classList.remove('inbar');
+  document.querySelectorAll('#pbWords .magic-chip').forEach(x => x.remove());
   magicShowNow = false;
   if (stripMagic) { stripShut = true; stripMagic = false; stripFull = null; if (smallHostRedo) smallHostRedo(); }      // the row folds with it only if it opened with it
   const w = document.getElementById('pbWords'); w.scrollTop = w.scrollHeight;
@@ -6938,6 +6965,7 @@ function renderPhraseBar() {
   { const ph = homePhrase.join(' '); if (ph !== magicAt.phrase) { magicAt = { phrase: ph, nav: magicNavKey() }; magicSkipped = null; } }
   if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; magicStickPool = null; }      // a cleared bar starts the next sentence afresh
   if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
+  magicIntoBar();
   // the page's tiles give way to the suggested ones, and come back, as the bar changes
   { const sig = magicActive() ? magicTilesNow.map(t => t.label).join('|') : '';
     if (sig !== magicSigShown) { magicSigShown = sig; if (!magicInHome && !state.builderMode) { renderHome(true); return; } } }
@@ -7061,7 +7089,7 @@ function homeEnter() {
   if (!homePhrase.length) return;
   warmSpeech();
   buzz(15);
-  speakWord(homePhrase.join(' '), 0.95);
+  sayAnyway = true; try { speakWord(homePhrase.join(' '), 0.95); } finally { sayAnyway = false; }
   // saying a word counts as using it, so Recents / Popular keep up
   const now = Date.now();
   homePhrase.forEach(w => {
