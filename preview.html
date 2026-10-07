@@ -2610,7 +2610,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 423 - 7 Oct';
+const BUILD = 'build 424 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5378,8 +5378,8 @@ function render() {
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex &&
                ((showing && (state.promptColorOn || state.promptTileOn)) || helpLead)) {
-        const fl = 0;      // (the word bar keeps its whole prompt until the keyboard's has faded right out)
-        if (state.promptColorOn || helpLead) {
+        const fl = fadeLevelAt(i);      // the colour in the word bar fades in step with the colour on the key
+        if ((state.promptColorOn || helpLead) && fl < 3) {
           s.classList.add('next');
           if (fl > 0) s.classList.add('fade-' + fl);
         } else {
@@ -7211,6 +7211,7 @@ function collapseRows() {
   suggRender();
 }
 function hgtOf(grid) { const c = grid.querySelector('.home-card:not(.sugg-card)'); return c ? (parseInt(c.style.height) || c.offsetHeight || 0) : 0; }
+let suggFolder = null;
 function suggRender() {
   const grid = document.getElementById('homeGrid'), host = document.getElementById('suggHost');
   if (!grid || !host || suggBusy) return;
@@ -7223,9 +7224,29 @@ function suggRender() {
     try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords) opts = magicTwoRows(); } catch (e) { opts = []; }
     // a message with no doing word yet is offered the doing words first; otherwise the things come first
     // always in the same order: the doing words, then the names of folders and groups (food), then the particular things
-    { const names = new Set(state.categories.map(c => normaliseWord(c.name)));
-      const rank = m => m.act ? 0 : (m.phrase.slice(homePhrase.length).some(w => names.has(w)) ? 1 : 2);
-      opts = opts.map((m, i) => ({ m, i, k: rank(m) })).sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.m); }
+    // no doing word yet: the doing words lead. A doing word but nothing it is about: the likeliest thing leads,
+    // then the folders of words to look in (grey, as folders are), then the other things, then the doing words.
+    { const doing = w => (MAGIC_WANTS.includes(w) && w !== 'MORE') || kindOfWord(w) === 'action' || ['SEE', 'GO', 'FEEL'].includes(w);
+      const thing = w => { const k = kindOfWordG(w); return !doing(w) && !isSmallWord(w) && !!k && k !== 'describe' && k !== 'action'; };
+      const acts = opts.filter(m => m.act), things = opts.filter(m => !m.act);
+      const key = homePhrase.join(' ');
+      if (suggFolder && suggFolder.key !== key) suggFolder = null;
+      const fcat = suggFolder ? catById(suggFolder.id) : null;
+      if (fcat) {      // a folder was opened in the row: its words are the tiles
+        const used = w => (state.wordHistory[w] || {}).n || 0;
+        opts = (fcat.words || []).filter(w => !state.hiddenWords[w] && !homePhrase.includes(w) && !isPunct(w)).sort((a, b) => used(b) - used(a)).slice(0, 12)
+          .map(w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
+      } else if (opts.length && homePhrase.some(doing) && !homePhrase.some(thing)) {
+        const lastDo = homePhrase.slice().reverse().find(doing);
+        const LEAD = { EAT: ['Food'], DRINK: ['Food'], GO: ['Places'], WATCH: ['Movies', 'TV'], LISTEN: ['Music'], READ: ['Books'], PLAY: ['Games', 'Stuff'], SEE: ['People', 'Places'], FEEL: ['Feelings'], HELP: ['People'] };
+        const usedIn = c => (c.words || []).reduce((t, w) => t + ((state.wordHistory[w] || {}).n || 0), 0);
+        const all = state.categories.filter(c => c.parent && !c.smallSec && !c.target && !c.hidden && c.name !== 'Actions' && (c.words || []).filter(w => !state.hiddenWords[w]).length > 1 && !homePath.includes(c.id));
+        const want = LEAD[lastDo] || [];
+        const folders = all.filter(c => want.includes(c.name)).sort((a, b) => want.indexOf(a.name) - want.indexOf(b.name))
+          .concat(want.length ? [] : all.slice().sort((a, b) => usedIn(b) - usedIn(a))).slice(0, 2).map(c => ({ folder: c, phrase: homePhrase.concat(['\u25B8' + c.name]), used: homePhrase.map((_, i) => i) }));
+        opts = things.slice(0, 1).concat(folders, things.slice(1), acts);
+      } else opts = acts.concat(things);
+    }
     const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
@@ -7247,15 +7268,17 @@ function suggRender() {
     opts.forEach(m => {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
+      if (m.folder) b.classList.add('sugg-folder');
       if (hgt) b.style.height = hgt + 'px';
       const added = m.phrase.filter((_, j) => !m.used.includes(j));
       const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
-      const label = added.map(sentenceLabel).join(' ');
+      const label = m.folder ? m.folder.name : added.map(sentenceLabel).join(' ');
       if (label.length > 11 && fs) t.style.fontSize = Math.round(parseFloat(fs) * (label.includes(' ') ? 0.86 : Math.max(0.6, 11 / label.length))) + 'px';      // a long one is set a little smaller, and may take two lines
-      const hl = document.createElement('span'); hl.className = 'sugg-hl'; hl.textContent = label;
+      const hl = document.createElement('span'); hl.className = m.folder ? 'name-hl' : 'sugg-hl'; hl.textContent = label;
       t.appendChild(hl); b.appendChild(t);
       b.addEventListener('click', e => {
         e.stopPropagation();
+        if (m.folder) { buzz(10); suggFolder = { id: m.folder.id, key: homePhrase.join(' ') }; suggShut = false; suggRender(); return; }      // a folder: its words fill the row
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
         magicAccepted = homePhrase.join(' '); magicTarget = null;
