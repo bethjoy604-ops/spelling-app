@@ -2500,7 +2500,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 398 - 7 Oct';
+const BUILD = 'build 399 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6904,7 +6904,18 @@ function renderMagic(word) {
     const prevW = homePhrase.length > 1 ? homePhrase[homePhrase.length - 2] : '';
     const afterTo = word === 'TO' && MAGIC_WANTS.includes(prevW);      // "I want to ..." -> the doing words
     let pool = magicAsking() || afterTo ? magicActionPool(18) : (lead ? magicNext(word, 18) : []);
-    if (pool.length) magicStickPool = pool.slice(); else if (magicStickPool) pool = magicStickPool.filter(w => !homePhrase.includes(w));
+    // every new tile refreshes them: when the newest word leads nowhere by itself, the words before it
+    // are asked in turn (newest first), and nothing already in the message is offered again
+    if (!pool.length) {
+      for (let i = homePhrase.length - 2; i >= Math.max(0, homePhrase.length - 4) && !pool.length; i--) {
+        const w = homePhrase[i];
+        if (isPunct(w)) break;
+        const toAfterWant = w === 'TO' && i > 0 && MAGIC_WANTS.includes(homePhrase[i - 1]);
+        if (toAfterWant || MAGIC_ASK.includes(w)) pool = magicActionPool(18);
+        else if (Object.keys(MAGIC_LEADS).some(k => MAGIC_LEADS[k].includes(w))) pool = magicNext(w, 18);
+      }
+      if (!pool.length && magicStickPool) pool = magicStickPool.filter(w => !homePhrase.includes(w));
+    } else magicStickPool = pool.slice();
     magicTilesNow = pool.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } }));
     // a direction on its own ("up"): its doing words are the tiles, and the one tapped goes in front - "go up"
     { const li = leadIns(word);
@@ -7465,15 +7476,22 @@ document.getElementById('homeSpeakBtn').addEventListener('click', () => {
   save(); renderSpeakBtn();
 });
 // The X takes away one thing at a time: what is being typed first, then the last word in the bar
+// (one tap takes the last word; a second tap straight after it clears the whole bar)
+let pbClearAt = 0;
 document.getElementById('pbClear').addEventListener('click', () => {
   const inp = document.getElementById('pbInput');
-  if (inp.value) inp.value = '';
+  const twice = Date.now() - pbClearAt < 450;
+  pbClearAt = Date.now();
+  if (twice) { inp.value = ''; homePhrase = []; pbClearAt = 0; }
+  else if (inp.value) inp.value = '';
   else homePhrase.pop();
   renderTypeSuggest();
   renderPhraseBar();
   hideMagic();
   // builder: once the bar is empty the sentence starts again from the first page
   if (state.builderMode && !homePhrase.length) { builderPath = []; renderHome(true); }
+  // an emptied bar goes back to the home page, ready for the next message
+  else if (!state.builderMode && !homePhrase.length && !inp.value && !onTargetsPage()) { homePath = []; tileGroup = null; libraryOpen = null; renderHome(true); }
 });
 
 // ---- Category tiles: one line above the bank ----
