@@ -1145,6 +1145,7 @@
   #homeIconsToggle { font-size: 30px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.5); box-shadow: none; }
   /* while a message is being built the gear steps out of the way */
   .view-home:not(.menu-open):has(.phrase-bar.has-text) #homeIconsToggle { visibility: hidden; }
+  .view-home.at-root:not(.menu-open) .home-row:not(.icons-open) #homeIconsToggle { visibility: hidden; }      /* the + comes and goes with the folder menu */
   /* the one green tab keeps its size when the switches pop out beside it */
   .home-row.tools .folder-strip-row .cat-tile:only-child { padding: 0 18px; }
   .home-row.icons-open #homeIconsToggle { color: rgba(0,0,0,0.7); background: rgba(255,255,255,0.8); }
@@ -2491,7 +2492,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 388 - 7 Oct';
+const BUILD = 'build 389 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4680,7 +4681,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   // until the page is back at its top)
   if (grid.scrollTop > 2 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
   if (grid.scrollTop > 2 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
-  if (grid.scrollTop > 2 && popRowUntil) { popRowUntil = 0; clearTimeout(popRowTimer); smallHostSet(null); }
+  if (grid.scrollTop > 2 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
   if (grid.scrollTop > 2 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   const was = barPrevTop; barPrevTop = grid.scrollTop;
   if (!min && grid.scrollTop > 2 && grid.scrollHeight - grid.clientHeight > 60) {
@@ -8256,7 +8257,9 @@ function makeSmallStrip(rowH, base, owner, gutter) {
         .forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w))) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
     }
     // a whole sentence in the bar: the full stop, question mark and exclamation mark lead the row
-    const done = homePhrase.length > 1 && !isPunct(last) && !magicAsking() && (!mp || !!mp.ext || mp.phrase.length <= homePhrase.length);
+    if (MAGIC_WANTS.includes(last) && last !== 'MORE' && !six.includes('A') && !state.hiddenWords['A']) { const at = six.indexOf('THE'); six.splice(at >= 0 ? at + 1 : Math.min(1, six.length), 0, 'A'); }      // "I want a ..."
+    const open = MAGIC_WANTS.includes(last) || ['I', 'AND', 'TO', 'THE', 'A', 'AN', 'MY', 'WITH', 'IS', 'ARE', 'AM'].includes(last);      // mid-thought: no full stop offered yet
+    const done = homePhrase.length > 1 && !isPunct(last) && !magicAsking() && !open && (!mp || !!mp.ext || mp.phrase.length <= homePhrase.length);
     if (done) { const marks = ['.', '?', '!'].filter(m => allSmallWords().includes(m) && !state.hiddenWords[m]); six.unshift(...marks); }
     shown = [six.slice(0, 6)];
   }
@@ -11264,7 +11267,7 @@ function stripCountdown(key) {
 }
 // A tile was chosen: the page's small words row opens with the six that fit it, for three seconds
 let rowPageKey = null;
-let chatRowTimer = null, popRowTimer = null, popRowUntil = 0;
+let chatRowTimer = null, popRowTimer = null, popRowUntil = 0, popRowShut = false;
 // nothing fits after the words in the bar: no empty blue row - the page is simply the page again
 function smallRowEmptyCheck() {
   if (homePhrase.length && document.querySelector('#smallHost .small-strip .small-tile.empty')) smallRowDrop();
@@ -11285,11 +11288,17 @@ function smallRowPop() {
       if (!homePhrase.length || Date.now() >= popRowUntil) { smallHostSet(null); return; }
       const el = document.createElement('div');
       el.className = 'small-section top';
+      if (popRowShut) {
+        const bar = document.createElement('button');
+        bar.className = 'small-head'; bar.setAttribute('aria-expanded', 'false'); bar.setAttribute('aria-label', 'Small words');
+        bar.addEventListener('click', () => { popRowShut = false; buzz(10); paint(); });
+        el.appendChild(bar);
+      } else
       el.appendChild(makeSmallStrip(0, 0, currentCat() || null, true));
       el.addEventListener('pointerdown', e => { if (e.target.closest('.small-tile')) clearTimeout(popRowTimer); });
       smallHostSet(el);
     };
-    popRowUntil = Infinity; stripFull = null;
+    popRowUntil = Infinity; stripFull = null; popRowShut = false;
     smallHostRedo = paint; paint();
     clearTimeout(popRowTimer);
   }
