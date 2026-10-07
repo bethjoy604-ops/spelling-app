@@ -802,6 +802,16 @@
   .grid-bar { display: none; width: 100%; height: 54px; flex-shrink: 0; border: none; border-radius: 16px; background: rgba(255,255,255,0.75); cursor: pointer; }
   .view-home.grid-shut .grid-bar { display: block; }
   .view-home.grid-shut #homeGrid { display: none !important; }
+  /* the same fold-away button at the right of every band: green tiles, small words, page tiles */
+  .sugg-wrap { display: flex; gap: 10px; align-items: stretch; }
+  .sugg-wrap .sugg-row { flex: 1; min-width: 0; }
+  .row-edge { flex: 0 0 46px; width: 46px; border: none; border-radius: 16px; cursor: pointer; }
+  .sugg-edge { background: #bfe3c5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fbf8a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") center / 24px auto no-repeat; margin-bottom: 4px; }
+  .grid-edge { display: none; position: absolute; right: 0; top: 0; height: 110px; background: rgba(255,255,255,0.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") center / 24px auto no-repeat; z-index: 3; }
+  .bank-area { position: relative; }
+  .view-home.has-grid-edge .grid-edge { display: block; }
+  .view-home.has-grid-edge #homeGrid { padding-right: 56px; }
+  .view-home.grid-shut .grid-edge { display: none; }
   .sugg-host { display: none; flex-shrink: 0; }
   .sugg-host.show { display: block; }
   .sugg-head { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #cdebd1; cursor: pointer; }
@@ -2616,7 +2626,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 427 - 7 Oct';
+const BUILD = 'build 428 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7227,13 +7237,21 @@ function gridSync() {
   let bar = document.getElementById('gridBar');
   if (!bar) {
     bar = document.createElement('button'); bar.id = 'gridBar'; bar.className = 'grid-bar'; bar.setAttribute('aria-label', 'Show the page tiles');
-    bar.addEventListener('click', () => { buzz(10); collapseRows(); gridSync(); });
+    bar.addEventListener('click', () => { buzz(10); gridManual = false; collapseRows(); gridSync(); });
     grid.parentNode.insertBefore(bar, grid);
+    const ge = document.createElement('button'); ge.id = 'gridEdge'; ge.className = 'row-edge grid-edge'; ge.setAttribute('aria-label', 'Fold the page tiles away');
+    ge.addEventListener('click', () => { buzz(10); gridManual = true; gridSync(); });
+    grid.parentNode.appendChild(ge);
   }
   const blue = !!stripFull || (stripKey !== null ? !stripShut : smallFullHook ? !!state.smallOpen : popRowUntil ? !popRowShut : false);
   const green = !!document.querySelector('#suggHost .sugg-row');
-  view.classList.toggle('grid-shut', !state.builderMode && homePath.length === 0 && homePhrase.length > 0 && !selWords && (blue || green));
+  const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
+  const plain = !state.builderMode && !selWords && !onTargetsPage();
+  view.classList.toggle('has-grid-edge', plain);
+  const ge = document.getElementById('gridEdge'); if (ge) ge.style.top = (grid.offsetTop || bar.offsetTop || 0) + 'px';
+  view.classList.toggle('grid-shut', plain && (gridManual || (homePath.length === 0 && homePhrase.length > 0 && (blue || green))));
 }
+let gridManual = false, gridPage = '';
 let suggFolder = null;
 function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} } }
 function suggRender0() {
@@ -7327,7 +7345,11 @@ function suggRender0() {
       rowEl.appendChild(b);
     });
     ['pointerdown', 'touchstart', 'wheel', 'scroll'].forEach(ev => rowEl.addEventListener(ev, () => rowIdleArm(6000), { passive: true }));      // being looked through: it stays
-    host.appendChild(rowEl);
+    const wrap = document.createElement('div'); wrap.className = 'sugg-wrap';
+    const edge = document.createElement('button'); edge.className = 'row-edge sugg-edge'; edge.setAttribute('aria-label', 'Fold the suggestions away');
+    edge.addEventListener('click', e => { e.stopPropagation(); buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = true; suggRender(); });
+    wrap.appendChild(rowEl); wrap.appendChild(edge);
+    host.appendChild(wrap);
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -11340,7 +11362,7 @@ function feedFolders(cat) {
   }
   return out;
 }
-let feedTap = { id: '', at: 0 };
+let feedTap = { id: '', at: 0 }, feedBack = {};
 let feedOpen = null;      // { cat, f }: the group on a custom page that is opened out to all its tiles
 function feedWords(cat) {
   const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
@@ -11953,9 +11975,12 @@ function renderSlotGrid(grid, cat, folders) {
         const id = cat.id + '/' + f.id, twice = feedTap.id === id && Date.now() - feedTap.at < 450;
         feedTap = { id, at: twice ? 0 : Date.now() };
         const wideNow = !!feedOpen && feedOpen.cat === cat.id && feedOpen.f === f.id;
-        if (twice) { cat.feedShut[f.id] = true; feedOpen = null; }
-        else if (shut) delete cat.feedShut[f.id];
-        else feedOpen = wideNow ? null : { cat: cat.id, f: f.id };
+        // one tap after another: open out to all its tiles, back to its usual few, folded away, open again
+        if (twice && !feedBack[id]) { cat.feedShut[f.id] = true; feedOpen = null; delete feedBack[id]; }
+        else if (shut) { delete cat.feedShut[f.id]; delete feedBack[id]; }
+        else if (wideNow) { feedOpen = null; feedBack[id] = 1; }
+        else if (feedBack[id]) { cat.feedShut[f.id] = true; delete feedBack[id]; }
+        else feedOpen = { cat: cat.id, f: f.id };
         buzz(10); save();
         const top = grid.scrollTop;
         renderHome(true);
