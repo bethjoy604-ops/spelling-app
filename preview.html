@@ -809,9 +809,16 @@
   .sugg-edge { background: #bfe3c5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%237fbf8a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") center / 24px auto no-repeat; margin-bottom: 4px; }
   .grid-edge { display: none; position: absolute; right: 0; top: 0; height: 110px; background: rgba(255,255,255,0.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") center / 24px auto no-repeat; z-index: 3; }
   .bank-area { position: relative; }
-  .view-home.has-grid-edge .grid-edge { display: block; }
-  .view-home.has-grid-edge #homeGrid { padding-right: 56px; }
-  .view-home.grid-shut .grid-edge { display: none; }
+  /* each band has its bar floating above it - green, blue, white: tap it to fold the band away or bring it back */
+  .view-home.has-grid-edge .grid-bar { display: block; }
+  .grid-bar { background: rgba(255,255,255,0.8); }
+  .sugg-host .sugg-head { margin-bottom: 10px; }
+  .sugg-host .sugg-head:last-child { margin-bottom: 0; }
+  .band-bar { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #bfd8ff; cursor: pointer; margin-bottom: 10px; }
+  .small-host .small-strip.slides { background: transparent !important; box-shadow: none !important; padding: 0 0 4px 0 !important; scroll-padding-left: 0 !important; }
+  .small-host .small-strip.slides .strip-edge { margin: 0 !important; border-radius: 16px !important; }
+  .sugg-host .sugg-head, .small-host .band-bar, .view-home .grid-bar, .small-host > .small-head:not(.group-head) { height: 44px; }
+  .sm-hl { background: #d6e4fd; border-radius: 0.3em; padding: 0.08em 0.4em; }
   .sugg-host { display: none; flex-shrink: 0; }
   .sugg-host.show { display: block; }
   .sugg-head { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #cdebd1; cursor: pointer; }
@@ -2626,7 +2633,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 429 - 7 Oct';
+const BUILD = 'build 430 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7128,9 +7135,9 @@ function magicTwoRows() {
     here.filter(actW).forEach(w => { const m = mk(w); if (acts.length < 2 && !have(m)) acts.push(m); }); }
   // then what the words so far call for
   base.filter(m => !isAct(m) && addedOf(m).every(w => isSmallWord(w) || thingW(w))).forEach(m => { if (things.length < 3 && !have(m)) things.push(m); });
-  base.filter(isAct).forEach(m => { if (acts.length < 3 && !have(m)) acts.push(m); });
+  base.filter(isAct).forEach(m => { if (acts.length < 6 && !have(m)) acts.push(m); });
   magicNext(lead, 12).concat(magicNext('WANT', 12)).filter(w => okW(w) && thingW(w)).forEach(w => { const m = mk(w); if (things.length < 3 && !have(m)) things.push(m); });
-  magicActionPool(12).filter(okW).forEach(w => { const m = mk(w); if (acts.length < 3 && !have(m)) acts.push(m); });
+  magicActionPool(12).filter(okW).forEach(w => { const m = mk(w); if (acts.length < 6 && !have(m)) acts.push(m); });
   let r = 0;
   const out = [];
   if (things.length) { r++; things.forEach(m => out.push(Object.assign({}, m, { row: r }))); }
@@ -7237,21 +7244,38 @@ function gridSync() {
   let bar = document.getElementById('gridBar');
   if (!bar) {
     bar = document.createElement('button'); bar.id = 'gridBar'; bar.className = 'grid-bar'; bar.setAttribute('aria-label', 'Show the page tiles');
-    bar.addEventListener('click', () => { buzz(10); gridManual = false; collapseRows(); gridSync(); });
+    bar.addEventListener('click', () => { buzz(10); gridManual = !gridManual; gridSync(); });
     grid.parentNode.insertBefore(bar, grid);
-    const ge = document.createElement('button'); ge.id = 'gridEdge'; ge.className = 'row-edge grid-edge'; ge.setAttribute('aria-label', 'Fold the page tiles away');
-    ge.addEventListener('click', () => { buzz(10); gridManual = true; gridSync(); });
-    grid.parentNode.appendChild(ge);
+
   }
   const blue = !!stripFull || (stripKey !== null ? !stripShut : smallFullHook ? !!state.smallOpen : popRowUntil ? !popRowShut : false);
   const green = !!document.querySelector('#suggHost .sugg-row');
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
   const plain = !state.builderMode && !selWords && !onTargetsPage();
   view.classList.toggle('has-grid-edge', plain);
-  const ge = document.getElementById('gridEdge'); if (ge) ge.style.top = (grid.offsetTop || bar.offsetTop || 0) + 'px';
-  view.classList.toggle('grid-shut', plain && (gridManual || (homePath.length === 0 && homePhrase.length > 0 && (blue || green))));
+  view.classList.toggle('grid-shut', plain && gridManual);
 }
 let gridManual = false, gridPage = '';
+// the small words: their blue bar floats above the open row too (a tap folds it), and each word is marked in blue
+(function () {
+  const host = document.getElementById('smallHost'); if (!host) return;
+  let busy = false;
+  const tidy = () => {
+    if (busy) return; busy = true;
+    try {
+      host.querySelectorAll('.small-tile').forEach(t => { if (!t.querySelector('.sm-hl') && t.childNodes.length === 1 && t.firstChild.nodeType === 3 && t.textContent.trim()) { const sp = document.createElement('span'); sp.className = 'sm-hl'; sp.textContent = t.textContent; t.textContent = ''; t.appendChild(sp); } });
+      const open = !!host.querySelector('.small-strip') && !host.querySelector(':scope > .small-head, :scope > * > .small-head:not(.group-head)');
+      let bar = host.querySelector(':scope > .band-bar');
+      if (open && !state.builderMode) {
+        if (!bar) { bar = document.createElement('button'); bar.className = 'band-bar'; bar.setAttribute('aria-label', 'Fold the small words away');
+          bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } }); }
+        if (host.firstChild !== bar) host.insertBefore(bar, host.firstChild);
+      } else if (bar) bar.remove();
+    } finally { obs.takeRecords(); busy = false; }
+  };
+  const obs = new MutationObserver(tidy);
+  obs.observe(host, { childList: true, subtree: true });
+})();
 let suggFolder = null;
 function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} } }
 function suggRender0() {
@@ -7302,6 +7326,7 @@ function suggRender0() {
         things.push(...loose);
         opts = things.slice(0, 1).concat(folders, things.slice(1), acts);
       } else opts = acts.concat(things);
+      opts = acts;      // the green row is the doing words; things and their folders are the page's own tiles below
     }
     const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
@@ -7310,12 +7335,10 @@ function suggRender0() {
     host.classList.toggle('show', opts.length > 0);
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
     if (!opts.length) return;
-    if (suggShut) {
-      const bar = document.createElement('button'); bar.className = 'sugg-head'; bar.setAttribute('aria-label', 'Suggested words');
-      bar.addEventListener('click', () => { buzz(10); suggShut = false; suggRender(); rowIdleArm(6000); });
+    { const bar = document.createElement('button'); bar.className = 'sugg-head'; bar.setAttribute('aria-label', 'Suggested words');
+      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; suggRender(); });
       host.appendChild(bar);
-      return;
-    }
+      if (suggShut) return; }
     // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
     const hgt = like ? like.offsetHeight : 0,      // the same size as the page's own tiles
@@ -7345,11 +7368,7 @@ function suggRender0() {
       rowEl.appendChild(b);
     });
     ['pointerdown', 'touchstart', 'wheel', 'scroll'].forEach(ev => rowEl.addEventListener(ev, () => rowIdleArm(6000), { passive: true }));      // being looked through: it stays
-    const wrap = document.createElement('div'); wrap.className = 'sugg-wrap';
-    const edge = document.createElement('button'); edge.className = 'row-edge sugg-edge'; edge.setAttribute('aria-label', 'Fold the suggestions away');
-    edge.addEventListener('click', e => { e.stopPropagation(); buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = true; suggRender(); });
-    wrap.appendChild(rowEl); wrap.appendChild(edge);
-    host.appendChild(wrap);
+    host.appendChild(rowEl);
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -9153,12 +9172,6 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     if (more) {
       more.style.height = ''; more.textContent = ''; more.classList.add('strip-edge'); more.setAttribute('aria-label', 'More small words');
       strip.appendChild(more);      // last in the row, held at the right edge
-      // one tap folds the row away; a double tap opens the whole small-words folder
-      more.addEventListener('click', e => {
-        if (edgeTapTimer) { clearTimeout(edgeTapTimer); edgeTapTimer = null; return; }      // second tap: on to the folder
-        e.stopImmediatePropagation(); e.preventDefault();
-        edgeTapTimer = setTimeout(() => { edgeTapTimer = null; clearTimeout(blueShutTimer); setBlue(false); }, 350);
-      }, true);
     }
     // swiped (or pushed) on to the third page: the whole library drops down instead
     let settle = null;
