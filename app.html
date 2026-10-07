@@ -635,9 +635,7 @@
   .phrase-bar .pb-words { max-height: calc(3.45em + 15px); overflow-y: auto; scrollbar-width: none; overscroll-behavior: contain; }
   .phrase-bar .pb-words::-webkit-scrollbar { display: none; }
   /* scrolled down a page: the key bar draws in to one slim line, and opens out again at the top */
-  .view-home.bar-min .phrase-bar { min-height: 0; height: 96px; flex: none; padding-top: 6px; padding-bottom: 6px; font-size: 44px; overflow: hidden; }
-  .view-home.bar-min .phrase-bar .pb-words { max-height: 1.35em; }
-  .view-home.bar-min .phrase-bar .home-enter { min-height: 0; height: 64px; }
+  /* (the key bar keeps its size: only the menu and the small words row step aside) */
   /* (the folder menu and the switches step aside too, and their room goes to the bar) */
   .view-home.bar-min:not(.targets-page) .home-row { display: none; }
   /* a tile was chosen: for two seconds the whole page is the sentence, then the page comes back */
@@ -2500,7 +2498,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 394 - 7 Oct';
+const BUILD = 'build 395 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5693,7 +5691,7 @@ function readBack(words, target, force) {
     chips.forEach((c, k) => c.classList.toggle('on', k === i));
     if (i >= words.length) { readBackTimer = setTimeout(done, 700); return; }
     const w = words[i];
-    if ((state.enterSpeech || force) && !isPunct(w)) { sayAnyway = !!force; try { speakWord(w, 0.95); } finally { sayAnyway = false; } }
+    if (!isPunct(w)) { sayAnyway = true; try { speakWord(w, 0.95); } finally { sayAnyway = false; } }
     i++;
     readBackTimer = setTimeout(step, isPunct(w) ? 250 : 520 + 75 * String(w).length);
   };
@@ -8341,7 +8339,15 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     strip._leads = leads;
     const fits = ok => (!homePhrase.includes(ok) || (ok !== last && ['TO', 'THE', 'A', 'AND'].includes(ok)));
     const kindNext = isSmallWord(last) || LEAD_IN[last] ? [] : (FOLLOW_KIND[kindOfWordG(last)] || FOLLOW_END).filter(w => state.words.includes(w) || ['AND', 'NOW', 'TODAY', 'PLEASE'].includes(w));
-    leads.concat(need.slice(0, leads.length ? 2 : 3), followSpecific(last), kindNext).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w]) six.push(w); });
+    // some places in a sentence have an obvious next word, and that comes before everything else:
+    //   "Dad can" -> you;  "Dad can you" -> help, get, find;  "Hi Dad and Mom" -> I (the next thought starts)
+    const GREET = ['HI', 'HELLO', 'HEY', 'BYE', 'GOODBYE', 'GOOD MORNING', 'GOOD NIGHT'];
+    const greeted = !homePhrase.some(isPunct) && GREET.includes(homePhrase[0]) && homePhrase.length > 1 && kindOfWordG(last) === 'people';
+    const ctx = magicAsking() && MAGIC_SUBJ.includes(last) ? ['HELP', 'GET', 'FIND', 'COME', 'GO', 'OPEN']
+      : MAGIC_ASK.includes(last) ? ['YOU', 'I', 'WE', 'HELP', 'GO', 'GET']
+      : greeted ? ['I', 'CAN', 'YOU', 'WE', 'PLEASE'] : null;
+    if (ctx) ctx.forEach(magicKnow);
+    (ctx || leads.concat(need.slice(0, leads.length ? 2 : 3), followSpecific(last), kindNext)).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w]) six.push(w); });
     [].forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     if (!six.length) followWords(last, []).forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     // never an empty row: failing all that, the page's own small words and then the most used ones
@@ -8354,7 +8360,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     if (MAGIC_WANTS.includes(last) && last !== 'MORE' && !six.includes('A') && !state.hiddenWords['A']) { const at = six.indexOf('THE'); six.splice(at >= 0 ? at + 1 : Math.min(1, six.length), 0, 'A'); }      // "I want a ..."
     const open = MAGIC_WANTS.includes(last) || ['I', 'AND', 'TO', 'THE', 'A', 'AN', 'MY', 'WITH', 'IS', 'ARE', 'AM'].includes(last);      // mid-thought: no full stop offered yet
     const done = homePhrase.length > 1 && !isPunct(last) && !magicAsking() && !open && (!mp || !!mp.ext || mp.phrase.length <= homePhrase.length);
-    if (done) { const marks = ['.', '?', '!'].filter(m => allSmallWords().includes(m) && !state.hiddenWords[m]); six.unshift(...marks); }
+    if (done) { const marks = (greeted ? ['.', '!'] : ['.', '?', '!']).filter(m => allSmallWords().includes(m) && !state.hiddenWords[m]); if (greeted) six.splice(1, 0, ...marks); else six.unshift(...marks); }
     shown = [six.slice(0, 6)];
   }
   else {
