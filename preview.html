@@ -524,7 +524,8 @@
   .feed-group .feed-head { touch-action: none; }
   /* the group's name as a tile of its own, in a deeper grey than the panel: tap it to say the word */
   .feed-group .feed-head.name-tile[aria-expanded="true"] { display: none; }
-  .home-card.name-card { background: #b4b7be; }
+  /* a white tile like the rest, its word marked in grey (the way a suggestion's is marked in green) */
+  .home-card.name-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; }
   .library-dots { align-self: center; justify-self: start; width: 34px; height: 64px; border: none; border-radius: 12px; background: none;
     color: rgba(0,0,0,0.28); font-size: 40px; line-height: 1; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 0 6px; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
@@ -2581,7 +2582,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 409 - 7 Oct';
+const BUILD = 'build 410 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -11722,12 +11723,14 @@ function renderSlotGrid(grid, cat, folders) {
             nt.className = 'home-card name-card';
             nt.style.height = rowH + 'px';
             const t = document.createElement('span'); t.className = 'hw'; t.textContent = String(f.name || '').toLowerCase(); nt.appendChild(t);
+            const markName = () => { const lbl = t.textContent; t.textContent = ''; const hl = document.createElement('span'); hl.className = 'name-hl'; hl.textContent = lbl; t.appendChild(hl); };
             nt.addEventListener('click', () => {
               if (suppressTileClick) { suppressTileClick = false; return; }
               const key = normaliseWord(f.name); if (!key) return;
               magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); buzz(10); renderPhraseBar();
             });
             fit(nt, t.textContent);
+            markName();
             box.appendChild(nt);
             return;
           }
