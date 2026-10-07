@@ -2500,7 +2500,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 392 - 7 Oct';
+const BUILD = 'build 393 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5339,7 +5339,8 @@ function makeSpecialKey(label, action, cls) {
       const spokenText = (state.enterSpeechMode === 'correct')
         ? applyCase(correctTextOnly()).trim()
         : trimmed;
-      if (spokenText && state.enterSpeech) speakWord(spokenText, 0.95);
+      if (wasComplete && completedWord) readBack([completedWord], completedWord);      // the finished word fills the screen and is read back
+      else if (spokenText && state.enterSpeech) speakWord(spokenText, 0.95);
 
       // Commit buffered letter stats — these letters now count
       if (state.scoreMode) {
@@ -5543,7 +5544,7 @@ function finishPhrase() {
   const words = state.phraseWords.slice();
   const now = Date.now();
 
-  readBack(words);      // the whole message fills the screen and is read back, word by word
+  readBack(words, phrase);      // the whole message fills the screen and is read back, word by word
 
   if (state.scoreMode) {
     Object.entries(state.pendingLetterCounts).forEach(([L, c]) => {
@@ -5648,8 +5649,16 @@ function handleError(expectedLetter, typedLetter) {
 // and goes home. Does nothing if the home page is switched off, or if typing
 // has already started again.
 const HOME_AFTER_WORD_MS = 1900;
+function goHomeNow(word) {
+  if (!state.homeEnabled || state.currentTarget !== word || state.text) return;
+  state.currentTarget = null; state.phraseWords = []; state.targetIndex = 0; state.targetProgress = []; state.targetPromptedFlags = [];
+  clearPromptTimer(); promptVisible = true;
+  save(); render();
+  showHome();
+}
 function goHomeAfter(word, wordCount) {
   if (!state.homeEnabled) return;
+  if (document.getElementById('readBack')) return;      // the read-back screen goes straight to the home page when it is done
   setTimeout(() => {
     if (state.currentTarget !== word || state.text) return;
     state.currentTarget = null;
@@ -5666,7 +5675,7 @@ function goHomeAfter(word, wordCount) {
 // ---- Celebration ----
 // The finished message, large on the whole screen: each word lights up in turn as it is said
 let readBackTimer = null;
-function readBack(words) {
+function readBack(words, target) {
   clearTimeout(readBackTimer);
   const old = document.getElementById('readBack'); if (old) old.remove();
   const f = document.createElement('div'); f.className = 'read-back'; f.id = 'readBack';
@@ -5675,7 +5684,8 @@ function readBack(words) {
   const shown = sentenceWords(words);
   const chips = shown.map(t => { const c = document.createElement('span'); c.className = 'rb-word'; c.textContent = t; line.appendChild(c); return c; });
   card.appendChild(line); f.appendChild(card);
-  const done = () => { clearTimeout(readBackTimer); f.remove(); };
+  // when it is done the home page is already there underneath: nothing else shows in between
+  const done = () => { clearTimeout(readBackTimer); if (target) goHomeNow(target); f.remove(); };
   f.addEventListener('click', done);
   document.body.appendChild(f);
   let i = 0;
