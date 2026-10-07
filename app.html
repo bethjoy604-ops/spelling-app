@@ -1041,8 +1041,9 @@
   .small-host .small-strip.slides { scroll-padding-left: 16px; }
   /* the thick blue edge with its grip lines: push it (or swipe the row) for the next words */
   .small-host .small-strip.slides .strip-edge { width: 46px; border-radius: 0 16px 16px 0; cursor: pointer;
-    background: #9fbdf3 linear-gradient(90deg, transparent 13px, rgba(255,255,255,0.95) 13px 17px, transparent 17px 21px, rgba(255,255,255,0.95) 21px 25px, transparent 25px 29px, rgba(255,255,255,0.95) 29px 33px, transparent 33px) center / 100% 36% no-repeat; }
-  .small-host .small-strip.slides .strip-edge:active { background-color: #86a9ec; }
+    box-shadow: -6px 0 8px -6px rgba(0,0,0,0.08) !important;
+    background: #b9cff8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32' fill='none' stroke='%237fa3ea' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l9 10-9 10'/%3E%3C/svg%3E") center / 18px auto no-repeat; }
+  .small-host .small-strip.slides .strip-edge:active { background-color: #a6c1f5; }
   /* six even columns across the whole panel, the same space left and right */
   .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
   .small-host .small-strip { min-height: 0; gap: 16px; padding: 18px 44px 18px 18px; }
@@ -1245,6 +1246,7 @@
   .key.side { flex: 1.25; font-size: clamp(18px, 3.4vmin, 34px); font-weight: 500; }
   #helpBtn { display: none !important; }
   .key.backspace svg { width: 1.7em; height: 1.7em; display: block; }
+  .key.shift, .key.numkey { background: #d2d5da; }      /* the keys that change the keyboard, set apart from the letters */
   .key.shift.on { background: #8b8e95; color: #fff; }      /* a darker grey, not black: on, but not shouting */
   .key.shift.disabled { opacity: 0.35; }
   .key.numkey { font-size: clamp(16px, 3vmin, 30px); font-weight: 900; letter-spacing: 1px; }
@@ -2482,7 +2484,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 382 - 7 Oct';
+const BUILD = 'build 383 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
