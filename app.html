@@ -1039,6 +1039,10 @@
   .small-host .small-strip.slides .sp { grid-row: 1; }
   .small-host .small-strip.slides .strip-more { position: sticky; right: 0; left: auto; bottom: auto; grid-row: 1; width: 44px; height: auto; align-self: stretch; background: #bfd8ff; margin: -18px 0; z-index: 1; box-shadow: -10px 0 10px -6px rgba(0,0,0,0.12); }
   .small-host .small-strip.slides { scroll-padding-left: 16px; }
+  /* the thick blue edge with its grip lines: push it (or swipe the row) for the next words */
+  .small-host .small-strip.slides .strip-edge { width: 46px; border-radius: 0 16px 16px 0; cursor: pointer;
+    background: #9fbdf3 linear-gradient(90deg, transparent 13px, rgba(255,255,255,0.95) 13px 17px, transparent 17px 21px, rgba(255,255,255,0.95) 21px 25px, transparent 25px 29px, rgba(255,255,255,0.95) 29px 33px, transparent 33px) center / 100% 36% no-repeat; }
+  .small-host .small-strip.slides .strip-edge:active { background-color: #86a9ec; }
   /* six even columns across the whole panel, the same space left and right */
   .small-host .small-strip { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; padding-left: 14px; }
   .small-host .small-strip { min-height: 0; gap: 16px; padding: 18px 44px 18px 18px; }
@@ -2476,7 +2480,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 374 - 7 Oct';
+const BUILD = 'build 375 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8158,7 +8162,8 @@ function makeSmallStrip(rowH, base, owner, gutter) {
   // how many show: set from the row's own menu, one at the least
   const rowMax = () => (owner && owner.rowMax) || state.smallRowMax || 3;
   // the faint plus at the end of the row opens every small word in the library; again, back to the few
-  const full = !!gutter && isCatOwner(owner) && stripFull === owner.id;
+  const fullKey = isCatOwner(owner) ? owner.id : 'root';
+  const full = !!gutter && stripFull === fullKey;
   if (full) { const used = w => (state.wordHistory[w] || {}).n || 0; shown = [allSmallWords().filter(w => !state.hiddenWords[w] && state.words.includes(w)).map((w, i) => [w, i]).sort((a, b) => (isPunct(a[0]) - isPunct(b[0])) || used(b[0]) - used(a[0]) || a[1] - b[1]).map(x => x[0])]; }
   else if (gutter && homePhrase.length) {
     // beside a magic phrase: the six that fit best - the small words the sentence still needs, then
@@ -8181,6 +8186,9 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       [].concat(...shown, ...rows).concat(allSmallWords().slice().sort((a, b) => used(b) - used(a)))
         .forEach(w => { if (six.length < 6 && !isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w))) && !state.hiddenWords[w] && state.words.includes(w)) six.push(w); });
     }
+    // a whole sentence in the bar: the full stop, question mark and exclamation mark lead the row
+    const done = homePhrase.length > 1 && !isPunct(last) && (!mp || !!mp.ext || mp.phrase.length <= homePhrase.length);
+    if (done) { const marks = ['.', '?', '!'].filter(m => allSmallWords().includes(m) && !state.hiddenWords[m]); six.unshift(...marks); }
     shown = [six.slice(0, 6)];
   }
   else {
@@ -8261,7 +8269,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     strip.addEventListener('pointerdown', e => { if (e.target !== strip) return; held = false; t = setTimeout(() => { t = null; held = true; buzz(15); }, 520); });
     strip.addEventListener('pointerup', () => { if (t) { clearTimeout(t); t = null; } if (held) { held = false; setTimeout(() => editRow(0), 80); } });
     ['pointercancel', 'pointerleave'].forEach(ev => strip.addEventListener(ev, () => { if (t) { clearTimeout(t); t = null; } held = false; })); }
-  if (gutter && isCatOwner(owner) && words.length) {
+  if (gutter && words.length) {
     const m = document.createElement('button');
     m.className = 'strip-more';
     m.style.height = (h + 20) + 'px';
@@ -8271,7 +8279,10 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       e.stopPropagation();
       // the plus pulls the whole library down in place; the minus draws it back to the one row
       buzz(10);
-      stripFull = full ? null : owner.id;
+      // on the sliding row this is the edge handle: a push brings in the next six (the second page
+      // on, the whole library drops down - see the scroll watcher below)
+      if (slides && !full) { const pw = strip._pageW || strip.clientWidth; strip.scrollBy({ left: pw, behavior: 'smooth' }); return; }
+      stripFull = full ? null : fullKey;
       clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null;
       if (full) { if (stripKey !== null) stripCountdown(stripKey); else if (smallFullHook) chatRowArm(); }
       followKey = null; refreshSmallStrips();
@@ -8286,8 +8297,26 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const ts = [...strip.querySelectorAll('.small-tile')];
     ts.forEach((t, i) => { if (i % 6 === 0) t.classList.add('snap'); });
     for (let k = (6 - ts.length % 6) % 6; k > 0; k--) { const sp = document.createElement('i'); sp.className = 'sp'; strip.appendChild(sp); }
-    strip.style.setProperty('--tail', more ? '56px' : '10px');
-    if (more) { more.style.height = ''; strip.appendChild(more); }      // last in the row, held at the right edge
+    strip.style.setProperty('--tail', more ? '58px' : '10px');
+    if (more) {
+      more.style.height = ''; more.textContent = ''; more.classList.add('strip-edge'); more.setAttribute('aria-label', 'More small words');
+      strip.appendChild(more);      // last in the row, held at the right edge
+    }
+    // swiped (or pushed) on to the third page: the whole library drops down instead
+    let settle = null;
+    strip.addEventListener('scroll', () => {
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        const pw = ts[6] ? ts[6].offsetLeft - ts[0].offsetLeft : 0;
+        strip._pageW = pw;
+        if (pw && strip.scrollLeft >= pw * 1.5 && strip.isConnected) {
+          stripFull = fullKey;
+          clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null;
+          buzz(10); followKey = null; refreshSmallStrips();
+        }
+      }, 220);
+    });
+    setTimeout(() => { if (ts[6]) strip._pageW = ts[6].offsetLeft - ts[0].offsetLeft; }, 0);
   }
   // the blue is only as long as its tiles: fewer than six, and the panel is that much shorter
   if (gutter && words.length && !slides) {
@@ -11187,7 +11216,7 @@ function smallRowPop() {
       el.addEventListener('pointerdown', e => { if (e.target.closest('.small-tile')) clearTimeout(popRowTimer); });
       smallHostSet(el);
     };
-    popRowUntil = Infinity;
+    popRowUntil = Infinity; stripFull = null;
     smallHostRedo = paint; paint();
     clearTimeout(popRowTimer);
   }
