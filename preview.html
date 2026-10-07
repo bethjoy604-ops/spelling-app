@@ -512,7 +512,8 @@
   #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
   #pageEditBar button.pe-all { background: #4a4a4a; font-size: 15px; padding: 10px 16px; }
   .home-card.library-tile { background: #e6e7ea; }
-  .feed-group { align-self: start; background: #d3d5d9; border-radius: 20px; padding: 6px 12px 12px; display: flex; flex-direction: column; }
+  .feed-group { align-self: start; background: #c9ccd2; border-radius: 22px; padding: 16px; display: flex; flex-direction: column; position: relative; margin: 4px 0; }
+  .feed-group .feed-min { position: absolute; top: -6px; right: -6px; width: 34px; height: 34px; border: none; border-radius: 50%; background: #8f9299; color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; line-height: 1; cursor: pointer; z-index: 2; }
   .feed-group .feed-head { border: none; background: none; text-align: left; font-family: inherit; font-weight: 900; font-size: 17px; color: rgba(0,0,0,0.6);
     height: 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; cursor: pointer; }
   .feed-group .feed-head[aria-expanded="false"] { height: 44px; }
@@ -793,8 +794,10 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
-  .sugg-host { display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; flex-shrink: 0; }
-  .sugg-host.show { display: grid; }
+  .sugg-host { display: none; flex-shrink: 0; }
+  .sugg-host.show { display: block; }
+  .sugg-head { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #cdebd1; cursor: pointer; }
+  .view-home.bar-min .sugg-host, .view-home.keys-open .sugg-host { display: none !important; }
   .sugg-tile { border: none; border-radius: 20px; background: #d9f2dc; color: var(--ink); font-family: inherit; font-weight: 900; font-size: clamp(22px, 4vmin, 38px); height: clamp(64px, 12vh, 110px); box-shadow: var(--shadow); cursor: pointer; overflow: hidden; }
   .sugg-tile:active { transform: scale(0.97); }
   .chat-log .bl-line { background: #8f9299 !important; opacity: 1 !important; }
@@ -816,6 +819,8 @@
   .key.key-gap { visibility: hidden; pointer-events: none; }
   .home-keys { padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px)) !important; }      /* clear of the very bottom edge of the screen, where taps are not always taken */
   .view-home.keys-open #pbInput { pointer-events: none; caret-color: transparent; }
+  .view-home.keys-open .phrase-bar { min-height: 30vh; }      /* typing: the message window grows and the keys draw in under it */
+  .phrase-bar.suggesting .pb-chip { display: none; }      /* the words already in the message step out of the way of the words on offer */
   .pb-back { color: var(--red); background: var(--red-tint); }
   .pb-back svg { width: 60%; height: 60%; display: block; margin: auto; }
   .home-card.sel-on { outline: 5px solid var(--prompt); outline-offset: -5px; background: var(--prompt-soft); }
@@ -2585,7 +2590,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 412 - 7 Oct';
+const BUILD = 'build 413 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4769,6 +4774,7 @@ function rowIdleArm(ms) {
   if (state.smallRowsFold === false) return;
   rowBackTimer = setTimeout(() => {
     if (stripFull || state.builderMode) return;
+    if (!suggShut) { suggShut = true; suggRender(); }
     if (stripKey !== null) { if (stripShut) return; stripShut = true; }
     else if (smallFullHook) { if (!state.smallOpen || chatFull) return; state.smallOpen = false; chatRowAuto = false; }
     else if (popRowUntil) { if (popRowShut) return; popRowShut = true; }
@@ -4777,7 +4783,9 @@ function rowIdleArm(ms) {
   }, ms || 3000);
 }
 function rowBackAtTop() {
-  if (state.builderMode || state.smallRowsOn === false) return;
+  if (state.builderMode) return;
+  if (suggShut) { suggShut = false; suggRender(); rowIdleArm(3000); }
+  if (state.smallRowsOn === false) return;
   const host = document.getElementById('smallHost');
   const chat = stripKey === null && !!smallFullHook;
   if (!chat && !host.querySelector('.small-head')) return;      // nothing folded there to open
@@ -4884,9 +4892,10 @@ function homeKeysOpen() {
     document.getElementById('viewHome').appendChild(k);
   }
   inp.readOnly = true; inp.blur();
-  k.style.top = Math.round(document.getElementById('phraseBar').getBoundingClientRect().bottom + 10) + 'px';      // straight under the key bar, down to the bottom of the screen
-  k.classList.add('open');
   document.getElementById('viewHome').classList.add('keys-open');
+  const place = () => { k.style.top = Math.round(document.getElementById('phraseBar').getBoundingClientRect().bottom + 10) + 'px'; };      // straight under the key bar, down to the bottom of the screen
+  place(); requestAnimationFrame(place);
+  k.classList.add('open');
   homeKeysIdle();
 }
 function homeKeysClose() {
@@ -6957,7 +6966,7 @@ function magicOptions(max) {
   const prevW = n > 1 ? homePhrase[n - 2] : '';
   const greeting = Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(homePhrase[0]));
   if (!isSmallWord(last) && !homePhrase.some(doing) && k !== 'people' && !greeting) {
-    [['I', 'WANT'], ['NEED'], ['SEE']].filter(l => l.every(okW)).forEach(l => add({ phrase: l.concat(homePhrase), used: homePhrase.map((_, i) => i + l.length) }));
+    [['WANT'], ['NEED'], ['SEE']].filter(l => l.every(okW)).forEach(l => add({ phrase: l.concat(homePhrase), used: homePhrase.map((_, i) => i + l.length) }));
   } else if (Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(last)) || MAGIC_WANTS.includes(last)) {      // a word that leads somewhere: hi -> people, go -> places, eat -> food, want -> things
     magicNext(last, max).filter(okW).forEach(after);
   } else if (magicAsking() || (last === 'TO' && MAGIC_WANTS.includes(prevW))) {      // "can you ...", "I want to ...": things to do
@@ -7085,13 +7094,23 @@ let magicStallTimer = null;
 // three more once the page is scrolled down. Each shows the word it would add; a tap adds it.
 // They are tiles like any other, first in the page's grid, with the word marked in green; three more
 // sit after the page's own tiles, found by scrolling down.
-let suggBusy = false, suggObs = null;
+let suggBusy = false, suggObs = null, suggShut = false;
+// every open row at once: the small words row to its blue bar, the suggestions to their green one
+function collapseRows() {
+  clearTimeout(rowBackTimer);
+  if (stripKey !== null) stripShut = true; else if (smallFullHook) { state.smallOpen = false; chatRowAuto = false; } else if (popRowUntil) popRowShut = true;
+  stripFull = null; suggShut = true;
+  if (smallHostRedo) smallHostRedo();
+  suggRender();
+}
 function hgtOf(grid) { const c = grid.querySelector('.home-card:not(.sugg-card)'); return c ? (parseInt(c.style.height) || c.offsetHeight || 0) : 0; }
 function suggRender() {
   const grid = document.getElementById('homeGrid');
   if (!grid || suggBusy) return;
   suggBusy = true;
+  let hadTop = 0, hadH = 0;
   try {
+    hadTop = grid.scrollTop; hadH = grid.scrollHeight;
     grid.querySelectorAll(':scope > .sugg-card').forEach(x => x.remove());
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = ''; });
     if (grid.dataset.sgTpl != null) { if (!grid.style.gridTemplateRows) { grid.style.gridTemplateRows = grid.dataset.sgTpl; grid.style.gridAutoRows = grid.dataset.sgAuto || ''; } delete grid.dataset.sgTpl; delete grid.dataset.sgAuto; }
@@ -7099,6 +7118,12 @@ function suggRender() {
     kids.forEach(c => { if (c.dataset.sgs) { const by = parseInt(c.dataset.sgs) || 1; c.style.gridRowStart = String(Math.max(1, (parseInt(c.style.gridRowStart) || by + 1) - by)); delete c.dataset.sgs; } });
     let opts = [];
     try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords && getComputedStyle(grid).display === 'grid') opts = magicTwoRows(); } catch (e) { opts = []; }      // a row of things, then a row of things to do
+    // folded: a green bar under the blue one, there to drop them down again
+    { const host = document.getElementById('suggHost'); host.innerHTML = '';
+      const folded = opts.length > 0 && suggShut;
+      if (folded) { const bar = document.createElement('button'); bar.className = 'sugg-head'; bar.setAttribute('aria-label', 'Suggested words'); bar.addEventListener('click', () => { buzz(10); suggShut = false; suggRender(); rowIdleArm(3000); }); host.appendChild(bar); }
+      host.classList.toggle('show', folded);
+      if (folded) opts = []; }
     if (!opts.length || !kids.length) return;
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
     const hgt = like ? like.offsetHeight : 0, fs = likeHw ? likeHw.style.fontSize : '';
@@ -7132,7 +7157,10 @@ function suggRender() {
       });
       grid.insertBefore(b, grid.children[i] || null);
     });
-  } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }      // (its own changes to the grid are not a reason to run again)
+  } finally {
+    // (rows coming or going above a page that is scrolled down do not move what is being looked at)
+    if (hadTop > 0) { const d = grid.scrollHeight - hadH; if (d) grid.scrollTop = Math.max(0, hadTop + d); }
+    suggBusy = false; if (suggObs) suggObs.takeRecords(); }      // (its own changes to the grid are not a reason to run again)
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
 { let t = null; suggObs = new MutationObserver(() => { if (suggBusy) return; clearTimeout(t); t = setTimeout(suggRender, 0); }); suggObs.observe(document.getElementById('homeGrid'), { childList: true }); }
@@ -11130,6 +11158,7 @@ function feedFolders(cat) {
   }
   return out;
 }
+let feedOpen = null;      // { cat, f }: the group on a custom page that is opened out to all its tiles
 function feedWords(cat) {
   const have = new Set([].concat(...feedFolders(cat).map(c => c.words || [])));
   return (cat.feed || []).filter(w => have.has(w) && !state.hiddenWords[w]);
@@ -11672,7 +11701,8 @@ function renderSlotGrid(grid, cat, folders) {
     const fRank = f => { const k = fOrder.indexOf(f.id); return k < 0 ? 9999 : k; };
     const panels = [];
     feedFolders(cat).forEach(f => {
-      const mine = (f.words || []).filter(w => picked.includes(w) && !used.has(w));
+      const wide = !!feedOpen && feedOpen.cat === cat.id && feedOpen.f === f.id;      // its name tile was tapped: the whole group shows
+      const mine = (f.words || []).filter(w => (wide ? !state.hiddenWords[w] : picked.includes(w)) && !used.has(w));
       if (!mine.length) return;
       mine.forEach(w => used.add(w));
       panels.push({ f, mine });
@@ -11684,6 +11714,12 @@ function renderSlotGrid(grid, cat, folders) {
       const shut = !!cat.feedShut[f.id];
       const sec = document.createElement('div');
       sec.className = 'feed-group';
+      if (feedOpen && feedOpen.cat === cat.id && feedOpen.f === f.id && !shut) {
+        sec.classList.add('wide-open');
+        const mn = document.createElement('button'); mn.className = 'feed-min'; mn.textContent = '\u2212'; mn.setAttribute('aria-label', 'Show fewer');
+        mn.addEventListener('click', e => { e.stopPropagation(); buzz(10); feedOpen = null; const top = grid.scrollTop; renderHome(true); grid.scrollTop = top; });
+        sec.appendChild(mn);
+      }
       // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
       const NAME_TILE = '\u0001name';
       let laid = sortWords(mine, cols, true);
@@ -11761,7 +11797,12 @@ function renderSlotGrid(grid, cat, folders) {
             nt.addEventListener('click', () => {
               if (suppressTileClick) { suppressTileClick = false; return; }
               const key = normaliseWord(f.name); if (!key) return;
-              magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); buzz(10); renderPhraseBar();
+              magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); buzz(10);
+              // ... and the group opens out to all its tiles, the others moving down; the open rows fold to their bars
+              const was = !!feedOpen && feedOpen.cat === cat.id && feedOpen.f === f.id;
+              feedOpen = { cat: cat.id, f: f.id };
+              renderPhraseBar();
+              if (!was) { renderHome(true); collapseRows(); setTimeout(() => { collapseRows(); const el = document.querySelector('#homeGrid .feed-group.wide-open'); if (el) el.scrollIntoView({ block: 'nearest' }); }, 30); }
             });
             fit(nt, t.textContent);
             markName();
@@ -11899,8 +11940,10 @@ function popRowDraw() {
   smallHostSet(el);
 }
 function smallRowPop() {
-  if (state.builderMode || state.smallRowsOn === false) return;
+  if (state.builderMode) return;
+  if (suggShut) { suggShut = false; suggRender(); }
   rowIdleArm(3000);
+  if (state.smallRowsOn === false) return;
   setTimeout(smallRowEmptyCheck, 0);
   // (opened this way it stays until the page is scrolled, the blue is tapped, or the bar is emptied)
   if (stripKey !== null) { stripShut = false; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
