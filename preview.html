@@ -2500,7 +2500,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 393 - 7 Oct';
+const BUILD = 'build 394 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5675,7 +5675,7 @@ function goHomeAfter(word, wordCount) {
 // ---- Celebration ----
 // The finished message, large on the whole screen: each word lights up in turn as it is said
 let readBackTimer = null;
-function readBack(words, target) {
+function readBack(words, target, force) {
   clearTimeout(readBackTimer);
   const old = document.getElementById('readBack'); if (old) old.remove();
   const f = document.createElement('div'); f.className = 'read-back'; f.id = 'readBack';
@@ -5693,7 +5693,7 @@ function readBack(words, target) {
     chips.forEach((c, k) => c.classList.toggle('on', k === i));
     if (i >= words.length) { readBackTimer = setTimeout(done, 700); return; }
     const w = words[i];
-    if (state.enterSpeech && !isPunct(w)) speakWord(w, 0.95);
+    if ((state.enterSpeech || force) && !isPunct(w)) { sayAnyway = !!force; try { speakWord(w, 0.95); } finally { sayAnyway = false; } }
     i++;
     readBackTimer = setTimeout(step, isPunct(w) ? 250 : 520 + 75 * String(w).length);
   };
@@ -6792,6 +6792,23 @@ function magicIntoBar() {
   chips.forEach(c => { c.addEventListener('click', e => e.stopPropagation()); box.appendChild(c); });
   box.scrollTop = box.scrollHeight;
 }
+// The suggested sentence waits for a stall: three seconds after a word goes in with nothing else
+// touched or scrolled, it appears in the key bar; three seconds more and it is gone again
+let magicStallTimer = null;
+function magicStallArm() {
+  clearTimeout(magicStallTimer);
+  magicShowNow = false;
+  if (!state.magicType || state.builderMode || !homePhrase.length) return;
+  const ph = homePhrase.join(' ');
+  magicStallTimer = setTimeout(() => {
+    if (homePhrase.join(' ') !== ph || !document.getElementById('viewHome').classList.contains('active') || magicSkipped === ph) return;
+    if (document.getElementById('viewHome').classList.contains('bar-min') || !magicPhraseNow()) return;
+    magicShowNow = true; magicFoldedFor = null; magicOpenAt = { phrase: ph, t: Date.now() };
+    renderPhraseBar();
+  }, 3000);
+}
+document.getElementById('viewHome').addEventListener('pointerdown', () => clearTimeout(magicStallTimer), true);
+document.getElementById('homeGrid').addEventListener('scroll', () => clearTimeout(magicStallTimer), { passive: true });
 function hideMagic() {
   document.querySelectorAll('#pbWords .magic-chip').forEach(x => x.remove());
   document.getElementById('magicBox').classList.remove('inbar');
@@ -6980,7 +6997,7 @@ function renderMagic(word) {
   { const ph = homePhrase.join(' ');
     if (magicOpenAt.phrase !== ph) magicOpenAt = { phrase: ph, t: Date.now() };       // the two seconds run from when the words changed, however often the page redraws
     const fresh = magicOpenAt.t > Date.now() - 50;
-    const left = 5000 - (Date.now() - magicOpenAt.t);
+    const left = 3000 - (Date.now() - magicOpenAt.t);
     box.classList.toggle('folded', box.classList.contains('show') && (magicFoldedFor === ph || left <= 0));
     if (box.classList.contains('folded')) magicFoldedFor = ph;
     else if (box.classList.contains('show')) {
@@ -7001,6 +7018,7 @@ function renderPhraseBar() {
   // a tile was chosen: the pop-out of switches has done its job
   { const grew = homePhrase.length > phraseLenSeen; if (phraseLenSeen > 0 && !homePhrase.length && !state.builderMode) setTimeout(smallRowDrop, 0);      // the bar was emptied: the row folds
     phraseLenSeen = homePhrase.length; if (grew) setTimeout(flashBar, 40);
+    if (grew) magicStallArm(); else if (!homePhrase.length) clearTimeout(magicStallTimer);
     if (grew) setTimeout(smallRowPop, 0);
     // on the first page a chosen tile opens the folder menu out for three seconds, in case the next word is in a folder
     if (grew && state.iconsOpen) { closeIcons(); return; } }
@@ -7126,15 +7144,8 @@ function activeTargets(words) {
 function homeEnter() {
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
   // "I feel sad"): tap it to take it, or press the green button again to send the words as they are
-  if (state.magicType && !state.builderMode && homePhrase.length && magicOfferedFor !== homePhrase.join(' ')) {
-    magicOfferedFor = homePhrase.join(' ');
-    if (magicPhraseNow()) {
-      magicShowNow = true; magicFoldedFor = null; magicSkipped = null; magicOpenAt = { phrase: homePhrase.join(' '), t: Date.now() };
-      buzz(10); renderPhraseBar();
-      if (document.getElementById('magicBox').classList.contains('show')) return;
-      magicShowNow = false;
-    }
-  }
+  // the green enter always enters the message; the suggested sentence is only ever offered on a stall
+  clearTimeout(magicStallTimer);
   magicShowNow = false;
   // every tile entered with the green button joins the last thirty that Popular is drawn from
   if (homePhrase.length && !state.builderMode) { state.recentTiles = (state.recentTiles || []).concat(homePhrase.filter(w => !isPunct(w))).slice(-30); save(); }
@@ -7150,7 +7161,7 @@ function homeEnter() {
   if (!homePhrase.length) return;
   warmSpeech();
   buzz(15);
-  sayAnyway = true; try { speakWord(homePhrase.join(' '), 0.95); } finally { sayAnyway = false; }
+  readBack(homePhrase.slice(), null, true);      // speak mode: the message fills the screen and is read out, word by word
   // saying a word counts as using it, so Recents / Popular keep up
   const now = Date.now();
   homePhrase.forEach(w => {
