@@ -2597,7 +2597,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 417 - 7 Oct';
+const BUILD = 'build 418 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7178,7 +7178,7 @@ function suggRender() {
     }
     // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
-    const hgt = like ? Math.max(96, Math.round(like.offsetHeight * 0.7)) : 0,      // a little shorter than the page's tiles, so those stay in view under both rows
+    const hgt = like ? like.offsetHeight : 0,      // the same size as the page's own tiles
        fs = likeHw ? likeHw.style.fontSize : '';
     const rowEl = document.createElement('div'); rowEl.className = 'sugg-row';
     opts.forEach(m => {
