@@ -506,7 +506,9 @@
   #pageEditBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 16px;
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
-  .home-card.group-tile { background: #bfd8ff; }
+  .home-card.group-tile { background: var(--surface); }      /* white like any tile: the grey mark on its name says it opens a group */
+  .home-card.group-tile .name-hl, .home-card.folder-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; }
+  .home-card.folder-card::after { display: none; }
   .home-card.group-tile.drop-into { outline: 6px solid var(--green); outline-offset: -3px; }      /* blue: this tile opens a group's own page */
   #pageEditBar { gap: 8px !important; max-width: 96vw; }
   #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
@@ -2590,7 +2592,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 414 - 7 Oct';
+const BUILD = 'build 415 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6489,6 +6491,7 @@ function makeFolderCard(c, rerender) {
   w.className = 'hw';
   w.textContent = c.name;
   card.appendChild(w);
+  markNameTile(card);
   const host = currentCat();
   const isLink = !!host && (c.parent || null) !== host.id;
   if (isLink) {
@@ -6516,7 +6519,7 @@ function makeFolderCard(c, rerender) {
       return;
     }
     // step into it from here, so going back returns to this page
-    magicPathPick(c, c.name);
+    nameIntoBar(c, c.name); renderPhraseBar();
     homePath = host ? homePath.concat([c.id]) : pathTo(c.id);
     rerender();
   });
@@ -6812,6 +6815,29 @@ function magicDropPath(cat) {
   if (!drop.length) return;
   homePhrase = homePhrase.filter(w => !drop.includes(w));
   magicPathIn = magicPathIn.filter(p => !drop.includes(p.key));
+}
+// A folder or group tile was tapped: its name goes into the message as a word (and the tile then
+// opens its page). Picking a tile inside takes the name's place, as before, so the message never
+// reads "actions eat".
+function nameIntoBar(cat, name) {
+  if (state.builderMode || !cat || cat.target) return;
+  const key = normaliseWord(name);
+  if (!key) return;
+  const had = homePhrase.length;
+  magicPathPick(cat, name);
+  if (homePhrase.includes(key)) { if (homePhrase.length !== had) speakWord(key, 0.95); return; }
+  magicDropPath(cat);
+  magicKnow(key);
+  homePhrase.push(key);
+  magicPathIn.push({ key, cat: cat.id });
+  warmSpeech(); speakWord(key, 0.95);
+}
+// the name on a folder or group tile is marked in grey, like the name tile of a group on a custom page
+function markNameTile(card) {
+  const t = card.querySelector('.hw');
+  if (!t || t.querySelector('.name-hl')) return;
+  const lbl = t.textContent; t.textContent = '';
+  const hl = document.createElement('span'); hl.className = 'name-hl'; hl.textContent = lbl; t.appendChild(hl);
 }
 function magicPathPick(cat, name) {
   if (!state.magicType || state.builderMode || !homePhrase.length || !cat || cat.target) return;
@@ -10541,7 +10567,8 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   groups.forEach(g => {
     if (g.hidden) return;
     const card = mk(g.name, 'group-tile');
-    movable(card, groups, g, 'groups', () => { magicPathPick(cat, g.name); tileGroup = { cat: cat.id, group: g }; buzz(10); renderHome(true); }, () => openGroupHead(cat, g));
+    movable(card, groups, g, 'groups', () => { nameIntoBar(cat, g.name); tileGroup = { cat: cat.id, group: g }; buzz(10); renderPhraseBar(); renderHome(true); }, () => openGroupHead(cat, g));
+    markNameTile(card);
     put(card);
   });
   const grouped = new Set([].concat(...groups.map(g => g.words)));
