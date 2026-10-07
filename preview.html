@@ -2579,7 +2579,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 407 - 7 Oct';
+const BUILD = 'build 408 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2784,6 +2784,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
+  letterFade: {}, letterStreak: {}, fadeV2: true,
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -2870,7 +2871,7 @@ async function load() {
         pendingLetterCounts: saved.pendingLetterCounts || {},
         fadeMode: saved.fadeMode ?? true,
         rotateMode: saved.rotateMode ?? false,
-        wordFadeLevels: saved.wordFadeLevels || {},
+        wordFadeLevels: (() => { const f = saved.wordFadeLevels || {}; if (!saved.fadeV2) Object.keys(f).forEach(w => { if (Array.isArray(f[w])) f[w] = f[w].map(v => Math.min(6, (v || 0) * 2)); }); return f; })(),      // (fading used to have three steps; it has six now)
         wordTrialCounters: saved.wordTrialCounters || {},
 
         promptColorOn: saved.promptColorOn ?? true,
@@ -2929,6 +2930,7 @@ async function load() {
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
         smallRowsFold: saved.smallRowsFold ?? true,
+        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -3478,6 +3480,7 @@ async function save() {
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
       smallRowsFold: state.smallRowsFold !== false,
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -5002,8 +5005,14 @@ function getOrInitWordData(word) {
   if (!state.wordTrialCounters[word]) state.wordTrialCounters[word] = { successes: 0, abandons: 0 };
   return state.wordTrialCounters[word];
 }
+// The prompt fades in a set order, a step at a time: first on the keyboard - the colour grows lighter
+// (1, 2) and goes (3), then the jiggle (4), then the magnifying (5) - and last of all the prompt in
+// the word bar above (6: that letter is on its own).
+const FADE_MAX = 6;
 function fadeLevelAt(index) {
   if (!state.currentTarget) return 0;
+  // counted by letter: a letter carries its fading with it into every word that has it
+  if (state.fadeCount === 'letter') { const L = String(state.currentTarget[index] || '').toUpperCase(); return Math.min(FADE_MAX, (state.letterFade || {})[L] || 0); }
   const arr = state.wordFadeLevels[state.currentTarget];
   if (!arr) return 0;
   return arr[index] || 0;
@@ -5015,7 +5024,7 @@ function triggerFade(word) {
   // the whole word steps down together
   if (state.fadeOrder === 'full') {
     let any = false;
-    for (let i = 0; i < fades.length; i++) { if (word[i] !== ' ' && fades[i] < 3) { fades[i]++; any = true; } }
+    for (let i = 0; i < fades.length; i++) { if (word[i] !== ' ' && fades[i] < FADE_MAX) { fades[i]++; any = true; } }
     if (any) showLevelUp(word[0], false); else showMastered(word);
     return;
   }
@@ -5024,9 +5033,9 @@ function triggerFade(word) {
   if (state.fadeOrder !== 'first') idx.reverse();
   for (const i of idx) {
     if (word[i] === ' ') continue;
-    if (fades[i] < 3) {
+    if (fades[i] < FADE_MAX) {
       fades[i]++;
-      const faded = (fades[i] >= 3);
+      const faded = (fades[i] >= FADE_MAX);
       showLevelUp(word[i], faded);
       return;
     }
@@ -5175,7 +5184,7 @@ function anyPromptEnabled() {
 // Prompts are showing right now (delay elapsed, letter not fully faded)
 function promptsShowing() {
   if (!state.currentTarget || isWordComplete()) return false;
-  if (fadeLevelAt(state.targetIndex) >= 3) return false;
+  if (fadeLevelAt(state.targetIndex) >= FADE_MAX) return false;
   // In help mode nothing appears until it's asked for
   if (state.helpMode && !helpRequested) return false;
   return promptVisible;
@@ -5274,14 +5283,14 @@ function render() {
     tw.innerHTML = '';
     // In help mode the word bar always marks the letter to type next, straight
     // away; the matching highlight on the keys still waits to be asked for
-    const helpLead = state.helpMode && !isWordComplete() && fadeLevelAt(state.targetIndex) < 3;
+    const helpLead = state.helpMode && !isWordComplete() && fadeLevelAt(state.targetIndex) < FADE_MAX;
     [...state.currentTarget].forEach((ch, i) => {
       const s = document.createElement('span');
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex &&
                ((showing && (state.promptColorOn || state.promptTileOn)) || helpLead)) {
-        const fl = fadeLevelAt(i);
+        const fl = 0;      // (the word bar keeps its whole prompt until the keyboard's has faded right out)
         if (state.promptColorOn || helpLead) {
           s.classList.add('next');
           if (fl > 0) s.classList.add('fade-' + fl);
@@ -5344,19 +5353,19 @@ function render() {
   kb.innerHTML = '';
   kb.classList.remove('ks-small', 'ks-med', 'ks-large', 'ok-faded', 'ok-blank', 'ok-black');
   kb.classList.add('ks-' + state.keySize);
-  if (showing && state.otherKeysMode !== 'normal') kb.classList.add('ok-' + state.otherKeysMode);
+  if (showing && state.otherKeysMode !== 'normal' && fadeLevelAt(state.targetIndex) < 5) kb.classList.add('ok-' + state.otherKeysMode);
   freeCaps.forEach(i => { if (i >= state.text.length) freeCaps.delete(i); });
   const expected = nextExpectedLetter();
   // the same prompts a letter key gets, for a key that has to be pressed first
   const promptKey = k => {
     const fl = fadeLevelAt(state.targetIndex);
     k.classList.add('prompting');
-    if (state.promptColorOn) {
+    if (state.promptColorOn && fl < 3) {
       k.classList.add('prompt-color');
       if (fl > 0) k.classList.add('fade-' + fl);
     }
-    if (state.promptPulseOn && fl < 2) k.classList.add('prompt-pulse');
-    if (state.promptSizeOn) k.classList.add('prompt-size', 'boost-' + state.promptSize);
+    if (state.promptPulseOn && fl < 4) k.classList.add('prompt-pulse');
+    if (state.promptSizeOn && fl < 5) k.classList.add('prompt-size', 'boost-' + state.promptSize);
   };
   // The next character is on the other page of the keyboard: prompt the 123 / ABC key
   const needsSwitch = showing && !!expected && expected !== ' ' &&
@@ -5417,12 +5426,12 @@ function makeLetterKey(letter, expected) {
   if (expected && letter === expected && promptsShowing()) {
     const fl = fadeLevelAt(state.targetIndex);
     k.classList.add('prompting'); // exempt from the other-key treatments
-    if (state.promptColorOn) {
+    if (state.promptColorOn && fl < 3) {
       k.classList.add('prompt-color');
       if (fl > 0) k.classList.add('fade-' + fl);
     }
-    if (state.promptPulseOn && fl < 2) k.classList.add('prompt-pulse');
-    if (state.promptSizeOn) {
+    if (state.promptPulseOn && fl < 4) k.classList.add('prompt-pulse');
+    if (state.promptSizeOn && fl < 5) {
       k.classList.add('prompt-size', 'boost-' + state.promptSize);
     }
   }
@@ -5673,9 +5682,15 @@ function typeChar(letter) {
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
       // fading counted by letters: every so many right letters in a row, the prompt steps down
-      if (state.fadeMode && state.fadeCount === 'letter') {
-        fadeStreak++;
-        if (fadeStreak % fadeN() === 0) { const fw = state.currentTarget; setTimeout(() => { triggerFade(fw); save(); render(); }, 350); }
+      if (state.fadeMode && state.fadeCount === 'letter' && /[A-Z]/i.test(expected)) {
+        const L = expected.toUpperCase();
+        state.letterStreak = state.letterStreak || {}; state.letterFade = state.letterFade || {};
+        state.letterStreak[L] = (state.letterStreak[L] || 0) + 1;
+        if (state.letterStreak[L] % fadeN() === 0 && (state.letterFade[L] || 0) < FADE_MAX) {
+          state.letterFade[L] = (state.letterFade[L] || 0) + 1;
+          const done = state.letterFade[L] >= FADE_MAX;
+          setTimeout(() => { showLevelUp(L, done); save(); render(); }, 350);
+        }
       }
       buzz(20);
 
@@ -5785,6 +5800,7 @@ function playErrorPhrase() {
 let fadeStreak = 0, trialErrors = 0;
 function handleError(expectedLetter, typedLetter) {
   fadeStreak = 0; trialErrors++;
+  if (state.fadeCount === 'letter' && expectedLetter) { state.letterStreak = state.letterStreak || {}; state.letterStreak[String(expectedLetter).toUpperCase()] = 0; }
   // 1. What the app says
   const gap = state.letterSpeech ? 450 : 0;
   if (state.errorFeedback === 'phrase') {
@@ -13582,8 +13598,9 @@ function renderSettings() {
   buildSeg('segFadeCount', [{ value: 'letter', label: 'Letter typed' }, { value: 'word', label: 'Word typed' }], state.fadeCount, v => { state.fadeCount = v; fadeStreak = 0; save(); renderSettings(); });
   buildSeg('segFadeOrder', [{ value: 'last', label: 'Last letter' }, { value: 'first', label: 'First letter' }, { value: 'full', label: 'Full word' }], state.fadeOrder, v => { state.fadeOrder = v; save(); renderSettings(); });
   { const n = fadeN(), unit = state.fadeCount === 'letter' ? (n === 1 ? 'right letter' : 'right letters in a row') : (n === 1 ? 'time a word is spelled' : 'times in a row a word is spelled');
-    const what = state.fadeOrder === 'full' ? 'the prompt on every letter of that word fades one step' : 'the prompt fades one step on one more letter, starting from the ' + (state.fadeOrder === 'first' ? 'first' : 'last') + ' letter';
-    document.getElementById('fadeNote').textContent = state.fadeMode ? 'After every ' + n + ' ' + unit + ', ' + what + '.' : 'Fading is off: prompts stay as they are set.';
+    document.getElementById('segFadeOrder').style.display = state.fadeCount === 'letter' ? 'none' : ''; document.getElementById('segFadeOrder').previousElementSibling.style.display = state.fadeCount === 'letter' ? 'none' : '';
+    const what = state.fadeCount === 'letter' ? 'the prompt for that letter fades one step - in every word that has it' : state.fadeOrder === 'full' ? 'the prompt on every letter of that word fades one step' : 'the prompt fades one step on one more letter, starting from the ' + (state.fadeOrder === 'first' ? 'first' : 'last') + ' letter';
+    document.getElementById('fadeNote').textContent = state.fadeMode ? 'After every ' + n + ' ' + (state.fadeCount === 'letter' ? (n === 1 ? 'time a letter is typed right' : 'times in a row a letter is typed right') : unit) + ', ' + what + '. The order of fading: on the keyboard first - the colour grows lighter and goes, then the jiggle, then the magnifying - and last the prompt in the word bar above.' : 'Fading is off: prompts stay as they are set.';
     document.getElementById('sumPractice').textContent = state.fadeMode ? 'Every ' + n + (state.fadeCount === 'letter' ? ' letters' : ' words') : 'Off';
     const on = ['textual', 'verbal', 'highlight', 'magnify', 'movement', 'errors', 'delay'].filter(dcOn).length;
     document.getElementById('sumData').textContent = state.scoreMode ? on + ' of 7 kinds' : 'Off'; }
