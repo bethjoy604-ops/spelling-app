@@ -2610,7 +2610,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 424 - 7 Oct';
+const BUILD = 'build 425 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8158,13 +8158,14 @@ function bankRows() {
   if (state.bankSort === 'used') {
     // Popular is a fresh feed: the tiles in the last thirty entered with the green button, the ones
     // entered most often first (small words count like any other), newest first among equals
-    const log = (state.recentTiles || []).filter(w => state.words.includes(w) && !isSmallWord(w) && !homePhrase.includes(w));      // small words live in the blue row; a word already in the message is not offered again
+    const smallSet = state.smallRowsOn !== false ? new Set(allSmallWords()) : new Set();      // every word the blue row can show stays out of the grid: no doubles
+    const log = (state.recentTiles || []).filter(w => state.words.includes(w) && !isSmallWord(w) && !smallSet.has(w) && !homePhrase.includes(w));      // small words live in the blue row; a word already in the message is not offered again
     if (log.length) {
       const n = {}, at = {};
       log.forEach((w, i) => { n[w] = (n[w] || 0) + 1; at[w] = i; });
       return Object.keys(n).sort((a, b) => n[b] - n[a] || at[b] - at[a]).map(w => ({ word: w, n: n[w], t: at[w] }));
     }
-    return all.slice().sort((a, b) => (b.n || 0) - (a.n || 0) || (b.t || 0) - (a.t || 0));
+    return all.filter(r => !smallSet.has(r.word) && !isSmallWord(r.word)).sort((a, b) => (b.n || 0) - (a.n || 0) || (b.t || 0) - (a.t || 0));
   }
   return all.slice().sort((a, b) => b.t - a.t || b.n - a.n);
 }
