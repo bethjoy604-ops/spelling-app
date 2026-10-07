@@ -2476,7 +2476,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 373 - 7 Oct';
+const BUILD = 'build 374 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6734,6 +6734,21 @@ function renderMagic(word) {
     let pool = lead ? magicNext(word, 18) : [];
     if (pool.length) magicStickPool = pool.slice(); else if (magicStickPool) pool = magicStickPool.filter(w => !homePhrase.includes(w));
     magicTilesNow = pool.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } }));
+    // after a wanting word (want, need, like...) the tiles are the folders themselves - music, movies,
+    // food - each opening its own page, and its name joining the sentence where it fits ("want music ...")
+    if (MAGIC_WANTS.includes(word)) {
+      const fs = magicFolders(word).filter(c => c.phrases || catAllowsPhrases(c));
+      if (fs.length) {
+        magicStickPool = null;
+        magicTilesNow = fs.map(c => ({ label: c.name.toLowerCase(), folder: true, tap: () => {
+          const path = []; let x = c, g = 0;
+          while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
+          magicPathPick(c, c.name);
+          homePath = path; libraryOpen = null; tileGroup = null;
+          buzz(10); renderPhraseBar(); renderHome(true);
+        } }));
+      }
+    }
     return;
   }
 
