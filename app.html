@@ -804,10 +804,12 @@
   .home-keys.open { display: flex; animation: hkDown 0.2s ease both; }
   @keyframes hkDown { from { transform: scaleY(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
   .home-keys .hk-close { flex: 0 0 auto; height: clamp(44px, 8vh, 64px); border: none; border-radius: 16px; background: rgba(255,255,255,0.45); color: rgba(0,0,0,0.55); font-family: inherit; font-weight: 900; font-size: 18px; cursor: pointer; }
-  .view-home.keys-open #pbClear { background: var(--red-tint); color: var(--red); }
+  .view-home.keys-open #pbClear, #chatClear { background: var(--red-tint); color: var(--red); display: flex !important; visibility: visible !important; }
+  .view-chat .chat-suggest button { font-size: clamp(24px, 4.2vmin, 38px); padding: 12px 22px; }
+  .phrase-bar .pb-suggest button { font-size: 0.8em; }
   .pb-suggest button { flex: 0 0 calc((100% - 20px) / 3); overflow: hidden; text-overflow: ellipsis; scroll-snap-align: start; }
   .pb-suggest { scroll-snap-type: x mandatory; }
-  .home-keys .key.space { flex: 1; }
+  .home-keys .key.space { flex: 4.5; }
   .pb-back { color: var(--red); background: var(--red-tint); }
   .pb-back svg { width: 60%; height: 60%; display: block; margin: auto; }
   .home-card.sel-on { outline: 5px solid var(--prompt); outline-offset: -5px; background: var(--prompt-soft); }
@@ -2577,7 +2579,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 405 - 7 Oct';
+const BUILD = 'build 406 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4865,17 +4867,9 @@ function homeKeysOpen() {
   const inp = document.getElementById('pbInput');
   if (!k) {
     k = document.createElement('div'); k.id = 'homeKeys'; k.className = 'keyboard home-keys';
-    const key = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'key ' + cls; b.textContent = label; b.addEventListener('click', () => { buzz(8); fn(); homeKeysIdle(); }); return b; };
-    const put = () => { renderTypeSuggest(); renderPhraseBar(); };
-    LAYOUT.forEach(letters => {
-      const row = document.createElement('div'); row.className = 'row';
-      letters.forEach(L => row.appendChild(key(L.toLowerCase(), 'letter', () => { if (inp.value.length < 40) inp.value += L.toLowerCase(); put(); })));
-      k.appendChild(row);
-    });
-    const last = document.createElement('div'); last.className = 'row';
-    const sp = key('', 'space space-blank', () => { if (inp.value.trim()) commitTypedWord(); }); sp.setAttribute('aria-label', 'Space');
-    last.appendChild(sp); k.appendChild(last);
+    const put = () => { renderTypeSuggest(); renderPhraseBar(); homeKeysIdle(); };
     const cl = document.createElement('button'); cl.className = 'hk-close'; cl.textContent = '\u2715  close keyboard'; cl.addEventListener('click', () => { buzz(8); homeKeysClose(); }); k.appendChild(cl);
+    buildTypeKeys(k, ch => { if (inp.value.length < 40) inp.value += ch; put(); }, () => { if (inp.value.trim()) commitTypedWord(); homeKeysIdle(); });
     document.getElementById('viewHome').appendChild(k);
   }
   inp.readOnly = true;
@@ -7685,36 +7679,38 @@ function renderChatLog(grid, tileType) {
   });
   grid.appendChild(box);
 }
+// The keyboard for typing a message (over a page, or to answer in chat): the letters, a caps key, the
+// numbers page and a space bar. Enter and delete are in the bar above it, not down here; the layout
+// with its own enter and delete is kept for spelling practice.
+function buildTypeKeys(kb, put, space) {
+  let shift = false, nums = false;
+  const key = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'key ' + cls; b.textContent = label; b.addEventListener('click', () => { buzz(8); fn(); }); return b; };
+  const draw = () => {
+    kb.querySelectorAll(':scope > .row').forEach(r => r.remove());
+    const before = kb.querySelector('.hk-close');
+    (nums ? NUM_LAYOUT : LAYOUT).forEach((letters, ri) => {
+      const row = document.createElement('div'); row.className = 'row';
+      if (!nums && ri === 2) { const sh = key('\u2B06', 'side shift' + (shift ? ' on' : ''), () => { shift = !shift; draw(); }); sh.setAttribute('aria-label', 'Capital letter'); row.appendChild(sh); }
+      letters.forEach(L => { const ch = nums ? L : (shift ? L : L.toLowerCase()); row.appendChild(key(ch, 'letter', () => { put(ch); if (shift) { shift = false; draw(); } })); });
+      kb.insertBefore(row, before);
+    });
+    const last = document.createElement('div'); last.className = 'row';
+    last.appendChild(key(nums ? 'ABC' : '123', 'wide numkey', () => { nums = !nums; shift = false; draw(); }));
+    const sp = key('', 'space space-blank', space); sp.setAttribute('aria-label', 'Space'); last.appendChild(sp);
+    kb.insertBefore(last, before);
+  };
+  draw();
+}
 (function buildChatKeys() {
   const kb = document.getElementById('chatKeys');
-  const key = (label, cls, fn) => {
-    const b = document.createElement('button');
-    b.className = 'key' + (cls ? ' ' + cls : '');
-    b.textContent = label;
-    b.addEventListener('click', () => { buzz(8); fn(); renderChat(); });
-    return b;
-  };
-  LAYOUT.forEach((letters, ri) => {
-    const row = document.createElement('div');
-    row.className = 'row';
-    letters.forEach(L => row.appendChild(key(L.toLowerCase(), 'letter', () => { if (chatPrefix.length < 30) chatPrefix += L; })));
-    if (ri === 2) {      // the delete key ends the bottom letter row, as on the typing page
-      const bk = key('', 'side backspace', () => { if (chatPrefix) chatPrefix = chatPrefix.slice(0, -1); else chatReply.pop(); });
-      bk.setAttribute('aria-label', 'Delete');
-      bk.innerHTML = '<svg viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2H23a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H9.5a3 3 0 0 1-2.3-1.1L1.5 11l5.7-7.9A3 3 0 0 1 9.5 2z"/><path d="M12.5 7.5l7 7M19.5 7.5l-7 7"/></svg>';
-      row.appendChild(bk);
-    }
-    kb.appendChild(row);
-  });
-  const last = document.createElement('div');
-  last.className = 'row';
-  last.appendChild(key('?', 'wide numkey', () => { chatCommitPrefix(); chatReply.push({ key: '?', text: '?' }); }));
-  { const sp = key('', 'space space-blank', () => chatCommitPrefix()); sp.setAttribute('aria-label', 'Space'); last.appendChild(sp); }
-  { const en = document.createElement('button'); en.className = 'key wide enter'; en.textContent = '\u23CE'; en.setAttribute('aria-label', 'Send reply');
-    en.addEventListener('click', () => chatSendReply()); last.appendChild(en); }
-  kb.appendChild(last);
+  buildTypeKeys(kb, ch => {
+    if (ch === '?' || ch === '.' || ch === '!') { chatCommitPrefix(); chatReply.push({ key: ch, text: ch }); }
+    else if (chatPrefix.length < 30) chatPrefix += ch.toUpperCase();
+    renderChat();
+  }, () => { chatCommitPrefix(); renderChat(); });
   document.getElementById('chatSend').addEventListener('click', chatSendReply);
-  document.getElementById('chatClear').addEventListener('click', () => { chatReply = []; chatPrefix = ''; renderChat(); });
+  // the red key in the bar takes away one thing at a time: a letter, then the last word
+  document.getElementById('chatClear').addEventListener('click', () => { buzz(8); if (chatPrefix) chatPrefix = chatPrefix.slice(0, -1); else chatReply.pop(); renderChat(); });
 })();
 document.getElementById('homeChatBtn').addEventListener('click', () => {
   state.chatMode = !state.chatMode;
