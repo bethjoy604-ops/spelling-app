@@ -523,8 +523,8 @@
   .feed-group.drag-src { opacity: 0.35; }
   .feed-group .feed-head { touch-action: none; }
   /* the group's name as a tile of its own, in a deeper grey than the panel: tap it to say the word */
-  .feed-group .feed-head.name-tile[aria-expanded="true"] { background: #b4b7be; color: var(--ink); border-radius: 14px; padding: 16px 20px; margin: 0 0 10px; font-size: clamp(22px, 3.6vmin, 34px); text-transform: lowercase; box-shadow: var(--shadow); cursor: pointer; width: 100%; box-sizing: border-box; }
-  .feed-group .feed-head.name-tile[aria-expanded="true"]:active { transform: scale(0.98); }
+  .feed-group .feed-head.name-tile[aria-expanded="true"] { display: none; }
+  .home-card.name-card { background: #b4b7be; }
   .library-dots { align-self: center; justify-self: start; width: 34px; height: 64px; border: none; border-radius: 12px; background: none;
     color: rgba(0,0,0,0.28); font-size: 40px; line-height: 1; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 0 6px; }
   .drop-on { outline: 5px solid var(--green) !important; outline-offset: -2px; }
@@ -2579,7 +2579,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 406 - 7 Oct';
+const BUILD = 'build 407 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6929,17 +6929,21 @@ function magicOptions(max) {
   const all = homePhrase.map((_, i) => i);
   const out = [], seen = {};
   const add = m => { const key = m.phrase.join(' '); if (!seen[key] && out.length < max) { seen[key] = 1; out.push(m); } };
-  const after = w => add({ phrase: homePhrase.concat([w]), used: all });
+  const after = w => { if (!isSmallWord(w)) add({ phrase: homePhrase.concat([w]), used: all }); };      // (small words belong to the blue row)
+  const prevW = n > 1 ? homePhrase[n - 2] : '';
   const greeting = Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(homePhrase[0]));
   if (!isSmallWord(last) && !homePhrase.some(doing) && k !== 'people' && !greeting) {
     [['I', 'WANT'], ['NEED'], ['SEE']].filter(l => l.every(okW)).forEach(l => add({ phrase: l.concat(homePhrase), used: homePhrase.map((_, i) => i + l.length) }));
-  } else if (Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(last)) && kindOfWord(last) === 'action') {      // a doing word that leads somewhere: go -> places, eat -> food
+  } else if (Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(last)) || MAGIC_WANTS.includes(last)) {      // a word that leads somewhere: hi -> people, go -> places, eat -> food, want -> things
+    magicNext(last, max).filter(okW).forEach(after);
+  } else if (magicAsking() || (last === 'TO' && MAGIC_WANTS.includes(prevW))) {      // "can you ...", "I want to ...": things to do
+    magicActionPool(max).filter(okW).forEach(after);
+  } else if (false) {
     magicNext(last, 3).filter(okW).forEach(after);
   }
   if (out.length < max) {
     // the fuller sentence, when it is exactly one step on - or its one missing word at the front ("want" -> "I want")
-    if (full && full.phrase.length === n + 1) add(full);
-    else if (full && !full.ext && full.used.length === n && full.used[0] === 1) { const keep = [0].concat(full.used); add({ phrase: full.phrase.filter((_, j) => keep.includes(j)), used: full.used.map((_, i) => i + 1) }); }
+    if (full && full.phrase.length === n + 1 && !full.phrase.some((w, j) => !full.used.includes(j) && isSmallWord(w))) add(full);
     const JOIN = ['IS', 'AND', 'CAN', 'WITH', 'BECAUSE', 'ABOUT', 'TO', 'THE', 'A', 'MY'];      // (never left hanging on a joining word)
     const pool = followSpecific(last).concat(k === 'people' ? ['HELP', 'PLAY', 'GO', 'COME', 'LOOK'] : [], isSmallWord(last) ? [] : (FOLLOW_KIND[k] || []));
     pool.filter(w => okW(w) && !JOIN.includes(w)).forEach(after);
@@ -7031,7 +7035,7 @@ let magicStallTimer = null;
 // three more once the page is scrolled down. Each shows the word it would add; a tap adds it.
 // They are tiles like any other, first in the page's grid, with the word marked in green; three more
 // sit after the page's own tiles, found by scrolling down.
-let suggBusy = false;
+let suggBusy = false, suggObs = null;
 function suggRender() {
   const grid = document.getElementById('homeGrid');
   if (!grid || suggBusy) return;
@@ -7072,10 +7076,10 @@ function suggRender() {
       });
       grid.insertBefore(b, i < 3 ? grid.children[i] || null : null);
     });
-  } finally { suggBusy = false; }
+  } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }      // (its own changes to the grid are not a reason to run again)
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
-{ let t = null; new MutationObserver(() => { if (suggBusy) return; clearTimeout(t); t = setTimeout(suggRender, 0); }).observe(document.getElementById('homeGrid'), { childList: true }); }
+{ let t = null; suggObs = new MutationObserver(() => { if (suggBusy) return; clearTimeout(t); t = setTimeout(suggRender, 0); }); suggObs.observe(document.getElementById('homeGrid'), { childList: true }); }
 function magicStallArm() {
   clearTimeout(magicStallTimer);
   magicShowNow = false;
@@ -7147,10 +7151,11 @@ function renderMagic(word) {
     //  added; the green folder button brings the page back, and so does emptying the bar)
     const prevW = homePhrase.length > 1 ? homePhrase[homePhrase.length - 2] : '';
     const afterTo = word === 'TO' && MAGIC_WANTS.includes(prevW);      // "I want to ..." -> the doing words
-    let pool = magicAsking() || afterTo ? magicActionPool(18) : (lead ? magicNext(word, 18) : []);
+    let pool = [];      // (go -> places, hi -> people, can you -> actions are the green-marked suggestion tiles now)
     // every new tile refreshes them: when the newest word leads nowhere by itself, the words before it
     // are asked in turn (newest first), and nothing already in the message is offered again
-    if (!pool.length) {
+    magicStickPool = null;
+    if (false) {
       for (let i = homePhrase.length - 2; i >= Math.max(0, homePhrase.length - 4) && !pool.length; i--) {
         const w = homePhrase[i];
         if (isPunct(w)) break;
@@ -11617,7 +11622,9 @@ function renderSlotGrid(grid, cat, folders) {
       const sec = document.createElement('div');
       sec.className = 'feed-group';
       // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
-      const laid = sortWords(mine, cols, true);
+      const NAME_TILE = '\u0001name';
+      let laid = sortWords(mine, cols, true);
+      if (!shut) laid = [NAME_TILE].concat(laid);      // the group's own name leads its tiles, as a tile (in a deeper grey)
       // its rows of tiles, and how wide the widest of them really is (the blue is no wider)
       let lines = [];
       for (let k = 0; k < laid.length; k += cols) lines.push(laid.slice(k, k + cols));
@@ -11633,7 +11640,7 @@ function renderSlotGrid(grid, cat, folders) {
       let span = Math.min(cols, Math.max(1, ...lines.map(wide)));
       let tall = shut ? 1 : lines.length;
       let at = firstFit(span, tall);
-      if (!shut && mine.length === 2 && span === 2) {
+      if (false && !shut && mine.length === 2 && span === 2) {
         const up = firstFit(1, 2);       // the pair standing up
         if (up.r < at.r) { at = up; span = 1; tall = 2; lines = [[laid.filter(Boolean)[0]], [laid.filter(Boolean)[1]]]; }
       }
@@ -11664,7 +11671,7 @@ function renderSlotGrid(grid, cat, folders) {
         if (suppressTileClick) { suppressTileClick = false; return; }
         // the name of the group is a word too: a tap puts it in the message (a folded panel opens first;
         // folding one away is in its hold menu)
-        if (!shut) { const key = normaliseWord(f.name); if (key) { magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); buzz(10); renderPhraseBar(); } return; }
+        if (!shut) return;
         delete cat.feedShut[f.id];
         buzz(10); save();
         const top = grid.scrollTop;
@@ -11682,6 +11689,20 @@ function renderSlotGrid(grid, cat, folders) {
         placed.push({ r: at.r, tall, box });
         [].concat(...lines.map(l => l.slice(0, span).concat(new Array(Math.max(0, span - l.length)).fill(null)))).forEach(w => {
           if (!w) { box.appendChild(document.createElement('div')); return; }
+          if (w === NAME_TILE) {
+            const nt = document.createElement('button');
+            nt.className = 'home-card name-card';
+            nt.style.height = rowH + 'px';
+            const t = document.createElement('span'); t.className = 'hw'; t.textContent = String(f.name || '').toLowerCase(); nt.appendChild(t);
+            nt.addEventListener('click', () => {
+              if (suppressTileClick) { suppressTileClick = false; return; }
+              const key = normaliseWord(f.name); if (!key) return;
+              magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); buzz(10); renderPhraseBar();
+            });
+            fit(nt, t.textContent);
+            box.appendChild(nt);
+            return;
+          }
           const card = document.createElement('button');
           card.className = 'home-card';
           card.dataset.word = w;
