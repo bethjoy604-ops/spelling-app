@@ -2609,7 +2609,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 421 - 7 Oct';
+const BUILD = 'build 422 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4923,6 +4923,19 @@ function typeLayerPaint() {
     b.addEventListener('click', () => { src.click(); inp.blur(); typeLayerPaint(); homeKeysIdle(); });
     sug.appendChild(b);
   });
+  // nothing being typed: three words that could come next, new ones after every word that goes in
+  if (!inp.value && state.suggestOn !== false) {
+    const last = homePhrase[homePhrase.length - 1], next = [];
+    const ok = w => w && !isPunct(w) && !state.hiddenWords[w] && !next.includes(w) && (!homePhrase.includes(w) || ['TO', 'THE', 'A', 'AND'].includes(w)) && w !== last;
+    let pool = [];
+    try { pool = last ? followWords(last, []).slice(0, 2).concat(magicNext(last, 6), followWords(last, []), magicNext('WANT', 6)) : ['I', 'HI', 'CAN', 'WANT']; } catch (e) {}
+    pool.forEach(w => { if (next.length < 3 && ok(w) && (state.words.includes(w) || isSmallWord(w))) next.push(w); });
+    next.forEach(w => {
+      const b = document.createElement('button'); b.textContent = sentenceLabel(w);
+      b.addEventListener('click', () => { buzz(10); homePhrase.push(w); try { magicKnow(w); } catch (e) {} warmSpeech(); speakWord(w, 0.95); typeLayerPaint(); homeKeysIdle(); });
+      sug.appendChild(b);
+    });
+  }
 }
 function homeKeysOpen() {
   let L = document.getElementById('typeLayer');
@@ -4933,7 +4946,7 @@ function homeKeysOpen() {
     const text = document.createElement('div'); text.className = 'tl-text';
     const x = document.createElement('button'); x.className = 'tl-x'; x.innerHTML = '&times;'; x.setAttribute('aria-label', 'Close the keyboard');
     x.addEventListener('click', () => { buzz(8); inp.value = ''; homeKeysClose(); });
-    top.appendChild(text); top.appendChild(x);
+    top.appendChild(text);
     const sug = document.createElement('div'); sug.className = 'tl-sugg';
     const k = document.createElement('div'); k.className = 'keyboard home-keys tl-keys';
     const put = () => { typeLayerPaint(); homeKeysIdle(); };
@@ -6543,7 +6556,9 @@ function makeFolderCard(c, rerender) {
   card.appendChild(w);
   // a choice board (Actions, Choices, Groups, Things ...) keeps its blue dot and adds nothing to the message;
   // a folder of names (Food, Music ...) has its name marked in grey and puts it in the message when tapped
-  const board = !catAllowsPhrases(c);
+  // (the top pages themselves - Categories, My Stuff - are choice boards: every folder on them has the blue dot and adds nothing)
+  const top = currentCat();
+  const board = !catAllowsPhrases(c) || !top || !top.parent;
   if (board) card.classList.add('board-card'); else markNameTile(card);
   const host = currentCat();
   const isLink = !!host && (c.parent || null) !== host.id;
