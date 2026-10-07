@@ -799,6 +799,8 @@
   .view-keyboard:has(#targetBanner.active) #display { display: none; }
   .view-keyboard #targetBanner.active { --tile: clamp(40px, 8vh, 84px); min-height: clamp(110px, 20vh, 190px); padding: 16px 24px; }
   .view-keyboard #targetBanner.active .tletter { padding: 8px 16px; }
+  /* the keyboard page reads in the keys' own lighter lettering; the menu pages keep their bold */
+  .view-keyboard .tletter, .view-keyboard #display, .view-keyboard #display * { font-weight: 500; }
   .tletter.next {
     background: var(--prompt); color: var(--prompt-ink);
   }
@@ -2498,7 +2500,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 391 - 7 Oct';
+const BUILD = 'build 392 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6515,17 +6517,25 @@ function magicNext(word, n) {
 // these do it by themselves; any group or folder can be switched on or off from its own menu.
 const SUFFIX_NAMES = /^(cookies?|chips|crackers|cereal|sandwich(es)?|burgers?|pizza|pasta|noodles|soup|salad|yogurt|juice|milk|tea|smoothies?|muffins?|bars?|pie|cake|cupcakes?|donuts?|bagels?|toast|sauce|ice cream|popsicles?|gummies|nuggets|fries|tacos?|wraps?)$/;
 function suffixOn(box) { return !!box && SUFFIX_NAMES.test(String(box.name || '').trim().toLowerCase()); }      // by the name alone: the switch for it has been retired
-function withGroup(cat, w) {
+function withGroup(cat, w, hint) {
   if (!cat || !w || cat.target) return w;
   const g = (cat.groups || []).find(x => (x.words || []).includes(w));
-  // a drink picked after "want" (or need, like, love): "to drink" goes in first - "I want to drink bottle"
+  // a thing picked after "want" (or need, like, love) takes the doing word its group or folder calls for:
+  // Drinks -> "I want to drink bottle", food -> "to eat", Music -> "to listen to", Movies -> "to watch" ...
   try {
-    const nm = String((g && g.name) || cat.name || '').trim().toLowerCase();
+    const nm = String(hint || (g && g.name) || cat.name || '').trim().toLowerCase();
     const said = homePhrase.filter(x => !magicPathIn.some(p => p.key === x)), n = said.length;      // (a folder name on its way out of the bar does not count)
     const last = n ? said[n - 1] : '', prev = n > 1 ? said[n - 2] : '', WANTS = ['WANT', 'NEED', 'LIKE', 'LOVE'];
-    if (state.magicType && !state.builderMode && /^(drinks?|beverages?)$/.test(nm) && !homePhrase.includes('DRINK') && w !== 'DRINK' && (WANTS.includes(last) || (last === 'TO' && WANTS.includes(prev)))) {
+    const kind = kindByName(cat);
+    const verb = /^(drinks?|beverages?)$/.test(nm) ? ['DRINK']
+      : /^(music|songs?)$/.test(nm) || /^(music|songs?)$/.test(cat.name.trim().toLowerCase()) ? ['LISTEN', 'TO']
+      : /^(movies?|tv|shows?|videos?|youtube)$/.test(nm) || /^(movies?|tv|shows?|videos?|youtube)$/.test(cat.name.trim().toLowerCase()) ? ['WATCH']
+      : /^(books?|stories)$/.test(nm) || /^(books?|stories)$/.test(cat.name.trim().toLowerCase()) ? ['READ']
+      : /^(games?)$/.test(nm) || /^(games?)$/.test(cat.name.trim().toLowerCase()) ? ['PLAY']
+      : kind === 'food' ? ['EAT'] : kind === 'places' ? ['GO', 'TO'] : null;
+    if (verb && state.magicType && !state.builderMode && !homePhrase.includes(verb[0]) && w !== verb[0] && kindOfWord(w) !== 'action' && (WANTS.includes(last) || (last === 'TO' && WANTS.includes(prev)))) {
       if (last !== 'TO') { magicKnow('TO'); homePhrase.push('TO'); }
-      magicKnow('DRINK'); homePhrase.push('DRINK');
+      verb.forEach(v => { magicKnow(v); homePhrase.push(v); });
     }
   } catch (e) {}
   const box = g && suffixOn(g) ? g : (suffixOn(cat) && (cat.words || []).includes(w) ? cat : null);
@@ -11238,7 +11248,7 @@ function renderSlotGrid(grid, cat, folders) {
           card.appendChild(t);
           card.addEventListener('click', () => {
             if (suppressTileClick) { suppressTileClick = false; return; }
-            const sw = withGroup(f.host || f, w); magicDropPath(f.host || f); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw);
+            const sw = withGroup(f.host || f, w, f.name); magicDropPath(f.host || f); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw);
           });
           attachWordHold(card, w, f.host || f);
           fit(card, label);
