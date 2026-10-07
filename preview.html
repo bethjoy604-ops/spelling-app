@@ -2582,7 +2582,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 410 - 7 Oct';
+const BUILD = 'build 411 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7065,9 +7065,9 @@ function suggRender() {
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = ''; });
     if (grid.dataset.sgTpl != null) { if (!grid.style.gridTemplateRows) { grid.style.gridTemplateRows = grid.dataset.sgTpl; grid.style.gridAutoRows = grid.dataset.sgAuto || ''; } delete grid.dataset.sgTpl; delete grid.dataset.sgAuto; }
     const kids = [...grid.children].filter(c => !c.classList.contains('chat-log'));      // (the chat line is not a tile: it steps aside while suggestions are up)
-    kids.forEach(c => { if (c.dataset.sgs) { c.style.gridRowStart = String((parseInt(c.style.gridRowStart) || 2) - 1); delete c.dataset.sgs; } });
+    kids.forEach(c => { if (c.dataset.sgs) { const by = parseInt(c.dataset.sgs) || 1; c.style.gridRowStart = String(Math.max(1, (parseInt(c.style.gridRowStart) || by + 1) - by)); delete c.dataset.sgs; } });
     let opts = [];
-    try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords && getComputedStyle(grid).display === 'grid') opts = magicOptions(6); } catch (e) { opts = []; }
+    try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords && getComputedStyle(grid).display === 'grid') opts = magicOptions(3); } catch (e) { opts = []; }      // one row of three, so the page's own tiles stay in view under it
     if (!opts.length || !kids.length) return;
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
     const hgt = like ? like.offsetHeight : 0, fs = likeHw ? likeHw.style.fontSize : '';
@@ -7076,17 +7076,16 @@ function suggRender() {
     if (grid.style.gridTemplateRows) { grid.dataset.sgTpl = grid.style.gridTemplateRows; grid.dataset.sgAuto = grid.style.gridAutoRows; grid.style.gridTemplateRows = ''; if (hgt) grid.style.gridAutoRows = hgt + 'px'; }
     // (a page whose tiles simply flow, with no places of their own, takes the new tiles at its start and end)
     const placedGrid = kids.every(c => parseInt(c.style.gridRowStart) > 0);
-    let maxRow = 1;
+    const sRows = Math.ceil(opts.length / 3);      // every suggestion sits before the page's own tiles
     if (placedGrid) kids.forEach(c => {
       const r = parseInt(c.style.gridRowStart) || 1, sp = /span\s+(\d+)/.exec(c.style.gridRowEnd || '');
-      c.style.gridRowStart = String(r + 1); c.dataset.sgs = '1';
-      maxRow = Math.max(maxRow, r + 1 + (sp ? parseInt(sp[1]) : 1) - 1);
+      c.style.gridRowStart = String(r + sRows); c.dataset.sgs = String(sRows);
     });
     opts.forEach((m, i) => {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
       if (hgt) b.style.height = hgt + 'px';
-      if (placedGrid) { b.style.gridRow = String(i < 3 ? 1 : maxRow + 1); b.style.gridColumn = String((i % 3) + 1); }
+      if (placedGrid) { b.style.gridRow = String(Math.floor(i / 3) + 1); b.style.gridColumn = String((i % 3) + 1); }
       const added = m.phrase.filter((_, j) => !m.used.includes(j));
       const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
       const hl = document.createElement('span'); hl.className = 'sugg-hl'; hl.textContent = added.map(sentenceLabel).join(' ');
@@ -7099,7 +7098,7 @@ function suggRender() {
         warmSpeech(); speakWord(added.join(' '), 0.95); buzz(10); save();
         renderPhraseBar();
       });
-      grid.insertBefore(b, i < 3 ? grid.children[i] || null : null);
+      grid.insertBefore(b, grid.children[i] || null);
     });
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }      // (its own changes to the grid are not a reason to run again)
 }
