@@ -669,7 +669,7 @@
   }
   .magic-box.show { display: flex; }
   .magic-box.inbar { display: none !important; }
-  .pb-words .magic-chip { display: inline-block; font-size: 0.62em; line-height: inherit; padding: 0 0.3em; border-radius: 14px; margin: 0; vertical-align: baseline; }
+  .pb-words .magic-chip { display: inline-block; font-size: 0.8em; margin-right: 0.25em; line-height: inherit; padding: 0 0.3em; border-radius: 14px; margin: 0; vertical-align: baseline; }
   .magic-box .magic-x { display: flex; }
   /* while a sentence is offered it stands in for the folder menu */
   .view-home:not(.at-root):has(#magicBox.show:not(.folded):not(.inbar)) .home-row { display: none; }      /* (the first page keeps its menu: a folder may be wanted next) */
@@ -789,6 +789,8 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next { color: transparent !important; }
+  .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
   .home-keys { display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 54vh; z-index: 30; padding: 14px 16px 16px; background: #aeb0b5; box-shadow: 0 -8px 18px rgba(0,0,0,0.16); border-radius: 20px 20px 0 0; }
   .home-keys.open { display: flex; animation: hkUp 0.22s ease both; }
   @keyframes hkUp { from { transform: translateY(30%); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -2161,7 +2163,7 @@
     <div class="sgroup" data-group="prompts">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">🎯</span>
-        <span class="sg-title">Prompts</span>
+        <span class="sg-title">Prompting</span>
         <span class="sg-sum" id="sumPrompts"></span>
         <span class="sg-chev">▾</span>
       </button>
@@ -2179,50 +2181,111 @@
           </div>
         </div>
 
-        <div class="help-note">Turn on as many prompts as you like — they stack. Colour, size and voice can all run together.</div>
+        <div class="help-note">Each kind of prompt has its own switch. Turn on as many as you like — they stack.</div>
 
-        <div class="sublabel" style="margin-top:12px;">Colour highlight</div>
+        <div class="sublabel" style="margin-top:12px;">Vocal prompts</div>
         <div class="settings-list">
-          <div class="setting-row"><span>Highlight the next letter</span><div class="toggle" id="togglePromptColor"></div></div>
+          <div class="setting-row"><span>Say the next letter</span><div class="toggle" id="togglePromptVerbal"></div></div>
+          <div class="setting-row"><span>Speak target word when selected</span><div class="toggle on" id="toggleTargetSpeech"></div></div>
+          <div class="setting-row"><span>Speak text on Enter</span><div class="toggle on" id="toggleEnterSpeech"></div></div>
+          <div class="setting-row"><span>Speak each letter as it's typed</span><div class="toggle on" id="toggleLetterSpeech"></div></div>
         </div>
-        <div class="swatch-row" id="colorSwatches" style="margin-top:10px;"></div>
-        <div class="seg-row" id="segIntensity" style="margin-top:8px;"></div>
+        <div class="help-note">"Say the next letter" is spoken once when the prompt appears, and again after a wrong letter.</div>
+
+        <div class="sublabel">Textual prompt</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Show the word to copy above the keyboard</span><div class="toggle on" id="togglePromptText"></div></div>
+        </div>
+        <div class="help-note">Off: the letters still to type are left blank, so the word is spelled from memory. Letters appear as they are typed.</div>
 
         <div class="sublabel">Movement</div>
         <div class="settings-list">
           <div class="setting-row"><span>Pulse the prompted letter</span><div class="toggle on" id="togglePromptPulse"></div></div>
         </div>
 
-        <div class="sublabel">Size prompt</div>
+        <div class="sublabel">Highlight</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Highlight the next letter</span><div class="toggle" id="togglePromptColor"></div></div>
+        </div>
+        <div class="swatch-row" id="colorSwatches" style="margin-top:10px;"></div>
+        <div class="seg-row" id="segIntensity" style="margin-top:8px;"></div>
+
+        <div class="sublabel">Magnification</div>
         <div class="settings-list">
           <div class="setting-row"><span>Enlarge the next letter's key</span><div class="toggle" id="togglePromptSize"></div></div>
         </div>
         <div class="seg-row" id="segPromptSize" style="margin-top:8px;"></div>
-
-        <div class="sublabel">Magnify the target word tile</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Grow the next letter in the Target bar</span><div class="toggle" id="togglePromptTile"></div></div>
+        <div class="settings-list" style="margin-top:10px;">
+          <div class="setting-row"><span>Grow the next letter in the word above</span><div class="toggle" id="togglePromptTile"></div></div>
         </div>
         <div class="seg-row" id="segTileSize" style="margin-top:8px;"></div>
 
-        <div class="sublabel">Verbal prompt</div>
+        <div class="sublabel">Time delay</div>
         <div class="settings-list">
-          <div class="setting-row"><span>Say the next letter</span><div class="toggle" id="togglePromptVerbal"></div></div>
+          <div class="setting-row"><span>Wait before prompting</span><div class="toggle" id="togglePromptDelay"></div></div>
         </div>
-        <div class="help-note">Spoken once when the prompt appears, and again after a wrong letter. For voice-only prompting, turn the colour and size prompts off.</div>
-
-        <div class="sublabel">Other keys while prompting</div>
-        <div class="seg-row" id="segOtherKeys"></div>
-
-        <div class="sublabel">Wait before prompting</div>
         <div class="slider-row">
           <input type="range" id="delaySlider" min="0" max="10" step="1" value="0">
           <span class="slider-val" id="delayValue">Off</span>
         </div>
         <div class="help-note">The prompt is held back this long, giving an independent try first. A correct letter typed during the wait counts as independent.</div>
 
+        <div class="sublabel">Hiding other keys</div>
+        <div class="seg-row" id="segOtherKeys"></div>
+
         <div class="sublabel">Preview</div>
         <div class="prompt-preview" id="promptPreview"></div>
+      </div>
+    </div>
+
+    <!-- ============ PROMPT FADING ============ -->
+    <div class="sgroup" data-group="practice">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#127767;</span>
+        <span class="sg-title">Prompt fading</span>
+        <span class="sg-sum" id="sumPractice"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="settings-list">
+          <div class="setting-row"><span>Fade the prompt</span><div class="toggle on" id="toggleFade"></div></div>
+          <div class="setting-row"><span>across this many consecutive successes</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="fadeLess">&minus;</button><span id="fadeEveryVal" style="min-width:34px;text-align:center;font-weight:900">3</span><button id="fadeMore">+</button></div></div>
+        </div>
+        <div class="sublabel">A success is</div>
+        <div class="seg-row" id="segFadeCount"></div>
+        <div class="sublabel">What fades each time</div>
+        <div class="seg-row" id="segFadeOrder"></div>
+        <div class="help-note" id="fadeNote"></div>
+      </div>
+    </div>
+
+    <!-- ============ DATA COLLECTION ============ -->
+    <div class="sgroup" data-group="data">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#128202;</span>
+        <span class="sg-title">Data collection</span>
+        <span class="sg-sum" id="sumData"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="settings-list">
+          <div class="setting-row"><span>Collect data (prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+        </div>
+        <div class="sublabel">Record which prompts were in use</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Textual model (the written word above the keyboard)</span><div class="toggle on" data-dc="textual"></div></div>
+          <div class="setting-row"><span>Verbal prompts (saying the letter to type next)</span><div class="toggle on" data-dc="verbal"></div></div>
+          <div class="setting-row"><span>Visual: highlight and its intensity</span><div class="toggle on" data-dc="highlight"></div></div>
+          <div class="setting-row"><span>Visual: magnifying</span><div class="toggle on" data-dc="magnify"></div></div>
+          <div class="setting-row"><span>Visual: pulsing / movement</span><div class="toggle on" data-dc="movement"></div></div>
+        </div>
+        <div class="sublabel">Record error corrections and delays</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Error corrections (a wrong letter before the right one)</span><div class="toggle on" data-dc="errors"></div></div>
+          <div class="setting-row"><span>Time delay prompts (letter chosen after a delayed prompt)</span><div class="toggle on" data-dc="delay"></div></div>
+        </div>
+        <div class="help-note">These are saved with every word or message spelled on the keyboard page while "Collect data" is on, and shown beside it in the session data.</div>
+        <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
       </div>
     </div>
 
@@ -2331,27 +2394,25 @@
     <div class="sgroup" data-group="keys">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">⌨️</span>
-        <span class="sg-title">Keys &amp; behaviour</span>
+        <span class="sg-title">Pages, tiles &amp; keys</span>
         <span class="sg-sum" id="sumKeys"></span>
         <span class="sg-chev">▾</span>
       </button>
       <div class="sgroup-body">
-        <div class="settings-list">
-        </div>
-
-        <div class="sublabel">On-screen buttons</div>
+        <div class="sublabel" style="margin-top:0">On-screen buttons</div>
         <div class="settings-list">
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
           <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
+          <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
         </div>
 
         <div class="sublabel">Small words rows (every page)</div>
         <div class="settings-list">
           <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
           <div class="setting-row" style="display:none"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
-          <div class="setting-row"><span>Fold the row away after 5 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
+          <div class="setting-row"><span>Fold an open row away after 3 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
           <div class="help-note" style="margin:6px 4px 0">These apply to every page. Hold the blue row on a page to give that page its own words or number.</div>
         </div>
 
@@ -2366,6 +2427,23 @@
         <div class="sublabel">Tile size (every tile: pages and small words)</div>
         <div class="seg-row" id="segGridFill"></div>
         <div class="help-note">Large shows 6 tiles on a screen, Medium 9 and Small 12. The small word tiles grow and shrink with them. More words than that simply carry on below, so nothing is ever hidden.</div>
+
+        <div class="sublabel">Hidden keys</div>
+        <div class="hidden-keys-list" id="hiddenList"></div>
+        <div class="help-note">Long-press any key on the keyboard to hide it or give it a yellow level highlight.</div>
+      </div>
+    </div>
+
+
+    <!-- ============ LAYOUT & FILES ============ -->
+    <div class="sgroup" data-group="layout">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#128193;</span>
+        <span class="sg-title">Hidden items &amp; layout files</span>
+        <span class="sg-sum" id="sumLayout"></span>
+        <span class="sg-chev">▾</span>
+      </button>
+      <div class="sgroup-body">
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
         <div class="sublabel" style="margin-top:14px;">Hidden folders</div>
         <div id="hiddenFolders"></div>
@@ -2377,30 +2455,6 @@
         <div class="help-note">Saves the folders, the words and their places, the builder pages and the small-words rows as one file, so the layout on this device can be made the built-in default.</div>
         <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
         <div class="help-note">Saves every sentence built in the builder, with its date and time, as a file that opens in Numbers or Excel. The builder page itself shows the latest 30.</div>
-        <div class="help-note">The help button shows whatever prompts you've turned on straight away, skipping the wait. A letter helped this way still counts as prompted.</div>
-
-        <div class="sublabel">Hidden keys</div>
-        <div class="hidden-keys-list" id="hiddenList"></div>
-        <div class="help-note">Long-press any key on the keyboard to hide it or give it a yellow level highlight.</div>
-      </div>
-    </div>
-
-    <!-- ============ PRACTICE ============ -->
-    <div class="sgroup" data-group="practice">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">📈</span>
-        <span class="sg-title">Practice &amp; data</span>
-        <span class="sg-sum" id="sumPractice"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="settings-list">
-          <div class="setting-row"><span>Fade the prompt across successes</span><div class="toggle on" id="toggleFade"></div></div>
-          <div class="setting-row"><span>Rotate words (vs stay on one word)</span><div class="toggle" id="toggleRotate"></div></div>
-          <div class="setting-row"><span>Score (track prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
-        </div>
-        <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
-
       </div>
     </div>
 
@@ -2456,35 +2510,24 @@
     <div class="sgroup" data-group="voice">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">🔊</span>
-        <span class="sg-title">Voice &amp; speech</span>
+        <span class="sg-title">Voice</span>
         <span class="sg-sum" id="sumVoice"></span>
         <span class="sg-chev">▾</span>
       </button>
       <div class="sgroup-body">
         <div class="sublabel">Voice (English US only)</div>
         <select class="voice-picker" id="voicePicker"></select>
-        <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">Test voice: "Apple"</button>
+        <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">&#9654; Test this voice</button>
+        <div class="help-note" id="voiceTestNote">Plays a short sentence in the voice chosen above, even with the sound switched off.</div>
         <button class="mbtn action primary" id="recordVoiceBtn" style="width: 100%; margin-top: 8px;">🎤 Record my own voice →</button>
 
-        <div class="sublabel">What gets spoken</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Speak each letter as it's typed</span><div class="toggle on" id="toggleLetterSpeech"></div></div>
-          <div class="setting-row"><span>Speak text on Enter</span><div class="toggle on" id="toggleEnterSpeech"></div></div>
-          <div class="setting-row"><span>Speak target word when selected</span><div class="toggle on" id="toggleTargetSpeech"></div></div>
-        </div>
-
-        <div class="sublabel">Phonetic sounds</div>
-        <div class="phoneme-grid" id="phonemeGrid"></div>
       </div>
     </div>
 
-    <div class="full-row" style="margin-top: 18px;">
-      <button class="mbtn action danger" id="resetAll">Reset Colors</button>
-      <button class="mbtn action" id="endSessionBtn">End Session</button>
-    </div>
     <div class="full-row" style="margin-top: 8px;">
       <button class="mbtn action primary" data-action="cancel" style="grid-column: span 2;">Done</button>
     </div>
+    <div style="display:none"><div class="phoneme-grid" id="phonemeGrid"></div><button id="resetAll"></button><button id="endSessionBtn"></button></div>
     <div class="build-stamp" id="buildStamp"></div>
   </div>
 </div>
@@ -2519,7 +2562,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 402 - 7 Oct';
+const BUILD = 'build 403 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2724,6 +2767,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
+  promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
   catSeq: 1,                  // next category id
@@ -2868,6 +2912,7 @@ async function load() {
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
         smallRowsFold: saved.smallRowsFold ?? true,
+        promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
         compoundOf: saved.compoundOf || {},
@@ -3416,6 +3461,7 @@ async function save() {
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
       smallRowsFold: state.smallRowsFold !== false,
+      promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
       compoundOf: state.compoundOf || {},
@@ -3819,6 +3865,7 @@ const SYNC_SETTING_KEYS = [
   'promptColor', 'promptShade', 'promptHighlightOn', 'promptPulseOn', 'promptSizeOn',
   'promptTileOn', 'promptTileSize', 'promptSize', 'promptVerbalOn', 'promptDelaySec',
   'helpMode', 'helpDelaySec', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn',
+  'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect',
   'homeEnabled', 'homeMode', 'settingsOrder', 'bankSort', 'colorCoding', 'gridFill',
   'tileMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback',
   'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode',
@@ -4951,10 +4998,21 @@ function fadeLevelAt(index) {
   if (!arr) return 0;
   return arr[index] || 0;
 }
+function fadeN() { return Math.min(10, Math.max(1, parseInt(state.fadeEvery) || 3)); }
 function triggerFade(word) {
   const fades = state.wordFadeLevels[word];
   if (!fades) return;
-  for (let i = fades.length - 1; i >= 0; i--) {
+  // the whole word steps down together
+  if (state.fadeOrder === 'full') {
+    let any = false;
+    for (let i = 0; i < fades.length; i++) { if (word[i] !== ' ' && fades[i] < 3) { fades[i]++; any = true; } }
+    if (any) showLevelUp(word[0], false); else showMastered(word);
+    return;
+  }
+  // one letter at a time: from the last letter back, or from the first letter on
+  const idx = fades.map((_, i) => i);
+  if (state.fadeOrder !== 'first') idx.reverse();
+  for (const i of idx) {
     if (word[i] === ' ') continue;
     if (fades[i] < 3) {
       fades[i]++;
@@ -4988,6 +5046,7 @@ function showMastered(word) {
 function selectTargetWord(w, speakIt) {
   if (kbSearch) closeLetterSearch();     // a target means the bar is for typing
   state.currentTarget = w;
+  trialErrors = 0;
   state.phraseWords = [];
   state.targetIndex = 0;
   state.targetProgress = [];
@@ -5061,6 +5120,7 @@ function justFinishedWord() {
 function selectPhrase(words, quiet) {
   if (kbSearch) closeLetterSearch();
   state.phraseWords = words.slice();
+  trialErrors = 0;
   state.currentTarget = words.join(' ');
   state.targetIndex = 0;
   state.targetProgress = [];
@@ -5198,6 +5258,7 @@ function render() {
   banner.classList.add('bs-' + state.bannerSize);
   if (state.currentTarget) {
     banner.classList.add('active');
+    banner.classList.toggle('no-text', state.promptTextOn === false);
     const tw = document.getElementById('targetWord');
     const twWas = tw.scrollLeft;
     tw.innerHTML = '';
@@ -5460,7 +5521,7 @@ function makeSpecialKey(label, action, cls) {
           const ind = state.targetPromptedFlags.length - pmt;
           state.wordsSpelled.push({
             word: completedWord, ts: Date.now(),
-            independent: ind, prompted: pmt,
+            independent: ind, prompted: pmt, ...trialData(),
           });
         }
         celebrate(completedWord);
@@ -5477,7 +5538,7 @@ function makeSpecialKey(label, action, cls) {
         counter.abandons = 0;
 
         // Fade the blue prompt every 3 consecutive successes
-        if (state.fadeMode && counter.successes % 3 === 0) {
+        if (state.fadeMode && state.fadeCount !== 'letter' && counter.successes % fadeN() === 0) {
           setTimeout(() => { triggerFade(completedWord); save(); render(); }, 950);
         }
         // Rotate to next word after 3 in a row
@@ -5601,6 +5662,11 @@ function typeChar(letter) {
       state.targetIndex++;
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
+      // fading counted by letters: every so many right letters in a row, the prompt steps down
+      if (state.fadeMode && state.fadeCount === 'letter') {
+        fadeStreak++;
+        if (fadeStreak % fadeN() === 0) { const fw = state.currentTarget; setTimeout(() => { triggerFade(fw); save(); render(); }, 350); }
+      }
       buzz(20);
 
       // Say each word of a phrase as it lands
@@ -5676,14 +5742,14 @@ function finishPhrase() {
       state.wordsSpelled.push({ word: w, ts: now, independent: slice.length - p, prompted: p });
       pos += w.length + 1; // skip the space
     });
-    state.wordsSpelled.push({ word: phrase, ts: now, independent: ind, prompted: pmt });
+    state.wordsSpelled.push({ word: phrase, ts: now, independent: ind, prompted: pmt, ...trialData() });
   }
 
   celebrate(phrase);
   const counter = getOrInitWordData(phrase);
   counter.successes++;
   counter.abandons = 0;
-  if (state.fadeMode && counter.successes % 3 === 0) {
+  if (state.fadeMode && state.fadeCount !== 'letter' && counter.successes % fadeN() === 0) {
     setTimeout(() => { triggerFade(phrase); save(); render(); }, 950);
   }
 
@@ -5706,7 +5772,9 @@ function playErrorPhrase() {
   const t = (state.errorPhrase || '').trim();
   if (t) speak(t, 1.0);
 }
+let fadeStreak = 0, trialErrors = 0;
 function handleError(expectedLetter, typedLetter) {
+  fadeStreak = 0; trialErrors++;
   // 1. What the app says
   const gap = state.letterSpeech ? 450 : 0;
   if (state.errorFeedback === 'phrase') {
@@ -5747,6 +5815,20 @@ function handleError(expectedLetter, typedLetter) {
 // and goes home. Does nothing if the home page is switched off, or if typing
 // has already started again.
 const HOME_AFTER_WORD_MS = 1900;
+// What is saved with each word spelled, as chosen under Data collection
+function dcOn(k) { return (state.dataCollect || {})[k] !== false; }
+function trialData() {
+  const d = {}, pr = [];
+  if (dcOn('textual') && state.promptTextOn !== false) pr.push('text');
+  if (dcOn('verbal') && state.promptVerbalOn) pr.push('voice');
+  if (dcOn('highlight') && state.promptColorOn) pr.push('highlight (' + (state.promptIntensity || 'medium') + ')');
+  if (dcOn('magnify') && (state.promptSizeOn || state.promptTileOn)) pr.push('magnify');
+  if (dcOn('movement') && state.promptPulseOn) pr.push('pulse');
+  if (pr.length || ['textual', 'verbal', 'highlight', 'magnify', 'movement'].some(dcOn)) d.prompts = pr;
+  if (dcOn('errors')) d.errors = trialErrors;
+  if (dcOn('delay')) { d.delaySec = state.promptDelaySec || 0; d.afterDelay = state.promptDelaySec > 0 ? state.targetPromptedFlags.filter(p => p).length : 0; }
+  return d;
+}
 function goHomeNow(word) {
   if (!state.homeEnabled || state.currentTarget !== word || state.text) return;
   state.currentTarget = null; state.phraseWords = []; state.targetIndex = 0; state.targetProgress = []; state.targetPromptedFlags = [];
@@ -6819,42 +6901,40 @@ function magicExtend() {
 }
 // The green suggestion follows the one-up rule: the message as it stands plus ONE more word, never a
 // whole sentence ahead - "attach" offers "attach it", "hi" offers "hi there", "want" offers "I want"
-// More than one offer where it helps, each one step on: a thing with no doing word yet is offered its
-// doing words ("green box" -> I want green box / need green box / see green box); a doing word is
-// offered the things that go with it ("eat" -> eat apple / eat cookies ...)
+// The green offers follow the one-up rule: the message as it stands plus one step, never a whole
+// sentence ahead - and up to three different ones to choose from. A thing with no doing word yet is
+// offered its doing words ("bird" -> I want / need / see); a doing word is offered things that go
+// with it ("eat" -> apple / cookies); anything else, the words that most naturally come next
+// ("Hi Dad" -> help / play / go). Each green chip shows just the word it would add.
 function magicOptions() {
+  const full = magicPhraseFull();
   const n = homePhrase.length;
   if (!n) return [];
   const last = homePhrase[n - 1];
-  if (isPunct(last) || isSmallWord(last)) return [];
+  if (isPunct(last)) return [];
   const doing = w => MAGIC_WANTS.includes(w) || kindOfWord(w) === 'action' || MAGIC_ASK.includes(w);
-  const k = kindOfWordG(last), okW = w => !state.hiddenWords[w] && !homePhrase.includes(w);
-  const out = [];
-  if (!homePhrase.some(doing) && k !== 'people' && !Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(homePhrase[0]))) {
-    [['I', 'WANT'], ['NEED'], ['SEE']].filter(l => l.every(okW)).forEach(l => out.push({ phrase: l.concat(homePhrase), used: homePhrase.map((_, i) => i + l.length) }));
-  } else if (kindOfWord(last) === 'action' && !MAGIC_WANTS.includes(last) && !MAGIC_ASK.includes(last)) {
-    magicNext(last, 3).filter(okW).forEach(w => out.push({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
+  const k = kindOfWordG(last), okW = w => !isPunct(w) && !state.hiddenWords[w] && !homePhrase.includes(w);
+  const all = homePhrase.map((_, i) => i);
+  const out = [], seen = {};
+  const add = m => { const key = m.phrase.join(' '); if (!seen[key] && out.length < 3) { seen[key] = 1; out.push(m); } };
+  const after = w => add({ phrase: homePhrase.concat([w]), used: all });
+  const greeting = Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(homePhrase[0]));
+  if (!isSmallWord(last) && !homePhrase.some(doing) && k !== 'people' && !greeting) {
+    [['I', 'WANT'], ['NEED'], ['SEE']].filter(l => l.every(okW)).forEach(l => add({ phrase: l.concat(homePhrase), used: homePhrase.map((_, i) => i + l.length) }));
+  } else if (Object.keys(MAGIC_LEADS).some(x => MAGIC_LEADS[x].includes(last)) && kindOfWord(last) === 'action') {      // a doing word that leads somewhere: go -> places, eat -> food
+    magicNext(last, 3).filter(okW).forEach(after);
   }
-  return out.slice(0, 3);
-}
-function magicPhraseNow() {
-  const full = magicPhraseFull();
-  if (!homePhrase.length) return null;
-  { const opts = magicOptions(); if (opts.length) return opts[0]; }
-  if (full && full.phrase.length === homePhrase.length + 1) return full;
-  const last = homePhrase[homePhrase.length - 1];
-  if (isPunct(last)) return null;
-  // one word the fuller sentence is missing at the front ("want" -> "I want") ...
-  if (full && !full.ext && full.used.length === homePhrase.length && full.used[0] === 1) {
-    const keep = [0].concat(full.used);
-    return { phrase: full.phrase.filter((_, j) => keep.includes(j)), used: full.used.map((_, k) => k + 1) };
+  if (!out.length) {
+    // the fuller sentence, when it is exactly one step on - or its one missing word at the front ("want" -> "I want")
+    if (full && full.phrase.length === n + 1) add(full);
+    else if (full && !full.ext && full.used.length === n && full.used[0] === 1) { const keep = [0].concat(full.used); add({ phrase: full.phrase.filter((_, j) => keep.includes(j)), used: full.used.map((_, i) => i + 1) }); }
+    const JOIN = ['IS', 'AND', 'CAN', 'WITH', 'BECAUSE', 'ABOUT', 'TO', 'THE', 'A', 'MY'];      // (never left hanging on a joining word)
+    const pool = followSpecific(last).concat(k === 'people' ? ['HELP', 'PLAY', 'GO', 'COME', 'LOOK'] : [], isSmallWord(last) ? [] : (FOLLOW_KIND[k] || []));
+    pool.filter(w => okW(w) && !JOIN.includes(w)).forEach(after);
   }
-  // ... or else the word that most naturally comes next
-  const pool = followSpecific(last).concat(isSmallWord(last) ? [] : (FOLLOW_KIND[kindOfWordG(last)] || []));
-  const next = pool.find(w => !isPunct(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && !['IS', 'AND', 'CAN', 'WITH', 'BECAUSE', 'ABOUT', 'TO', 'THE', 'A', 'MY'].includes(w));      // (never left hanging on a joining word)
-  if (!next) return null;
-  return { phrase: homePhrase.concat([next]), used: homePhrase.map((_, i) => i) };
+  return out;
 }
+function magicPhraseNow() { return magicOptions()[0] || null; }
 function magicPhraseFull() {
   if (!homePhrase.length) { magicTarget = null; magicTargetExt = false; return null; }
   if (magicTarget && !magicMatch(magicTarget, homePhrase)) magicTargetExt = false;
@@ -7051,7 +7131,8 @@ function renderMagic(word) {
   if (mp) {
     const whole = document.createElement('button');
     whole.className = 'magic-chip phrase';
-    whole.textContent = sentenceWords(mp.phrase).join(' ');
+    const addedOf = m => m.phrase.filter((_, j) => !m.used.includes(j)).map(sentenceLabel).join(' ');      // the chip shows only what it would add
+    whole.textContent = addedOf(mp) || sentenceWords(mp.phrase).join(' ');
     whole.addEventListener('click', () => {
       mp.phrase.forEach(magicKnow);
       homePhrase = mp.phrase.slice();
@@ -7066,7 +7147,7 @@ function renderMagic(word) {
     magicOptions().slice(1).forEach(m => {
       const c = document.createElement('button');
       c.className = 'magic-chip phrase';
-      c.textContent = sentenceWords(m.phrase).join(' ');
+      c.textContent = addedOf(m) || sentenceWords(m.phrase).join(' ');
       c.addEventListener('click', () => {
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
@@ -7654,6 +7735,12 @@ function renderCatTiles(containerId, rerender) {
     const b = document.createElement('button');
     b.className = 'cat-tile' + (homePath[level] === c.id ? ' selected' : '');
     b.dataset.catId = c.id;
+    // each top page has its own colour on the menu tab: Popular green, Chat orange, Categories purple, My Stuff red
+    if (level === 0 && homePath[0] === c.id && !state.builderMode) {
+      const nm = c.name.trim().toLowerCase(), tops = childrenOf(null).filter(x => !x.target && !x.hidden);
+      const col = nm === 'chat' ? '#f08a24' : nm === 'categories' ? '#8e5bd6' : nm === 'my stuff' ? '#e0473c' : ['#f08a24', '#8e5bd6', '#e0473c', '#2f9bd8', '#d9a400'][Math.max(0, tops.indexOf(c)) % 5];
+      b.style.setProperty('background', col, 'important'); b.style.setProperty('color', '#fff', 'important');
+    }
     b.textContent = c.name;
     // inside one of its folders the tab names the folder that is open (Actions); tapping it goes
     // back to the page of folders, and the tab reads Categories again
@@ -13098,7 +13185,10 @@ function renderData() {
       r.innerHTML = '<span class="w">' + displayWord(item.word)
         + '</span><span class="meta">' + time
         + ' · <span class="ind">' + item.independent + ' ind</span>'
-        + ' · <span class="pmt">' + item.prompted + ' prompted</span></span>';
+        + ' · <span class="pmt">' + item.prompted + ' prompted</span>'
+        + (item.errors != null ? ' · ' + item.errors + (item.errors === 1 ? ' error corrected' : ' errors corrected') : '')
+        + (item.afterDelay != null && item.delaySec ? ' · ' + item.afterDelay + ' after a ' + item.delaySec + ' sec delay' : '')
+        + (item.prompts ? ' · prompts: ' + (item.prompts.length ? item.prompts.join(', ') : 'none') : '') + '</span>';
       log.appendChild(r);
     });
   }
@@ -13231,7 +13321,8 @@ function settingsSections() {
   return Array.from(document.querySelectorAll('#settingsMenu .sgroup'));
 }
 function applySettingsOrder() {
-  const order = state.settingsOrder || [];
+  let order = state.settingsOrder || [];
+  if (!order.includes('data') || !order.includes('layout')) order = state.settingsOrder = [];      // (an order saved before the sections were reworked no longer fits)
   if (!order.length) return;
   const parent = document.querySelector('#settingsMenu .sheet');
   const byKey = {};
@@ -13387,6 +13478,18 @@ function renderSettings() {
   document.getElementById('toggleScore').classList.toggle('on', state.scoreMode);
   document.getElementById('toggleFade').classList.toggle('on', state.fadeMode);
   document.getElementById('toggleRotate').classList.toggle('on', state.rotateMode);
+  document.getElementById('togglePromptText').classList.toggle('on', state.promptTextOn !== false);
+  document.getElementById('togglePromptDelay').classList.toggle('on', state.promptDelaySec > 0);
+  document.getElementById('fadeEveryVal').textContent = fadeN();
+  buildSeg('segFadeCount', [{ value: 'letter', label: 'Letter typed' }, { value: 'word', label: 'Word typed' }], state.fadeCount, v => { state.fadeCount = v; fadeStreak = 0; save(); renderSettings(); });
+  buildSeg('segFadeOrder', [{ value: 'last', label: 'Last letter' }, { value: 'first', label: 'First letter' }, { value: 'full', label: 'Full word' }], state.fadeOrder, v => { state.fadeOrder = v; save(); renderSettings(); });
+  { const n = fadeN(), unit = state.fadeCount === 'letter' ? (n === 1 ? 'right letter' : 'right letters in a row') : (n === 1 ? 'time a word is spelled' : 'times in a row a word is spelled');
+    const what = state.fadeOrder === 'full' ? 'the prompt on every letter of that word fades one step' : 'the prompt fades one step on one more letter, starting from the ' + (state.fadeOrder === 'first' ? 'first' : 'last') + ' letter';
+    document.getElementById('fadeNote').textContent = state.fadeMode ? 'After every ' + n + ' ' + unit + ', ' + what + '.' : 'Fading is off: prompts stay as they are set.';
+    document.getElementById('sumPractice').textContent = state.fadeMode ? 'Every ' + n + (state.fadeCount === 'letter' ? ' letters' : ' words') : 'Off';
+    const on = ['textual', 'verbal', 'highlight', 'magnify', 'movement', 'errors', 'delay'].filter(dcOn).length;
+    document.getElementById('sumData').textContent = state.scoreMode ? on + ' of 7 kinds' : 'Off'; }
+  document.querySelectorAll('#settingsMenu [data-dc]').forEach(t => { t.classList.toggle('on', dcOn(t.dataset.dc)); t.closest('.setting-row').style.opacity = state.scoreMode ? '' : '0.45'; });
 
   const list = document.getElementById('hiddenList');
   const hidden = Object.keys(state.hiddenKeys);
@@ -13733,10 +13836,31 @@ document.getElementById('voicePicker').addEventListener('change', e => {
   const sp = document.getElementById('setupVoicePicker');
   if (sp) sp.value = state.voiceName;
 });
-document.getElementById('voicePreviewBtn').addEventListener('click', () => {
+// Test this voice: says a short sentence in the voice picked, whatever the sound switch says
+function testVoice() {
+  const note = document.getElementById('voiceTestNote');
+  if (!('speechSynthesis' in window)) { note.textContent = 'This device or browser has no speaking voice to test.'; return; }
   warmSpeech();
-  speak('Apple. A. P. P. L. E.', 0.95);
+  const v = getVoice();
+  note.textContent = 'Playing: ' + (v ? v.name : 'the device\u2019s own voice') + '. If nothing is heard, check the volume and that the silent switch is off.';
+  sayAnyway = true;
+  try { speak('Hello. This is how I sound. Apple.', 0.95); } finally { sayAnyway = false; }
+}
+document.getElementById('voicePreviewBtn').addEventListener('click', testVoice);
+document.getElementById('voicePicker').addEventListener('change', () => setTimeout(testVoice, 50));
+document.getElementById('togglePromptText').addEventListener('click', () => { state.promptTextOn = state.promptTextOn === false; save(); render(); renderSettings(); });
+let promptDelayWas = 3;
+document.getElementById('togglePromptDelay').addEventListener('click', () => {
+  if (state.promptDelaySec > 0) { promptDelayWas = state.promptDelaySec; state.promptDelaySec = 0; } else state.promptDelaySec = promptDelayWas || 3;
+  save(); armPrompt(); render(); renderSettings();
 });
+document.getElementById('fadeLess').addEventListener('click', () => { state.fadeEvery = Math.max(1, fadeN() - 1); save(); renderSettings(); });
+document.getElementById('fadeMore').addEventListener('click', () => { state.fadeEvery = Math.min(10, fadeN() + 1); save(); renderSettings(); });
+document.querySelectorAll('#settingsMenu [data-dc]').forEach(t => t.addEventListener('click', () => {
+  state.dataCollect = state.dataCollect || {};
+  state.dataCollect[t.dataset.dc] = !dcOn(t.dataset.dc);
+  save(); renderSettings();
+}));
 document.getElementById('settingsMenu').addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if ((btn && btn.dataset.action === 'cancel') || e.target.id === 'settingsMenu') {
