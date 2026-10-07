@@ -1243,7 +1243,7 @@
   .key.backspace { background: var(--red-tint); color: var(--red); }
   /* the up arrow and the delete key: one size, at either end of the bottom letter row */
   .key.side { flex: 1.25; font-size: clamp(18px, 3.4vmin, 34px); font-weight: 900; }
-  .key.shift.on { background: var(--ink); color: #fff; }
+  .key.shift.on { background: #8b8e95; color: #fff; }      /* a darker grey, not black: on, but not shouting */
   .key.shift.disabled { opacity: 0.35; }
   .key.numkey { font-size: clamp(16px, 3vmin, 30px); font-weight: 900; letter-spacing: 1px; }
   .key.enter { background: var(--green-tint); color: var(--green); }
@@ -2480,7 +2480,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 377 - 7 Oct';
+const BUILD = 'build 378 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
