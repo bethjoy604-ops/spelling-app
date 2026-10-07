@@ -2482,7 +2482,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 380 - 7 Oct';
+const BUILD = 'build 381 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8288,7 +8288,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       buzz(10);
       // on the sliding row this is the edge handle: a push brings in the next six (the second page
       // on, the whole library drops down - see the scroll watcher below)
-      if (slides && !full) { const pw = strip._pageW || strip.clientWidth; strip.scrollBy({ left: pw, behavior: 'smooth' }); return; }
+      if (slides && !full && strip.scrollLeft < strip.scrollWidth - strip.clientWidth - 4) { const pw = strip._pageW || strip.clientWidth; strip.scrollBy({ left: pw, behavior: 'smooth' }); return; }
       stripFull = full ? null : fullKey;
       clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null;
       if (full) { if (stripKey !== null) stripCountdown(stripKey); else if (smallFullHook) chatRowArm(); }
@@ -8318,7 +8318,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       settle = setTimeout(() => {
         const pw = ts[6] ? ts[6].offsetLeft - ts[0].offsetLeft : 0;
         strip._pageW = pw;
-        if (pw && strip.scrollLeft >= pw * 1.5 && strip.isConnected) {
+        if (pw && strip.scrollLeft >= pw * 2.5 && strip.isConnected) {
           stripFull = fullKey;
           clearTimeout(stripTimer); stripTimer = null; clearTimeout(chatRowTimer); chatRowTimer = null;
           buzz(10); followKey = null; refreshSmallStrips();
