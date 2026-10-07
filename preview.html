@@ -2480,7 +2480,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 375 - 7 Oct';
+const BUILD = 'build 376 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8296,7 +8296,9 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     // six to a page: every sixth tile is where a swipe comes to rest, and the last page is padded out
     const ts = [...strip.querySelectorAll('.small-tile')];
     ts.forEach((t, i) => { if (i % 6 === 0) t.classList.add('snap'); });
-    for (let k = (6 - ts.length % 6) % 6; k > 0; k--) { const sp = document.createElement('i'); sp.className = 'sp'; strip.appendChild(sp); }
+    if (ts.length > 6 && ts.length % 6) ts[ts.length - 6].classList.add('snap');      // the last stop: the final six, flush with the edge
+    // (no padding out of the last page: the row stops after its last tile, so the last swipe shows
+    //  the final six with no empty blue)
     strip.style.setProperty('--tail', more ? '58px' : '10px');
     if (more) {
       more.style.height = ''; more.textContent = ''; more.classList.add('strip-edge'); more.setAttribute('aria-label', 'More small words');
