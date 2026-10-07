@@ -2498,7 +2498,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 390 - 7 Oct';
+const BUILD = 'build 391 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8093,6 +8093,31 @@ function kindOfWord(w) {
   const kinds = categoriesOf(w).filter(c => !c.target && !c.hidden).map(kindOfCat).filter(Boolean);
   return kinds.includes('action') ? 'action' : (kinds.find(k => k !== 'title') || kinds[0] || '');
 }
+// A direction word chosen first ("up") wants its doing word in front of it: go up, pick up, turn up
+const LEAD_IN = {
+  UP: ['GO', 'PICK', 'TURN', 'LOOK', 'GET', 'COME'], DOWN: ['GO', 'PUT', 'TURN', 'SIT', 'LOOK', 'COME'],
+  ON: ['TURN', 'PUT', 'GET', 'GO'], OFF: ['TURN', 'TAKE', 'GET'], IN: ['GO', 'COME', 'PUT', 'GET'], OUT: ['GO', 'COME', 'GET', 'TAKE'],
+  OVER: ['GO', 'COME', 'TURN'], UNDER: ['GO', 'LOOK'], AWAY: ['GO', 'PUT'], BACK: ['GO', 'COME', 'PUT'],
+  LEFT: ['GO', 'TURN'], RIGHT: ['GO', 'TURN'], FAST: ['GO'], SLOW: ['GO'], HERE: ['COME', 'LOOK'], THERE: ['GO', 'LOOK'],
+};
+function leadIns(last) {
+  const n = homePhrase.length, prev = n > 1 ? homePhrase[n - 2] : '';
+  const all = [].concat(...Object.keys(LEAD_IN).map(k => LEAD_IN[k]));
+  if (!LEAD_IN[last] || (prev && (all.includes(prev) || kindOfWord(prev) === 'action'))) return [];
+  return LEAD_IN[last].filter(w => !state.hiddenWords[w] && !homePhrase.includes(w));
+}
+// (a word's kind by its folder, or failing that by the group it is filed under: happy is under Feelings)
+function kindOfWordG(w) {
+  const k = kindOfWord(w);
+  if (k && k !== 'title') return k;
+  for (const c of state.categories) {
+    if (c.target || c.hidden) continue;
+    const g = (c.groups || []).find(x => (x.words || []).includes(w));
+    const hit = g && KIND_NAMES.find(kn => kn[0].test(String(g.name || '').trim().toLowerCase()));
+    if (hit) return hit[1];
+  }
+  return k;
+}
 // after a word of each kind ...
 const FOLLOW_KIND = {
   action: FOLLOW_ACTION,
@@ -8279,7 +8304,14 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     // nothing of its own falls back to the usual followers for its kind.)
     const last = homePhrase[homePhrase.length - 1];
     const six = [];
-    need.concat(followSpecific(last)).forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
+    // the doing word a direction is missing comes first (go / pick / turn + up); then what the sentence
+    // still needs, what belongs after the last word, and the usual followers for its kind (and, now, today)
+    const leads = leadIns(last).slice(0, 3);
+    strip._leads = leads;
+    const fits = ok => (!homePhrase.includes(ok) || (ok !== last && ['TO', 'THE', 'A', 'AND'].includes(ok)));
+    const kindNext = isSmallWord(last) || LEAD_IN[last] ? [] : (FOLLOW_KIND[kindOfWordG(last)] || FOLLOW_END).filter(w => state.words.includes(w) || ['AND', 'NOW', 'TODAY', 'PLEASE'].includes(w));
+    leads.concat(need.slice(0, leads.length ? 2 : 3), followSpecific(last), kindNext).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w]) six.push(w); });
+    [].forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     if (!six.length) followWords(last, []).forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     // never an empty row: failing all that, the page's own small words and then the most used ones
     if (!six.length) {
@@ -8347,6 +8379,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
       const mp = state.magicType && !state.builderMode ? magicPhraseNow() : null;
       const at = mp ? mp.phrase.findIndex((x, j) => x === w && !mp.used.includes(j)) : -1;
       if (at >= 0) { const keep = mp.used.concat([at]); homePhrase = mp.phrase.filter((_, j) => keep.includes(j)); }
+      else if ((strip._leads || []).includes(w) && homePhrase.length) homePhrase.splice(homePhrase.length - 1, 0, w);      // "up" + go reads "go up"
       else homePhrase.push(w);
       warmSpeech();
       speakWord(w, 0.95);
