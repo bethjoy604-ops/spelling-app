@@ -528,6 +528,7 @@
   /* the group's name as a tile of its own, in a deeper grey than the panel: tap it to say the word */
   .feed-group .feed-head.name-tile[aria-expanded="true"] { display: none; }
   /* a white tile like the rest, its word marked in grey (the way a suggestion's is marked in green) */
+  .sugg-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .home-card.name-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; }
   .library-dots { align-self: center; justify-self: start; width: 34px; height: 64px; border: none; border-radius: 12px; background: none;
     color: rgba(0,0,0,0.28); font-size: 40px; line-height: 1; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 0 6px; }
@@ -796,6 +797,9 @@
     transition: all 0.2s ease;
   }
   .tletter.done { background: var(--green-soft); color: #1a6c1a; }
+  .grid-bar { display: none; width: 100%; height: 54px; flex-shrink: 0; border: none; border-radius: 16px; background: rgba(255,255,255,0.75); cursor: pointer; }
+  .view-home.grid-shut .grid-bar { display: block; }
+  .view-home.grid-shut #homeGrid { display: none !important; }
   .sugg-host { display: none; flex-shrink: 0; }
   .sugg-host.show { display: block; }
   .sugg-head { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #cdebd1; cursor: pointer; }
@@ -2610,7 +2614,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 425 - 7 Oct';
+const BUILD = 'build 426 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7209,10 +7213,27 @@ function collapseRows() {
   stripFull = null; suggShut = true;
   if (smallHostRedo) smallHostRedo();
   suggRender();
+  try { gridSync(); } catch (e) {}
 }
 function hgtOf(grid) { const c = grid.querySelector('.home-card:not(.sugg-card)'); return c ? (parseInt(c.style.height) || c.offsetHeight || 0) : 0; }
+// Popular, with a message started: while the green tiles or the small words are open, the page's own tiles
+// fold to a white bar (they would only repeat the same words); once both rows are shut they come back.
+function gridSync() {
+  const view = document.getElementById('viewHome'), grid = document.getElementById('homeGrid');
+  if (!view || !grid) return;
+  let bar = document.getElementById('gridBar');
+  if (!bar) {
+    bar = document.createElement('button'); bar.id = 'gridBar'; bar.className = 'grid-bar'; bar.setAttribute('aria-label', 'Show the page tiles');
+    bar.addEventListener('click', () => { buzz(10); collapseRows(); gridSync(); });
+    grid.parentNode.insertBefore(bar, grid);
+  }
+  const blue = !!stripFull || (stripKey !== null ? !stripShut : smallFullHook ? !!state.smallOpen : popRowUntil ? !popRowShut : false);
+  const green = !!document.querySelector('#suggHost .sugg-row');
+  view.classList.toggle('grid-shut', !state.builderMode && homePath.length === 0 && homePhrase.length > 0 && !selWords && (blue || green));
+}
 let suggFolder = null;
-function suggRender() {
+function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} } }
+function suggRender0() {
   const grid = document.getElementById('homeGrid'), host = document.getElementById('suggHost');
   if (!grid || !host || suggBusy) return;
   suggBusy = true;
@@ -7232,9 +7253,10 @@ function suggRender() {
       const key = homePhrase.join(' ');
       if (suggFolder && suggFolder.key !== key) suggFolder = null;
       const fcat = suggFolder ? catById(suggFolder.id) : null;
-      if (fcat) {      // a folder was opened in the row: its words are the tiles
+      const fgrp = fcat ? (fcat.groups || []).find(g => g.id === suggFolder.gid) : null;
+      if (fgrp) {      // a group of words was opened in the row: its words are the tiles
         const used = w => (state.wordHistory[w] || {}).n || 0;
-        opts = (fcat.words || []).filter(w => !state.hiddenWords[w] && !homePhrase.includes(w) && !isPunct(w)).sort((a, b) => used(b) - used(a)).slice(0, 12)
+        opts = (fgrp.words || []).filter(w => !state.hiddenWords[w] && !homePhrase.includes(w) && !isPunct(w)).sort((a, b) => used(b) - used(a)).slice(0, 12)
           .map(w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
       } else if (opts.length && homePhrase.some(doing) && !homePhrase.some(thing)) {
         const lastDo = homePhrase.slice().reverse().find(doing);
@@ -7242,8 +7264,21 @@ function suggRender() {
         const usedIn = c => (c.words || []).reduce((t, w) => t + ((state.wordHistory[w] || {}).n || 0), 0);
         const all = state.categories.filter(c => c.parent && !c.smallSec && !c.target && !c.hidden && c.name !== 'Actions' && (c.words || []).filter(w => !state.hiddenWords[w]).length > 1 && !homePath.includes(c.id));
         const want = LEAD[lastDo] || [];
-        const folders = all.filter(c => want.includes(c.name)).sort((a, b) => want.indexOf(a.name) - want.indexOf(b.name))
-          .concat(want.length ? [] : all.slice().sort((a, b) => usedIn(b) - usedIn(a))).slice(0, 2).map(c => ({ folder: c, phrase: homePhrase.concat(['\u25B8' + c.name]), used: homePhrase.map((_, i) => i) }));
+        const cats = all.filter(c => want.includes(c.name)).sort((a, b) => want.indexOf(a.name) - want.indexOf(b.name))
+          .concat(want.length ? [] : all.slice().sort((a, b) => usedIn(b) - usedIn(a))).slice(0, 2);
+        // the choice-board folders themselves are never tiles here: a folder's groups of words are (grey, as
+        // folders are - "family", "friends"); a folder with no groups gives its own words instead
+        const okw = w => !state.hiddenWords[w] && !homePhrase.includes(w) && !isPunct(w);
+        const used = w => (state.wordHistory[w] || {}).n || 0, idx = homePhrase.map((_, i) => i);
+        const folders = [], loose = [];
+        cats.forEach(c => {
+          const gs = (c.groups || []).filter(g => !g.hidden && (g.words || []).filter(okw).length);
+          if (gs.length) gs.slice().sort((a, b) => (b.words || []).reduce((t, w) => t + used(w), 0) - (a.words || []).reduce((t, w) => t + used(w), 0)).slice(0, 3)
+            .forEach(g => { if (folders.length < 4) folders.push({ folder: c, group: g, phrase: homePhrase.concat(['\u25B8' + c.id + '/' + g.id]), used: idx }); });
+          else (c.words || []).filter(okw).sort((a, b) => used(b) - used(a)).slice(0, 3)
+            .forEach(w => { if (!things.concat(loose).some(m => m.phrase[m.phrase.length - 1] === w)) loose.push({ phrase: homePhrase.concat([w]), used: idx }); });
+        });
+        things.push(...loose);
         opts = things.slice(0, 1).concat(folders, things.slice(1), acts);
       } else opts = acts.concat(things);
     }
@@ -7272,13 +7307,13 @@ function suggRender() {
       if (hgt) b.style.height = hgt + 'px';
       const added = m.phrase.filter((_, j) => !m.used.includes(j));
       const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
-      const label = m.folder ? m.folder.name : added.map(sentenceLabel).join(' ');
+      const label = m.folder ? String(m.group.name).toLowerCase() : added.map(sentenceLabel).join(' ');
       if (label.length > 11 && fs) t.style.fontSize = Math.round(parseFloat(fs) * (label.includes(' ') ? 0.86 : Math.max(0.6, 11 / label.length))) + 'px';      // a long one is set a little smaller, and may take two lines
       const hl = document.createElement('span'); hl.className = m.folder ? 'name-hl' : 'sugg-hl'; hl.textContent = label;
       t.appendChild(hl); b.appendChild(t);
       b.addEventListener('click', e => {
         e.stopPropagation();
-        if (m.folder) { buzz(10); suggFolder = { id: m.folder.id, key: homePhrase.join(' ') }; suggShut = false; suggRender(); return; }      // a folder: its words fill the row
+        if (m.folder) { buzz(10); suggFolder = { id: m.folder.id, gid: m.group.id, key: homePhrase.join(' ') }; suggShut = false; suggRender(); return; }      // a folder: its words fill the row
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
         magicAccepted = homePhrase.join(' '); magicTarget = null;
@@ -12100,6 +12135,7 @@ function setBlue(open) {
   else return;
   stripFull = null;
   if (smallHostRedo) smallHostRedo();
+  try { gridSync(); } catch (e) {}
 }
 // A word added at the end is put where it reads best: "I" goes in front of the doing word ("Hi I want ..."),
 // "the / a / my / more" in front of the thing it belongs to, "don't / can't" in front of the doing word.
