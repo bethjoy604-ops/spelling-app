@@ -2597,7 +2597,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 418 - 7 Oct';
+const BUILD = 'build 419 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4778,6 +4778,7 @@ let rowBackTimer = null;
 // after it was last swiped. (The full library, opened on purpose, stays.)
 function rowIdleArm(ms) {
   clearTimeout(rowBackTimer);
+  return;      // (retired: nothing folds by the clock now)
   if (state.smallRowsFold === false) return;
   rowBackTimer = setTimeout(() => {
     if (stripFull || state.builderMode) return;
@@ -4790,6 +4791,7 @@ function rowIdleArm(ms) {
   }, ms || 3000);
 }
 function rowBackAtTop() {
+  return;      // (retired: once folded by a scroll, the rows wait to be tapped)
   if (state.builderMode) return;
   if (!homePhrase.length) return;      // no message yet: the page is being looked through, and the bars stay bars until tapped
   if (suggShut) { suggShut = false; suggRender(); rowIdleArm(3000); }
@@ -4832,6 +4834,7 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   if (big && grid.scrollTop > 20 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
   if (grid.scrollTop > 20 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
   if (grid.scrollTop > 20 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
+  if (grid.scrollTop > 20 && !suggShut) { suggShut = true; suggRender(); }
   const was = barPrevTop; barPrevTop = grid.scrollTop;
   if (!min && big && grid.scrollTop > 20 && grid.scrollHeight - grid.clientHeight > 300) {
     // the room the menu and bars give up goes to the page: the tiles stay where they were on screen
@@ -7197,6 +7200,7 @@ function suggRender() {
         homePhrase = m.phrase.slice();
         magicAccepted = homePhrase.join(' '); magicTarget = null;
         warmSpeech(); speakWord(added.join(' '), 0.95); buzz(10); save();
+        magicPickAt = Date.now();
         renderPhraseBar();
       });
       rowEl.appendChild(b);
@@ -11430,7 +11434,7 @@ function renderSlotGrid(grid, cat, folders) {
   }
   if (!sec) { smallFullHook = null; chatFull = false; }
   // arriving on a page with words already in the bar: its small words row opens straight away
-  { const key = cat ? cat.id : 'root'; if (rowPageKey !== key) { rowPageKey = key; if (homePhrase.length && !state.builderMode) setTimeout(smallRowPop, 0); } }
+  { const key = cat ? cat.id : 'root'; if (rowPageKey !== key) { rowPageKey = key; if (homePhrase.length && !state.builderMode) setTimeout(smallRowPop, 0); else setTimeout(hintArm, 0); } }
   if (sec) {
     const wrap = document.createElement('div');
     wrap.className = 'small-section top';
@@ -11991,7 +11995,48 @@ function popRowDraw() {
   } else el.appendChild(makeSmallStrip(0, 0, currentCat() || null, true));
   smallHostSet(el);
 }
+// ---- How the two rows take turns.
+//  * a tile goes into the message (or a page is opened with a message in the bar): the green suggestion
+//    tiles open and the blue small words row stays a bar;
+//  * a green tile is chosen: the green row folds to its bar and the blue row opens;
+//  * the page is scrolled down: both fold, and stay folded until one is tapped or the page changes;
+//  * nothing at all for three seconds, with no green tiles showing: the blue row dips open and shut
+//    once, to show it is there.
+let magicPickAt = 0;
+function setBlue(open) {
+  if (state.builderMode || state.smallRowsOn === false) return;
+  if (stripKey !== null) { if (stripShut === !open) return; stripShut = !open; }
+  else if (smallFullHook) { if (chatFull || !!state.smallOpen === open) return; state.smallOpen = open; chatRowAuto = open; }
+  else if (popRowUntil) { if (popRowShut === !open) return; popRowShut = !open; }
+  else return;
+  stripFull = null;
+  if (smallHostRedo) smallHostRedo();
+}
 function smallRowPop() {
+  smallRowPop0();
+  if (state.builderMode) return;
+  const viaMagic = Date.now() - magicPickAt < 500;
+  suggShut = viaMagic; suggRender();
+  setBlue(viaMagic);
+  hintArm();
+}
+let hintTimer = null, hintDone = false;
+function hintArm() {
+  clearTimeout(hintTimer); hintDone = false;
+  hintTimer = setTimeout(() => {
+    const view = document.getElementById('viewHome');
+    if (hintDone || state.builderMode || !view.classList.contains('active') || view.classList.contains('bar-min') || view.classList.contains('keys-open') || selWords) return;
+    if (document.querySelector('#suggHost .sugg-row') || document.querySelector('.overlay.show, .read-back')) return;      // green tiles are up, or a menu is: no dip
+    const bar = document.querySelector('#smallHost .small-head');
+    if (!bar || !bar.offsetParent || document.getElementById('homeGrid').scrollTop > 20) return;
+    hintDone = true;
+    setBlue(true);
+    hintTimer = setTimeout(() => { if (!stripFull) setBlue(false); }, 1300);
+  }, 3000);
+}
+document.getElementById('viewHome').addEventListener('pointerdown', () => hintArm(), true);
+document.getElementById('homeGrid').addEventListener('scroll', () => { clearTimeout(hintTimer); }, { passive: true });
+function smallRowPop0() {
   if (state.builderMode) return;
   if (suggShut) { suggShut = false; suggRender(); }
   rowIdleArm(6000);
