@@ -508,7 +508,7 @@
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: var(--surface); }      /* white like any tile: the grey mark on its name says it opens a group */
   .home-card.group-tile .name-hl, .home-card.folder-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; }
-  .home-card.folder-card::after { display: none; }
+  .home-card.folder-card:not(.board-card)::after { display: none; }
   .home-card.group-tile.drop-into { outline: 6px solid var(--green); outline-offset: -3px; }      /* blue: this tile opens a group's own page */
   #pageEditBar { gap: 8px !important; max-width: 96vw; }
   #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
@@ -2597,7 +2597,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 416 - 7 Oct';
+const BUILD = 'build 417 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6496,7 +6496,10 @@ function makeFolderCard(c, rerender) {
   w.className = 'hw';
   w.textContent = c.name;
   card.appendChild(w);
-  markNameTile(card);
+  // a choice board (Actions, Choices, Groups, Things ...) keeps its blue dot and adds nothing to the message;
+  // a folder of names (Food, Music ...) has its name marked in grey and puts it in the message when tapped
+  const board = !catAllowsPhrases(c);
+  if (board) card.classList.add('board-card'); else markNameTile(card);
   const host = currentCat();
   const isLink = !!host && (c.parent || null) !== host.id;
   if (isLink) {
@@ -6524,7 +6527,7 @@ function makeFolderCard(c, rerender) {
       return;
     }
     // step into it from here, so going back returns to this page
-    nameIntoBar(c, c.name); renderPhraseBar();
+    if (board) magicPathPick(c, c.name); else { nameIntoBar(c, c.name); renderPhraseBar(); }
     homePath = host ? homePath.concat([c.id]) : pathTo(c.id);
     rerender();
   });
