@@ -1272,7 +1272,12 @@
   .home-card.list-row.paused::after { content: 'off'; margin-left: auto; font-weight: 800; font-size: 16px; color: rgba(0,0,0,0.4); }
   .home-row:not(.icons-open) #homeSettingsBtn, .home-row:not(.icons-open) #homeTargetBtn,
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
-  .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn { display: none !important; }
+  .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn,
+  .home-row:not(.icons-open) #homeMagicBtn, .home-row:not(.icons-open) #homeIconsClose { display: none !important; }
+  #homeMagicBtn.off { filter: grayscale(1); opacity: 0.4; }
+  #homeIconsClose { font-size: 40px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.55); background: rgba(255,255,255,0.5); box-shadow: none; padding-bottom: 4px; }
+  /* the close × does the + button's job while the pop-out is open */
+  .home-row.icons-open #homeIconsToggle { display: none !important; }
   #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* three quiet dots, grey like the tabs that are not open; a little clearer while the pop-out is out */
   .cat-tile.menu-peek { min-width: 0; width: 34px; padding-left: 0; padding-right: 0; font-size: 24px; line-height: 1; color: rgba(0,0,0,0.32) !important; background: none !important; box-shadow: none !important; }
@@ -1963,7 +1968,9 @@
     <button class="ctl icon" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
     <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
+    <button class="ctl icon" id="homeMagicBtn" aria-label="Magic suggestions" aria-pressed="true">&#129668;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
+    <button class="ctl icon" id="homeIconsClose" aria-label="Close the switches">&times;</button>
     <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">+</button>
   </div>
 
@@ -2674,7 +2681,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 455 - 8 Oct';
+const BUILD = 'build 456 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8707,6 +8714,7 @@ function renderHome(reset) {
     document.getElementById('homeChevron').classList.toggle('open', !!state.homeModesOpen);
     document.querySelector('.home-row').classList.toggle('tools', !!state.iconsOpen);     // the tabs sit closer while the pop-out is open
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
+    { const mb = document.getElementById('homeMagicBtn'); mb.classList.toggle('off', !state.magicType); mb.setAttribute('aria-pressed', state.magicType ? 'true' : 'false'); }
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
     { const it = document.getElementById('homeIconsToggle'); it.textContent = '+'; it.style.display = (!state.builderMode && homePath.length && Date.now() >= menuPeekUntil && !state.iconsOpen) ? 'none' : ''; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
@@ -13393,6 +13401,30 @@ function closeIcons() {
   renderHome(true);
   g.scrollTop = top;
 }
+// the close × at the end of the pop-out, or a swipe across the switches, puts them away straight off
+function closeIconsNow() {
+  clearTimeout(iconsTimer); iconsTimer = null;
+  if (!state.iconsOpen) return;
+  state.iconsOpen = false; buzz(10);
+  const g = document.getElementById('homeGrid'); const top = g.scrollTop;
+  renderHome(true); g.scrollTop = top;
+}
+document.getElementById('homeIconsClose').addEventListener('click', e => { e.stopPropagation(); closeIconsNow(); });
+{ const row = document.querySelector('.home-row'); let sx = 0, sy = 0, on = false;
+  row.addEventListener('touchstart', e => { on = state.iconsOpen && !e.target.closest('.folder-strip'); if (on) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, { passive: true });
+  row.addEventListener('touchmove', e => { if (!on) return; const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+    if ((Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) || (-dy > 40 && -dy > Math.abs(dx) * 1.5)) { on = false; closeIconsNow(); } }, { passive: true });
+  row.addEventListener('touchend', () => { on = false; }, { passive: true }); }
+// the wand: magic suggestions on or off, the same switch as in settings
+document.getElementById('homeMagicBtn').addEventListener('click', () => {
+  state.magicType = !state.magicType; buzz(10);
+  magicSkipped = null; suggFolder = null;
+  { const h = document.getElementById('suggHost'); if (h) h.dataset.sig = ''; }
+  if (!state.magicType) { try { hideMagic(); } catch (e) {} }
+  save(); renderHome(true);
+  try { if (state.magicType && homePhrase.length) smallRowPop(); else suggRender(); } catch (e) {}
+  try { renderSettings(); } catch (e) {}
+});
 function armIcons() {
   clearTimeout(iconsTimer); iconsTimer = null;
   if (state.iconsOpen) iconsTimer = setTimeout(closeIcons, 5000);
