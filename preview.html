@@ -514,7 +514,7 @@
   #pageEditBar span { margin-right: 8px; overflow: hidden; text-overflow: ellipsis; }
   #pageEditBar button.pe-all { background: #4a4a4a; font-size: 15px; padding: 10px 16px; }
   .home-card.library-tile { background: #e6e7ea; }
-  .feed-group { align-self: start; background: #c9ccd2; border-radius: 22px; padding: 16px; display: flex; flex-direction: column; position: relative; margin: 4px 0; }
+  .feed-group { align-self: start; background: #c9ccd2; border-radius: 22px; padding: 18px; margin: 10px 4px !important; display: flex; flex-direction: column; position: relative; margin: 4px 0; }
   .feed-group .feed-min { position: absolute; top: -6px; right: -6px; width: 34px; height: 34px; border: none; border-radius: 50%; background: #8f9299; color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; line-height: 1; cursor: pointer; z-index: 2; }
   .feed-group .feed-head { border: none; background: none; text-align: left; font-family: inherit; font-weight: 900; font-size: 17px; color: rgba(0,0,0,0.6);
     height: 38px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; cursor: pointer; }
@@ -834,7 +834,7 @@
   .small-host .small-strip.slides { --tail: 0px !important; }
   .small-host .small-strip, .small-host .small-section, .small-host .small-body { background: transparent !important; box-shadow: none !important; }
   .small-host .small-strip:not(.slides) { padding: 0 0 4px 0 !important; }
-  .small-host.sm-open { padding-bottom: 30px; margin-bottom: 14px; border-bottom: 2px solid rgba(0,0,0,0.08); }      /* open, the small words stand apart from the page tiles under them */
+  .small-host.sm-open { padding-bottom: 30px; margin-bottom: 14px; }      /* open, the small words stand apart from the page tiles under them */
   .sm-hl { background: #d6e4fd; border-radius: 0.3em; padding: 0.08em 0.4em; }
   .sugg-host { display: none; flex-shrink: 0; }
   .sugg-host.show { display: block; }
@@ -2653,7 +2653,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 447 - 7 Oct';
+const BUILD = 'build 448 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -12089,6 +12089,16 @@ function renderSlotGrid(grid, cat, folders) {
       // a panel is only as wide as its tiles, so two short ones (a pair each) share a row
       const NAME_TILE = '\u0001name';
       let laid = sortWords(mine, cols, true);
+      const labelOf = w => catAllowsPhrases(f) ? bankLabel(w) : plainLabel(w);
+      const tileW = (grid.clientWidth - 16 * (cols - 1)) / cols - 36;      // a tile's width, less the panel's own padding
+      const measure = l => { const m = document.createElement('span'); m.className = 'hw'; m.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font-size:' + base + 'px'; m.textContent = l; grid.appendChild(m); const wd = m.offsetWidth; m.remove(); return wd; };
+      const tooLong = w => { const l = labelOf(w); return !l.includes(' ') && measure(l) > tileW * 0.78; };      // it would crowd the tile's edges
+      const openNow = !!feedOpen && feedOpen.cat === cat.id && feedOpen.f === f.id;
+      const twoUpOpen = new Set();
+      if (openNow) {      // opened out: the tiles close up, no gaps - and a word too long for one tile is given the room of two
+        laid = laid.filter(Boolean);
+        if (cols >= 2) { const out = []; laid.forEach(w => { out.push(w); if (w !== NAME_TILE && tooLong(w)) { twoUpOpen.add(w); out.push(null); } }); laid = out; }
+      }
       // (the group's name is its tab at the top left again, not a tile)      // the group's own name leads its tiles, as a tile (in a deeper grey)
       // its rows of tiles, and how wide the widest of them really is (the blue is no wider)
       let lines = [];
@@ -12155,11 +12165,17 @@ function renderSlotGrid(grid, cat, folders) {
         const box = document.createElement('div');
         box.className = 'feed-tiles';
         box.style.gridTemplateColumns = 'repeat(' + span + ', minmax(0, 1fr))';
+        // a word too long for one tile (one that would have to shrink well below the others) takes two side by side,
+        // as long as the group still fits in the rows it has; the tiles then close up around it
+        const twoUp = new Set(span >= 2 ? twoUpOpen : []);
+        if (span >= 2 && !openNow) { const cells = laid.filter(Boolean).length, rowsHave = lines.length;
+          let extra = 0; laid.filter(Boolean).forEach(w => { if (tooLong(w) && Math.ceil((cells + extra + 1) / span) <= rowsHave) { twoUp.add(w); extra++; } }); }
+        if (twoUp.size) box.style.gridAutoFlow = 'row dense';
         // a panel more than one row tall: the blue between its rows is as deep as the band between two
         // panels stacked beside it (their edges, the gap and the name), so every tile lines up across the page
         // (only when a panel of another height really sits beside it; alone, its rows sit close together)
         placed.push({ r: at.r, tall, box });
-        [].concat(...lines.map(l => l.slice(0, span).concat(new Array(Math.max(0, span - l.length)).fill(null)))).forEach(w => {
+        (twoUp.size ? laid.filter(Boolean) : [].concat(...lines.map(l => l.slice(0, span).concat(new Array(Math.max(0, span - l.length)).fill(null))))).forEach(w => {
           if (!w) { box.appendChild(document.createElement('div')); return; }
           if (w === NAME_TILE) {
             const nt = document.createElement('button');
@@ -12196,7 +12212,8 @@ function renderSlotGrid(grid, cat, folders) {
             const sw = withGroup(f.host || f, w, f.name); magicDropPath(f.host || f); homePhrase.push(sw); warmSpeech(); speakWord(sw, 0.95); renderPhraseBar(); renderMagic(sw);
           });
           attachWordHold(card, w, f.host || f);
-          fit(card, label);
+          if (twoUp.has(w)) { card.style.gridColumn = 'span 2'; const t2 = card.querySelector('.hw'); t2.style.fontSize = Math.min(base, (room * 2) / (Math.max(1, label.length) * 0.62)) + 'px'; }
+          else fit(card, label);
           box.appendChild(card);
         });
         sec.appendChild(box);
