@@ -854,7 +854,7 @@
   .type-layer { display: none; position: fixed; inset: 0; z-index: 40; flex-direction: column; gap: 12px; background: #aeb0b5; padding: calc(22px + env(safe-area-inset-top, 0px)) 26px 8px; }
   .type-layer.open { display: flex; animation: tlUp 0.18s ease both; }
   @keyframes tlUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-  .tl-top { flex: 1 1 26%; min-height: 110px; display: flex; gap: 12px; background: #fff; border-radius: 22px; padding: 14px 14px 14px 22px; box-shadow: var(--shadow); }
+  .tl-top { flex: 0 0 auto; min-height: 110px; overflow: hidden; display: flex; gap: 12px; background: #fff; border-radius: 22px; padding: 14px 14px 14px 22px; box-shadow: var(--shadow); }
   .tl-text { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; align-items: baseline; gap: 4px 14px; font-weight: 600; font-size: clamp(30px, 6vmin, 58px); line-height: 1.25; color: var(--ink); }
   .tl-typing { white-space: pre; }
   .tl-caret { width: 3px; height: 1em; align-self: center; margin-left: -10px; background: #2f7df6; animation: tlBlink 1s steps(1) infinite; }
@@ -862,7 +862,10 @@
   .tl-x { flex: 0 0 auto; align-self: flex-start; width: clamp(56px, 9vmin, 76px); height: clamp(56px, 9vmin, 76px); border: none; border-radius: 50%; background: #e0473c; color: #fff; font-family: inherit; font-weight: 900; font-size: clamp(32px, 5.5vmin, 46px); line-height: 1; cursor: pointer; }
   .tl-sugg { flex: 0 0 auto; display: flex; gap: 12px; height: clamp(54px, 9vh, 84px); }
   .tl-sugg button { flex: 1 1 0; min-width: 0; border: none; border-radius: 16px; background: #fff; color: var(--ink); font-family: inherit; font-weight: 800; font-size: clamp(22px, 4vmin, 36px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: var(--shadow); cursor: pointer; }
-  .type-layer .tl-keys { display: flex; position: static; flex: 2.4 1 0; min-height: 0; padding: 0 0 calc(22px + env(safe-area-inset-bottom, 0px)) !important; background: none; animation: none; }
+  .type-layer .tl-keys { display: flex; flex: 5 1 0; min-height: 0; }
+  .type-layer.view-keyboard { height: auto; }
+  .type-layer .tl-home .ctl { display: inline-flex !important; }
+  .tl-chip { border: none; border-radius: 0.3em; background: #e6e7ea; color: rgba(0,0,0,0.55); font-family: inherit; font-weight: 600; font-size: 0.8em; padding: 0.05em 0.45em; cursor: pointer; }
   .home-keys { display: none; position: fixed; left: 0; right: 0; bottom: 0; top: 160px; z-index: 30; padding: 12px 16px 16px; background: #aeb0b5; transform-origin: top; }
   .home-keys.open { display: flex; animation: hkDown 0.2s ease both; }
   @keyframes hkDown { from { transform: scaleY(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -2648,7 +2651,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 443 - 7 Oct';
+const BUILD = 'build 444 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4960,39 +4963,28 @@ function typeLayerPaint() {
   const ty = document.createElement('span'); ty.className = 'tl-typing'; ty.textContent = inp.value; msg.appendChild(ty);
   const car = document.createElement('span'); car.className = 'tl-caret'; msg.appendChild(car);
   msg.scrollTop = msg.scrollHeight;
-  const sug = L.querySelector('.tl-sugg'); sug.innerHTML = '';
+  // the words on offer show in the message window itself, after what is being typed (only while a word is being typed)
   try { renderTypeSuggest(); } catch (e) {}
-  [...document.getElementById('typeSuggest').querySelectorAll('button')].slice(0, 3).forEach(src => {
-    const b = document.createElement('button'); b.textContent = src.textContent;
+  if (inp.value) [...document.getElementById('typeSuggest').querySelectorAll('button')].slice(0, 3).forEach(src => {
+    const b = document.createElement('button'); b.className = 'tl-chip'; b.textContent = src.textContent;
     b.addEventListener('click', () => { src.click(); inp.blur(); typeLayerPaint(); homeKeysIdle(); });
-    sug.appendChild(b);
+    msg.appendChild(b);
   });
-  // nothing being typed: three words that could come next, new ones after every word that goes in
-  if (!inp.value && state.suggestOn !== false) {
-    const last = homePhrase[homePhrase.length - 1], next = [];
-    const ok = w => w && !isPunct(w) && !state.hiddenWords[w] && !next.includes(w) && (!homePhrase.includes(w) || ['TO', 'THE', 'A', 'AND'].includes(w)) && w !== last;
-    let pool = [];
-    try { pool = last ? followWords(last, []).slice(0, 2).concat(magicNext(last, 6), followWords(last, []), magicNext('WANT', 6)) : ['I', 'HI', 'CAN', 'WANT']; } catch (e) {}
-    pool.forEach(w => { if (next.length < 3 && ok(w) && (state.words.includes(w) || isSmallWord(w))) next.push(w); });
-    next.forEach(w => {
-      const b = document.createElement('button'); b.textContent = sentenceLabel(w);
-      b.addEventListener('click', () => { buzz(10); homePhrase.push(w); try { magicKnow(w); } catch (e) {} warmSpeech(); speakWord(w, 0.95); typeLayerPaint(); homeKeysIdle(); });
-      sug.appendChild(b);
-    });
-  }
+  { const bar = document.getElementById('phraseBar'), top = L.querySelector('.tl-top'); const h = bar ? bar.offsetHeight : 0; if (h > 40) { top.style.minHeight = h + 'px'; top.style.maxHeight = (h * 2) + 'px'; } }
 }
 function homeKeysOpen() {
   let L = document.getElementById('typeLayer');
   const inp = document.getElementById('pbInput');
   if (!L) {
-    L = document.createElement('div'); L.id = 'typeLayer'; L.className = 'type-layer';
+    L = document.createElement('div'); L.id = 'typeLayer'; L.className = 'type-layer view-keyboard';      // the same page as the typing practice: its spacing, its keys
     const top = document.createElement('div'); top.className = 'tl-top';
     const text = document.createElement('div'); text.className = 'tl-text';
     const x = document.createElement('button'); x.className = 'tl-x'; x.innerHTML = '&times;'; x.setAttribute('aria-label', 'Close the keyboard');
     x.addEventListener('click', () => { buzz(8); inp.value = ''; homeKeysClose(); });
     top.appendChild(text);
-    const sug = document.createElement('div'); sug.className = 'tl-sugg';
-    const k = document.createElement('div'); k.className = 'keyboard home-keys tl-keys';
+    const sug = document.createElement('div'); sug.className = 'controls-row tl-home';
+    { const hb = document.createElement('button'); hb.className = 'ctl icon'; hb.innerHTML = '&#127968;'; hb.setAttribute('aria-label', 'Home'); hb.addEventListener('click', () => { buzz(8); if (inp.value.trim()) { typeLayerQuiet = true; try { commitTypedWord(); } finally { typeLayerQuiet = false; } } homeKeysClose(); }); sug.appendChild(hb); }
+    const k = document.createElement('div'); k.className = 'keyboard tl-keys';
     const put = () => { typeLayerPaint(); homeKeysIdle(); };
     buildTypeKeys(k, ch => { if (inp.value.length < 40) inp.value += ch; put(); }, () => { if (inp.value.trim()) { typeLayerQuiet = true; try { commitTypedWord(); } finally { typeLayerQuiet = false; } } put(); },
       // delete: a letter, then the last word; with nothing there at all, the keyboard page goes
@@ -7302,13 +7294,13 @@ function gridSync() {
   const board = !!grid.querySelector('.folder-card') && !grid.querySelector('.home-card[data-word], .feed-group, .small-section');
   view.classList.toggle('no-bars', board && !state.builderMode);
   view.classList.toggle('band-green', false);      // the closed blue bar stays under the green row      // green open: the blue bar steps away until a green tile is chosen or the row is folded
-  view.classList.toggle('band-blue', false);
+  view.classList.toggle('band-blue', blue && !board);
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
   const plain = !state.builderMode && !selWords && !onTargetsPage();
   view.classList.toggle('has-grid-edge', plain);
   // one band open at a time: a row opened by its bar (or, on Popular, by a word going in) folds the page tiles; both rows shut brings them back
   gridManual = false;
-  view.classList.toggle('grid-shut', false);      // an open row sits above the page tiles; it never hides them      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
+  view.classList.toggle('grid-shut', plain && !board && blue);      // the small words, open, show alone      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
 }
 let gridManual = false, gridPage = '', rowsByTap = false, blueTapAt = 0, folderNavAt = 0;
 // The open rows can fill the screen, leaving the page under them nothing to scroll: so a swipe up (or a
@@ -7334,9 +7326,10 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
   if (!e.target.closest || !e.target.closest('#smallHost .small-head:not(.group-head)')) return;
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
   blueTapAt = Date.now();
-  rowsByTap = true; if (!suggShut) { suggShut = true; magicKeep = true; suggRender(); }
+  rowsByTap = true;
   // (opened by its bar it has the page to itself, so the whole small-words folder shows, not just six)
-  setTimeout(() => { try { gridSync(); } catch (e) {} }, 0);
+  // (opened by its bar the small words have the page to themselves - the whole folder - until the bar folds them again)
+  setTimeout(() => { try { const more = document.querySelector('#smallHost .small-strip.slides .strip-more'); if (more && !stripFull) more.click(); gridSync(); } catch (e) {} }, 0);
 }, true);
 // the small words: their blue bar floats above the open row too (a tap folds it), and each word is marked in blue
 (function () {
@@ -7352,7 +7345,6 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
         if (!bar) { bar = document.createElement('button'); bar.className = 'band-bar'; bar.setAttribute('aria-label', 'Fold the small words away');
           // (the same rule as the other bars: a tap opens, a tap folds; the row swipes along through all its words)
           bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
-            if (Date.now() - blueTapAt < 450) { blueTapAt = 0; const more = host.querySelector('.small-strip.slides .strip-more'); if (more && !stripFull) { more.click(); return; } }      // a double tap: the whole small-words folder
             const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } }); }
         if (host.firstChild !== bar) host.insertBefore(bar, host.firstChild);
       } else if (bar) bar.remove();
@@ -7454,7 +7446,7 @@ function suggRender0() {
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
     if (!opts.length) return;
     { const bar = document.createElement('button'); bar.className = 'sugg-head' + (suggShut ? '' : ' open'); bar.setAttribute('aria-label', 'Suggested words');
-      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; magicKeep = suggShut; if (!suggShut) { rowsByTap = true; setBlue(false); } else setBlue(true); suggRender(); magicTilesSync(); });      // folded by its bar, the small words open in its place, above the same page tiles
+      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; magicKeep = suggShut; if (!suggShut) { rowsByTap = true; setBlue(false); } suggRender(); magicTilesSync(); });      // folded by its bar, the small words open in its place, above the same page tiles
       host.appendChild(bar);
       if (suggShut) return; }
     // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
@@ -12360,8 +12352,8 @@ function smallRowPop() {
   if (state.builderMode) return;
   rowsByTap = false; magicKeep = false;
   const navd = Date.now() - folderNavAt < 900;      // just arrived on a folder's page from its grey tile: the rows stay folded
-  suggShut = viaMagic || navd; suggRender();
-  setBlue(viaMagic);      // the small words open by themselves only after a green tile is chosen; otherwise their blue bar opens them
+  suggShut = navd; suggRender();      // a green tile chosen: the row fills again with what goes next, and stays open
+  setBlue(false);      // the small words open only by their blue bar
   // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
   // other opens (a cue to look there too); then that folds as well - both bars shut says "ready to enter".
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
@@ -12369,7 +12361,6 @@ function smallRowPop() {
   const green = open => { suggShut = !open; suggRender(); };
   // (the green tiles stay open while the message is being made; the small words that opened after a green
   //  tile fold again after five seconds left alone, and the green tiles come back)
-  if (viaMagic) blueShutTimer = setTimeout(() => { if (!still()) return; setBlue(false); green(true); magicTilesSync(); }, 5000);
   magicTilesSync();
   hintArm();
 }
