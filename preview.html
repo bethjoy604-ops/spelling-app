@@ -818,6 +818,10 @@
   .sugg-host .sugg-head.band-fold.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E") !important; }
   .sugg-host .sugg-head.band-cat { background-color: #e4dbf7 !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%239a7fd6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") !important; }
   .sugg-host .sugg-head.band-cat.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%239a7fd6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E") !important; }
+  .view-home.magic-full #homeGrid { display: none !important; }
+  .view-home.magic-full .sugg-host { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+  .view-home.magic-full .sugg-host::-webkit-scrollbar { display: none; }
+  .sugg-host .sugg-open-row { margin-top: -2px; }
   .sugg-row.two-rows { display: grid !important; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: calc((100% - 32px) / 3); gap: 12px 16px; }
   .sugg-row.two-rows .sugg-card { flex: none !important; }
   .cat-hl { background: #ebe3fb; border-radius: 0.3em; padding: 0.08em 0.35em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
@@ -2670,7 +2674,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 454 - 8 Oct';
+const BUILD = 'build 455 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7354,7 +7358,7 @@ let gridManual = false, gridPage = '', rowsByTap = false, blueTapAt = 0, folderN
 (function () {
   // (the rows are only passed by, not folded: they are there again, as they were, back at the top)
   const view = document.getElementById('viewHome'), grid = document.getElementById('homeGrid');
-  const fold = () => { clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); view.classList.add('scrolled'); };
+  const fold = () => { if (view.classList.contains('magic-full')) return; clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); view.classList.add('scrolled'); };
   const back = () => { if (view.classList.contains('scrolled') && grid.scrollTop <= 0) view.classList.remove('scrolled'); };
   { let gy = 0, gon = false;
     grid.addEventListener('wheel', e => { if (e.deltaY < -10 && grid.scrollTop <= 0) back(); }, { passive: true });
@@ -7505,6 +7509,7 @@ function nextStep() {
   return out;
 }
 function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} } }
+const bandLike = { h: 0, fs: 0 };
 function suggRender0() {
   const grid = document.getElementById('homeGrid'), host = document.getElementById('suggHost');
   if (!grid || !host || suggBusy) return;
@@ -7531,8 +7536,7 @@ function suggRender0() {
       if (live) { BASIC.forEach(put); magicActionPool(500).forEach(put); }
       green = lead.concat(gw.filter(w => !lead.some(m => m.lead === w)).map(w => ({ phrase: homePhrase.concat([w]), used: idx, act: true })));
       // grey: the things themselves - the likeliest first - each folder's best one or two followed by that folder
-      if (openItems) folders = openItems;
-      else if (live) {
+      if (live) {
         const used = w => (state.wordHistory[w] || {}).n || 0;
         const root = state.categories.find(c => !c.parent && c.phrases && !c.hidden);
         const stuff = root ? state.categories.filter(c => c.parent === root.id && !c.hidden && !c.target && (c.words || []).some(w => !state.hiddenWords[w])) : [];
@@ -7555,7 +7559,11 @@ function suggRender0() {
     const cfg = bandCfg();
     if (!cfg.green.on) green = []; if (!cfg.grey.on) folders = []; if (!cfg.cat.on) cats = [];
     const all = green.length + folders.length + cats.length;
-    const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + [green, folders, cats].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
+    { const lk = grid.querySelector('.home-card'), lh = lk && lk.querySelector('.hw');
+      if (lk && lk.offsetHeight > 0) { bandLike.h = lk.offsetHeight; bandLike.fs = (lh && parseFloat(lh.style.fontSize)) || bandLike.fs; } }
+    document.getElementById('viewHome').classList.toggle('magic-full', all > 0);
+    if (all) document.getElementById('viewHome').classList.remove('scrolled');      // the rows have the screen: no page tiles under them
+    const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + [green, folders, cats, openItems || []].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
     host.innerHTML = '';
@@ -7564,7 +7572,8 @@ function suggRender0() {
     if (!all) return;
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
     // the band tiles are a size lower than the page's, so all three rows and the page fit together
-    const fullH = like ? like.offsetHeight : 160, fullFs = likeHw ? parseFloat(likeHw.style.fontSize) || 0 : 0;
+    // the page tiles are hidden while the rows are up, so remember their size from when they last showed
+    const fullH = bandLike.h || 160, fullFs = bandLike.fs || 40;
     const hgt = Math.max(70, Math.min(130, Math.round(fullH * 0.5))), fs = fullFs ? Math.round(Math.min(fullFs * 0.72, hgt * 0.32)) + 'px' : '';
     const tile = (m, hlClass) => {
       const b = document.createElement('button');
@@ -7580,7 +7589,7 @@ function suggRender0() {
       b.addEventListener('click', e => {
         e.stopPropagation();
         if (m.back) { buzz(10); suggFolder = null; suggRender(); return; }
-        if (m.folder) { buzz(10); suggFolder = { id: m.folder.id, gid: m.group ? m.group.id : null, key: homePhrase.join(' ') }; bandOpen.fold = true; suggRender(); return; }      // a folder: its words fill its row, in place
+        if (m.folder) { buzz(10); const same = suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null) && !m.group; suggFolder = same ? null : { id: m.folder.id, gid: m.group ? m.group.id : null, key: homePhrase.join(' ') }; bandOpen.fold = true; suggRender(); return; }      // a folder: its words fill its row, in place
         if (m.cat) { try { withGroup(m.cat, added[added.length - 1], m.hint); m.phrase = homePhrase.concat(added); } catch (er) {} }      // "want" + bottle -> "want to drink bottle"
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
@@ -7600,6 +7609,12 @@ function suggRender0() {
       const rowEl = document.createElement('div'); rowEl.className = 'sugg-row' + (rows > 1 ? ' two-rows' : '');
       items.forEach(m => rowEl.appendChild(tile(m, hlFor(m))));
       host.appendChild(rowEl);
+      // a folder (or group) tapped in this band: its words come in as a second row under it
+      if (barClass === 'band-fold' && openItems && openItems.length) {
+        const r2 = document.createElement('div'); r2.className = 'sugg-row sugg-open-row';
+        openItems.forEach(m => r2.appendChild(tile(m, (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder')));
+        host.appendChild(r2);
+      }
     };
     band(green, !suggShut, '', 'Doing words', () => { suggShut = !suggShut; magicKeep = suggShut; }, () => 'sugg-hl', cfg.green.rows);
     band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
@@ -8338,6 +8353,8 @@ let pageTapAt = 0;
 document.getElementById('viewHome').addEventListener('pointerdown', e => { if (!e.target.closest('#catTiles')) pageTapAt = Date.now(); }, true);
 function menuStep() {
   if (Date.now() - pageTapAt < 600) return;
+  // the suggestion rows are up: the menu button puts them away and the page is back; they return with the next tile chosen
+  if (document.getElementById('viewHome').classList.contains('magic-full')) { buzz(10); magicSkipped = homePhrase.join(' '); suggFolder = null; const h = document.getElementById('suggHost'); if (h) h.dataset.sig = ''; suggRender(); return; }
   const tops = childrenOf(null).filter(c => !c.target && !c.hidden);
   const now = Date.now(), twice = now - menuStepAt < 450;
   menuStepAt = now;
