@@ -2653,7 +2653,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 448 - 7 Oct';
+const BUILD = 'build 449 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3000,6 +3000,7 @@ async function load() {
         bankLimit: 0,
         tileMode: TILE_MODES[saved.tileMode] ? saved.tileMode : 'word',
         hiddenWords: saved.hiddenWords || {},
+        hiddenLog: saved.hiddenLog || {},
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
@@ -3468,8 +3469,20 @@ async function load() {
   offerBackup();
   if (syncReady()) syncPull(true);
 }
+// When a word is hidden or shown again is noted, so that a sync between devices keeps the latest choice:
+// a word shown again here is not hidden again by an older copy that still has it hidden.
+function noteHiddenChanges() {
+  const now = Date.now(), cur = state.hiddenWords || {}, prev = state._hidPrev || null;
+  state.hiddenLog = state.hiddenLog || {};
+  if (prev) {
+    Object.keys(cur).forEach(w => { if (!prev[w]) state.hiddenLog[w] = { h: 1, t: now }; });
+    Object.keys(prev).forEach(w => { if (!cur[w]) state.hiddenLog[w] = { h: 0, t: now }; });
+  }
+  state._hidPrev = Object.assign({}, cur);
+}
 async function save() {
   linkWordCache = null;
+  try { noteHiddenChanges(); } catch (e) {}
   try {
     await Store.set('kbd-state-v6', JSON.stringify({
       caseMode: state.caseMode,
@@ -3550,6 +3563,7 @@ async function save() {
       revives: state.revives,
       tileMode: state.tileMode,
       hiddenWords: state.hiddenWords,
+      hiddenLog: state.hiddenLog || {},
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
@@ -3978,6 +3992,7 @@ function syncSnapshot(withAudio) {
     words: (state.words || []).slice(),
     wordHistory: state.wordHistory || {},
     hiddenWords: state.hiddenWords || {},
+    hiddenLog: state.hiddenLog || {},
     wordCase: state.wordCase || {},
     categories: (state.categories || []).map(c => Object.assign({}, c)),
     catSeq: state.catSeq || 0,
@@ -4080,6 +4095,10 @@ function syncMerge(mine, theirs) {
   });
 
   const hiddenWords = Object.assign({}, mine.hiddenWords || {}, theirs.hiddenWords || {});
+  // ... but where either side noted showing or hiding a word, the latest note wins
+  const hiddenLog = {};
+  [mine.hiddenLog || {}, theirs.hiddenLog || {}].forEach(L => Object.keys(L).forEach(w => { if (!hiddenLog[w] || (L[w].t || 0) > (hiddenLog[w].t || 0)) hiddenLog[w] = L[w]; }));
+  Object.keys(hiddenLog).forEach(w => { if (hiddenLog[w].h) hiddenWords[w] = true; else delete hiddenWords[w]; });
   const wordCase = Object.assign({}, mine.wordCase || {}, theirs.wordCase || {});
 
   // groups: matched on id, the newer side describes them, both sides' words are kept
@@ -4120,6 +4139,7 @@ function syncMerge(mine, theirs) {
     words,
     wordHistory,
     hiddenWords,
+    hiddenLog,
     wordCase,
     categories: order.map(id => byId[id]),
     catSeq: Math.max(mine.catSeq || 0, theirs.catSeq || 0),
@@ -4136,6 +4156,8 @@ function syncApply(snap) {
   state.words = snap.words || [];
   state.wordHistory = snap.wordHistory || {};
   state.hiddenWords = snap.hiddenWords || {};
+  state.hiddenLog = snap.hiddenLog || state.hiddenLog || {};
+  state._hidPrev = Object.assign({}, state.hiddenWords);
   state.wordCase = snap.wordCase || {};
   state.categories = snap.categories || [];
   state.catSeq = Math.max(state.catSeq || 0, snap.catSeq || 0);
@@ -8746,6 +8768,7 @@ function applyLayout(L, keep) {
   if (L.builderHide) { state.builderHide = JSON.parse(JSON.stringify(L.builderHide)); state.builderHideV1 = true; }
   if (L.hiddenWords) { state.hiddenWords = keep ? (state.hiddenWords || {}) : {}; L.hiddenWords.forEach(w => { state.hiddenWords[w] = true; }); }
   if (L.targetState) state.targetState = Object.assign({}, L.targetState);
+  if (Array.isArray(L.targetOff)) { state.targetOff = keep ? (state.targetOff || {}) : {}; L.targetOff.forEach(w => { state.targetOff[w] = true; }); }
   if (Array.isArray(L.pairs)) state.pairs = L.pairs.map(x => x.slice(0, 2));
   state.smallRow = (L.smallRow || []).slice();
   state.builder = JSON.parse(JSON.stringify(L.builder || { kids: [], cats: [] }));
@@ -9566,6 +9589,7 @@ function exportLayout() {
     smallRow: state.smallRow || [],
     smallWords: state.words.filter(isSmallWord),
     targetState: state.targetState || {},
+    targetOff: Object.keys(state.targetOff || {}),
     pairs: state.pairs || [],
     builder: state.builder,
   };
