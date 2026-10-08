@@ -2658,7 +2658,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 451 - 7 Oct';
+const BUILD = 'build 452 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -12138,9 +12138,12 @@ function renderSlotGrid(grid, cat, folders) {
       lines = lines.filter(l => wide(l) > 0);
       // a plain run of tiles that would leave a ragged last row is squared up instead (four tiles in a
       // three-wide grid sit two by two), so the blue holds no empty places and another panel fits beside it
-      if (false && !laid.includes(null) && laid.length > cols && laid.length % cols) {      // (retired: a group fills the row, three across where there is room, rather than squaring up)
+      // a ragged group is squared up (four tiles two by two) only when another group is small enough to sit in the room
+      // that leaves beside it; otherwise it fills the row, three across
+      if (!laid.includes(null) && laid.length > cols && laid.length % cols) {
         let w = 0;
-        for (let k = cols - 1; k >= 2; k--) if (laid.length % k === 0 && laid.length / k <= Math.ceil(laid.length / cols) + 1) { w = k; break; }
+        for (let k = cols - 1; k >= 2; k--) if (laid.length % k === 0 && laid.length / k <= Math.ceil(laid.length / cols) + 1
+          && ordered.some(o => o.f !== f && o.mine.length <= (cols - k) * (laid.length / k))) { w = k; break; }
         if (w) { lines = []; for (let k = 0; k < laid.length; k += w) lines.push(laid.slice(k, k + w)); }
       }
       let span = Math.min(cols, Math.max(1, ...lines.map(wide)));
@@ -12255,7 +12258,7 @@ function renderSlotGrid(grid, cat, folders) {
     placed.forEach(p => {
       if (!p.box || p.tall < 2) return;
       const beside = placed.some(q => q !== p && q.r < p.r + p.tall && p.r < q.r + q.tall && (q.r !== p.r || q.tall !== p.tall));
-      if (beside) p.box.style.rowGap = (12 + (parseFloat(getComputedStyle(grid).rowGap) || 16) + 6 + 38) + 'px';
+      if (false && beside) p.box.style.rowGap = (12 + (parseFloat(getComputedStyle(grid).rowGap) || 16) + 6 + 38) + 'px';      // (retired: a group keeps its tiles close together, whatever sits beside it)
     });
     // after the panels: a small quiet button of three dots that opens the folders themselves
     const lib = document.createElement('button');
