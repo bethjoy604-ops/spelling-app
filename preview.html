@@ -2648,7 +2648,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 439 - 7 Oct';
+const BUILD = 'build 440 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7382,11 +7382,16 @@ function suggRender0() {
       } else opts = acts.concat(things);
       opts = acts;      // the green row is the doing words; things and their folders are the page's own tiles below
       // ... and it slides on through every doing word that is not hidden, most used first, then stops
-      { const have = new Set(opts.map(m => m.phrase[m.phrase.length - 1])), idx = homePhrase.map((_, i) => i);
+      // a word that wants a doing word in front of it ("up" -> go up, pick up, get up): those lead the row, and go in before it
+      try { const n = homePhrase.length, lastW = homePhrase[n - 1], li = lastW ? leadIns(lastW).filter(w => !homePhrase.includes(w) && !state.hiddenWords[w]) : [];
+        if (li.length) { const used = homePhrase.map((_, i) => i < n - 1 ? i : n);
+          const lead = li.map(w => ({ phrase: homePhrase.slice(0, n - 1).concat([w, lastW]), used, act: true, lead: w }));
+          opts = lead.concat(opts.filter(m => !li.includes(m.phrase[m.phrase.length - 1]))); } } catch (e) {}
+      { const have = new Set(opts.map(m => m.lead || m.phrase[m.phrase.length - 1])), idx = homePhrase.map((_, i) => i);
         if (opts.length) magicActionPool(500).forEach(w => { if (!have.has(w)) { have.add(w); opts.push({ phrase: homePhrase.concat([w]), used: idx, act: true }); } }); }
     }
     let fl = [];
-    try { if (opts.length && homePhrase.length) fl = relatedFolders(homePhrase[homePhrase.length - 1]).filter(c => !homePath.includes(c.id)).slice(0, 12); } catch (e) { fl = []; }
+    try { if (opts.length && homePhrase.length && !leadIns(homePhrase[homePhrase.length - 1]).length) fl = relatedFolders(homePhrase[homePhrase.length - 1]).filter(c => !homePath.includes(c.id)).slice(0, 12); } catch (e) { fl = []; }
     const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|') + '|F:' + fl.map(c => c.id).join(',');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
