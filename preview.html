@@ -821,6 +821,11 @@
   .view-home.magic-full #homeGrid { display: none !important; }
   .view-home.magic-full .sugg-host { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; }
   .view-home.magic-full .sugg-host::-webkit-scrollbar { display: none; }
+  /* each band fills the screen and snaps into place: scroll once, the next band clicks in */
+  .view-home.magic-full .sugg-host { scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .view-home.magic-full .sugg-band { min-height: 100%; box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; }
+  .view-home.magic-full .sugg-band .sugg-row:last-child { margin-bottom: 0; }
+  .sugg-band.band-small:not(:has(.small-host:not(:empty))) { display: none; }
   .sugg-host .sugg-open-row { margin-top: -2px; }
   .sugg-row.two-rows { display: grid !important; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: calc((100% - 32px) / 3); gap: 12px 16px; }
   .sugg-row.two-rows .sugg-card { flex: none !important; }
@@ -2681,7 +2686,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 456 - 8 Oct';
+const BUILD = 'build 457 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7573,6 +7578,7 @@ function suggRender0() {
     const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + [green, folders, cats, openItems || []].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
+    { const sh = document.getElementById('smallHost'); if (sh && host.contains(sh)) host.after(sh); }      // the blue band goes back to its own place before the rows are redrawn
     host.innerHTML = '';
     host.classList.toggle('show', all > 0);
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = all && !suggShut ? 'none' : ''; });
@@ -7581,7 +7587,8 @@ function suggRender0() {
     // the band tiles are a size lower than the page's, so all three rows and the page fit together
     // the page tiles are hidden while the rows are up, so remember their size from when they last showed
     const fullH = bandLike.h || 160, fullFs = bandLike.fs || 40;
-    const hgt = Math.max(70, Math.min(130, Math.round(fullH * 0.5))), fs = fullFs ? Math.round(Math.min(fullFs * 0.72, hgt * 0.32)) + 'px' : '';
+    // the band tiles are the page tiles' own size: one band to a screen, the next one clicks into place on a scroll
+    const hgt = Math.max(90, Math.round(fullH)), fs = fullFs ? Math.round(fullFs) + 'px' : '';
     const tile = (m, hlClass) => {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
@@ -7609,23 +7616,26 @@ function suggRender0() {
     };
     const band = (items, open, barClass, label, toggle, hlFor, rows) => {
       if (!items.length) return;
+      const sec = document.createElement('div'); sec.className = 'sugg-band'; host.appendChild(sec);
       const bar = document.createElement('button'); bar.className = 'sugg-head ' + barClass + (open ? ' open' : ''); bar.setAttribute('aria-label', label);
       bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); toggle(); suggRender(); });
-      host.appendChild(bar);
+      sec.appendChild(bar);
       if (!open) return;
       const rowEl = document.createElement('div'); rowEl.className = 'sugg-row' + (rows > 1 ? ' two-rows' : '');
       items.forEach(m => rowEl.appendChild(tile(m, hlFor(m))));
-      host.appendChild(rowEl);
+      sec.appendChild(rowEl);
       // a folder (or group) tapped in this band: its words come in as a second row under it
       if (barClass === 'band-fold' && openItems && openItems.length) {
         const r2 = document.createElement('div'); r2.className = 'sugg-row sugg-open-row';
         openItems.forEach(m => r2.appendChild(tile(m, (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder')));
-        host.appendChild(r2);
+        sec.appendChild(r2);
       }
     };
     band(green, !suggShut, '', 'Doing words', () => { suggShut = !suggShut; magicKeep = suggShut; }, () => 'sugg-hl', cfg.green.rows);
     band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
     band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows);
+    // last, the blue small words: the fourth band, at the bottom of the scroll (verb, then thing, then describing, then the little words)
+    { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); } }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -13425,6 +13435,23 @@ document.getElementById('homeMagicBtn').addEventListener('click', () => {
   try { if (state.magicType && homePhrase.length) smallRowPop(); else suggRender(); } catch (e) {}
   try { renderSettings(); } catch (e) {}
 });
+// a mouse wheel or trackpad over the bands: one band per scroll, like a swipe
+{ const hs = document.getElementById('suggHost'); let lock = 0;
+  hs.addEventListener('wheel', e => {
+    if (!document.getElementById('viewHome').classList.contains('magic-full') || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+    const secs = [...hs.querySelectorAll(':scope > .sugg-band')].filter(x => x.offsetHeight > 0);
+    if (!secs.length) return;
+    const top = hs.scrollTop, cur = secs.findIndex(x => x.offsetTop - hs.offsetTop + x.offsetHeight > top + 4);
+    const sec = secs[cur];
+    // inside a band taller than the screen, the wheel scrolls through it as usual
+    if (sec && sec.offsetHeight > hs.clientHeight + 4) { const end = sec.offsetTop - hs.offsetTop + sec.offsetHeight - hs.clientHeight; if ((e.deltaY > 0 && top < end - 4) || (e.deltaY < 0 && top > sec.offsetTop - hs.offsetTop + 4)) return; }
+    e.preventDefault();
+    if (Date.now() < lock || Math.abs(e.deltaY) < 4) return;
+    const to = secs[Math.max(0, Math.min(secs.length - 1, cur + (e.deltaY > 0 ? 1 : -1)))];
+    if (!to) return;
+    lock = Date.now() + 550;
+    hs.scrollTo({ top: to.offsetTop - hs.offsetTop, behavior: 'smooth' });
+  }, { passive: false }); }
 function armIcons() {
   clearTimeout(iconsTimer); iconsTimer = null;
   if (state.iconsOpen) iconsTimer = setTimeout(closeIcons, 5000);
