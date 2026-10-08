@@ -2648,7 +2648,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 441 - 7 Oct';
+const BUILD = 'build 442 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7198,6 +7198,19 @@ let magicSkipped = null;                      // the bar's words when Skip was p
 let magicSigShown = '', magicInHome = false, magicKeep = false;
 function magicNavKey() { return homePath.join('/') + '|' + (tileGroup ? tileGroup.group.name : '') + '|' + (libraryOpen || ''); }
 // they show until one is picked, Skip is pressed, or the page is changed some other way
+// Which choice groups go with a doing word: on the page under the folders (VERB_PAGE), and in the green row (VERB_GREEN)
+const VERB_PAGE = { GO: ['direction', 'position'], COME: ['direction'], TURN: ['direction'], LOOK: ['direction', 'position'], PUT: ['position'], MOVE: ['direction', 'position'], WALK: ['direction', 'speed'], RUN: ['direction', 'speed'] };
+const VERB_GREEN = { GO: ['speed', 'time'], COME: ['speed', 'time'], WALK: ['speed', 'time'], RUN: ['speed'], EAT: ['quantity', 'temperature', 'opinion'], DRINK: ['quantity', 'temperature', 'opinion'], PLAY: ['time', 'speed', 'sound'], WATCH: ['time', 'sound'], LISTEN: ['sound', 'time'], FEEL: ['feelings', 'temperature'], SEE: ['size', 'colors'], OPEN: ['time', 'speed'], HELP: ['time'], GET: ['quantity', 'size'], MAKE: ['quantity', 'size'] };
+const VERB_GREEN_ANY = ['quantity', 'time'];
+function lastDoing() { for (let i = homePhrase.length - 1; i >= 0; i--) { const w = homePhrase[i]; if (kindOfWord(w) === 'action' && !MAGIC_WANTS.includes(w)) return w; if (MAGIC_WANTS.includes(w)) return ''; } return ''; }
+function verbWords(table, fallback) {
+  const v = lastDoing(); if (!v) return [];
+  const names = table[v] || fallback || [];
+  const used = w => (state.wordHistory[w] || {}).n || 0, out = [];
+  names.forEach(n => { const c = state.categories.find(x => String(x.name || '').trim().toLowerCase() === n && !x.hidden && !x.target && !x.smallSec);
+    if (c) (c.words || []).filter(w => !state.hiddenWords[w] && !homePhrase.includes(w) && !isPunct(w) && !out.includes(w)).sort((a, b) => used(b) - used(a)).forEach(w => out.push(w)); });
+  return out;
+}
 function relatedFolders(word) {
       // each doing word has the folders it most likely leads to, in order; the rest follow, and the unlikely ones go last
       // ("play" -> games, things, music, tv, movies ... and food at the very end)
@@ -7215,9 +7228,8 @@ function relatedFolders(word) {
       return magicFolders(word, true).filter(c => c.phrases || catAllowsPhrases(c)).map((c, i) => [c, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]);
 }
 function magicActive() {
-  return false;      // (the page keeps its own tiles; the folders that go with the message are the second row under the green tiles)
   const ph = homePhrase.join(' ');
-  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph && (!suggShut || magicKeep) && !!document.querySelector('#suggHost .sugg-head');      // (the green offer coming and going never changes the tiles)
+  return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph;      // (the green offer coming and going never changes the tiles)
 }
 function renderMagicTiles(grid) {
   const { cols, rows: screenRows } = slotShape();
@@ -7288,7 +7300,7 @@ function gridSync() {
   const green = !!document.querySelector('#suggHost .sugg-row');
   const board = !!grid.querySelector('.folder-card') && !grid.querySelector('.home-card[data-word], .feed-group, .small-section');
   view.classList.toggle('no-bars', board && !state.builderMode);
-  view.classList.toggle('band-green', green && !board);      // green open: the blue bar steps away until a green tile is chosen or the row is folded
+  view.classList.toggle('band-green', false);      // the closed blue bar stays under the green row      // green open: the blue bar steps away until a green tile is chosen or the row is folded
   view.classList.toggle('band-blue', false);
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
   const plain = !state.builderMode && !selWords && !onTargetsPage();
@@ -7405,11 +7417,17 @@ function suggRender0() {
         if (li.length) { const used = homePhrase.map((_, i) => i < n - 1 ? i : n);
           const lead = li.map(w => ({ phrase: homePhrase.slice(0, n - 1).concat([w, lastW]), used, act: true, lead: w }));
           opts = lead.concat(opts.filter(m => !li.includes(m.phrase[m.phrase.length - 1]))); } } catch (e) {}
-      { const have = new Set(opts.map(m => m.lead || m.phrase[m.phrase.length - 1])), idx = homePhrase.map((_, i) => i);
+      try { const lastW = homePhrase[homePhrase.length - 1];
+        if (lastW && lastDoing() === lastW && !opts.some(m => m.lead)) {      // "go" -> fast, slow, now ...; "eat" -> more, hot ...: not another row of doing words
+          const idx = homePhrase.map((_, i) => i), dw = verbWords(VERB_GREEN, VERB_GREEN_ANY);
+          if (dw.length) opts = dw.map(w => ({ phrase: homePhrase.concat([w]), used: idx, act: true })).concat(opts.filter(m => !dw.includes(m.phrase[m.phrase.length - 1])).slice(0, 0));
+        } } catch (e) {}
+      const afterVerb = opts.length && opts.every(m => !m.lead) && homePhrase.length && lastDoing() === homePhrase[homePhrase.length - 1] && verbWords(VERB_GREEN, VERB_GREEN_ANY).length > 0;
+      if (!afterVerb) { const have = new Set(opts.map(m => m.lead || m.phrase[m.phrase.length - 1])), idx = homePhrase.map((_, i) => i);
         if (opts.length) magicActionPool(500).forEach(w => { if (!have.has(w)) { have.add(w); opts.push({ phrase: homePhrase.concat([w]), used: idx, act: true }); } }); }
     }
     let fl = [];
-    try { if (opts.length && homePhrase.length && !leadIns(homePhrase[homePhrase.length - 1]).length) fl = relatedFolders(homePhrase[homePhrase.length - 1]).filter(c => !homePath.includes(c.id)).slice(0, 12); } catch (e) { fl = []; }
+    try { if (false) fl = relatedFolders(homePhrase[homePhrase.length - 1]).filter(c => !homePath.includes(c.id)).slice(0, 12); } catch (e) { fl = []; }
     const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|') + '|F:' + fl.map(c => c.id).join(',');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
@@ -7566,10 +7584,10 @@ function renderMagic(word) {
     magicTilesNow = pool.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } }));
     // a direction on its own ("up"): its doing words are the tiles, and the one tapped goes in front - "go up"
     { const li = leadIns(word);
-      if (li.length && !pool.length) { magicStickPool = null; magicTilesNow = li.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.splice(homePhrase.length - 1, 0, next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } })); } }
+      if (false && li.length && !pool.length) { magicStickPool = null; magicTilesNow = li.map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.splice(homePhrase.length - 1, 0, next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } })); } }
     // after a wanting word (want, need, like...) the tiles are the folders themselves - music, movies,
     // food - each opening its own page, and its name joining the sentence where it fits ("want music ...")
-    if (MAGIC_WANTS.includes(word) || !magicTilesNow.length) {
+    if (MAGIC_WANTS.includes(word) || (!magicTilesNow.length && !leadIns(word).length)) {
       const fs = relatedFolders(word);
       if (fs.length) {
         magicStickPool = null;
@@ -7582,6 +7600,12 @@ function renderMagic(word) {
         } }));
       }
     }
+    // ... and some doing words bring their own choices onto the page with the folders: go -> the directions
+    try { const gw = verbWords(VERB_PAGE);
+      if (gw.length && magicTilesNow.length) {
+        const tiles = gw.slice(0, 9).map(next => ({ label: sentenceLabel(next), tap: () => { magicKnow(next); homePhrase.push(next); warmSpeech(); speakWord(next, 0.95); buzz(10); renderPhraseBar(); } }));
+        magicTilesNow = magicTilesNow.slice(0, 3).concat(tiles, magicTilesNow.slice(3));
+      } } catch (e) {}
     return;
   }
 
@@ -8227,7 +8251,7 @@ function renderCatTiles(containerId, rerender) {
       const col = nm === 'chat' ? '#f08a24' : nm === 'categories' ? '#8e5bd6' : nm === 'my stuff' ? '#e0473c' : ['#f08a24', '#8e5bd6', '#e0473c', '#2f9bd8', '#d9a400'][Math.max(0, tops.indexOf(c)) % 5];
       // (inside one of its folders the tab is a lighter shade of the same colour)
       const deep = homePath.length > 1 || !!tileGroup;
-      b.style.setProperty('background', deep ? mixHex(col, '#ffffff', 0.3) : col, 'important'); b.style.setProperty('color', '#fff', 'important');
+      b.style.setProperty('background', col, 'important'); b.style.setProperty('color', '#fff', 'important');
     }
     b.textContent = c.name;
     // inside one of its folders the tab names the folder that is open (Actions); tapping it goes
