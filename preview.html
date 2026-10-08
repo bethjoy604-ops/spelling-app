@@ -2688,7 +2688,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 458 - 8 Oct';
+const BUILD = 'build 459 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4858,6 +4858,8 @@ function displayWord(w) {
 }
 // Speak a word — prefers a recording, else TTS
 function speakWord(word, rate) {
+  // magic off: building a message on the home page is quiet - nothing is said until the green enter
+  if (!state.magicType && !sayAnyway && !state.builderMode && !state.chatMode && document.getElementById('viewHome').classList.contains('active') && !document.querySelector('.read-back')) return;
   const key = (word || '').toUpperCase().trim();
   if (recordings.word[key] && playClip(recordings.word[key])) return;
   speak(spokenText(word), rate);
@@ -12514,6 +12516,8 @@ function arrangeLast() {
 // the page's tiles follow the green row: open, they are the folders that go with the message; folded, the page's own
 function magicTilesSync() { try { if (!magicInHome && !state.builderMode) { magicSigShown = '\u0000'; renderPhraseBar(); } } catch (e) {} }
 function smallRowPop() {
+  // magic off: a tile only puts its word in the message - no reordering, no rows opening, the page stays as it is
+  if (!state.magicType && !state.builderMode) { arrPrev = homePhrase.slice(); return; }
   const viaMagic = Date.now() - magicPickAt < 500;
   let moved = false;
   try { if (!viaMagic && !state.builderMode) moved = arrangeLast(); } catch (e) {}
