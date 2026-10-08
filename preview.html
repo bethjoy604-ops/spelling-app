@@ -813,6 +813,7 @@
   .view-home .grid-bar { display: none !important; }      /* the page tiles have no bar of their own */
   .grid-bar { background: rgba(255,255,255,0.8); }
   .sugg-host .sugg-head { margin-bottom: 10px; }
+  .sugg-host .sugg-folders { margin-top: 12px; }
   .sugg-host .sugg-head:last-child { margin-bottom: 0; }
   .band-bar { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #bfd8ff; cursor: pointer; margin-bottom: 10px; }
   .small-host .small-strip.slides { background: transparent !important; box-shadow: none !important; padding: 0 0 4px 0 !important; scroll-padding-left: 0 !important; }
@@ -2647,7 +2648,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 437 - 7 Oct';
+const BUILD = 'build 439 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7197,7 +7198,24 @@ let magicSkipped = null;                      // the bar's words when Skip was p
 let magicSigShown = '', magicInHome = false, magicKeep = false;
 function magicNavKey() { return homePath.join('/') + '|' + (tileGroup ? tileGroup.group.name : '') + '|' + (libraryOpen || ''); }
 // they show until one is picked, Skip is pressed, or the page is changed some other way
+function relatedFolders(word) {
+      // each doing word has the folders it most likely leads to, in order; the rest follow, and the unlikely ones go last
+      // ("play" -> games, things, music, tv, movies ... and food at the very end)
+      const LEADF = {
+        PLAY: ['games', 'stuff', 'things', 'music', 'tv', 'movies', 'people', 'places', 'characters', 'books'],
+        WATCH: ['tv', 'movies', 'characters', 'people'], LISTEN: ['music', 'people'], READ: ['books', 'characters'],
+        EAT: ['food'], DRINK: ['food'], MAKE: ['food', 'stuff', 'things'], COOK: ['food'],
+        GO: ['places', 'people'], COME: ['people', 'places'], WALK: ['places'], RIDE: ['places', 'stuff', 'things'],
+        SEE: ['people', 'places', 'movies', 'tv', 'characters'], FIND: ['stuff', 'things', 'people', 'books', 'games'], LOOK: ['stuff', 'things', 'people', 'places', 'books'],
+        HELP: ['people'], HUG: ['people'], CALL: ['people'], HI: ['people'], HELLO: ['people'], BYE: ['people'],
+        OPEN: ['stuff', 'things', 'food', 'books', 'games'], GET: ['stuff', 'things', 'food', 'clothes'], WEAR: ['clothes'], SING: ['music'], DANCE: ['music'] };
+      const LASTF = { PLAY: ['food', 'clothes', 'routines'], WATCH: ['food', 'clothes'], LISTEN: ['food', 'clothes', 'places'], READ: ['food', 'clothes', 'music'], EAT: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], DRINK: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], GO: ['food', 'clothes'], WEAR: ['food', 'music', 'tv', 'movies', 'books', 'games'] };
+      const lw = homePhrase.slice().reverse().find(w => LEADF[w]), first = lw ? LEADF[lw] : [], lastF = (lw && LASTF[lw]) || [];
+      const rk = c => { const n = String(c.name || '').trim().toLowerCase(), k = first.indexOf(n); return k >= 0 ? k : (lastF.includes(n) ? 200 : 99); };
+      return magicFolders(word, true).filter(c => c.phrases || catAllowsPhrases(c)).map((c, i) => [c, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]);
+}
 function magicActive() {
+  return false;      // (the page keeps its own tiles; the folders that go with the message are the second row under the green tiles)
   const ph = homePhrase.join(' ');
   return !!state.magicType && !state.builderMode && magicTilesNow.length > 0 && ph === magicAt.phrase && magicNavKey() === magicAt.nav && magicSkipped !== ph && (!suggShut || magicKeep) && !!document.querySelector('#suggHost .sugg-head');      // (the green offer coming and going never changes the tiles)
 }
@@ -7271,21 +7289,22 @@ function gridSync() {
   const board = !!grid.querySelector('.folder-card') && !grid.querySelector('.home-card[data-word], .feed-group, .small-section');
   view.classList.toggle('no-bars', board && !state.builderMode);
   view.classList.toggle('band-green', green && !board);      // green open: the blue bar steps away until a green tile is chosen or the row is folded
-  view.classList.toggle('band-blue', blue && !green && !board);
+  view.classList.toggle('band-blue', false);
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
   const plain = !state.builderMode && !selWords && !onTargetsPage();
   view.classList.toggle('has-grid-edge', plain);
   // one band open at a time: a row opened by its bar (or, on Popular, by a word going in) folds the page tiles; both rows shut brings them back
   gridManual = false;
-  view.classList.toggle('grid-shut', plain && !board && blue);      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
+  view.classList.toggle('grid-shut', false);      // an open row sits above the page tiles; it never hides them      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
 }
-let gridManual = false, gridPage = '', rowsByTap = false;
+let gridManual = false, gridPage = '', rowsByTap = false, blueTapAt = 0, folderNavAt = 0;
 document.addEventListener('click', e => {      // the blue bar opening its row: the green tiles fold
   if (!e.target.closest || !e.target.closest('#smallHost .small-head:not(.group-head)')) return;
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
-  rowsByTap = true; if (!suggShut) { suggShut = true; suggRender(); }
+  blueTapAt = Date.now();
+  rowsByTap = true; if (!suggShut) { suggShut = true; magicKeep = true; suggRender(); }
   // (opened by its bar it has the page to itself, so the whole small-words folder shows, not just six)
-  setTimeout(() => { try { const more = document.querySelector('#smallHost .small-strip.slides .strip-more'); if (more && !stripFull) more.click(); gridSync(); magicTilesSync(); } catch (e) {} }, 0);
+  setTimeout(() => { try { gridSync(); } catch (e) {} }, 0);
 }, true);
 // the small words: their blue bar floats above the open row too (a tap folds it), and each word is marked in blue
 (function () {
@@ -7301,7 +7320,8 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
         if (!bar) { bar = document.createElement('button'); bar.className = 'band-bar'; bar.setAttribute('aria-label', 'Fold the small words away');
           // (the same rule as the other bars: a tap opens, a tap folds; the row swipes along through all its words)
           bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
-            const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } magicTilesSync(); }); }
+            if (Date.now() - blueTapAt < 450) { blueTapAt = 0; const more = host.querySelector('.small-strip.slides .strip-more'); if (more && !stripFull) { more.click(); return; } }      // a double tap: the whole small-words folder
+            const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } }); }
         if (host.firstChild !== bar) host.insertBefore(bar, host.firstChild);
       } else if (bar) bar.remove();
       try { gridSync(); } catch (e) {}
@@ -7365,7 +7385,9 @@ function suggRender0() {
       { const have = new Set(opts.map(m => m.phrase[m.phrase.length - 1])), idx = homePhrase.map((_, i) => i);
         if (opts.length) magicActionPool(500).forEach(w => { if (!have.has(w)) { have.add(w); opts.push({ phrase: homePhrase.concat([w]), used: idx, act: true }); } }); }
     }
-    const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|');
+    let fl = [];
+    try { if (opts.length && homePhrase.length) fl = relatedFolders(homePhrase[homePhrase.length - 1]).filter(c => !homePath.includes(c.id)).slice(0, 12); } catch (e) { fl = []; }
+    const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|') + '|F:' + fl.map(c => c.id).join(',');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
     host.innerHTML = '';
@@ -7373,7 +7395,7 @@ function suggRender0() {
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
     if (!opts.length) return;
     { const bar = document.createElement('button'); bar.className = 'sugg-head' + (suggShut ? '' : ' open'); bar.setAttribute('aria-label', 'Suggested words');
-      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; magicKeep = false; if (!suggShut) { rowsByTap = true; setBlue(false); } suggRender(); magicTilesSync(); });
+      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; magicKeep = suggShut; if (!suggShut) { rowsByTap = true; setBlue(false); } else setBlue(true); suggRender(); magicTilesSync(); });      // folded by its bar, the small words open in its place, above the same page tiles
       host.appendChild(bar);
       if (suggShut) return; }
     // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
@@ -7406,6 +7428,29 @@ function suggRender0() {
     });
     ['pointerdown', 'touchstart', 'wheel', 'scroll'].forEach(ev => rowEl.addEventListener(ev, () => rowIdleArm(6000), { passive: true }));      // being looked through: it stays
     host.appendChild(rowEl);
+    // second row: the folders that go with the message, marked in grey as folders are; a tap opens that folder's page
+    if (fl.length) {
+      const row2 = document.createElement('div'); row2.className = 'sugg-row sugg-folders';
+      fl.forEach(c => {
+        const b = document.createElement('button'); b.className = 'home-card sugg-card sugg-folder';
+        if (hgt) b.style.height = Math.round(hgt * 0.6) + 'px';
+        const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = Math.round(parseFloat(fs) * 0.85) + 'px';
+        const hl = document.createElement('span'); hl.className = 'name-hl'; hl.textContent = String(c.name || '').toLowerCase();
+        t.appendChild(hl); b.appendChild(t);
+        b.addEventListener('click', e => {
+          e.stopPropagation();
+          const path = []; let x = c, g = 0;
+          while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
+          try { magicPathPick(c, c.name); } catch (er) {}
+          homePath = path; libraryOpen = null; tileGroup = null;
+          folderNavAt = Date.now();
+          buzz(10); renderPhraseBar(); renderHome(true);
+          clearTimeout(blueShutTimer); suggShut = true; setBlue(false); suggRender();      // on the folder's page the rows are folded: its tiles have the room
+        });
+        row2.appendChild(b);
+      });
+      host.appendChild(row2);
+    }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -7502,20 +7547,7 @@ function renderMagic(word) {
     // after a wanting word (want, need, like...) the tiles are the folders themselves - music, movies,
     // food - each opening its own page, and its name joining the sentence where it fits ("want music ...")
     if (MAGIC_WANTS.includes(word) || !magicTilesNow.length) {
-      // each doing word has the folders it most likely leads to, in order; the rest follow, and the unlikely ones go last
-      // ("play" -> games, things, music, tv, movies ... and food at the very end)
-      const LEADF = {
-        PLAY: ['games', 'stuff', 'things', 'music', 'tv', 'movies', 'people', 'places', 'characters', 'books'],
-        WATCH: ['tv', 'movies', 'characters', 'people'], LISTEN: ['music', 'people'], READ: ['books', 'characters'],
-        EAT: ['food'], DRINK: ['food'], MAKE: ['food', 'stuff', 'things'], COOK: ['food'],
-        GO: ['places', 'people'], COME: ['people', 'places'], WALK: ['places'], RIDE: ['places', 'stuff', 'things'],
-        SEE: ['people', 'places', 'movies', 'tv', 'characters'], FIND: ['stuff', 'things', 'people', 'books', 'games'], LOOK: ['stuff', 'things', 'people', 'places', 'books'],
-        HELP: ['people'], HUG: ['people'], CALL: ['people'], HI: ['people'], HELLO: ['people'], BYE: ['people'],
-        OPEN: ['stuff', 'things', 'food', 'books', 'games'], GET: ['stuff', 'things', 'food', 'clothes'], WEAR: ['clothes'], SING: ['music'], DANCE: ['music'] };
-      const LASTF = { PLAY: ['food', 'clothes', 'routines'], WATCH: ['food', 'clothes'], LISTEN: ['food', 'clothes', 'places'], READ: ['food', 'clothes', 'music'], EAT: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], DRINK: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], GO: ['food', 'clothes'], WEAR: ['food', 'music', 'tv', 'movies', 'books', 'games'] };
-      const lw = homePhrase.slice().reverse().find(w => LEADF[w]), first = lw ? LEADF[lw] : [], lastF = (lw && LASTF[lw]) || [];
-      const rk = c => { const n = String(c.name || '').trim().toLowerCase(), k = first.indexOf(n); return k >= 0 ? k : (lastF.includes(n) ? 200 : 99); };
-      const fs = magicFolders(word, true).filter(c => c.phrases || catAllowsPhrases(c)).map((c, i) => [c, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]);
+      const fs = relatedFolders(word);
       if (fs.length) {
         magicStickPool = null;
         magicTilesNow = fs.map(c => ({ label: c.name.toLowerCase(), folder: true, tap: () => {
@@ -12262,7 +12294,8 @@ function smallRowPop() {
   smallRowPop0();
   if (state.builderMode) return;
   rowsByTap = false; magicKeep = false;
-  suggShut = viaMagic; suggRender();
+  const navd = Date.now() - folderNavAt < 900;      // just arrived on a folder's page from its grey tile: the rows stay folded
+  suggShut = viaMagic || navd; suggRender();
   setBlue(viaMagic);      // the small words open by themselves only after a green tile is chosen; otherwise their blue bar opens them
   // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
   // other opens (a cue to look there too); then that folds as well - both bars shut says "ready to enter".
