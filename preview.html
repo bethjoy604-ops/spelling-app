@@ -834,6 +834,7 @@
   .small-host .small-strip.slides { --tail: 0px !important; }
   .small-host .small-strip, .small-host .small-section, .small-host .small-body { background: transparent !important; box-shadow: none !important; }
   .small-host .small-strip:not(.slides) { padding: 0 0 4px 0 !important; }
+  .small-host.sm-open { padding-bottom: 30px; margin-bottom: 14px; border-bottom: 2px solid rgba(0,0,0,0.08); }      /* open, the small words stand apart from the page tiles under them */
   .sm-hl { background: #d6e4fd; border-radius: 0.3em; padding: 0.08em 0.4em; }
   .sugg-host { display: none; flex-shrink: 0; }
   .sugg-host.show { display: block; }
@@ -2652,7 +2653,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 446 - 7 Oct';
+const BUILD = 'build 447 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7296,7 +7297,7 @@ function gridSync() {
   const board = !!grid.querySelector('.folder-card') && !grid.querySelector('.home-card[data-word], .feed-group, .small-section');
   view.classList.toggle('no-bars', board && !state.builderMode);
   view.classList.toggle('band-green', false);      // the closed blue bar stays under the green row      // green open: the blue bar steps away until a green tile is chosen or the row is folded
-  view.classList.toggle('band-blue', blue && !board);
+  view.classList.toggle('band-blue', false);      // the small words open in place: everything else stays, the page tiles move down
   if (magicOff !== null && (magicOff !== homePhrase.join(' ') || !homePath.length)) magicOff = null;
   view.classList.toggle('rows-off', magicOff !== null && !state.builderMode);
   const pk = homePath.join('/'); if (pk !== gridPage) { gridPage = pk; gridManual = false; }      // a new page always shows its tiles
@@ -7304,7 +7305,7 @@ function gridSync() {
   view.classList.toggle('has-grid-edge', plain);
   // one band open at a time: a row opened by its bar (or, on Popular, by a word going in) folds the page tiles; both rows shut brings them back
   gridManual = false;
-  view.classList.toggle('grid-shut', plain && !board && blue);      // the small words, open, show alone      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
+  view.classList.toggle('grid-shut', false);      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
 }
 let gridManual = false, gridPage = '', rowsByTap = false, blueTapAt = 0, folderNavAt = 0;
 // The open rows can fill the screen, leaving the page under them nothing to scroll: so a swipe up (or a
@@ -7344,6 +7345,7 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
     try {
       host.querySelectorAll('.small-tile').forEach(t => { if (!t.querySelector('.sm-hl') && t.childNodes.length === 1 && t.firstChild.nodeType === 3 && t.textContent.trim()) { const sp = document.createElement('span'); sp.className = 'sm-hl'; sp.textContent = t.textContent; t.textContent = ''; t.appendChild(sp); } });
       const open = !!host.querySelector('.small-strip') && !host.querySelector(':scope > .small-head, :scope > * > .small-head:not(.group-head)');
+      host.classList.toggle('sm-open', open && !state.builderMode);
       let bar = host.querySelector(':scope > .band-bar');
       if (open && !state.builderMode) {
         if (!bar) { bar = document.createElement('button'); bar.className = 'band-bar'; bar.setAttribute('aria-label', 'Fold the small words away');
