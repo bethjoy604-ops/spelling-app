@@ -813,6 +813,12 @@
   .view-home .grid-bar { display: none !important; }      /* the page tiles have no bar of their own */
   .grid-bar { background: rgba(255,255,255,0.8); }
   .sugg-host .sugg-head { margin-bottom: 10px; }
+  .sugg-host .sugg-row { margin-bottom: 12px; }
+  .sugg-host .sugg-head.band-fold { background-color: #d9dbe0 !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") !important; }
+  .sugg-host .sugg-head.band-fold.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E") !important; }
+  .sugg-host .sugg-head.band-cat { background-color: #e4dbf7 !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%239a7fd6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") !important; }
+  .sugg-host .sugg-head.band-cat.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%239a7fd6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E") !important; }
+  .cat-hl { background: #ebe3fb; border-radius: 0.3em; padding: 0.08em 0.35em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .sugg-host .sugg-folders { margin-top: 12px; }
   .sugg-host .sugg-head:last-child { margin-bottom: 0; }
   .band-bar { display: block; width: 100%; height: 54px; border: none; border-radius: 16px; background: #bfd8ff; cursor: pointer; margin-bottom: 10px; }
@@ -2658,7 +2664,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 452 - 8 Oct';
+const BUILD = 'build 453 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7390,6 +7396,31 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
   obs.observe(host, { childList: true, subtree: true });
 })();
 let suggFolder = null;
+const bandOpen = { fold: false, cat: false };      // the grey folders band and the purple category band start folded to their bars
+// a word that lives only in the Categories pages other than Actions (Choices, Groups, Things, Parts, Questions ...)
+function isCategoryWord(w) {
+  const top = c => { let x = c, g = 0; while (x && x.parent && g++ < 20) x = catById(x.parent); return x; };
+  let inCat = false, elsewhere = false;
+  state.categories.forEach(c => { if (c.hidden || c.target || !(c.words || []).includes(w)) return;
+    const t = top(c); if (t && /^categories$/i.test(String(t.name).trim()) && !/^actions$/i.test(String(c.name).trim())) inCat = true; else elsewhere = true; });
+  return inCat && !elsewhere;
+}
+// the purple band: the describing and category words that go with the message first, then the rest, most used first
+function categoryWords(first) {
+  const last = homePhrase[homePhrase.length - 1] || '', v = lastDoing() || last;
+  const LEAD = { GO: ['direction', 'position', 'speed', 'time'], COME: ['direction', 'time'], EAT: ['quantity', 'flavors', 'temperature', 'opinion'], DRINK: ['quantity', 'flavors', 'temperature'],
+    PLAY: ['animals', 'vehicles', 'colors', 'shapes', 'numbers'], SEE: ['animals', 'vehicles', 'colors', 'size'], LOOK: ['animals', 'vehicles', 'colors', 'direction'], FEEL: ['feelings', 'temperature'],
+    HELP: ['tools', 'body', 'building'], OPEN: ['building', 'tools'], CUT: ['tools', 'shapes'], FIX: ['tools', 'vehicles'], WASH: ['body'], HURT: ['body'], MORE: ['quantity', 'flavors'], WANT: ['quantity', 'flavors', 'colors', 'animals', 'vehicles'], NEED: ['tools', 'quantity'] };
+  const names = (LEAD[v] || LEAD[last] || ['quantity', 'time', 'opinion', 'questions', 'feelings']);
+  const used = w => (state.wordHistory[w] || {}).n || 0;
+  const ok = w => w && !isPunct(w) && !state.hiddenWords[w] && !homePhrase.includes(w) && isCategoryWord(w);
+  const out = []; const add = w => { if (ok(w) && !out.includes(w)) out.push(w); };
+  (first || []).forEach(add);
+  names.forEach(n => { const c = state.categories.find(x => String(x.name || '').trim().toLowerCase() === n && !x.hidden); if (c) (c.words || []).slice().sort((a, b) => used(b) - used(a)).forEach(add); });
+  const rest = []; state.categories.forEach(c => (c.words || []).forEach(w => { if (ok(w) && !out.includes(w) && !rest.includes(w)) rest.push(w); }));
+  rest.sort((a, b) => used(b) - used(a)).slice(0, 30).forEach(add);
+  return out.slice(0, 40);
+}
 // ---- The next step. The green row works out what the message is still missing and offers that: a person after
 // "hi", a doing word at the start, a thing after "want", a food after "eat", a finisher once the thought is whole.
 // Real words first (the most used), then the folders to look in (grey) - a grey one opens in the row, in place,
@@ -7469,43 +7500,58 @@ function suggRender0() {
     // (tiles an older build put into the page's own grid are taken back out)
     grid.querySelectorAll(':scope > .sugg-card').forEach(x => x.remove());
     [...grid.children].forEach(c => { if (c.dataset.sgs) { const by = parseInt(c.dataset.sgs) || 1; c.style.gridRowStart = String(Math.max(1, (parseInt(c.style.gridRowStart) || by + 1) - by)); delete c.dataset.sgs; } });
-    let opts = [];
-    try { if (state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords) opts = nextStep(); } catch (e) { opts = []; }
-    // a message with no doing word yet is offered the doing words first; otherwise the things come first
-    // always in the same order: the doing words, then the names of folders and groups (food), then the particular things
-    let fl = [];
-    try { if (false) fl = relatedFolders(homePhrase[homePhrase.length - 1]).filter(c => !homePath.includes(c.id)).slice(0, 12); } catch (e) { fl = []; }
-    const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|') + '|F:' + fl.map(c => c.id).join(',');
+    // Three bands, each with its own bar: green - things and doing words mixed; grey - the folders to look in
+    // (one opens in its row, in place); purple - the describing and category words (Choices, Groups, Things, Questions...)
+    const live = state.magicType && !state.builderMode && homePhrase.length && magicSkipped !== homePhrase.join(' ') && !onTargetsPage() && !selWords;
+    let base = [], openItems = null;
+    try { if (live) { const sf = suggFolder; suggFolder = null; try { base = nextStep(); } finally { suggFolder = sf; } if (suggFolder) { openItems = nextStep(); if (!suggFolder) openItems = null; } } } catch (e) { base = []; }
+    const catWord = w => isCategoryWord(w);
+    const wordsOf = l => l.filter(m => !m.folder && !m.back);
+    let green = [], folders = [], cats = [];
+    try {
+      const ws = wordsOf(base), lead = ws.filter(m => m.lead);
+      const plain = ws.filter(m => !m.lead && !catWord(m.phrase[m.phrase.length - 1]));
+      const isAct = m => { const w = m.phrase[m.phrase.length - 1]; return kindOfWord(w) === 'action' || MAGIC_WANTS.includes(w); };
+      let acts = plain.filter(isAct), things = plain.filter(m => !isAct(m));
+      const n = homePhrase.length, last = homePhrase[n - 1], idx = homePhrase.map((_, i) => i);
+      // a thing is wanted, or a doing word could come next: both kinds are offered, taking turns
+      if (live && !(kindOfWord(last) === 'action' && !MAGIC_WANTS.includes(last)) && !lead.length) {
+        const have = new Set(plain.map(m => m.phrase[m.phrase.length - 1]));
+        const extra = (MAGIC_WANTS.includes(last) ? ['GO', 'EAT', 'DRINK', 'PLAY', 'WATCH', 'HELP', 'OPEN', 'GET'] : ['WANT', 'NEED', 'GO', 'HELP', 'EAT', 'PLAY', 'SEE', 'OPEN']).concat(magicActionPool(40))
+          .filter(w => !have.has(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && state.categories.some(c => !c.target && (c.words || []).includes(w)));
+        extra.filter((w, i) => extra.indexOf(w) === i).forEach(w => acts.push({ phrase: homePhrase.concat([w]), used: idx, act: true }));
+      }
+      const mix = []; for (let i = 0; i < Math.max(acts.length, things.length); i++) { if (things[i]) mix.push(things[i]); if (acts[i]) mix.push(acts[i]); }
+      green = lead.concat(mix);
+      folders = openItems ? openItems : base.filter(m => m.folder);
+      const fromBase = ws.filter(m => catWord(m.phrase[m.phrase.length - 1]));
+      cats = live ? categoryWords(fromBase.map(m => m.phrase[m.phrase.length - 1])).map(w => ({ phrase: homePhrase.concat([w]), used: idx })) : [];
+    } catch (e) { green = wordsOf(base); }
+    const all = green.length + folders.length + cats.length;
+    const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + [green, folders, cats].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
     host.innerHTML = '';
-    host.classList.toggle('show', opts.length > 0);
-    grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = opts.length && !suggShut ? 'none' : ''; });
-    if (!opts.length) return;
-    { const bar = document.createElement('button'); bar.className = 'sugg-head' + (suggShut ? '' : ' open'); bar.setAttribute('aria-label', 'Suggested words');
-      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); suggShut = !suggShut; magicKeep = suggShut; if (!suggShut) { rowsByTap = true; setBlue(false); } suggRender(); magicTilesSync(); });      // folded by its bar, the small words open in its place, above the same page tiles
-      host.appendChild(bar);
-      if (suggShut) return; }
-    // open: one row of three tiles, the same size as the page's; a swipe to the left brings the next three
+    host.classList.toggle('show', all > 0);
+    grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = all && !suggShut ? 'none' : ''; });
+    if (!all) return;
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
-    const hgt = like ? like.offsetHeight : 0,      // the same size as the page's own tiles
-       fs = likeHw ? likeHw.style.fontSize : '';
-    const rowEl = document.createElement('div'); rowEl.className = 'sugg-row';
-    opts.forEach(m => {
+    const hgt = like ? like.offsetHeight : 0, fs = likeHw ? likeHw.style.fontSize : '';
+    const tile = (m, hlClass) => {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
       if (m.folder) b.classList.add('sugg-folder');
       if (hgt) b.style.height = hgt + 'px';
       const added = m.phrase.filter((_, j) => !m.used.includes(j));
       const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
-      const label = m.back ? '\u2039 back' : m.folder ? String((m.group || m.folder).name).toLowerCase() : added.map(sentenceLabel).join(' ');
-      if (label.length > 11 && fs) t.style.fontSize = Math.round(parseFloat(fs) * (label.includes(' ') ? 0.86 : Math.max(0.6, 11 / label.length))) + 'px';      // a long one is set a little smaller, and may take two lines
-      const hl = document.createElement('span'); hl.className = (m.folder || m.back) ? 'name-hl' : 'sugg-hl'; hl.textContent = label;
+      const label = m.back ? '‹ back' : m.folder ? String((m.group || m.folder).name).toLowerCase() : added.map(sentenceLabel).join(' ');
+      if (label.length > 11 && fs) t.style.fontSize = Math.round(parseFloat(fs) * (label.includes(' ') ? 0.86 : Math.max(0.6, 11 / label.length))) + 'px';
+      const hl = document.createElement('span'); hl.className = hlClass; hl.textContent = label;
       t.appendChild(hl); b.appendChild(t);
       b.addEventListener('click', e => {
         e.stopPropagation();
         if (m.back) { buzz(10); suggFolder = null; suggRender(); return; }
-        if (m.folder) { buzz(10); suggFolder = { id: m.folder.id, gid: m.group ? m.group.id : null, key: homePhrase.join(' ') }; suggShut = false; suggRender(); return; }      // a folder: its words fill the row, in place
+        if (m.folder) { buzz(10); suggFolder = { id: m.folder.id, gid: m.group ? m.group.id : null, key: homePhrase.join(' ') }; bandOpen.fold = true; suggRender(); return; }      // a folder: its words fill its row, in place
         if (m.cat) { try { withGroup(m.cat, added[added.length - 1], m.hint); m.phrase = homePhrase.concat(added); } catch (er) {} }      // "want" + bottle -> "want to drink bottle"
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
@@ -7514,33 +7560,21 @@ function suggRender0() {
         magicPickAt = Date.now();
         renderPhraseBar();
       });
-      rowEl.appendChild(b);
-    });
-    ['pointerdown', 'touchstart', 'wheel', 'scroll'].forEach(ev => rowEl.addEventListener(ev, () => rowIdleArm(6000), { passive: true }));      // being looked through: it stays
-    host.appendChild(rowEl);
-    // second row: the folders that go with the message, marked in grey as folders are; a tap opens that folder's page
-    if (fl.length) {
-      const row2 = document.createElement('div'); row2.className = 'sugg-row sugg-folders';
-      fl.forEach(c => {
-        const b = document.createElement('button'); b.className = 'home-card sugg-card sugg-folder';
-        if (hgt) b.style.height = hgt + 'px';      // the same size as every other tile
-        const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
-        const hl = document.createElement('span'); hl.className = 'name-hl'; hl.textContent = String(c.name || '').toLowerCase();
-        t.appendChild(hl); b.appendChild(t);
-        b.addEventListener('click', e => {
-          e.stopPropagation();
-          const path = []; let x = c, g = 0;
-          while (x && g++ < 20) { path.unshift(x.id); x = x.parent ? catById(x.parent) : null; }
-          try { magicPathPick(c, c.name); } catch (er) {}
-          homePath = path; libraryOpen = null; tileGroup = null;
-          folderNavAt = Date.now();
-          buzz(10); renderPhraseBar(); renderHome(true);
-          clearTimeout(blueShutTimer); suggShut = true; setBlue(false); suggRender();      // on the folder's page the rows are folded: its tiles have the room
-        });
-        row2.appendChild(b);
-      });
-      host.appendChild(row2);
-    }
+      return b;
+    };
+    const band = (items, open, barClass, label, toggle, hlFor) => {
+      if (!items.length) return;
+      const bar = document.createElement('button'); bar.className = 'sugg-head ' + barClass + (open ? ' open' : ''); bar.setAttribute('aria-label', label);
+      bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); toggle(); suggRender(); });
+      host.appendChild(bar);
+      if (!open) return;
+      const rowEl = document.createElement('div'); rowEl.className = 'sugg-row';
+      items.forEach(m => rowEl.appendChild(tile(m, hlFor(m))));
+      host.appendChild(rowEl);
+    };
+    band(green, !suggShut, '', 'Suggested words', () => { suggShut = !suggShut; magicKeep = suggShut; if (!suggShut) setBlue(false); }, () => 'sugg-hl');
+    band(folders, bandOpen.fold, 'band-fold', 'Folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder');
+    band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl');
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -12393,7 +12427,15 @@ function arrangeLast() {
   const verb = x => MAGIC_WANTS.includes(x) && x !== 'MORE' || kindOfWord(x) === 'action' || ['AM', 'IS', 'ARE', 'SEE', 'GO', 'FEEL'].includes(x);
   const v = rest.findIndex(verb);
   let at = -1;
-  if (SUBJ.includes(w)) { if (v >= 0 && rest.slice(0, v).every(x => HELLO.includes(x)) && !rest.some(x => MAGIC_ASK.includes(x))) at = v; }
+  // a doing word (or want / need) after a thing with no doing word yet goes in front of it: "bottle" + need -> "need bottle"
+  // (but a person stays in front: "Dad" + sit -> "Dad sit")
+  const person = x => state.categories.some(c => /^(people|family|friends)$/i.test(String(c.name).trim()) && (c.words || []).includes(x)) || (state.categories.find(c => /^people$/i.test(String(c.name).trim())) || { groups: [] }).groups.some(g => (g.words || []).includes(x));
+  const isThing = x => { const k = kindOfWordG(x); return !!k && k !== 'action' && k !== 'describe' && !isSmallWord(x) && !SUBJ.includes(x) && !HELLO.includes(x) && !person(x); };
+  if ((verb(w) || MAGIC_WANTS.includes(w)) && v < 0 && !SUBJ.includes(w)) {
+    let s0 = 0; while (s0 < rest.length && (HELLO.includes(rest[s0]) || SUBJ.includes(rest[s0]) || person(rest[s0]))) s0++;
+    if (s0 < rest.length && rest.slice(s0).every(x => isThing(x) || DET.includes(x))) at = s0;
+  }
+  else if (SUBJ.includes(w)) { if (v >= 0 && rest.slice(0, v).every(x => HELLO.includes(x)) && !rest.some(x => MAGIC_ASK.includes(x))) at = v; }
   else if (NEG.includes(w)) { if (v > 0 && SUBJ.includes(rest[v - 1])) at = v; }
   else if (DET.includes(w)) {
     const last = rest[n - 2], k = kindOfWordG(last);
