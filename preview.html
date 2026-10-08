@@ -2648,7 +2648,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 440 - 7 Oct';
+const BUILD = 'build 441 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7298,6 +7298,24 @@ function gridSync() {
   view.classList.toggle('grid-shut', false);      // an open row sits above the page tiles; it never hides them      // a row that is open shows alone; fold it and the page tiles are back under the closed bars
 }
 let gridManual = false, gridPage = '', rowsByTap = false, blueTapAt = 0, folderNavAt = 0;
+// The open rows can fill the screen, leaving the page under them nothing to scroll: so a swipe up (or a
+// wheel down) on the rows themselves does what scrolling the page down does - they fold, and the page is there.
+(function () {
+  const fold = () => {
+    clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
+    let did = false;
+    if (!suggShut && document.querySelector('#suggHost .sugg-row')) { suggShut = true; suggRender(); did = true; }
+    if (document.querySelector('#smallHost .small-strip')) { const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } did = true; }
+    if (did) try { gridSync(); } catch (e) {}
+  };
+  let sx = 0, sy = 0, on = false;
+  ['suggHost', 'smallHost'].forEach(id => { const h = document.getElementById(id); if (!h) return;
+    h.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; on = true; }, { passive: true });
+    h.addEventListener('touchmove', e => { if (!on) return; const t = e.touches[0], dy = sy - t.clientY, dx = Math.abs(t.clientX - sx); if (dy > 45 && dy > dx * 1.5) { on = false; fold(); } }, { passive: true });
+    h.addEventListener('touchend', () => { on = false; }, { passive: true });
+    h.addEventListener('wheel', e => { if (e.deltaY > 20 && Math.abs(e.deltaY) > Math.abs(e.deltaX) * 1.5) fold(); }, { passive: true });
+  });
+})();
 document.addEventListener('click', e => {      // the blue bar opening its row: the green tiles fold
   if (!e.target.closest || !e.target.closest('#smallHost .small-head:not(.group-head)')) return;
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
@@ -7438,8 +7456,8 @@ function suggRender0() {
       const row2 = document.createElement('div'); row2.className = 'sugg-row sugg-folders';
       fl.forEach(c => {
         const b = document.createElement('button'); b.className = 'home-card sugg-card sugg-folder';
-        if (hgt) b.style.height = Math.round(hgt * 0.6) + 'px';
-        const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = Math.round(parseFloat(fs) * 0.85) + 'px';
+        if (hgt) b.style.height = hgt + 'px';      // the same size as every other tile
+        const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
         const hl = document.createElement('span'); hl.className = 'name-hl'; hl.textContent = String(c.name || '').toLowerCase();
         t.appendChild(hl); b.appendChild(t);
         b.addEventListener('click', e => {
