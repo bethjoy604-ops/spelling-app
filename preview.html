@@ -834,6 +834,11 @@
   .small-host .small-strip.slides { --tail: 0px !important; }
   .small-host .small-strip, .small-host .small-section, .small-host .small-body { background: transparent !important; box-shadow: none !important; }
   .small-host .small-strip:not(.slides) { padding: 0 0 4px 0 !important; }
+  /* the whole small-words folder scrolls a row at a time, starting clear of the bar, so no tile is left half under it */
+  /* the whole small-words folder: it scrolls as one with its blue bar, so no tile is ever left half under the bar */
+  .small-host.sm-full { flex: 1 1 auto !important; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+  .small-host.sm-full::-webkit-scrollbar { display: none; }
+  .small-host.sm-full .small-strip { max-height: none !important; height: auto !important; overflow: visible !important; margin-top: 10px; }
   .small-host.sm-open { padding-bottom: 30px; margin-bottom: 14px; }      /* open, the small words stand apart from the page tiles under them */
   .sm-hl { background: #d6e4fd; border-radius: 0.3em; padding: 0.08em 0.4em; }
   .sugg-host { display: none; flex-shrink: 0; }
@@ -2653,7 +2658,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 449 - 7 Oct';
+const BUILD = 'build 450 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7344,9 +7349,9 @@ let gridManual = false, gridPage = '', rowsByTap = false, blueTapAt = 0, folderN
   let sx = 0, sy = 0, on = false;
   ['suggHost', 'smallHost'].forEach(id => { const h = document.getElementById(id); if (!h) return;
     h.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; on = true; }, { passive: true });
-    h.addEventListener('touchmove', e => { if (!on) return; const t = e.touches[0], dy = sy - t.clientY, dx = Math.abs(t.clientX - sx); if (dy > 45 && dy > dx * 1.5) { on = false; fold(); } }, { passive: true });
+    h.addEventListener('touchmove', e => { if (!on || stripFull) return; const t = e.touches[0], dy = sy - t.clientY, dx = Math.abs(t.clientX - sx); if (dy > 45 && dy > dx * 1.5) { on = false; fold(); } }, { passive: true });
     h.addEventListener('touchend', () => { on = false; }, { passive: true });
-    h.addEventListener('wheel', e => { if (e.deltaY > 20 && Math.abs(e.deltaY) > Math.abs(e.deltaX) * 1.5) fold(); }, { passive: true });
+    h.addEventListener('wheel', e => { if (stripFull) return; if (e.deltaY > 20 && Math.abs(e.deltaY) > Math.abs(e.deltaX) * 1.5) fold(); }, { passive: true });
   });
 })();
 document.addEventListener('click', e => {      // the blue bar opening its row: the green tiles fold
@@ -7368,6 +7373,7 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
       host.querySelectorAll('.small-tile').forEach(t => { if (!t.querySelector('.sm-hl') && t.childNodes.length === 1 && t.firstChild.nodeType === 3 && t.textContent.trim()) { const sp = document.createElement('span'); sp.className = 'sm-hl'; sp.textContent = t.textContent; t.textContent = ''; t.appendChild(sp); } });
       const open = !!host.querySelector('.small-strip') && !host.querySelector(':scope > .small-head, :scope > * > .small-head:not(.group-head)');
       host.classList.toggle('sm-open', open && !state.builderMode);
+      host.classList.toggle('sm-full', open && !!stripFull && !state.builderMode);
       let bar = host.querySelector(':scope > .band-bar');
       if (open && !state.builderMode) {
         if (!bar) { bar = document.createElement('button'); bar.className = 'band-bar'; bar.setAttribute('aria-label', 'Fold the small words away');
@@ -11976,6 +11982,7 @@ function renderSlotGrid(grid, cat, folders) {
     const key = normaliseWord(typed);
     if (!key) return false;
     if (!cat.words.includes(key)) cat.words.push(key);
+    delete state.hiddenWords[key];      // a word added here is meant to be seen, even if it was hidden elsewhere
     if (!state.words.includes(key)) state.words.push(key);
     if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
     if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
@@ -12574,9 +12581,13 @@ function trackWordDrag() {
   // only an empty place takes a tile: one that is in the way has to be moved first
   const hole = el.closest('.slot-empty');
   const folder = el.closest('[data-cat-id]');
+  const other = d.cat && d.word ? el.closest('#homeGrid .home-card[data-slot]') : null;      // a tile in the way: the two change places
   if (hole) {
     hole.classList.add('drop-here');
     d.target = { kind: 'slot', slot: Number(hole.dataset.slot) };
+  } else if (other && other !== d.card && other.dataset.word && other.dataset.word !== d.word && !other.classList.contains('folder-card')) {
+    other.classList.add('drop-here');
+    d.target = { kind: 'swap', slot: Number(other.dataset.slot), word: other.dataset.word };
   } else if (folder) {
     folder.classList.add('drop-into');
     d.ghost.classList.add('over-folder');   // shrink out of the way so the lit folder can be seen
@@ -12661,6 +12672,13 @@ function endWordDrag(cancelled) {
     if (from !== -1) slots[from] = null;       // its old place is left empty
     while (slots.length <= t.slot) slots.push(null);
     slots[t.slot] = d.word;
+    d.cat.slots = slots;
+    save(); renderHome(true);
+  } else if (t.kind === 'swap') {
+    const slots = (d.cat.slots || []).slice();
+    const from = slots.indexOf(d.word), to = slots.indexOf(t.word);
+    if (from === -1 || to === -1) return;
+    slots[from] = t.word; slots[to] = d.word;
     d.cat.slots = slots;
     save(); renderHome(true);
   } else if (t.kind === 'folder') {
@@ -13626,6 +13644,7 @@ function addWordToCat() {
   const w = normaliseWord(inp.value);
   if (!w || !editingCat) return;
   if (!editingCat.words.includes(w)) editingCat.words.push(w);
+  delete state.hiddenWords[w];
   if (!state.words.includes(w)) state.words.push(w);
   if (!state.wordHistory[w]) state.wordHistory[w] = { n: 0, t: 0 };
   inp.value = '';
