@@ -823,7 +823,9 @@
   .view-home.magic-full .sugg-host::-webkit-scrollbar { display: none; }
   /* each band fills the screen and snaps into place: scroll once, the next band clicks in */
   .view-home.magic-full .sugg-host { scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-  .view-home.magic-full .sugg-band { min-height: 100%; box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; }
+  .view-home.magic-full .sugg-band { box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; padding-bottom: 14px; }
+  /* the bands sit close together; only the last one fills the screen, so each can still click up to the top */
+  .view-home.magic-full .sugg-band:last-child { min-height: 100%; }
   .view-home.magic-full .sugg-band .sugg-row:last-child { margin-bottom: 0; }
   .sugg-band.band-small:not(:has(.small-host:not(:empty))) { display: none; }
   .sugg-host .sugg-open-row { margin-top: -2px; }
@@ -2686,7 +2688,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 457 - 8 Oct';
+const BUILD = 'build 458 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7635,7 +7637,7 @@ function suggRender0() {
     band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
     band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows);
     // last, the blue small words: the fourth band, at the bottom of the scroll (verb, then thing, then describing, then the little words)
-    { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); } }
+    { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -13452,6 +13454,19 @@ document.getElementById('homeMagicBtn').addEventListener('click', () => {
     lock = Date.now() + 550;
     hs.scrollTo({ top: to.offsetTop - hs.offsetTop, behavior: 'smooth' });
   }, { passive: false }); }
+// the blue band opens by itself when it is scrolled to (once for each message; folded by hand, it stays folded)
+let blueAutoFor = null;
+function blueAutoOpen() {
+  const v = document.getElementById('viewHome'), hs = document.getElementById('suggHost');
+  if (!v.classList.contains('magic-full')) return;
+  const ph = homePhrase.join(' '); if (blueAutoFor === ph) return;
+  const sec = hs.querySelector(':scope > .band-small'); if (!sec || !sec.offsetHeight) return;
+  if (sec.offsetTop - hs.offsetTop - hs.scrollTop > hs.clientHeight - 60) return;      // not reached yet
+  const bar = sec.querySelector('.small-head:not(.group-head)');
+  blueAutoFor = ph;
+  if (bar && bar.getAttribute('aria-expanded') !== 'true' && !sec.querySelector('.small-strip')) bar.click();
+}
+{ let t = null; document.getElementById('suggHost').addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(blueAutoOpen, 120); }, { passive: true }); }
 function armIcons() {
   clearTimeout(iconsTimer); iconsTimer = null;
   if (state.iconsOpen) iconsTimer = setTimeout(closeIcons, 5000);
