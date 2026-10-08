@@ -818,6 +818,8 @@
   .sugg-host .sugg-head.band-fold.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%238f9299' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E") !important; }
   .sugg-host .sugg-head.band-cat { background-color: #e4dbf7 !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%239a7fd6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E") !important; }
   .sugg-host .sugg-head.band-cat.open { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%239a7fd6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 14l10-9 10 9'/%3E%3C/svg%3E") !important; }
+  .sugg-row.two-rows { display: grid !important; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: calc((100% - 32px) / 3); gap: 12px 16px; }
+  .sugg-row.two-rows .sugg-card { flex: none !important; }
   .cat-hl { background: #ebe3fb; border-radius: 0.3em; padding: 0.08em 0.35em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .sugg-host .sugg-folders { margin-top: 12px; }
   .sugg-host .sugg-head:last-child { margin-bottom: 0; }
@@ -2510,6 +2512,10 @@
           <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
         </div>
 
+        <div class="sublabel">Magic suggestion rows</div>
+        <div class="settings-list" id="bandSettings"></div>
+        <div class="help-note" style="margin:6px 4px 0">Each row of suggestions can be switched off, or given two rows of tiles instead of one. The small words row is switched off below.</div>
+
         <div class="sublabel">Small words rows (every page)</div>
         <div class="settings-list">
           <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
@@ -2664,7 +2670,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 453 - 8 Oct';
+const BUILD = 'build 454 - 8 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3015,6 +3021,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
+        bandCfg: saved.bandCfg || null,
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -3578,6 +3585,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
+      bandCfg: state.bandCfg || null,
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -7396,7 +7404,12 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
   obs.observe(host, { childList: true, subtree: true });
 })();
 let suggFolder = null;
-const bandOpen = { fold: false, cat: false };      // the grey folders band and the purple category band start folded to their bars
+const bandOpen = { fold: true, cat: true };      // every band opens with the message; each bar folds its own
+function bandCfg() {
+  const d = { green: { on: true, rows: 1 }, grey: { on: true, rows: 1 }, cat: { on: true, rows: 1 } }, c = state.bandCfg || {};
+  Object.keys(d).forEach(k => { if (c[k]) d[k] = { on: c[k].on !== false, rows: c[k].rows === 2 ? 2 : 1 }; });
+  return d;
+}
 // a word that lives only in the Categories pages other than Actions (Choices, Groups, Things, Parts, Questions ...)
 function isCategoryWord(w) {
   const top = c => { let x = c, g = 0; while (x && x.parent && g++ < 20) x = catById(x.parent); return x; };
@@ -7509,24 +7522,38 @@ function suggRender0() {
     const wordsOf = l => l.filter(m => !m.folder && !m.back);
     let green = [], folders = [], cats = [];
     try {
-      const ws = wordsOf(base), lead = ws.filter(m => m.lead);
-      const plain = ws.filter(m => !m.lead && !catWord(m.phrase[m.phrase.length - 1]));
-      const isAct = m => { const w = m.phrase[m.phrase.length - 1]; return kindOfWord(w) === 'action' || MAGIC_WANTS.includes(w); };
-      let acts = plain.filter(isAct), things = plain.filter(m => !isAct(m));
-      const n = homePhrase.length, last = homePhrase[n - 1], idx = homePhrase.map((_, i) => i);
-      // a thing is wanted, or a doing word could come next: both kinds are offered, taking turns
-      if (live && !(kindOfWord(last) === 'action' && !MAGIC_WANTS.includes(last)) && !lead.length) {
-        const have = new Set(plain.map(m => m.phrase[m.phrase.length - 1]));
-        const extra = (MAGIC_WANTS.includes(last) ? ['GO', 'EAT', 'DRINK', 'PLAY', 'WATCH', 'HELP', 'OPEN', 'GET'] : ['WANT', 'NEED', 'GO', 'HELP', 'EAT', 'PLAY', 'SEE', 'OPEN']).concat(magicActionPool(40))
-          .filter(w => !have.has(w) && !homePhrase.includes(w) && !state.hiddenWords[w] && state.categories.some(c => !c.target && (c.words || []).includes(w)));
-        extra.filter((w, i) => extra.indexOf(w) === i).forEach(w => acts.push({ phrase: homePhrase.concat([w]), used: idx, act: true }));
+      const ws = wordsOf(base), n = homePhrase.length, idx = homePhrase.map((_, i) => i);
+      const exists = w => !state.hiddenWords[w] && !homePhrase.includes(w) && state.categories.some(c => !c.target && (c.words || []).includes(w));
+      // green: the doing words only, the easiest and most basic first (go, more, play ...), then the rest most used first
+      const lead = ws.filter(m => m.lead);
+      const BASIC = ['GO', 'MORE', 'PLAY', 'EAT', 'DRINK', 'HELP', 'OPEN', 'WANT', 'NEED', 'STOP', 'LOOK', 'GET', 'WATCH', 'SEE', 'COME', 'READ', 'SIT', 'MAKE', 'FIND', 'LIKE'];
+      const gw = [], put = w => { if (exists(w) && !gw.includes(w)) gw.push(w); };
+      if (live) { BASIC.forEach(put); magicActionPool(500).forEach(put); }
+      green = lead.concat(gw.filter(w => !lead.some(m => m.lead === w)).map(w => ({ phrase: homePhrase.concat([w]), used: idx, act: true })));
+      // grey: the things themselves - the likeliest first - each folder's best one or two followed by that folder
+      if (openItems) folders = openItems;
+      else if (live) {
+        const used = w => (state.wordHistory[w] || {}).n || 0;
+        const root = state.categories.find(c => !c.parent && c.phrases && !c.hidden);
+        const stuff = root ? state.categories.filter(c => c.parent === root.id && !c.hidden && !c.target && (c.words || []).some(w => !state.hiddenWords[w])) : [];
+        const homeOf = w => stuff.find(c => (c.words || []).includes(w));
+        const order = [];
+        ws.forEach(m => { const c = m.cat && stuff.includes(m.cat) ? m.cat : homeOf(m.phrase[m.phrase.length - 1]); if (c && !order.includes(c)) order.push(c); });
+        relatedFolders(homePhrase[n - 1] || '').forEach(c => { if (stuff.includes(c) && !order.includes(c)) order.push(c); });
+        stuff.forEach(c => { if (!order.includes(c)) order.push(c); });
+        order.forEach(c => {
+          const picks = ws.filter(m => (m.cat === c || homeOf(m.phrase[m.phrase.length - 1]) === c)).map(m => m.phrase[m.phrase.length - 1]);
+          (c.words || []).slice().sort((x, y) => used(y) - used(x)).forEach(w => { if (!picks.includes(w)) picks.push(w); });
+          picks.filter(exists).slice(0, 2).forEach(w => folders.push({ phrase: homePhrase.concat([w]), used: idx, cat: c }));
+          folders.push({ folder: c, group: null, phrase: homePhrase.concat(['▸' + c.id]), used: idx });
+        });
       }
-      const mix = []; for (let i = 0; i < Math.max(acts.length, things.length); i++) { if (things[i]) mix.push(things[i]); if (acts[i]) mix.push(acts[i]); }
-      green = lead.concat(mix);
-      folders = openItems ? openItems : base.filter(m => m.folder);
-      const fromBase = ws.filter(m => catWord(m.phrase[m.phrase.length - 1]));
+      // purple: the describing and category words, no folders
+      const fromBase = ws.filter(m => isCategoryWord(m.phrase[m.phrase.length - 1]));
       cats = live ? categoryWords(fromBase.map(m => m.phrase[m.phrase.length - 1])).map(w => ({ phrase: homePhrase.concat([w]), used: idx })) : [];
-    } catch (e) { green = wordsOf(base); }
+    } catch (e) { green = []; folders = []; cats = []; }
+    const cfg = bandCfg();
+    if (!cfg.green.on) green = []; if (!cfg.grey.on) folders = []; if (!cfg.cat.on) cats = [];
     const all = green.length + folders.length + cats.length;
     const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + [green, folders, cats].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
@@ -7536,7 +7563,9 @@ function suggRender0() {
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = all && !suggShut ? 'none' : ''; });
     if (!all) return;
     const like = grid.querySelector('.home-card'), likeHw = like && like.querySelector('.hw');
-    const hgt = like ? like.offsetHeight : 0, fs = likeHw ? likeHw.style.fontSize : '';
+    // the band tiles are a size lower than the page's, so all three rows and the page fit together
+    const fullH = like ? like.offsetHeight : 160, fullFs = likeHw ? parseFloat(likeHw.style.fontSize) || 0 : 0;
+    const hgt = Math.max(70, Math.min(130, Math.round(fullH * 0.5))), fs = fullFs ? Math.round(Math.min(fullFs * 0.72, hgt * 0.32)) + 'px' : '';
     const tile = (m, hlClass) => {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
@@ -7562,19 +7591,19 @@ function suggRender0() {
       });
       return b;
     };
-    const band = (items, open, barClass, label, toggle, hlFor) => {
+    const band = (items, open, barClass, label, toggle, hlFor, rows) => {
       if (!items.length) return;
       const bar = document.createElement('button'); bar.className = 'sugg-head ' + barClass + (open ? ' open' : ''); bar.setAttribute('aria-label', label);
       bar.addEventListener('click', () => { buzz(10); clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); toggle(); suggRender(); });
       host.appendChild(bar);
       if (!open) return;
-      const rowEl = document.createElement('div'); rowEl.className = 'sugg-row';
+      const rowEl = document.createElement('div'); rowEl.className = 'sugg-row' + (rows > 1 ? ' two-rows' : '');
       items.forEach(m => rowEl.appendChild(tile(m, hlFor(m))));
       host.appendChild(rowEl);
     };
-    band(green, !suggShut, '', 'Suggested words', () => { suggShut = !suggShut; magicKeep = suggShut; if (!suggShut) setBlue(false); }, () => 'sugg-hl');
-    band(folders, bandOpen.fold, 'band-fold', 'Folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder');
-    band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl');
+    band(green, !suggShut, '', 'Doing words', () => { suggShut = !suggShut; magicKeep = suggShut; }, () => 'sugg-hl', cfg.green.rows);
+    band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
+    band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows);
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -12457,6 +12486,7 @@ function smallRowPop() {
   if (state.builderMode) return;
   rowsByTap = false; magicKeep = false;
   const navd = Date.now() - folderNavAt < 900;      // just arrived on a folder's page from its grey tile: the rows stay folded
+  if (!navd) { bandOpen.fold = true; bandOpen.cat = true; }
   suggShut = navd; suggRender();      // a green tile chosen: the row fills again with what goes next, and stays open
   setBlue(false);      // the small words open only by their blue bar
   // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
@@ -14231,6 +14261,18 @@ function renderSettings() {
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
   document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
+  { const box = document.getElementById('bandSettings'), cfg = bandCfg(); box.innerHTML = '';
+    [['green', 'Doing words (green)'], ['grey', 'Things and folders (grey)'], ['cat', 'Describing and category words (purple)']].forEach(([k, name]) => {
+      const row = document.createElement('div'); row.className = 'setting-row';
+      const lab = document.createElement('span'); lab.textContent = name; row.appendChild(lab);
+      const right = document.createElement('div'); right.style.cssText = 'display:flex;align-items:center;gap:10px';
+      const rows = document.createElement('button'); rows.className = 'mini-btn'; rows.textContent = cfg[k].rows === 2 ? '2 rows' : '1 row';
+      rows.style.cssText = 'border:none;border-radius:10px;padding:6px 12px;font:inherit;font-weight:700;background:var(--bg);cursor:pointer';
+      rows.addEventListener('click', () => { const c = bandCfg(); c[k].rows = c[k].rows === 2 ? 1 : 2; state.bandCfg = c; save(); renderSettings(); });
+      const tg = document.createElement('div'); tg.className = 'toggle' + (cfg[k].on ? ' on' : '');
+      tg.addEventListener('click', () => { const c = bandCfg(); c[k].on = !c[k].on; state.bandCfg = c; save(); renderSettings(); });
+      right.appendChild(rows); right.appendChild(tg); row.appendChild(right); box.appendChild(row);
+    }); }
   document.getElementById('toggleSmallFold').classList.toggle('on', state.smallRowsFold !== false);
   document.getElementById('smallMaxN').textContent = state.smallRowMax || 3;
 
