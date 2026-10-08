@@ -2648,7 +2648,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 442 - 7 Oct';
+const BUILD = 'build 443 - 7 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4882,14 +4882,15 @@ document.getElementById('homeGrid').addEventListener('scroll', () => {
   // scrolling with a sentence on offer: the offer goes and the folder menu comes back (and stays
   // until the page is back at its top)
   if (big && grid.scrollTop > 20 && document.querySelector('#magicBox.show:not(.folded)')) magicFold();      // ... and the menu draws in with everything else, below
-  if (big && grid.scrollTop > 20 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
-  if (grid.scrollTop > 20 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
-  if (grid.scrollTop > 20 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
+  if (false && big && grid.scrollTop > 20 && smallFullHook && chatRowAuto && state.smallOpen && !chatFull) { clearTimeout(chatRowTimer); chatRowTimer = null; chatRowAuto = false; state.smallOpen = false; if (smallHostRedo) smallHostRedo(); }
+  if (false && grid.scrollTop > 20 && popRowUntil && !popRowShut) { popRowShut = true; clearTimeout(popRowTimer); if (smallHostRedo) smallHostRedo(); }      // folds to its blue bar, there to be opened again
+  if (false && grid.scrollTop > 20 && stripKey !== null && !stripShut && document.getElementById('smallHost').firstChild) { stripShut = true; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   // scrolled down, the page's tiles run right up under the key bar: the green and blue bars step out of the way (and are back at the top)
   { const v = document.getElementById('viewHome'), on = v.classList.contains('scrolled');
     if (!on && grid.scrollTop > 6 && grid.scrollHeight - grid.clientHeight > 170) v.classList.add('scrolled');
     else if (on && grid.scrollTop <= 0) v.classList.remove('scrolled'); }
-  if (grid.scrollTop > 20 && !suggShut) { suggShut = true; magicKeep = true; clearTimeout(blueShutTimer); suggRender(); }      // scrolling down the page folds the green row; the tiles suggested for the page stay
+  if (false && grid.scrollTop > 20 && !suggShut) {      // (scrolling past the rows leaves them as they were: back at the top they are open still, unless folded by hand)
+  suggShut = true; magicKeep = true; clearTimeout(blueShutTimer); suggRender(); }      // scrolling down the page folds the green row; the tiles suggested for the page stay
   const was = barPrevTop; barPrevTop = grid.scrollTop;
   if (!min && big && grid.scrollTop > 20 && grid.scrollHeight - grid.clientHeight > 300) {
     // the room the menu and bars give up goes to the page: the tiles stay where they were on screen
@@ -7313,13 +7314,14 @@ let gridManual = false, gridPage = '', rowsByTap = false, blueTapAt = 0, folderN
 // The open rows can fill the screen, leaving the page under them nothing to scroll: so a swipe up (or a
 // wheel down) on the rows themselves does what scrolling the page down does - they fold, and the page is there.
 (function () {
-  const fold = () => {
-    clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
-    let did = false;
-    if (!suggShut && document.querySelector('#suggHost .sugg-row')) { suggShut = true; suggRender(); did = true; }
-    if (document.querySelector('#smallHost .small-strip')) { const was = stripFull; setBlue(false); if (was) { stripFull = null; if (smallHostRedo) smallHostRedo(); } did = true; }
-    if (did) try { gridSync(); } catch (e) {}
-  };
+  // (the rows are only passed by, not folded: they are there again, as they were, back at the top)
+  const view = document.getElementById('viewHome'), grid = document.getElementById('homeGrid');
+  const fold = () => { clearTimeout(blueShutTimer); clearTimeout(greenShutTimer); view.classList.add('scrolled'); };
+  const back = () => { if (view.classList.contains('scrolled') && grid.scrollTop <= 0) view.classList.remove('scrolled'); };
+  { let gy = 0, gon = false;
+    grid.addEventListener('wheel', e => { if (e.deltaY < -10 && grid.scrollTop <= 0) back(); }, { passive: true });
+    grid.addEventListener('touchstart', e => { gy = e.touches[0].clientY; gon = grid.scrollTop <= 0; }, { passive: true });
+    grid.addEventListener('touchmove', e => { if (gon && e.touches[0].clientY - gy > 45 && grid.scrollTop <= 0) { gon = false; back(); } }, { passive: true }); }
   let sx = 0, sy = 0, on = false;
   ['suggHost', 'smallHost'].forEach(id => { const h = document.getElementById(id); if (!h) return;
     h.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; on = true; }, { passive: true });
@@ -7426,6 +7428,22 @@ function suggRender0() {
       if (!afterVerb) { const have = new Set(opts.map(m => m.lead || m.phrase[m.phrase.length - 1])), idx = homePhrase.map((_, i) => i);
         if (opts.length) magicActionPool(500).forEach(w => { if (!have.has(w)) { have.add(w); opts.push({ phrase: homePhrase.concat([w]), used: idx, act: true }); } }); }
     }
+    // which words lead the green row: the commonest, easiest ones that go with the last word - then everything else
+    try { if (opts.length && !opts.some(m => m.lead)) {
+      const lastW = homePhrase[homePhrase.length - 1], verb = lastDoing() === lastW ? lastW : '';
+      const FIRST = {
+        _want: ['MORE', 'GO', 'EAT', 'DRINK', 'PLAY', 'WATCH', 'SEE', 'HELP', 'GET', 'OPEN', 'LISTEN', 'READ', 'MAKE', 'FIND'],
+        _start: ['WANT', 'NEED', 'GO', 'MORE', 'HELP', 'SEE', 'LIKE', 'EAT', 'DRINK', 'PLAY', 'WATCH', 'FEEL'],
+        _verb: ['MORE', 'NOW', 'AGAIN', 'LATER'],
+        GO: ['NOW', 'FAST', 'SLOW', 'LATER', 'AGAIN'], COME: ['NOW', 'FAST', 'LATER', 'AGAIN'], WALK: ['NOW', 'FAST', 'SLOW'], RUN: ['FAST', 'NOW'],
+        EAT: ['MORE', 'NOW', 'SOME', 'ALL', 'HOT', 'COLD', 'LATER'], DRINK: ['MORE', 'NOW', 'SOME', 'COLD', 'HOT', 'LATER'],
+        FEEL: ['HAPPY', 'SAD', 'TIRED', 'MAD', 'SICK', 'HUNGRY', 'GOOD', 'BAD', 'HOT', 'COLD'] };
+      const list = MAGIC_WANTS.includes(lastW) && lastW !== 'MORE' ? FIRST._want : verb ? (FIRST[verb] || FIRST._verb) : FIRST._start;
+      const known = w => !state.hiddenWords[w] && !homePhrase.includes(w) && state.categories.some(c => !c.target && (c.words || []).includes(w));
+      const idx = homePhrase.map((_, i) => i), lastOf = m => m.phrase[m.phrase.length - 1];
+      const lead = list.filter(known).map(w => opts.find(m => lastOf(m) === w && m.phrase.length === homePhrase.length + 1) || { phrase: homePhrase.concat([w]), used: idx, act: true });
+      opts = lead.concat(opts.filter(m => !lead.includes(m) && !list.includes(lastOf(m))));
+    } } catch (e) {}
     let fl = [];
     try { if (false) fl = relatedFolders(homePhrase[homePhrase.length - 1]).filter(c => !homePath.includes(c.id)).slice(0, 12); } catch (e) { fl = []; }
     const sig = (suggShut ? 'S' : 'O') + '|' + opts.map(m => m.phrase.join(' ')).join('|') + '|F:' + fl.map(c => c.id).join(',');
