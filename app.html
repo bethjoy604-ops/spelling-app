@@ -314,6 +314,18 @@
     align-self: flex-start; box-shadow: var(--shadow); word-break: break-word;
   }
   .chat-bubble.reply { align-self: flex-end; background: #bfd8ff; }
+  /* chat mode on the main page: the conversation sits above the key bar, its newest message in view,
+     with a bar under it (like the small words' bar) to fold it away */
+  .chat-pane { display: none; flex: none; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .chat-pane.show { display: flex; }
+  .chat-pane .cp-thread { max-height: 26vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.35); border-radius: 20px; padding: 12px 14px; scrollbar-width: none; overscroll-behavior: contain; }
+  .chat-pane .cp-thread::-webkit-scrollbar { display: none; }
+  .chat-pane .cp-thread .chat-bubble { font-size: clamp(22px, 3.6vmin, 38px); padding: 8px 18px; }
+  .chat-pane .cp-mini { align-self: flex-end; display: flex; gap: 4px; margin: -4px -4px -6px 0; }
+  .chat-pane .cp-bar { height: 48px; min-height: 48px; border: none; border-radius: 16px; background-color: #e9dcc0; background-repeat: no-repeat; background-position: right 22px center; background-size: 26px 16px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23b39a66' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l10-9 10 9'/%3E%3C/svg%3E"); }
+  .chat-pane.shut .cp-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23b39a66' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
+  .chat-pane.shut .cp-thread { display: none; }
   .view-chat .chat-bar { min-height: clamp(70px, 11vh, 120px); font-size: clamp(30px, 5vmin, 54px); padding: 10px 14px 10px 22px; flex: none; }
   .chat-words { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .chat-words .pb-chip { font-size: 1em; }
@@ -1945,6 +1957,7 @@
 
 <!-- ===== HOME ===== -->
 <div class="view view-home" id="viewHome">
+  <div class="chat-pane" id="chatPane"></div>
   <div class="display phrase-bar" id="phraseBar">
     <div class="display-content pb-words" id="pbWords"></div>
     <input class="pb-input" id="pbInput" type="text" maxlength="80"
@@ -1979,7 +1992,7 @@
     <button class="ctl icon" id="homeMagicBtn" aria-label="Magic suggestions" aria-pressed="true">&#129668;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon" id="homeIconsClose" aria-label="Close the switches">&times;</button>
-    <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">+</button>
+    <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#128736;&#65039;</button>
   </div>
 
   <div class="magic-box" id="magicBox">
@@ -2692,7 +2705,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 461 - 9 Oct';
+const BUILD = 'build 462 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3056,7 +3069,7 @@ async function load() {
         recentsHidden: saved.recentsHidden || {},
         suggestOn: saved.suggestOn ?? true,
         soundOn: saved.soundOn ?? true,
-        chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [],
+        chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [], chatPaneShut: !!saved.chatPaneShut,
         modesV1: saved.modesV1 ?? false,
         modesV2: saved.modesV2 ?? false,
         chatMode: saved.chatMode ?? false,
@@ -3620,7 +3633,7 @@ async function save() {
       recentsHidden: state.recentsHidden,
       suggestOn: state.suggestOn,
       soundOn: state.soundOn,
-      chatLog: state.chatLog,
+      chatLog: state.chatLog, chatPaneShut: !!state.chatPaneShut,
       modesV1: state.modesV1,
       modesV2: state.modesV2,
       chatMode: state.chatMode,
@@ -8064,7 +8077,7 @@ function homeEnter() {
     // and it joins the transcript under the first page, newest at the top
     state.builderLog = [{ words: homePhrase.slice(), t: Date.now() }].concat(state.builderLog || []).slice(0, 5000);
   }
-  if (state.chatMode && homePhrase.length) { openChatWith(homePhrase.slice()); return; }
+  if (state.chatMode && homePhrase.length) { if (state.builderMode) openChatWith(homePhrase.slice()); else chatPost(homePhrase.slice()); return; }
   if (!state.speakMode) { startPhraseFromHome(); return; }
   if (!homePhrase.length) return;
   warmSpeech();
@@ -8167,6 +8180,47 @@ function renderChat() {
     });
     sg.appendChild(b);
   });
+}
+// Chat mode in menu mode: the green enter puts the message into the conversation above the key bar
+// and says it; the page stays, so the reply is made with all the same folders and tiles
+function chatPost(words) {
+  try { homeKeysClose(); } catch (e) {}
+  const text = sentenceWords(words).join(' ');
+  const now = Date.now();
+  words.forEach(w => { const h = state.wordHistory[w] || { n: 0, t: 0 }; h.n++; h.t = now; state.wordHistory[w] = h; });
+  homePhrase = [];
+  try { hideMagic(); } catch (e) {}
+  state.chatLog = (state.chatLog || []).concat([{ text, replies: [], t: now }]).slice(-5000);
+  state.chatPaneShut = false;
+  save(); buzz(15);
+  warmSpeech(); sayAnyway = state.soundOn !== false; try { speakWord(words.join(' '), 0.95); } finally { sayAnyway = false; }
+  renderPhraseBar(); renderHome(true); renderChatPane(true);
+}
+let chatPaneSig = '';
+function renderChatPane(force) {
+  const pane = document.getElementById('chatPane'); if (!pane) return;
+  const showing = (state.chatLog || []).filter(m => (m.t || 0) >= chatShownFrom);
+  const on = !!state.chatMode && !state.builderMode && showing.length > 0;
+  pane.classList.toggle('show', on);
+  pane.classList.toggle('shut', !!state.chatPaneShut);
+  if (!on) { pane.innerHTML = ''; chatPaneSig = ''; return; }
+  const sig = showing.length + '|' + (showing[showing.length - 1].t) + '|' + showing.map(m => (m.replies || []).length).join(',');
+  if (!force && sig === chatPaneSig && pane.firstChild) return;
+  chatPaneSig = sig;
+  pane.innerHTML = '';
+  const th = document.createElement('div'); th.className = 'cp-thread';
+  const mini = document.createElement('div'); mini.className = 'cp-mini';
+  const mb = (text, label, fn) => { const b = document.createElement('button'); b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label); b.addEventListener('click', fn); mini.appendChild(b); };
+  mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderChatPane(true); });
+  mb('history', 'The whole conversation', openChatHistory);
+  th.appendChild(mini);
+  showing.slice(-60).forEach(m => chatBubbles(m).forEach(d => th.appendChild(d)));
+  pane.appendChild(th);
+  const bar = document.createElement('button'); bar.className = 'cp-bar';
+  bar.setAttribute('aria-label', state.chatPaneShut ? 'Show the conversation' : 'Hide the conversation');
+  bar.addEventListener('click', () => { state.chatPaneShut = !state.chatPaneShut; buzz(10); save(); renderChatPane(true); try { renderHome(true); } catch (e) {} });
+  pane.appendChild(bar);
+  requestAnimationFrame(() => { th.scrollTop = th.scrollHeight; });      // the newest message in view; scroll up for the earlier ones
 }
 function chatBubbles(m) {
   const mk = (text, reply) => {
@@ -8711,6 +8765,7 @@ function commitTypedWord() {
 }
 
 function renderHome(reset) {
+  try { renderChatPane(); } catch (e) {}
   linkWordCache = null;
   const grid = document.getElementById('homeGrid');
   const cat = currentCat();
@@ -8740,7 +8795,7 @@ function renderHome(reset) {
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
     { const mb = document.getElementById('homeMagicBtn'); mb.classList.toggle('off', !state.magicType); mb.setAttribute('aria-pressed', state.magicType ? 'true' : 'false'); }
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
-    { const it = document.getElementById('homeIconsToggle'); it.textContent = '+'; it.style.display = (!state.builderMode && homePath.length && Date.now() >= menuPeekUntil && !state.iconsOpen) ? 'none' : ''; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
+    { const it = document.getElementById('homeIconsToggle'); it.textContent = '\uD83D\uDEE0\uFE0F'; it.style.display = (!state.builderMode && homePath.length && Date.now() >= menuPeekUntil && !state.iconsOpen) ? 'none' : ''; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
@@ -12435,7 +12490,7 @@ function renderSlotGrid(grid, cat, folders) {
   if (listMode && tilesPage(cat)) renderTileBody(grid, cat, listWords, rowH, base, cols);
   else if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
-  if (!arrange && state.chatMode) {
+  if (false && !arrange && state.chatMode) {      // (the conversation is above the key bar now)
     grid.style.gridTemplateRows = 'repeat(' + Math.max(1, totalRows) + ', ' + rowH + 'px) auto';
     renderChatLog(grid, base);
     grid.lastChild.style.gridRow = String(Math.max(1, totalRows) + 1);
