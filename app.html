@@ -316,15 +316,18 @@
   .chat-bubble.reply { align-self: flex-end; background: #bfd8ff; }
   /* chat mode on the main page: the conversation sits above the key bar, its newest message in view,
      with a bar under it (like the small words' bar) to fold it away */
-  .chat-pane { display: none; flex: none; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .chat-pane { display: none; flex: none; flex-direction: column; margin-bottom: 10px; background: #f6f7f9; border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); }
   .chat-pane.show { display: flex; }
-  .chat-pane .cp-thread { max-height: 26vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.35); border-radius: 20px; padding: 12px 14px; scrollbar-width: none; overscroll-behavior: contain; }
+  /* one message in view at a time (the newest); scroll up for the ones before */
+  .chat-pane .cp-thread { --cpf: clamp(28px, 4.6vmin, 46px); font-size: var(--cpf); height: calc(var(--cpf) * 1.15 + 40px); overflow-y: auto; display: flex; flex-direction: column; gap: 30px; padding: 14px 16px; scroll-padding: 14px 0; scrollbar-width: none; overscroll-behavior: contain; scroll-snap-type: y mandatory; box-sizing: border-box; }
   .chat-pane .cp-thread::-webkit-scrollbar { display: none; }
-  .chat-pane .cp-thread .chat-bubble { font-size: clamp(22px, 3.6vmin, 38px); padding: 8px 18px; }
-  .chat-pane .cp-mini { align-self: flex-end; display: flex; gap: 4px; margin: -4px -4px -6px 0; }
-  .chat-pane .cp-bar { height: 48px; min-height: 48px; border: none; border-radius: 16px; background-color: #e9dcc0; background-repeat: no-repeat; background-position: right 22px center; background-size: 26px 16px; cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23b39a66' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l10-9 10 9'/%3E%3C/svg%3E"); }
-  .chat-pane.shut .cp-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23b39a66' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
+  .chat-pane .cp-thread .chat-bubble { font-size: 1em; padding: 6px 22px; align-self: flex-end; background: #2f8bff; color: #fff; scroll-snap-align: end; box-shadow: none; max-width: 88%; }
+  .chat-pane .cp-thread .chat-bubble.reply { align-self: flex-start; background: #e4e6ea; color: var(--ink); }
+  /* the bottom of the window: a darker strip - tap it to fold the conversation away, and again to open it */
+  .chat-pane .cp-bar { position: relative; height: 26px; min-height: 26px; border: none; background-color: #dfe2e7; background-repeat: no-repeat; background-position: center; background-size: 22px 12px; cursor: pointer; display: flex; align-items: center; justify-content: flex-end; padding: 0 10px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23989ca5' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l10-9 10 9'/%3E%3C/svg%3E"); }
+  .chat-pane.shut .cp-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23989ca5' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
+  .chat-pane .cp-bar .chat-mini { font-size: 13px; padding: 2px 6px; color: rgba(0,0,0,0.42); }
   .chat-pane.shut .cp-thread { display: none; }
   .view-chat .chat-bar { min-height: clamp(70px, 11vh, 120px); font-size: clamp(30px, 5vmin, 54px); padding: 10px 14px 10px 22px; flex: none; }
   .chat-words { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -518,7 +521,10 @@
   #pageEditBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 16px;
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
-  .home-card.group-tile { background: var(--surface); }      /* white like any tile: the grey mark on its name says it opens a group */
+  .home-card.group-tile { background: var(--surface); }
+  /* a group opens like a folder: it has the folder's blue dot too (not while the page is being edited) */
+  .home-card.group-tile:not(.edit-tile)::after, .sugg-card.sugg-folder::after { content: ''; position: absolute; top: 10px; right: 12px; width: 10px; height: 10px; border-radius: 50%; background: #bfd8ff; }
+  .sugg-card.sugg-folder { position: relative; }      /* white like any tile: the grey mark on its name says it opens a group */
   .home-card.group-tile .name-hl, .home-card.folder-card .name-hl { background: #cfd2d8; border-radius: 0.3em; padding: 0.08em 0.35em; }
   .home-card.folder-card:not(.board-card)::after { display: none; }
   .home-card.group-tile.drop-into { outline: 6px solid var(--green); outline-offset: -3px; }      /* blue: this tile opens a group's own page */
@@ -2705,7 +2711,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 462 - 9 Oct';
+const BUILD = 'build 463 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8209,14 +8215,11 @@ function renderChatPane(force) {
   chatPaneSig = sig;
   pane.innerHTML = '';
   const th = document.createElement('div'); th.className = 'cp-thread';
-  const mini = document.createElement('div'); mini.className = 'cp-mini';
-  const mb = (text, label, fn) => { const b = document.createElement('button'); b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label); b.addEventListener('click', fn); mini.appendChild(b); };
-  mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderChatPane(true); });
-  mb('history', 'The whole conversation', openChatHistory);
-  th.appendChild(mini);
   showing.slice(-60).forEach(m => chatBubbles(m).forEach(d => th.appendChild(d)));
   pane.appendChild(th);
-  const bar = document.createElement('button'); bar.className = 'cp-bar';
+  const bar = document.createElement('div'); bar.className = 'cp-bar'; bar.setAttribute('role', 'button');
+  const mb = (text, label, fn) => { const b = document.createElement('button'); b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label); b.addEventListener('click', e => { e.stopPropagation(); fn(); }); bar.appendChild(b); };
+  if (!state.chatPaneShut) { mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderChatPane(true); }); mb('history', 'The whole conversation', openChatHistory); }
   bar.setAttribute('aria-label', state.chatPaneShut ? 'Show the conversation' : 'Hide the conversation');
   bar.addEventListener('click', () => { state.chatPaneShut = !state.chatPaneShut; buzz(10); save(); renderChatPane(true); try { renderHome(true); } catch (e) {} });
   pane.appendChild(bar);
@@ -13619,7 +13622,7 @@ window.addEventListener('click', e => {
 }, true);
 function armIcons() {
   clearTimeout(iconsTimer); iconsTimer = null;
-  if (state.iconsOpen) iconsTimer = setTimeout(closeIcons, 5000);
+  if (state.iconsOpen) iconsTimer = setTimeout(closeIcons, 7000);
 }
 document.querySelector('.home-row').addEventListener('click', e => {
   if (state.iconsOpen && e.target.closest('button') && !e.target.closest('#homeIconsToggle') && !e.target.closest('.cat-tile')) armIcons();
