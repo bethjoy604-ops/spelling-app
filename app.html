@@ -2719,7 +2719,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 465 - 9 Oct';
+const BUILD = 'build 466 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6102,6 +6102,8 @@ function goHomeAfter(word, wordCount) {
 // The finished message, large on the whole screen: each word lights up in turn as it is said
 let readBackTimer = null;
 function readBack(words, target, force) {
+  // a chat message that went through spelling practice first: finished, it joins the conversation
+  try { if (chatAfterPractice && state.chatMode && !state.builderMode) { const k = words.map(w => bareWord(String(w))).join(' ').toUpperCase(); if (k === chatAfterPractice.toUpperCase()) { chatLogAdd(words); chatPaneSig = ''; } chatAfterPractice = null; } } catch (e) { chatAfterPractice = null; }
   try { homeKeysClose(); } catch (e) {}
   clearTimeout(readBackTimer);
   const old = document.getElementById('readBack'); if (old) old.remove();
@@ -8134,7 +8136,14 @@ function homeEnter() {
     // and it joins the transcript under the first page, newest at the top
     state.builderLog = [{ words: homePhrase.slice(), t: Date.now() }].concat(state.builderLog || []).slice(0, 5000);
   }
-  if (state.chatMode && homePhrase.length) { if (state.builderMode) openChatWith(homePhrase.slice()); else chatPost(homePhrase.slice()); return; }
+  if (state.chatMode && homePhrase.length) {
+    if (state.builderMode) openChatWith(homePhrase.slice());
+    // speak mode off: the message is typed out on the practice keyboard first; once it is finished it is
+    // read back and goes into the conversation at the top
+    else if (!state.speakMode) { chatAfterPractice = homePhrase.join(' ').split(' ').filter(Boolean).map(bareWord).join(' '); startPhraseFromHome(); }
+    else chatPost(homePhrase.slice());
+    return;
+  }
   if (!state.speakMode) { startPhraseFromHome(); return; }
   if (!homePhrase.length) return;
   warmSpeech();
@@ -8240,6 +8249,12 @@ function renderChat() {
 }
 // Chat mode in menu mode: the green enter puts the message into the conversation above the key bar
 // and says it; the page stays, so the reply is made with all the same folders and tiles
+let chatAfterPractice = null;      // the message being practised before it joins the conversation
+function chatLogAdd(words) {
+  const text = sentenceWords(words).join(' ');
+  state.chatLog = (state.chatLog || []).concat([{ text, replies: [], t: Date.now() }]).slice(-5000);
+  state.chatPaneShut = false; save();
+}
 function chatPost(words) {
   try { homeKeysClose(); } catch (e) {}
   const text = sentenceWords(words).join(' ');
@@ -12441,6 +12456,8 @@ function renderSlotGrid(grid, cat, folders) {
       hd.className = 'feed-head';
       hd.setAttribute('aria-expanded', shut ? 'false' : 'true');
       hd.textContent = f.name;
+      // folded, the group's name is the size of the words on the tiles, with room around it, easy to read
+      if (shut) { hd.style.setProperty('font-size', Math.round(Math.max(24, base)) + 'px', 'important'); hd.style.setProperty('height', 'auto', 'important'); hd.style.setProperty('padding', '0.4em 1em', 'important'); hd.style.setProperty('border-radius', '16px', 'important'); hd.style.setProperty('margin', '-4px 0 6px -4px', 'important'); }
       // hold the name and the whole panel lifts, to drag before or after another panel
       sec.dataset.bidx = dragList.indexOf(f);
       sec.dataset.blist = 'panels';
