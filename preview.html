@@ -528,6 +528,13 @@
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: var(--surface); }
+  .sort-to { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+  .sort-dest { border: 2px solid var(--border); background: var(--surface); border-radius: 14px; padding: 8px 14px; font-family: inherit; font-weight: 900; font-size: 16px; color: var(--ink); cursor: pointer; }
+  .sort-dest.on { background: var(--green); border-color: var(--green); color: #fff; }
+  .sort-dest.add { border-style: dashed; color: var(--muted); }
+  .sort-bar { display: flex; gap: 8px; margin-bottom: 6px; }
+  .sort-mini { border: none; background: rgba(0,0,0,0.06); border-radius: 10px; padding: 4px 10px; font-family: inherit; font-weight: 800; font-size: 14px; color: var(--ink); cursor: pointer; }
+  .sort-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   /* a tile held over another: let go and the two make a new group */
   .home-card.drop-group { outline: 6px dashed var(--green); outline-offset: -3px; transform: scale(1.06); transition: transform 0.15s ease; }
   /* a group opens like a folder: it has the folder's blue dot too (not while the page is being edited) */
@@ -2723,7 +2730,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 469 - 9 Oct';
+const BUILD = 'build 470 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -11336,6 +11343,8 @@ function openGroupHead(cat, group) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = group.name;
     body.appendChild(p);
+    body.appendChild(sheetBtn('Sort several into groups (full list)', '', () => openGroupSorter(cat, null)));
+    if (cat.target) body.appendChild(sheetBtn('Choose targets from the whole library', '', () => openTargetPicker(cat)));
     body.appendChild(sheetBtn('Rename', '', () => askText('Rename heading', 'Save', group.name, typed => {
       const name = String(typed || '').replace(/\s+/g, ' ').trim();
       if (!name) return false;
@@ -11373,6 +11382,71 @@ function targetPauseBtn(word) {
   paintP();
   return pb;
 }
+// Sort into groups: the page's whole list with ticks - choose several (or all), pick where they go, move them in one go
+function openGroupSorter(cat, startWord) {
+  const chosen = new Set(startWord ? [startWord] : []);
+  let dest = null;      // a group, or null for no group
+  const draw = () => openWordSheet(body => {
+    sheetTitle(body, 'Sort into groups');
+    const groups = listGroups(cat);
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 6px';
+    n.textContent = 'Tick the ' + (cat.target ? 'targets' : 'tiles') + ' to move, choose where they go, then Move.';
+    body.appendChild(n);
+    // where to: each group, no group, or a new one
+    const to = document.createElement('div'); to.className = 'sort-to';
+    groups.concat([null]).forEach(g => {
+      const b = document.createElement('button'); b.className = 'sort-dest' + (dest === g ? ' on' : '');
+      b.textContent = g ? g.name : 'No group';
+      b.addEventListener('click', () => { dest = g; buzz(8); draw(); });
+      to.appendChild(b);
+    });
+    const nb = document.createElement('button'); nb.className = 'sort-dest add'; nb.textContent = '+ new group';
+    nb.addEventListener('click', () => askText('New group in ' + cat.name, 'Add', '', typed => {
+      const name = String(typed || '').replace(/\s+/g, ' ').trim(); if (!name) return false;
+      const gs = listGroups(cat); const g = { id: Math.max(0, ...gs.map(x => x.id || 0)) + 1, name, words: [], open: true }; gs.push(g); dest = g;
+      setTimeout(draw, 30);
+    }));
+    to.appendChild(nb);
+    body.appendChild(to);
+    const all = (cat.words || []).filter(w => !isPunct(w));
+    const bar = document.createElement('div'); bar.className = 'sort-bar';
+    const mini = (t, fn) => { const b = document.createElement('button'); b.className = 'sort-mini'; b.textContent = t; b.addEventListener('click', () => { fn(); buzz(8); draw(); }); bar.appendChild(b); };
+    mini('Select all', () => all.forEach(w => chosen.add(w)));
+    mini('Select none', () => chosen.clear());
+    body.appendChild(bar);
+    const list = document.createElement('div'); list.className = 'pick-list'; list.style.maxHeight = '44vh'; list.style.overflowY = 'auto';
+    const section = (title, words) => {
+      if (!words.length) return;
+      const h = document.createElement('div'); h.className = 'help-note pick-head sort-head';
+      const t = document.createElement('span'); t.textContent = title; h.appendChild(t);
+      const every = words.every(w => chosen.has(w));
+      const tg = document.createElement('button'); tg.className = 'sort-mini'; tg.textContent = every ? 'none' : 'all';
+      tg.addEventListener('click', () => { words.forEach(w => every ? chosen.delete(w) : chosen.add(w)); buzz(8); draw(); });
+      h.appendChild(tg); list.appendChild(h);
+      sortAZ(words.slice()).forEach(w => {
+        const r = document.createElement('button'); r.className = 'pick-row' + (chosen.has(w) ? ' on' : '');
+        r.textContent = (chosen.has(w) ? '\u2713  ' : '') + bankLabel(w) + (state.hiddenWords[w] ? '  (hidden)' : '');
+        r.addEventListener('click', () => { if (chosen.has(w)) chosen.delete(w); else chosen.add(w); buzz(6); r.classList.toggle('on', chosen.has(w)); r.textContent = (chosen.has(w) ? '\u2713  ' : '') + bankLabel(w) + (state.hiddenWords[w] ? '  (hidden)' : ''); go.textContent = moveLabel(); go.disabled = !chosen.size; });
+        list.appendChild(r);
+      });
+    };
+    const grouped = new Set([].concat(...groups.map(g => g.words)));
+    section('No group', all.filter(w => !grouped.has(w)));
+    groups.forEach(g => section(g.name, g.words.filter(w => all.includes(w))));
+    body.appendChild(list);
+    const moveLabel = () => 'Move ' + chosen.size + ' to ' + (dest ? dest.name : 'no group');
+    const go = sheetBtn(moveLabel(), 'primary', () => {
+      const gs = listGroups(cat);
+      gs.forEach(g => { g.words = g.words.filter(w => !chosen.has(w)); });
+      if (dest) [...chosen].forEach(w => { if (!dest.words.includes(w)) dest.words.push(w); });
+      chosen.clear(); save(); renderHome(false); buzz(12); draw();
+    });
+    go.disabled = !chosen.size;
+    body.appendChild(go);
+    body.appendChild(sheetBtn('Done', '', () => { save(); closeWordSheet(); renderHome(true); }));
+  });
+  draw();
+}
 function openTitleActions(word, cat, extra) {
   openWordSheet(body => {
     const noun = cat.target ? 'target' : 'title';
@@ -11386,6 +11460,8 @@ function openTitleActions(word, cat, extra) {
     if (!cat.target && !state.builderMode) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; if (!tilesPage(cat)) tileGroup = null; closeWordSheet(); renderHome(true); }));
     if (!cat.target && state.builderMode) body.appendChild(builderEditBtn());
     const groups = usesGroups(cat) ? listGroups(cat) : [];
+    if (usesGroups(cat)) body.appendChild(sheetBtn('Sort several into groups (full list)', '', () => openGroupSorter(cat, word)));
+    if (cat.target) body.appendChild(sheetBtn('Choose targets from the whole library', '', () => openTargetPicker(cat)));
     if (groups.length) {
       const h = document.createElement('div');
       h.className = 'help-note'; h.style.margin = '14px 0 6px';
@@ -12040,16 +12116,29 @@ function openTargetPicker(cat) {
     list.style.maxHeight = '52vh'; list.style.overflowY = 'auto';
     body.appendChild(list);
     const done = new Set();
-    state.categories.filter(c => !c.target && !c.hidden && (c.words || []).length).forEach(f => {
-      const ws = (f.words || []).filter(w => !state.hiddenWords[w] && !isPunct(w) && !done.has(w) && (done.add(w), true));
+    // the whole library: every folder (hidden ones too), every tile in it (hidden ones marked), each folder with all / none
+    const pathName = f => { const a = []; let x = f, g = 0; while (x && g++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a.join(' \u203A '); };
+    state.categories.filter(c => !c.target && (c.words || []).length).forEach(f => {
+      const ws = (f.words || []).filter(w => !isPunct(w) && !done.has(w) && (done.add(w), true));
       if (!ws.length) return;
       const h = document.createElement('div');
-      h.className = 'help-note pick-head'; h.textContent = f.name;
+      h.className = 'help-note pick-head sort-head';
+      const t = document.createElement('span'); t.textContent = pathName(f) + (f.hidden ? '  (hidden folder)' : ''); h.appendChild(t);
+      const tg = document.createElement('button'); tg.className = 'sort-mini';
+      const paintT = () => { tg.textContent = ws.every(w => (cat.words || []).includes(w)) ? 'none' : 'all'; };
+      tg.addEventListener('click', () => {
+        const every = ws.every(w => (cat.words || []).includes(w));
+        if (every) { cat.words = (cat.words || []).filter(w => !ws.includes(w)); listGroups(cat); }
+        else ws.forEach(w => { if (!(cat.words || []).includes(w)) addTitleTo(cat, null, sentenceLabel(w)); });
+        save(); buzz(8); list.querySelectorAll('.pick-row').forEach(r => r._paint && r._paint()); paintT();
+      });
+      paintT(); h.appendChild(tg);
       list.appendChild(h);
       ws.forEach(w => {
         const r = document.createElement('button');
         r.className = 'pick-row';
-        const paint = () => { const on = (cat.words || []).includes(w); r.classList.toggle('on', on); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w); };
+        const paint = () => { const on = (cat.words || []).includes(w); r.classList.toggle('on', on); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w) + (state.hiddenWords[w] ? ' \u00B7 hidden' : ''); };
+        r._paint = paint;
         r.addEventListener('click', () => {
           if ((cat.words || []).includes(w)) { cat.words = cat.words.filter(x => x !== w); listGroups(cat); }
           else addTitleTo(cat, null, sentenceLabel(w));
@@ -13149,6 +13238,9 @@ function selPaint() {
   const n = document.createElement('span'); n.className = 'sel-n'; n.textContent = selWords.length + ' chosen'; bar.appendChild(n);
   const btn = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'sel-btn ' + cls; b.textContent = label; b.addEventListener('click', fn); bar.appendChild(b); return b; };
   const t = newFolder();
+  { const onPage = () => [...document.querySelectorAll('#homeGrid .home-card')].map(selLabelKey).filter(k => k && state.words.includes(k));
+    const pageAll = onPage(), every = pageAll.length && pageAll.every(k => selWords.includes(k));
+    btn(every ? 'None' : 'All', '', () => { selWords = every ? [] : [...new Set(selWords.concat(pageAll))]; buzz(8); selPaint(); }); }
   btn('Hide', 'warn', () => { selWords.forEach(w => { state.hiddenWords[w] = true; }); selEnd(); }).disabled = !selWords.length;
   if (t && t.target) btn('Add to practice', '', () => {
     const fresh = listGroups(t).find(g => /^new$/i.test(String(g.name || '').trim())) || null;
