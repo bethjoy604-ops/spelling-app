@@ -525,6 +525,7 @@
   .feed-group.drop-after { box-shadow: 8px 0 0 var(--green); }
   .feed-group.drag-src { opacity: 0.35; }
   .feed-group .feed-head { touch-action: none; }
+  .mbtn.danger.armed { outline: 4px solid #d33; outline-offset: 2px; }
   /* the group's name as a tile of its own, in a deeper grey than the panel: tap it to say the word */
   .feed-group .feed-head.name-tile { align-self: flex-start; max-width: 100%; height: 40px !important; margin: -4px 0 10px -4px; padding: 0 18px; border-radius: 12px; background: #eef0f3; color: var(--ink); font-size: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
   .feed-group .feed-head.name-tile[aria-expanded="false"] { margin-bottom: 0; }
@@ -2573,6 +2574,9 @@
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
         <div class="sublabel" style="margin-top:14px;">Hidden folders</div>
         <div id="hiddenFolders"></div>
+        <div class="sublabel" style="margin-top:14px;">Recently removed</div>
+        <div id="trashList"></div>
+        <div class="help-note">Anything deleted (a folder, a tab, a group) can be put back here. The last ten are kept on this device.</div>
         <button class="mbtn action" id="restoreFoldersBtn" style="width:100%; margin-top:8px;">Bring back missing default folders</button>
         <div class="help-note">Puts back any built-in folder that has been deleted, such as Chat, with its original words. Folders that are still there are left exactly as they are.</div>
         <button class="mbtn action" id="exportLayoutBtn" style="width:100%; margin-top:8px;">Export my layout</button>
@@ -2688,7 +2692,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 460 - 9 Oct';
+const BUILD = 'build 461 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6424,8 +6428,13 @@ function addCategory(name, parent, color) {
   state.categories.push(cat);
   return cat;
 }
+let delDepth = 0;
 function deleteCategory(id) {
-  childrenOf(id, true).forEach(c => deleteCategory(c.id));
+  if (!delDepth) { const c = catById(id); trashSnap('Folder "' + (c ? c.name : id) + '"'); }
+  delDepth++; try { deleteCategoryIn(id); } finally { delDepth--; }
+}
+function deleteCategoryIn(id) {
+  childrenOf(id, true).forEach(c => deleteCategoryIn(c.id));
   syncTombCat(id);
   state.categories = state.categories.filter(c => c.id !== id);
 }
@@ -9677,8 +9686,8 @@ function exportBuilderLog() {
 document.getElementById('exportLogBtn').addEventListener('click', exportBuilderLog);
 // Everything that makes up the layout on this device, as one file. No usage
 // history, transcript or recordings: just what is where.
-function exportLayout() {
-  const layout = {
+function layoutNow() {
+  return {
     kind: 'spelling-app-layout', version: 1, build: BUILD, exported: new Date().toISOString(),
     gridFill: state.gridFill, bankSort: state.bankSort, caseMode: state.caseMode,
     categories: state.categories.map(c => ({
@@ -9702,6 +9711,39 @@ function exportLayout() {
     pairs: state.pairs || [],
     builder: state.builder,
   };
+}
+// Recently removed: before anything is deleted, the whole layout is kept (the last ten), so a folder,
+// tab or group taken away by mistake can be put back from Settings
+function trashGet() { try { return JSON.parse(localStorage.getItem('kbd-trash') || '[]'); } catch (e) { return []; } }
+let trashLastAt = 0;
+function trashSnap(label) {
+  if (Date.now() - trashLastAt < 1500) return;      // one removal, one entry
+  trashLastAt = Date.now();
+  try { const l = trashGet(); l.unshift({ label, t: Date.now(), layout: layoutNow() }); localStorage.setItem('kbd-trash', JSON.stringify(l.slice(0, 10))); } catch (e) {}
+}
+function renderTrash() {
+  const box = document.getElementById('trashList'); if (!box) return;
+  box.innerHTML = '';
+  const l = trashGet();
+  if (!l.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'Nothing removed yet.'; box.appendChild(n); return; }
+  l.forEach((it, i) => {
+    const row = document.createElement('div'); row.className = 'hf-row';
+    const name = document.createElement('span'); name.className = 'hf-name';
+    name.textContent = it.label + ' · ' + new Date(it.t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    row.appendChild(name);
+    const b = document.createElement('button'); b.className = 'hf-btn'; b.textContent = 'Put back';
+    b.addEventListener('click', () => {
+      if (!confirm('Put back "' + it.label + '"?\n\nThe folders, groups and tiles go back to how they were just before it was removed. Changes to the layout made since then are undone (your current layout is kept in this list too, in case).')) return;
+      trashLastAt = 0; trashSnap('Layout before putting back');
+      try { applyLayout(it.layout, true); } catch (e) { alert('Could not put it back: ' + e.message); return; }
+      save(); renderSettings();
+      if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
+    });
+    row.appendChild(b); box.appendChild(row);
+  });
+}
+function exportLayout() {
+  const layout = layoutNow();
   const text = JSON.stringify(layout, null, 1);
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const a = document.createElement('a');
@@ -10329,8 +10371,17 @@ function renderHiddenFolders() {
   const box = document.getElementById('hiddenFolders');
   if (!box) return;
   box.innerHTML = '';
+  // groups hidden on a custom page are listed here too, each with a way back
+  state.categories.forEach(c => Object.keys(c.feedHid || {}).forEach(id => {
+    const row = document.createElement('div'); row.className = 'hf-row';
+    const name = document.createElement('span'); name.className = 'hf-name'; name.textContent = c.feedHid[id] + '  (group on ' + c.name + ')';
+    const show = document.createElement('button'); show.className = 'hf-btn'; show.textContent = 'Show';
+    show.addEventListener('click', () => { delete c.feedHid[id]; save(); renderSettings(); if (document.getElementById('viewHome').classList.contains('active')) renderHome(true); });
+    row.appendChild(name); row.appendChild(show); box.appendChild(row);
+  }));
   const hidden = state.categories.filter(c => c.hidden);
   if (!hidden.length) {
+    if (box.firstChild) return;
     const n = document.createElement('div');
     n.className = 'help-note';
     n.textContent = 'No hidden folders. To hide one, hold it and choose Hide folder.';
@@ -12256,7 +12307,7 @@ function renderSlotGrid(grid, cat, folders) {
           && ordered.some(o => o.f !== f && o.mine.length <= (cols - k) * (laid.length / k))) { w = k; break; }
         if (w) { lines = []; for (let k = 0; k < laid.length; k += w) lines.push(laid.slice(k, k + w)); }
       }
-      let span = Math.min(cols, Math.max(1, ...lines.map(wide)));
+      let span = shut ? cols : Math.min(cols, Math.max(1, ...lines.map(wide)));      // folded, a group is the full-width bar, however few its tiles
       let tall = shut ? 1 : lines.length;
       let at = firstFit(span, tall);
       if (false && !shut && mine.length === 2 && span === 2) {
@@ -12851,7 +12902,9 @@ document.getElementById('homeGrid').addEventListener('click', e => {
   buzz(8); selPaint();
 }, true);
 function selSheetBtn(word) { return sheetBtn('Select tiles (hide, add to practice ...)', '', () => selStart(word)); }
+let sheetOpenAt = 0;
 function openWordSheet(build) {
+  sheetOpenAt = Date.now();
   const body = document.getElementById('wordSheetBody');
   body.innerHTML = '';
   build(body);
@@ -12921,7 +12974,25 @@ function sheetBtn(label, cls, fn) {
   b.className = 'mbtn action' + (cls ? ' ' + cls : '');
   b.style.width = '100%'; b.style.marginTop = '8px';
   b.textContent = label;
-  b.addEventListener('click', fn);
+  // a remove button needs two taps (the first one asks), and the layout is kept first so it can be put back
+  if (/\bdanger\b/.test(cls || '')) {
+    let armed = 0;
+    b.addEventListener('click', e => {
+      if (Date.now() - sheetOpenAt < 600) return;      // the finger that opened this menu, lifting: not a tap
+      if (Date.now() - armed > 4000) {
+        armed = Date.now(); buzz(15);
+        const sl = b.querySelector('.sl'); if (sl) { sl.dataset.was = sl.dataset.was || sl.textContent; sl.textContent = 'Sure?'; } else { b.dataset.was = b.dataset.was || b.textContent; b.textContent = 'Tap again to ' + label.toLowerCase(); }
+        b.classList.add('armed');
+        setTimeout(() => { if (Date.now() - armed >= 4000) { const s2 = b.querySelector('.sl'); if (s2 && s2.dataset.was) s2.textContent = s2.dataset.was; else if (b.dataset.was) b.textContent = b.dataset.was; b.classList.remove('armed'); } }, 4050);
+        return;
+      }
+      { const sb = b.closest('#wordSheetBody'), pv = sb && (sb.querySelector('.key-preview') || sb.querySelector('h3'));
+        trashSnap((pv ? pv.textContent.trim() + ' \u2014 ' : '') + label); }
+      fn(e);
+    });
+    return b;
+  }
+  b.addEventListener('click', e => { if (Date.now() - sheetOpenAt < 400) return; fn(e); });
   return b;
 }
 function sheetTitle(body, text, word) {
@@ -14325,7 +14396,7 @@ function renderSettings() {
            if (document.getElementById('viewHome').classList.contains('active')) renderHome(true);
            if (kbBankOpen) renderKbBank(); });
   const hiddenN = Object.keys(Object.assign({}, state.hiddenWords || {}, state.recentsHidden || {})).length;
-  renderHiddenFolders();
+  renderHiddenFolders(); try { renderTrash(); } catch (e) {}
   const ub = document.getElementById('unhideWordsBtn');
   ub.textContent = hiddenN ? ('Show ' + hiddenN + ' hidden word' + (hiddenN === 1 ? '' : 's')) : 'No hidden words';
   ub.style.opacity = hiddenN ? '1' : '0.5';
