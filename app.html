@@ -325,11 +325,16 @@
   .chat-pane .cp-thread .chat-bubble { font-size: 1em; padding: 6px 22px; align-self: flex-end; background: #2f8bff; color: #fff; scroll-snap-align: end; box-shadow: none; max-width: 88%; }
   .chat-pane .cp-thread .chat-bubble.reply { align-self: flex-start; background: #e4e6ea; color: var(--ink); }
   /* the bottom of the window: a darker strip - tap it to fold the conversation away, and again to open it */
-  .chat-pane .cp-bar { position: relative; height: 26px; min-height: 26px; border: none; background-color: #dfe2e7; background-repeat: no-repeat; background-position: center; background-size: 22px 12px; cursor: pointer; display: flex; align-items: center; justify-content: flex-end; padding: 0 10px;
+  .chat-pane .cp-bar { position: relative; height: 26px; min-height: 26px; border: none; background-color: #dfe2e7; background-repeat: no-repeat; background-position: right 22px center; background-size: 22px 12px; cursor: pointer; display: flex; align-items: center; justify-content: flex-end; padding: 0 60px 0 10px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23989ca5' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l10-9 10 9'/%3E%3C/svg%3E"); }
   .chat-pane.shut .cp-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23989ca5' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
   .chat-pane .cp-bar .chat-mini { font-size: 13px; padding: 2px 6px; color: rgba(0,0,0,0.42); }
   .chat-pane.shut .cp-thread { display: none; }
+  /* folded, it all but disappears into the page: just its arrow on the grey */
+  .chat-pane.shut { background: transparent; box-shadow: none; }
+  .chat-pane.shut .cp-bar { background-color: transparent; height: 30px; }
+  /* a double tap on the strip: the big view, pushing the page down - scroll through it, or tap to fold it */
+  .chat-pane.big .cp-thread { height: 55vh; scroll-snap-type: none; gap: 14px; }
   .view-chat .chat-bar { min-height: clamp(70px, 11vh, 120px); font-size: clamp(30px, 5vmin, 54px); padding: 10px 14px 10px 22px; flex: none; }
   .chat-words { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .chat-words .pb-chip { font-size: 1em; }
@@ -1308,7 +1313,7 @@
   #homeSearchBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* three quiet dots, grey like the tabs that are not open; a little clearer while the pop-out is out */
   .cat-tile.menu-peek { min-width: 0; width: 34px; padding-left: 0; padding-right: 0; font-size: 24px; line-height: 1; color: rgba(0,0,0,0.32) !important; background: none !important; box-shadow: none !important; }
-  #homeIconsToggle { font-size: 30px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.5); box-shadow: none; }
+  #homeIconsToggle { font-size: 21px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.82); box-shadow: none; }
   /* while a message is being built the gear steps out of the way */
   .view-home:not(.menu-open):has(.phrase-bar.has-text) #homeIconsToggle { visibility: hidden; }
   .view-home.at-root:not(.menu-open) .home-row:not(.icons-open) #homeIconsToggle { visibility: hidden; }      /* the + comes and goes with the folder menu */
@@ -1418,7 +1423,8 @@
   .key.backspace { background: var(--red-tint); color: var(--red); }
   /* the up arrow and the delete key: one size, at either end of the bottom letter row */
   .key.side { flex: 1.25; font-size: clamp(18px, 3.4vmin, 34px); font-weight: 500; }
-  #helpBtn { display: none !important; }
+  #helpBtn, #homeHelpBtn { font-size: 30px; }
+  #helpBtn { background: #fff; }
   .key.backspace svg { width: 1.7em; height: 1.7em; display: block; }
   .key.shift, .key.numkey { background: #d2d5da; }      /* the keys that change the keyboard, set apart from the letters */
   .key.shift.on { background: #8b8e95; color: #fff; }      /* a darker grey, not black: on, but not shouting */
@@ -1987,7 +1993,7 @@
     <button class="ctl icon" id="builderBackBtn" aria-label="Back" style="display:none">&#8249;</button>
     <button class="ctl icon" id="builderAddBtn" aria-label="Add an option" style="display:none">+</button>
     <div class="spacer"></div>
-    <button class="ctl icon help" id="homeHelpBtn" aria-label="Help" style="display:none">&#11088;</button>
+    <button class="ctl icon help" id="homeHelpBtn" aria-label="SOS help mode" style="display:none">&#127384;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
     <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
     <button class="ctl icon" id="homeTargetBtn" aria-label="Target words" aria-pressed="false">&#127919;</button>
@@ -2064,7 +2070,7 @@
       </button>
     </div>
     <div class="spacer"></div>
-    <button class="ctl icon help" id="helpBtn" aria-label="Help me">&#11088;</button>
+    <button class="ctl icon help" id="helpBtn" aria-label="SOS: help me">&#127384;</button>
     <button class="ctl icon" id="searchBtn" aria-label="Find a word">&#128269;</button>
   </div>
 
@@ -2316,8 +2322,8 @@
             <span class="hero-title">&#11088; Help mode</span>
             <div class="toggle" id="toggleHelpMode"></div>
           </div>
-          <div class="hero-note">On: nothing prompts by itself. The star appears on the spelling page once a word is chosen. Tapping it prompts the current letter straight away, then each following letter after the wait below.<br>Off: the prompts below happen automatically, and the star is hidden.</div>
-          <div class="sublabel" style="margin-top:10px;">After the star, wait before each next letter</div>
+          <div class="hero-note">On: nothing prompts by itself. The red SOS button appears on the spelling page once a word is chosen. Tapping SOS prompts the current letter straight away, then each following letter after the wait below.<br>Off: the prompts below happen automatically, and the star is hidden.</div>
+          <div class="sublabel" style="margin-top:10px;">After SOS, wait before each next letter</div>
           <div class="slider-row">
             <input type="range" id="helpDelaySlider" min="0" max="10" step="1" value="3">
             <span class="slider-val" id="helpDelayValue">3 sec</span>
@@ -2713,7 +2719,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 464 - 9 Oct';
+const BUILD = 'build 465 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -2945,7 +2951,9 @@ let pendingErrorPos = null;
 
 // Prompt visibility is runtime-only (never persisted)
 let promptVisible = true;
-let helpRequested = false;   // set by the star; lasts until this word is finished or changed
+let helpRequested = false;
+// once SOS has been pressed, the prompts it brings are the ones chosen for SOS in the prompting settings
+function pOn(k) { if (state.helpMode && helpRequested && state.sosPrompts && k in state.sosPrompts) return !!state.sosPrompts[k]; return !!state[k]; }   // set by the star; lasts until this word is finished or changed
 let promptDelayTimer = null;
 let verbalSpokenFor = -1;
 let shiftOn = false;          // the up arrow: the next letter is a capital
@@ -3019,7 +3027,7 @@ async function load() {
         promptVerbalOn: saved.promptVerbalOn ?? false,
         promptDelaySec: Math.min(10, Math.max(0, saved.promptDelaySec ?? 0)),
         helpMode: saved.helpMode ?? false,
-        helpDelaySec: Math.min(10, Math.max(0, saved.helpDelaySec ?? 3)),
+        helpDelaySec: Math.min(10, Math.max(0, saved.helpDelaySec ?? 3)), sosPrompts: saved.sosPrompts || null,
         otherKeysMode: OTHER_KEYS_LABELS[saved.otherKeysMode] ? saved.otherKeysMode : 'normal',
 
         showBankCount: false,
@@ -3584,7 +3592,7 @@ async function save() {
       promptVerbalOn: state.promptVerbalOn,
       promptDelaySec: state.promptDelaySec,
       helpMode: state.helpMode,
-      helpDelaySec: state.helpDelaySec,
+      helpDelaySec: state.helpDelaySec, sosPrompts: state.sosPrompts || null,
       otherKeysMode: state.otherKeysMode,
 
       showBankCount: state.showBankCount,
@@ -5390,8 +5398,8 @@ function applyPromptTheme() {
 }
 // Any visual/verbal prompt at all?
 function anyPromptEnabled() {
-  return state.promptColorOn || state.promptSizeOn || state.promptVerbalOn ||
-         state.promptPulseOn || state.promptTileOn || state.otherKeysMode !== 'normal';
+  return pOn('promptColorOn') || pOn('promptSizeOn') || pOn('promptVerbalOn') ||
+         pOn('promptPulseOn') || pOn('promptTileOn') || state.otherKeysMode !== 'normal';
 }
 // Prompts are showing right now (delay elapsed, letter not fully faded)
 function promptsShowing() {
@@ -5416,7 +5424,7 @@ function armPrompt(force) {
   if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; }
   if (delay === 0 && !force) {
     promptVisible = true;
-    if (state.promptVerbalOn) {
+    if (pOn('promptVerbalOn')) {
       promptDelayTimer = setTimeout(() => { promptDelayTimer = null; speakVerbalPrompt(); },
         (state.letterSpeech && !echoSkipped) ? 800 : 200);   // no typed letter to wait for
     }
@@ -5438,7 +5446,7 @@ function revealPromptNow(speakIt) {
   else verbalSpokenFor = state.targetIndex; // already said aloud by the error feedback
 }
 function speakVerbalPrompt(force) {
-  if (!state.promptVerbalOn) return;
+  if (!pOn('promptVerbalOn')) return;
   if (!promptsShowing()) return;
   const L = nextExpectedLetter();
   if (!L) return;
@@ -5501,16 +5509,16 @@ function render() {
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex &&
-               ((showing && (state.promptColorOn || state.promptTileOn)) || helpLead)) {
+               ((showing && (pOn('promptColorOn') || pOn('promptTileOn'))) || helpLead)) {
         const fl = fadeLevelAt(i);      // the colour in the word bar fades in step with the colour on the key
-        if ((state.promptColorOn || helpLead) && fl < 3) {
+        if ((pOn('promptColorOn') || helpLead) && fl < 3) {
           s.classList.add('next');
           if (fl > 0) s.classList.add('fade-' + fl);
         } else {
           s.classList.add('pending');
         }
-        if (state.promptTileOn) s.classList.add('magnify', 'tmag-' + state.promptTileSize);
-        if (state.promptPulseOn && fl < 2) s.classList.add('pulse');
+        if (pOn('promptTileOn')) s.classList.add('magnify', 'tmag-' + state.promptTileSize);
+        if (pOn('promptPulseOn') && fl < 2) s.classList.add('pulse');
       }
       else s.classList.add('pending');
       s.textContent = (ch === ' ') ? '\u2423' : displayLetterAt(ch, i);
@@ -5572,12 +5580,12 @@ function render() {
   const promptKey = k => {
     const fl = fadeLevelAt(state.targetIndex);
     k.classList.add('prompting');
-    if (state.promptColorOn && fl < 3) {
+    if (pOn('promptColorOn') && fl < 3) {
       k.classList.add('prompt-color');
       if (fl > 0) k.classList.add('fade-' + fl);
     }
-    if (state.promptPulseOn && fl < 4) k.classList.add('prompt-pulse');
-    if (state.promptSizeOn && fl < 5) k.classList.add('prompt-size', 'boost-' + state.promptSize);
+    if (pOn('promptPulseOn') && fl < 4) k.classList.add('prompt-pulse');
+    if (pOn('promptSizeOn') && fl < 5) k.classList.add('prompt-size', 'boost-' + state.promptSize);
   };
   // The next character is on the other page of the keyboard: prompt the 123 / ABC key
   const needsSwitch = showing && !!expected && expected !== ' ' &&
@@ -5638,12 +5646,12 @@ function makeLetterKey(letter, expected) {
   if (expected && letter === expected && promptsShowing()) {
     const fl = fadeLevelAt(state.targetIndex);
     k.classList.add('prompting'); // exempt from the other-key treatments
-    if (state.promptColorOn && fl < 3) {
+    if (pOn('promptColorOn') && fl < 3) {
       k.classList.add('prompt-color');
       if (fl > 0) k.classList.add('fade-' + fl);
     }
-    if (state.promptPulseOn && fl < 4) k.classList.add('prompt-pulse');
-    if (state.promptSizeOn && fl < 5) {
+    if (pOn('promptPulseOn') && fl < 4) k.classList.add('prompt-pulse');
+    if (pOn('promptSizeOn') && fl < 5) {
       k.classList.add('prompt-size', 'boost-' + state.promptSize);
     }
   }
@@ -5870,7 +5878,7 @@ function typeChar(letter) {
   const landsAt = state.currentTarget ? state.targetIndex : state.text.length;
   // The voice prompt has already named this letter — saying it again as it is
   // typed just repeats it, so go straight on to the next one
-  echoSkipped = !isWrong && !!state.currentTarget && state.promptVerbalOn &&
+  echoSkipped = !isWrong && !!state.currentTarget && pOn('promptVerbalOn') &&
                 verbalSpokenFor === state.targetIndex;
   if (!state.currentTarget) { if (shiftOn) freeCaps.add(landsAt); else freeCaps.delete(landsAt); }
   shiftOn = false;                       // the up arrow covers one letter
@@ -6040,7 +6048,7 @@ function handleError(expectedLetter, typedLetter) {
       revealPromptNow(!alreadySaid);
     } else if (state.errorPromptAction === 'restart') {
       armPrompt(true);
-    } else if (state.promptVerbalOn && promptsShowing() && !alreadySaid) {
+    } else if (pOn('promptVerbalOn') && promptsShowing() && !alreadySaid) {
       speakVerbalPrompt(true); // already showing — repeat the spoken cue
     }
   };
@@ -8245,13 +8253,14 @@ function chatPost(words) {
   warmSpeech(); sayAnyway = state.soundOn !== false; try { speakWord(words.join(' '), 0.95); } finally { sayAnyway = false; }
   renderPhraseBar(); renderHome(true); renderChatPane(true);
 }
-let chatPaneSig = '';
+let chatPaneSig = '', chatPaneBig = false, chatBarTap = 0, chatBarTimer = null;
 function renderChatPane(force) {
   const pane = document.getElementById('chatPane'); if (!pane) return;
   const showing = (state.chatLog || []).filter(m => (m.t || 0) >= chatShownFrom);
   const on = !!state.chatMode && !state.builderMode && showing.length > 0;
   pane.classList.toggle('show', on);
   pane.classList.toggle('shut', !!state.chatPaneShut);
+  pane.classList.toggle('big', chatPaneBig && !state.chatPaneShut);
   if (!on) { pane.innerHTML = ''; chatPaneSig = ''; return; }
   const sig = showing.length + '|' + (showing[showing.length - 1].t) + '|' + showing.map(m => (m.replies || []).length).join(',');
   if (!force && sig === chatPaneSig && pane.firstChild) return;
@@ -8262,9 +8271,15 @@ function renderChatPane(force) {
   pane.appendChild(th);
   const bar = document.createElement('div'); bar.className = 'cp-bar'; bar.setAttribute('role', 'button');
   const mb = (text, label, fn) => { const b = document.createElement('button'); b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label); b.addEventListener('click', e => { e.stopPropagation(); fn(); }); bar.appendChild(b); };
-  if (!state.chatPaneShut) { mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderChatPane(true); }); mb('history', 'The whole conversation', openChatHistory); }
+  if (!state.chatPaneShut) mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderChatPane(true); });
   bar.setAttribute('aria-label', state.chatPaneShut ? 'Show the conversation' : 'Hide the conversation');
-  bar.addEventListener('click', () => { state.chatPaneShut = !state.chatPaneShut; buzz(10); save(); renderChatPane(true); try { renderHome(true); } catch (e) {} });
+  // one tap folds it away (or opens it); a double tap while it is open gives the big view, and another goes back
+  bar.addEventListener('click', () => {
+    const now = Date.now();
+    if (now - chatBarTap < 320 && !state.chatPaneShut) { clearTimeout(chatBarTimer); chatBarTap = 0; chatPaneBig = !chatPaneBig; buzz(12); renderChatPane(true); return; }
+    chatBarTap = now; clearTimeout(chatBarTimer);
+    chatBarTimer = setTimeout(() => { state.chatPaneShut = !state.chatPaneShut; if (state.chatPaneShut) chatPaneBig = false; buzz(10); save(); renderChatPane(true); try { renderHome(true); } catch (e) {} }, state.chatPaneShut ? 0 : 320);
+  });
   pane.appendChild(bar);
   requestAnimationFrame(() => { th.scrollTop = th.scrollHeight; });      // the newest message in view; scroll up for the earlier ones
 }
@@ -13183,9 +13198,16 @@ function openTargetSettings() {
   };
   const SECTIONS = [
     ['when', 'When to prompt', b => {
-      toggle(b, 'Only when the star is pressed', state.helpMode, () => { state.helpMode = !state.helpMode; state.showHelpBtn = state.helpMode; helpRequested = false; });
+      toggle(b, 'Only when SOS is pressed', state.helpMode, () => { state.helpMode = !state.helpMode; state.showHelpBtn = state.helpMode; helpRequested = false; });
       stepper(b, 'Wait before a prompt', state.promptDelaySec, 0, 10, v => { state.promptDelaySec = v; });
-      stepper(b, 'After the star, wait between letters', state.helpDelaySec, 0, 10, v => { state.helpDelaySec = v; });
+    }],
+    ['sos', '\uD83C\uDD98  SOS button', b => {
+      toggle(b, 'SOS on the keyboard: no prompts until it is pressed', state.helpMode, () => { state.helpMode = !state.helpMode; state.showHelpBtn = state.helpMode; helpRequested = false; });
+      stepper(b, 'After SOS, wait before each letter is prompted', state.helpDelaySec, 0, 10, v => { state.helpDelaySec = v; });
+      const sp = () => state.sosPrompts || (state.sosPrompts = { promptColorOn: !!state.promptColorOn, promptPulseOn: !!state.promptPulseOn, promptSizeOn: !!state.promptSizeOn, promptTileOn: !!state.promptTileOn, promptVerbalOn: !!state.promptVerbalOn });
+      const cur = k => state.sosPrompts ? !!state.sosPrompts[k] : !!state[k];
+      [['promptColorOn', 'SOS colours the next letter'], ['promptPulseOn', 'SOS pulses the key'], ['promptSizeOn', 'SOS makes the key bigger'], ['promptTileOn', 'SOS makes the letter bigger in the target bar'], ['promptVerbalOn', 'SOS says the next letter']]
+        .forEach(([k, label]) => toggle(b, label, cur(k), () => { const o = sp(); o[k] = !o[k]; }));
     }],
     ['look', 'How the prompt looks', b => {
       toggle(b, 'Colour the next letter', state.promptColorOn, () => { state.promptColorOn = !state.promptColorOn; });
