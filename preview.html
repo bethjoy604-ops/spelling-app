@@ -676,6 +676,8 @@
   /* (the key bar keeps its size: only the menu and the small words row step aside) */
   /* (the folder menu and the switches step aside too, and their room goes to the bar) */
   .view-home.bar-min:not(.targets-page) .home-row { display: none; }
+  /* looking down a page for a tile, the message bar steps away too (its words are kept); a tile chosen, or back at the top, it is back */
+  .view-home.bar-min:not(.targets-page):not(.keys-open) .phrase-bar:not(:has(.pb-input:focus)), .view-home.bar-min .chat-pane { display: none; }
   /* a tile was chosen: for two seconds the whole page is the sentence, then the page comes back */
   .bar-flash { position: fixed; inset: 0; z-index: 40; background: #aeb0b5; padding: 16px; display: flex; animation: barFlash 1s ease both; }
   @keyframes barFlash { 0% { opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
@@ -2719,7 +2721,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 466 - 9 Oct';
+const BUILD = 'build 467 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7991,6 +7993,7 @@ function renderPhraseBar() {
     phraseLenSeen = homePhrase.length; if (grew) setTimeout(flashBar, 40);
     if (grew) magicStallArm(); else if (!homePhrase.length) clearTimeout(magicStallTimer);
     if (grew) setTimeout(smallRowPop, 0);
+    if (grew) { const v = document.getElementById('viewHome'); if (v.classList.contains('bar-min')) { v.classList.remove('bar-min'); document.getElementById('homeGrid').style.paddingTop = ''; } }
     // on the first page a chosen tile opens the folder menu out for three seconds, in case the next word is in a folder
     if (grew && state.iconsOpen) { closeIcons(); return; } }
   const bar = document.getElementById('phraseBar');
@@ -8253,7 +8256,7 @@ let chatAfterPractice = null;      // the message being practised before it join
 function chatLogAdd(words) {
   const text = sentenceWords(words).join(' ');
   state.chatLog = (state.chatLog || []).concat([{ text, replies: [], t: Date.now() }]).slice(-5000);
-  state.chatPaneShut = false; save();
+  state.chatPaneShut = false; save(); chatPaneShow();
 }
 function chatPost(words) {
   try { homeKeysClose(); } catch (e) {}
@@ -8263,16 +8266,24 @@ function chatPost(words) {
   homePhrase = [];
   try { hideMagic(); } catch (e) {}
   state.chatLog = (state.chatLog || []).concat([{ text, replies: [], t: now }]).slice(-5000);
-  state.chatPaneShut = false;
+  state.chatPaneShut = false; chatPaneShow();
   save(); buzz(15);
   warmSpeech(); sayAnyway = state.soundOn !== false; try { speakWord(words.join(' '), 0.95); } finally { sayAnyway = false; }
   renderPhraseBar(); renderHome(true); renderChatPane(true);
 }
 let chatPaneSig = '', chatPaneBig = false, chatBarTap = 0, chatBarTimer = null;
+// the conversation shows when a message has just gone in, then goes after five seconds left alone, giving the
+// page its room back for finding tiles; the next message brings it back (touched, it stays a little longer)
+let chatPaneAway = true, chatAwayTimer = null;
+function chatPaneShow() {
+  chatPaneAway = false; clearTimeout(chatAwayTimer);
+  chatAwayTimer = setTimeout(() => { if (chatPaneBig) return; chatPaneAway = true; renderChatPane(true); try { renderHome(true); } catch (e) {} }, 5000);
+}
+document.getElementById('chatPane').addEventListener('pointerdown', () => { if (!chatPaneAway) chatPaneShow(); }, true);
 function renderChatPane(force) {
   const pane = document.getElementById('chatPane'); if (!pane) return;
   const showing = (state.chatLog || []).filter(m => (m.t || 0) >= chatShownFrom);
-  const on = !!state.chatMode && !state.builderMode && showing.length > 0;
+  const on = !!state.chatMode && !state.builderMode && showing.length > 0 && !chatPaneAway;
   pane.classList.toggle('show', on);
   pane.classList.toggle('shut', !!state.chatPaneShut);
   pane.classList.toggle('big', chatPaneBig && !state.chatPaneShut);
@@ -8291,7 +8302,7 @@ function renderChatPane(force) {
   // one tap folds it away (or opens it); a double tap while it is open gives the big view, and another goes back
   bar.addEventListener('click', () => {
     const now = Date.now();
-    if (now - chatBarTap < 320 && !state.chatPaneShut) { clearTimeout(chatBarTimer); chatBarTap = 0; chatPaneBig = !chatPaneBig; buzz(12); renderChatPane(true); return; }
+    if (now - chatBarTap < 320 && !state.chatPaneShut) { clearTimeout(chatBarTimer); chatBarTap = 0; chatPaneBig = !chatPaneBig; if (!chatPaneBig) chatPaneShow(); buzz(12); renderChatPane(true); return; }
     chatBarTap = now; clearTimeout(chatBarTimer);
     chatBarTimer = setTimeout(() => { state.chatPaneShut = !state.chatPaneShut; if (state.chatPaneShut) chatPaneBig = false; buzz(10); save(); renderChatPane(true); try { renderHome(true); } catch (e) {} }, state.chatPaneShut ? 0 : 320);
   });
@@ -13039,8 +13050,22 @@ document.getElementById('homeGrid').addEventListener('click', e => {
 }, true);
 function selSheetBtn(word) { return sheetBtn('Select tiles (hide, add to practice ...)', '', () => selStart(word)); }
 let sheetOpenAt = 0;
+// an edit made from a menu (add to targets, rename, hide ...) leaves the page where it was, not back at the top
+let sheetReturn = null;
+function sheetRestore() {
+  const r = sheetReturn; if (!r) return;
+  // (kept while the menu, or what it led to - choosing tiles, editing the page - is still going on)
+  const busy = document.getElementById('wordSheet').classList.contains('show') || !!selWords || !!pageEdit || !!builderEdit;
+  if (busy) r.closedAt = Infinity; else if (r.closedAt === Infinity) r.closedAt = Date.now();
+  if (!busy && Date.now() - r.closedAt > 1500) { sheetReturn = null; return; }
+  if (homePath.join('/') !== r.path || (tileGroup ? tileGroup.group && tileGroup.group.name : '') !== r.group) return;
+  const g = document.getElementById('homeGrid');
+  if (Math.abs(g.scrollTop - r.top) > 2) { g.scrollTop = r.top; requestAnimationFrame(() => { if (sheetReturn === r) g.scrollTop = r.top; }); }
+}
 function openWordSheet(build) {
   sheetOpenAt = Date.now();
+  { const g = document.getElementById('homeGrid'); if (document.getElementById('viewHome').classList.contains('active') && !document.getElementById('wordSheet').classList.contains('show'))
+      sheetReturn = { top: g.scrollTop, path: homePath.join('/'), group: tileGroup ? tileGroup.group && tileGroup.group.name : '', closedAt: Infinity }; }
   const body = document.getElementById('wordSheetBody');
   body.innerHTML = '';
   build(body);
@@ -13104,7 +13129,8 @@ function sheetSwitch(label, on, fn) {
   });
   return b;
 }
-function closeWordSheet() { document.getElementById('wordSheet').classList.remove('show'); }
+function closeWordSheet() { document.getElementById('wordSheet').classList.remove('show'); if (sheetReturn) { sheetReturn.closedAt = Infinity; setTimeout(sheetRestore, 0); setTimeout(sheetRestore, 120); } }
+{ const inner = renderHome; renderHome = function () { const r = inner.apply(this, arguments); try { if (sheetReturn) sheetRestore(); } catch (e) {} return r; }; }
 function sheetBtn(label, cls, fn) {
   const b = document.createElement('button');
   b.className = 'mbtn action' + (cls ? ' ' + cls : '');
