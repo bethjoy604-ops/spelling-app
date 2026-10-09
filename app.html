@@ -314,6 +314,7 @@
     align-self: flex-start; box-shadow: var(--shadow); word-break: break-word;
   }
   .chat-bubble.reply { align-self: flex-end; background: #bfd8ff; }
+  .pb-plural { align-self: center; border: 3px dashed #9db8e6; background: #fff; color: #4a6fb0; border-radius: 14px; font-family: inherit; font-weight: 900; font-size: 0.62em; padding: 0.05em 0.45em; margin-left: 2px; line-height: 1.15; cursor: pointer; }
   /* chat mode on the main page: the conversation sits above the key bar, its newest message in view,
      with a bar under it (like the small words' bar) to fold it away */
   .chat-pane { display: none; flex: none; flex-direction: column; margin-bottom: 10px; background: #f6f7f9; border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); }
@@ -2547,6 +2548,7 @@
           <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
+          <div class="setting-row"><span>Plural button beside a thing in the message (+s, +es, +ies)</span><div class="toggle on" id="togglePlural"></div></div>
           <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
         </div>
 
@@ -2711,7 +2713,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 463 - 9 Oct';
+const BUILD = 'build 464 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3075,7 +3077,7 @@ async function load() {
         recentsHidden: saved.recentsHidden || {},
         suggestOn: saved.suggestOn ?? true,
         soundOn: saved.soundOn ?? true,
-        chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [], chatPaneShut: !!saved.chatPaneShut,
+        chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [], chatPaneShut: !!saved.chatPaneShut, pluralChip: saved.pluralChip !== false,
         modesV1: saved.modesV1 ?? false,
         modesV2: saved.modesV2 ?? false,
         chatMode: saved.chatMode ?? false,
@@ -3639,7 +3641,7 @@ async function save() {
       recentsHidden: state.recentsHidden,
       suggestOn: state.suggestOn,
       soundOn: state.soundOn,
-      chatLog: state.chatLog, chatPaneShut: !!state.chatPaneShut,
+      chatLog: state.chatLog, chatPaneShut: !!state.chatPaneShut, pluralChip: state.pluralChip !== false,
       modesV1: state.modesV1,
       modesV2: state.modesV2,
       chatMode: state.chatMode,
@@ -7929,6 +7931,46 @@ function renderMagic(word) {
 }
 document.getElementById('magicSkip').addEventListener('click', () => { magicShowNow = false; magicSkipped = homePhrase.join(' '); hideMagic(); renderHome(true); });
 
+// ---- The plural button: a thing just put in the message gets a small tile beside it with only the
+// ending it would take (+s, +es, +ies); a tap changes the word, and if it is left alone the word stays as it is
+const PLURAL_ODD = { CHILD: 'CHILDREN', MOUSE: 'MICE', FOOT: 'FEET', TOOTH: 'TEETH', PERSON: 'PEOPLE', MAN: 'MEN', WOMAN: 'WOMEN', GOOSE: 'GEESE',
+  KNIFE: 'KNIVES', LEAF: 'LEAVES', WOLF: 'WOLVES', LOAF: 'LOAVES', HALF: 'HALVES', SHELF: 'SHELVES', WIFE: 'WIVES', LIFE: 'LIVES', CALF: 'CALVES',
+  POTATO: 'POTATOES', TOMATO: 'TOMATOES', HERO: 'HEROES', VOLCANO: 'VOLCANOES', MANGO: 'MANGOES' };
+const PLURAL_NONE = new Set(['WATER', 'MILK', 'JUICE', 'RICE', 'BREAD', 'ICE', 'KETCHUP', 'CHEESE', 'PASTA', 'SOUP', 'MONEY', 'MUSIC', 'HAIR', 'CEREAL', 'POPCORN',
+  'MEAT', 'TOAST', 'SAND', 'SNOW', 'RAIN', 'PAPER', 'HOMEWORK', 'FISH', 'SHEEP', 'DEER', 'FOOD', 'CANDY', 'CHOCOLATE', 'GUM', 'YOGURT', 'BUTTER', 'TEA', 'COFFEE', 'SUGAR', 'SALT', 'GRASS', 'MUD', 'AIR', 'SLIME', 'PLAYDOUGH', 'LEGO', 'SOAP', 'TOOTHPASTE', 'SHAMPOO', 'LOTION', 'MEDICINE']);
+function pluralOf(w) {
+  if (PLURAL_ODD[w]) return PLURAL_ODD[w];
+  if (/(S|X|Z|CH|SH)$/.test(w)) return w + 'ES';
+  if (/[^AEIOU]Y$/.test(w)) return w.slice(0, -1) + 'IES';
+  return w + 'S';
+}
+function pluralable(w) {
+  if (!w || !/^[A-Z]{2,}$/.test(w) || PLURAL_NONE.has(w) || isSmallWord(w)) return false;
+  if (/[^S]S$/.test(w) && !PLURAL_ODD[w]) return false;      // already reads as more than one (cars, shoes)
+  if (Object.values(PLURAL_ODD).includes(w)) return false;
+  let k = ''; try { k = magicKind(w); } catch (e) {}
+  if (['food', 'thing', 'things'].includes(k)) return true;
+  let g = ''; try { g = kindOfWordG(w); } catch (e) {}
+  return ['things', 'food', 'health'].includes(g);
+}
+function pluralChip(box) {
+  if (state.pluralChip === false || state.builderMode || !homePhrase.length) return;
+  const i = homePhrase.length - 1, w = homePhrase[i];
+  if (!pluralable(w)) return;
+  const pl = pluralOf(w);
+  let p = 0; while (p < w.length && w[p] === pl[p]) p++;
+  const label = p >= w.length - 1 ? '+' + pl.slice(p).toLowerCase() : pl.toLowerCase();      // just the ending, unless the word changes more than that
+  const b = document.createElement('button');
+  b.className = 'pb-plural'; b.textContent = label; b.setAttribute('aria-label', 'Make it ' + pl.toLowerCase());
+  b.addEventListener('click', e => {
+    e.stopPropagation();
+    if (homePhrase[i] !== w) return;
+    homePhrase[i] = pl; buzz(10);
+    try { tileAdd = null; } catch (er) {}
+    renderPhraseBar();
+  });
+  box.appendChild(b);
+}
 // ---- Phrase bar ----
 let phraseLenSeen = 0;
 function renderPhraseBar() {
@@ -7956,6 +7998,7 @@ function renderPhraseBar() {
     c.textContent = i || !whole ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // a capital to start only once it reads as a whole sentence
     box.appendChild(c);
   });
+  try { pluralChip(box); } catch (e) {}
   box.scrollTop = box.scrollHeight;      // the newest words are the ones in view
   box.classList.toggle('clipped', box.scrollTop > 2);
   if (!box._clipWatch) { box._clipWatch = true; box.addEventListener('scroll', () => box.classList.toggle('clipped', box.scrollTop > 2)); }
@@ -12326,7 +12369,10 @@ function renderSlotGrid(grid, cat, folders) {
       mine.forEach(w => used.add(w));
       panels.push({ f, mine });
     });
-    const ordered = panels.filter(x => !(cat.feedHid || {})[x.f.id]).sort((a, b) => fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
+    // the open groups go first and the folded ones after them, each in the page's own order - so with all of
+    // them open (or all folded) the page is back in the order it was set up in
+    const shutRank = x => (cat.feedShut || {})[x.f.id] ? 1 : 0;
+    const ordered = panels.filter(x => !(cat.feedHid || {})[x.f.id]).sort((a, b) => shutRank(a) - shutRank(b) || fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
     const dragList = ordered.map(x => x.f);
     const placed = [];
     ordered.forEach(({ f, mine }) => {
@@ -14504,6 +14550,7 @@ function renderSettings() {
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
+  document.getElementById('togglePlural').classList.toggle('on', state.pluralChip !== false);
   document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
   { const box = document.getElementById('bandSettings'), cfg = bandCfg(); box.innerHTML = '';
     [['green', 'Doing words (green)'], ['grey', 'Things and folders (grey)'], ['cat', 'Describing and category words (purple)']].forEach(([k, name]) => {
@@ -14832,6 +14879,7 @@ document.getElementById('toggleHelpBtn').addEventListener('click', () => {
 document.getElementById('toggleHome').addEventListener('click', () => {
   state.homeEnabled = !state.homeEnabled; save(); renderSettings();
 });
+document.getElementById('togglePlural').addEventListener('click', () => { state.pluralChip = state.pluralChip === false; save(); renderSettings(); try { renderPhraseBar(); } catch (e) {} });
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
 });
