@@ -2688,7 +2688,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 459 - 8 Oct';
+const BUILD = 'build 460 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -4985,6 +4985,7 @@ let barFlashTimer = null;
 function hideBarFlash() { clearTimeout(barFlashTimer); barFlashTimer = null; const f = document.getElementById('barFlash'); if (f) f.remove(); }
 function flashBar() {
   hideBarFlash();
+  return;      // (retired: no full-screen flash of the message after a tile - the message shows only after the green enter)
   if (state.magicType || state.builderMode || !homePhrase.length || !document.getElementById('viewHome').classList.contains('active')) return;
   const f = document.createElement('div');
   f.className = 'bar-flash'; f.id = 'barFlash';
@@ -11001,7 +11002,10 @@ function renderTileBody(grid, cat, listWords, rowH, base, cols) {
       put(card);
     });
     while (i % cols) i++;
-    editTitles(cat).filter(([w]) => !inGroup || inGroup.words.includes(w)).forEach(([w, on]) => {
+    // on the page itself only the loose titles (the ones in no group) - the same tiles the page shows;
+    // a group's titles are ticked or unticked inside that group's own page
+    const inAny = new Set([].concat(...groups.map(g => g.words || [])));
+    editTitles(cat).filter(([w]) => inGroup ? inGroup.words.includes(w) : !inAny.has(w)).forEach(([w, on]) => {
       if (!on && !gap) { gap = true; while (i % cols) i++; }      // the hidden ones start a row of their own
       const card = mk(bankLabel(w));
       editToggle(grid, card, w, on);
@@ -11829,7 +11833,7 @@ function renderSlotGrid(grid, cat, folders) {
   // across its folders; a Library tile at the end opens the folders themselves
   const feedMode = (alpha || stuffFeed) && feedHost(cat) && libraryOpen !== cat.id && pageEdit !== cat.id && !cat.feedOff && feedWords(cat).length > 0;
   if (feedMode) { words = feedWords(cat); folders = []; }
-  const slots = (listMode || feedMode) ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
+  let slots = (listMode || feedMode) ? [] : alpha ? sortWords(words, cols, inChoices(cat)) : arrange ? slotsFor(cat, words, cols) : words;
   // Edit page: every tile carries a tick. Unticking one hides it - it drops below the tiles that
   // are showing (which close up, still in their order) and stays there, greyed, to be ticked again.
   const editingF = !!cat && pageEdit === cat.id;
@@ -11840,7 +11844,10 @@ function renderSlotGrid(grid, cat, folders) {
     const offF = childrenOf(cat.id, true).filter(c => c.hidden && !c.smallSec);
     if (offF.length) { folders = folders.slice(); while (folders.length % cols) folders.push(null); folders = folders.concat(offF); }
   }
-  const offHere = editing ? (cat.words || []).filter(w => state.hiddenWords[w]).sort(byLabel) : [];
+  // a custom page: editing it edits its own picks - the tiles on the page ticked, the folder's others greyed below
+  const feedEd = editing && feedHost(cat) && !cat.feedOff && Array.isArray(cat.feed) && cat.feed.length > 0;
+  if (feedEd) slots = slots.filter(w => w && cat.feed.includes(w));
+  const offHere = editing ? (cat.words || []).filter(w => state.hiddenWords[w] || (feedEd && !cat.feed.includes(w))).sort(byLabel) : [];
   if (editing && offHere.length) { while (slots.length % cols) slots.push(null); offHere.forEach(w => slots.push(w)); }
   const head = folders.length;                      // sub-folders come first
   // Categories folders: group tiles (and the ghost tile to add one) sit in their own rows at the top,
@@ -12148,7 +12155,7 @@ function renderSlotGrid(grid, cat, folders) {
     t.textContent = label;     // small letters on every page, Recents / Popular included
     card.appendChild(t);
     if (editing) {
-      const on = !state.hiddenWords[w];
+      const on = !state.hiddenWords[w] && (!feedEd || cat.feed.includes(w));
       card.classList.add('edit-tile');
       if (!on) card.classList.add('edit-off');
       card.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -12157,7 +12164,8 @@ function renderSlotGrid(grid, cat, folders) {
       tick.textContent = on ? '\u2713' : '';
       card.appendChild(tick);
       card.addEventListener('click', () => {
-        if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
+        if (feedEd) { if (on) cat.feed = cat.feed.filter(x => x !== w); else { if (!cat.feed.includes(w)) cat.feed.push(w); delete state.hiddenWords[w]; } }
+        else if (on) state.hiddenWords[w] = true; else delete state.hiddenWords[w];
         buzz(10); save();
         const top = grid.scrollTop;
         renderHome(true);
@@ -13471,6 +13479,18 @@ function blueAutoOpen() {
   if (bar && bar.getAttribute('aria-expanded') !== 'true' && !sec.querySelector('.small-strip')) bar.click();
 }
 { let t = null; document.getElementById('suggHost').addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(blueAutoOpen, 120); }, { passive: true }); }
+// A tile tapped again within three seconds of putting its word in the message does not add it a second time
+let tileAdd = null;      // { el, label, at, len }
+window.addEventListener('click', e => {
+  const el = e.target.closest && e.target.closest('.home-card, .sugg-card, .small-host button, .magic-small button, .magic-chip');
+  if (!el || el.classList.contains('folder-card') || el.classList.contains('sugg-folder') || selWords || pageEdit || builderEdit) return;
+  const label = (el.textContent || '').trim();
+  if (tileAdd && tileAdd.label === label && Date.now() - tileAdd.at < 3000 && homePhrase.length === tileAdd.len && homePhrase.length) {
+    e.stopImmediatePropagation(); e.preventDefault(); buzz(5); return;      // the same tile again: ignored
+  }
+  const before = homePhrase.length;
+  setTimeout(() => { tileAdd = homePhrase.length > before ? { label, at: Date.now(), len: homePhrase.length } : null; }, 0);
+}, true);
 function armIcons() {
   clearTimeout(iconsTimer); iconsTimer = null;
   if (state.iconsOpen) iconsTimer = setTimeout(closeIcons, 5000);
