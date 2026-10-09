@@ -2558,7 +2558,7 @@
           <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
           <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
-          <div class="setting-row"><span>Plural button beside a thing in the message (+s, +es, +ies)</span><div class="toggle on" id="togglePlural"></div></div>
+          <div class="setting-row"><span>Ending buttons beside a word in the message (+s, +ing, +ed)</span><div class="toggle on" id="togglePlural"></div></div>
           <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
         </div>
 
@@ -2723,7 +2723,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 468 - 9 Oct';
+const BUILD = 'build 469 - 9 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7986,23 +7986,74 @@ function pluralable(w) {
   let g = ''; try { g = kindOfWordG(w); } catch (e) {}
   return ['things', 'food', 'health'].includes(g);
 }
-function pluralChip(box) {
-  if (state.pluralChip === false || state.builderMode || !homePhrase.length) return;
-  const i = homePhrase.length - 1, w = homePhrase[i];
-  if (!pluralable(w)) return;
-  const pl = pluralOf(w);
-  let p = 0; while (p < w.length && w[p] === pl[p]) p++;
-  const label = p >= w.length - 1 ? '+' + pl.slice(p).toLowerCase() : pl.toLowerCase();      // just the ending, unless the word changes more than that
+// The same for a doing word: +s, +ing and +ed beside it (the spelling taken care of: running, making,
+// stopped, cried); a word whose past is its own word shows that word (went, ate)
+const PAST_ODD = { GO: 'WENT', EAT: 'ATE', DRINK: 'DRANK', RUN: 'RAN', SEE: 'SAW', COME: 'CAME', GET: 'GOT', GIVE: 'GAVE', MAKE: 'MADE', TAKE: 'TOOK',
+  SIT: 'SAT', SWIM: 'SWAM', SING: 'SANG', RIDE: 'RODE', WRITE: 'WROTE', READ: 'READ', TELL: 'TOLD', SAY: 'SAID', SLEEP: 'SLEPT', FEEL: 'FELT', FIND: 'FOUND',
+  FLY: 'FLEW', FALL: 'FELL', BREAK: 'BROKE', BUILD: 'BUILT', BUY: 'BOUGHT', CATCH: 'CAUGHT', BRING: 'BROUGHT', THINK: 'THOUGHT', TEACH: 'TAUGHT',
+  THROW: 'THREW', HIT: 'HIT', CUT: 'CUT', PUT: 'PUT', HURT: 'HURT', HIDE: 'HID', BITE: 'BIT', BLOW: 'BLEW', DRAW: 'DREW', DRIVE: 'DROVE', DIVE: 'DOVE',
+  HANG: 'HUNG', HEAR: 'HEARD', HOLD: 'HELD', KEEP: 'KEPT', KNOW: 'KNEW', LEAVE: 'LEFT', LOSE: 'LOST', MEET: 'MET', PAY: 'PAID', SELL: 'SOLD', SEND: 'SENT',
+  SHAKE: 'SHOOK', SHUT: 'SHUT', SPEAK: 'SPOKE', SPIN: 'SPUN', STAND: 'STOOD', STEAL: 'STOLE', STICK: 'STUCK', SWING: 'SWUNG', TEAR: 'TORE', WAKE: 'WOKE',
+  WEAR: 'WORE', WIN: 'WON', DO: 'DID', HAVE: 'HAD', LET: 'LET', BEGIN: 'BEGAN', CHOOSE: 'CHOSE', FORGET: 'FORGOT', GROW: 'GREW', SHOOT: 'SHOT',
+  SLIDE: 'SLID', SPEND: 'SPENT', UNDERSTAND: 'UNDERSTOOD', LEAD: 'LED', FIGHT: 'FOUGHT', SEEK: 'SOUGHT', LIGHT: 'LIT', BEND: 'BENT', LEND: 'LENT',
+  RING: 'RANG', SHINE: 'SHONE', SINK: 'SANK', SWEEP: 'SWEPT', WEEP: 'WEPT', CREEP: 'CREPT', LEAP: 'LEAPT', FEED: 'FED', BLEED: 'BLED', DIG: 'DUG', MEAN: 'MEANT' };
+const DOUBLE_TOO = new Set(['BEGIN', 'FORGET', 'ADMIT', 'OCCUR', 'PREFER', 'REFER', 'PERMIT', 'COMMIT', 'CONTROL', 'PATROL', 'UNZIP', 'REGRET', 'UPSET']);
+function doublesEnd(w) {      // run -> running: one vowel then one consonant at the end of a short word
+  if (DOUBLE_TOO.has(w)) return true;
+  if (!/[^AEIOU][AEIOU][^AEIOUWXY]$/.test(w)) return false;
+  return (w.match(/[AEIOU]+/g) || []).length === 1;
+}
+function verbForms(w) {
+  const s3 = w === 'GO' ? 'GOES' : w === 'DO' ? 'DOES' : w === 'HAVE' ? 'HAS' : pluralOf(w);
+  let ing;
+  if (/IE$/.test(w)) ing = w.slice(0, -2) + 'YING';
+  else if (/[^AEIOUY]E$/.test(w) && !/(EE|YE|OE)$/.test(w)) ing = w.slice(0, -1) + 'ING';
+  else if (doublesEnd(w)) ing = w + w.slice(-1) + 'ING';
+  else ing = w + 'ING';
+  let ed = PAST_ODD[w];
+  if (!ed) {
+    if (/E$/.test(w)) ed = w + 'D';
+    else if (/[^AEIOU]Y$/.test(w)) ed = w.slice(0, -1) + 'IED';
+    else if (doublesEnd(w)) ed = w + w.slice(-1) + 'ED';
+    else ed = w + 'ED';
+  }
+  return [['s', s3], ['ing', ing], ['ed', ed]];
+}
+function verbable(w) {
+  if (!w || !/^[A-Z]{2,}$/.test(w) || isSmallWord(w)) return false;
+  let k = ''; try { k = kindOfWord(w); } catch (e) {}
+  return k === 'action';
+}
+function endingChip(box, i, w, to, label) {
   const b = document.createElement('button');
-  b.className = 'pb-plural'; b.textContent = label; b.setAttribute('aria-label', 'Make it ' + pl.toLowerCase());
+  b.className = 'pb-plural'; b.textContent = label; b.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
   b.addEventListener('click', e => {
     e.stopPropagation();
     if (homePhrase[i] !== w) return;
-    homePhrase[i] = pl; buzz(10);
+    homePhrase[i] = to; buzz(10);
     try { tileAdd = null; } catch (er) {}
     renderPhraseBar();
   });
   box.appendChild(b);
+}
+function pluralChip(box) {
+  if (state.pluralChip === false || state.builderMode || !homePhrase.length) return;
+  const i = homePhrase.length - 1, w = homePhrase[i];
+  if (verbable(w)) {
+    verbForms(w).forEach(([suf, to]) => {
+      if (to === w) return;
+      let label;
+      if (suf === 'ing') label = '+ing';
+      else if (suf === 'ed') label = PAST_ODD[w] ? to.toLowerCase() : '+ed';
+      else label = /IES$/.test(to) && /Y$/.test(w) ? '+ies' : to === w + 'S' ? '+s' : to === w + 'ES' ? '+es' : to.toLowerCase();
+      endingChip(box, i, w, to, label);
+    });
+    return;
+  }
+  if (!pluralable(w)) return;
+  const pl = pluralOf(w);
+  let p = 0; while (p < w.length && w[p] === pl[p]) p++;
+  endingChip(box, i, w, pl, p >= w.length - 1 ? '+' + pl.slice(p).toLowerCase() : pl.toLowerCase());      // just the ending, unless the word changes more than that
 }
 // ---- Phrase bar ----
 let phraseLenSeen = 0;
