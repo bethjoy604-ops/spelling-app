@@ -880,6 +880,13 @@
   /* each band fills the screen and snaps into place: scroll once, the next band clicks in */
   .view-home.magic-full .sugg-host { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
   .view-home.magic-full.no-small-band #smallHost { display: none !important; }
+  /* the rows fit the screen: no bars over them, no gaps for half rows - just the tiles */
+  .view-home.magic-full .sugg-host .sugg-head { display: none !important; }
+  .view-home.magic-fit .sugg-band:last-child { min-height: 0 !important; }
+  .view-home.magic-fit .sugg-band { padding-bottom: 14px; }
+  .view-home.magic-fit .sugg-band:last-child { padding-bottom: 0; }
+  .view-home.magic-fit .sugg-band .sugg-row { margin-bottom: 0; }
+  .view-home.magic-full .band-small .small-head:not(.group-head), .view-home.magic-full .band-small .band-bar { display: none !important; }
   .view-home.magic-full .sugg-band { box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; padding-bottom: 14px; }
   /* the bands sit close together; only the last one fills the screen, so each can still click up to the top */
   .view-home.magic-full .sugg-band:last-child { min-height: 100%; }
@@ -2781,7 +2788,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 478 - 10 Oct';
+const BUILD = 'build 479 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7628,6 +7635,7 @@ function openMagicWords(focusId) {
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); suggRefresh(); }));
   });
 }
+window.addEventListener('resize', () => { try { if (document.getElementById('viewHome').classList.contains('magic-full')) { const h = document.getElementById('suggHost'); h.dataset.sig = ''; suggRender(); } } catch (e) {} });
 function suggRefresh() { try { const h = document.getElementById('suggHost'); if (h) h.dataset.sig = ''; suggRender(); renderSettings(); } catch (e) {} }
 function bandCfg() {
   const d = { green: { on: true, rows: 1 }, grey: { on: true, rows: 1 }, cat: { on: true, rows: 1 }, small: { on: true, rows: 1 } }, c = state.bandCfg || {};
@@ -7790,7 +7798,21 @@ function suggRender0() {
       if (lk && lk.offsetHeight > 0) { bandLike.h = lk.offsetHeight; bandLike.fs = (lh && parseFloat(lh.style.fontSize)) || bandLike.fs; } }
     document.getElementById('viewHome').classList.toggle('magic-full', all > 0);
     if (all) document.getElementById('viewHome').classList.remove('scrolled');      // the rows have the screen: no page tiles under them
-    const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + [green, folders, cats, openItems || []].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
+    // every row on the screen at once: the tiles are sized so all the rows fit, with no bars and no half rows showing
+    let fitH = 0;
+    if (all) {
+      host.classList.add('show');
+      // (all the room from the top of the rows to the bottom of the screen - the blue row may still be sitting under them)
+      const vw = document.getElementById('viewHome'), vr = vw.getBoundingClientRect();
+      const avail = host.clientHeight ? Math.round(vr.bottom - host.getBoundingClientRect().top - (parseFloat(getComputedStyle(vw).paddingBottom) || 0)) : 0;
+      if (!avail) requestAnimationFrame(() => { host.dataset.sig = ''; suggRender(); });
+      const nRows = (green.length && !suggShut ? cfg.green.rows : 0) + (folders.length && bandOpen.fold ? cfg.grey.rows : 0) + (openItems && openItems.length ? 1 : 0) + (cats.length && bandOpen.cat ? cfg.cat.rows : 0);
+      const smallH = cfg.small.on && document.getElementById('smallHost').firstChild ? 136 : 0;
+      if (nRows && avail) fitH = Math.floor((avail - smallH - 14 * (nRows - 1 + (smallH ? 1 : 0)) - 24) / nRows);
+    }
+    const fitting = fitH >= 90;
+    document.getElementById('viewHome').classList.toggle('magic-fit', !!all && fitting);
+    const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + fitH + '|' + [green, folders, cats, openItems || []].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
     { const sh = document.getElementById('smallHost'); if (sh && host.contains(sh)) host.after(sh); }      // the blue band goes back to its own place before the rows are redrawn
@@ -7803,7 +7825,8 @@ function suggRender0() {
     // the page tiles are hidden while the rows are up, so remember their size from when they last showed
     const fullH = bandLike.h || 160, fullFs = bandLike.fs || 40;
     // the band tiles are the page tiles' own size: one band to a screen, the next one clicks into place on a scroll
-    const hgt = Math.max(90, Math.round(fullH)), fs = fullFs ? Math.round(fullFs) + 'px' : '';
+    const hgt = fitting ? Math.min(Math.round(fullH), fitH) : Math.max(90, Math.round(fullH));
+    const fs = fullFs ? Math.round(Math.max(22, Math.min(fullFs, hgt * 0.3))) + 'px' : '';
     const tile = (m, hlClass) => {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
@@ -13469,6 +13492,17 @@ function selPaint() {
     const pageAll = onPage(), every = pageAll.length && pageAll.every(k => selWords.includes(k));
     btn(every ? 'None' : 'All', '', () => { selWords = every ? [] : [...new Set(selWords.concat(pageAll))]; buzz(8); selPaint(); }); }
   btn('Hide', 'warn', () => { selWords.forEach(w => { state.hiddenWords[w] = true; }); selEnd(); }).disabled = !selWords.length;
+  // move the chosen tiles to another folder, or take them out of their group (a group, or a sub-folder, back to the page above)
+  { const here = currentCat();
+    if (here && !here.target) btn('Move to\u2026', '', () => openMoveManyPicker(selWords.slice(), here)).disabled = !selWords.length;
+    const inGroups = here && usesGroups(here) && listGroups(here).some(g => g.words.some(w => selWords.includes(w)));
+    const parent = here && here.parent ? catById(here.parent) : null;
+    const subFolder = here && !here.target && parent && parent.parent && !usesGroups(here);
+    if (inGroups || subFolder) btn('Ungroup', '', () => {
+      if (inGroups) listGroups(here).forEach(g => { g.words = g.words.filter(w => !selWords.includes(w)); });
+      else { selWords.forEach(w => { if (!parent.words.includes(w)) parent.words.push(w); }); here.words = here.words.filter(w => !selWords.includes(w)); }
+      buzz(12); selEnd();
+    }).disabled = !selWords.length; }
   if (t && t.target) btn('Add to practice', '', () => {
     const fresh = listGroups(t).find(g => /^new$/i.test(String(g.name || '').trim())) || null;
     selWords.forEach(w => { if (!(t.words || []).includes(w)) addTitleTo(t, fresh, sentenceLabel(w)); });
@@ -14020,6 +14054,32 @@ function renameWord(from, to) {
 }
 // Choose where a word goes. With a folder given (it was dropped on one) the
 // choice is that folder or one inside it; otherwise every folder is offered.
+// the chosen tiles all go to one folder (taken out of the one they are in now)
+function openMoveManyPicker(words, fromCat) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Move ' + words.length + ' tile' + (words.length === 1 ? '' : 's') + ' to which folder?');
+    let chosen = null;
+    const list = document.createElement('div'); list.className = 'pick-list'; list.style.maxHeight = '50vh'; list.style.overflowY = 'auto';
+    body.appendChild(list);
+    const move = sheetBtn('Move', 'primary', () => {
+      const dest = catById(chosen); if (!dest) return;
+      if (!fromCat || dest.id !== fromCat.id) {
+        words.forEach(w => { if (!dest.words.includes(w)) dest.words.push(w); delete state.hiddenWords[w]; });
+        if (fromCat) { fromCat.words = (fromCat.words || []).filter(w => !words.includes(w)); if (usesGroups(fromCat)) listGroups(fromCat); }
+        save();
+      }
+      selWords = null; closeWordSheet(); selPaint(); renderHome(true);
+    });
+    const paint = () => { list.querySelectorAll('.pick-row').forEach(b => b.classList.toggle('on', Number(b.dataset.id) === chosen)); move.disabled = chosen === null; move.style.opacity = chosen === null ? 0.4 : 1; };
+    const walk = (pid, depth) => state.categories.filter(c => (c.parent || null) === pid && !c.target && !c.smallSec).sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(c => {
+      const b = document.createElement('button'); b.className = 'pick-row'; b.dataset.id = c.id; b.style.marginLeft = (depth * 18) + 'px';
+      b.textContent = c.name + (fromCat && c.id === fromCat.id ? '  (they are here now)' : '');
+      b.addEventListener('click', () => { chosen = c.id; paint(); }); list.appendChild(b); walk(c.id, depth + 1);
+    });
+    walk(null, 0);
+    body.appendChild(move); body.appendChild(sheetBtn('Cancel', '', closeWordSheet)); paint();
+  });
+}
 function openMovePicker(word, fromCat, root) {
   openWordSheet(body => {
     sheetTitle(body, root ? 'Move into ' + root.name : 'Move to which folder?', word);
@@ -14174,9 +14234,9 @@ let blueAutoFor = null;
 function blueAutoOpen() {
   const v = document.getElementById('viewHome'), hs = document.getElementById('suggHost');
   if (!v.classList.contains('magic-full')) return;
-  const ph = homePhrase.join(' '); if (blueAutoFor === ph) return;
-  const sec = hs.querySelector(':scope > .band-small'); if (!sec || !sec.offsetHeight) return;
-  if (sec.offsetTop - hs.offsetTop - hs.scrollTop > hs.clientHeight - 60) return;      // not reached yet
+  const ph = homePhrase.join(' ');      // (its bar is hidden in the magic rows, so it is always open there)
+  const sec = hs.querySelector(':scope > .band-small'); if (!sec || (!sec.offsetHeight && !v.classList.contains('magic-full'))) return;
+  if (!v.classList.contains('magic-fit') && sec.offsetTop - hs.offsetTop - hs.scrollTop > hs.clientHeight - 60) return;      // not reached yet
   const bar = sec.querySelector('.small-head:not(.group-head)');
   blueAutoFor = ph;
   if (bar && bar.getAttribute('aria-expanded') !== 'true' && !sec.querySelector('.small-strip')) bar.click();
