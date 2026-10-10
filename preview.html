@@ -336,6 +336,7 @@
   .chat-pane.shut .cp-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23989ca5' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
   .chat-pane .cp-bar .chat-mini { font-size: 13px; padding: 2px 6px; color: rgba(0,0,0,0.42); }
   .chat-pane.shut .cp-thread { display: none; }
+  #suggHost .sugg-card.sugg-open { box-shadow: inset 0 0 0 5px #9aa0aa, var(--shadow); }      /* the folder whose tiles fill the second grey row */
   .chat-pane .cp-bar .cp-label { font-size: 16px; font-weight: 700; color: rgba(0,0,0,0.48); }
   /* folded, it all but disappears into the page: just its arrow on the grey */
   .chat-pane.shut { background: transparent; box-shadow: none; }
@@ -2801,7 +2802,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 493 - 10 Oct';
+const BUILD = 'build 494 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7816,7 +7817,7 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
   const obs = new MutationObserver(tidy);
   obs.observe(host, { childList: true, subtree: true });
 })();
-let suggFolder = null;
+let suggFolder = null, suggStack = [];      // the folder open in the second grey row, and the ones it was opened from
 const bandOpen = { fold: true, cat: true, things: true };      // every band opens with the message; each bar folds its own
 // ---- Magic settings: which words magic may suggest. Folders (and whole tabs) or single tiles can be switched off.
 // Words used together in a message are remembered as a pair: the more often, the sooner magic offers one after the other
@@ -7993,7 +7994,7 @@ function nextStep() {
       const nm = isSmallSay(g ? g.name : c.name);
       if (nm && c.parent) { have.add(nm); out.push({ phrase: homePhrase.concat([nm]), used: idx }); }      // its own name, as a word
       if (g) words(sortUse(g.words || []), 30, c, g.name);
-      else { words(sortUse(c.words || []), groupsOf(c).length ? 9 : 30, c); groupsOf(c).forEach(x => folder(c, x)); kids(c).forEach(x => folder(x)); }
+      else { groupsOf(c).forEach(x => folder(c, x)); kids(c).forEach(x => folder(x)); words(sortUse(c.words || []), 40, c); }      // (its groups and folders first, then all its tiles)
       out.push({ back: true, phrase: homePhrase.concat(['\u25C2']), used: idx });
       return out;
     }
@@ -8189,6 +8190,16 @@ function suggRender0() {
       // doing words straight after a title or thing ("Free" -> play) only if that is switched on
       if (state.magicActAfterThing === false && homePhrase.length) { const lw = homePhrase[homePhrase.length - 1]; let k = ''; try { k = magicKind(lw); } catch (e) {} let k2 = ''; try { k2 = kindOfWord(lw); } catch (e) {}
         if (['music', 'watch', 'book', 'game'].includes(k)) green = green.filter(m => m.lead); } }      // (only after a title - a song, show, book or game; after a thing or place like "park" the doing words stay)
+    // a folder tapped in the grey row: its groups, folders and tiles fill the second grey row (no row of its own);
+    // tapped again, the second row is as it was. A group opened inside it leads with its own tile, to go back up.
+    folders.forEach(m => { m.g1 = true; });
+    if (openItems && suggFolder) {
+      const oc = catById(suggFolder.id), og = oc && suggFolder.gid != null ? (oc.groups || []).find(x => x.id === suggFolder.gid) : null;
+      const nm = String((og || oc || {}).name || '').trim().toUpperCase();
+      const inner = openItems.filter(m => !m.back && !(!m.folder && m.phrase[m.phrase.length - 1] === normaliseWord(nm)) && (m.folder ? !magicCatOff(m.folder) : magicAllowed(m.phrase[m.phrase.length - 1])));
+      things2 = (suggStack.length && oc ? [{ folder: oc, group: og || null, phrase: homePhrase.concat(['\u25B8head']), used: homePhrase.map((_, i) => i), openHead: true }] : []).concat(inner);
+      openItems = null; bandOpen.things = true;
+    }
     const all = green.length + folders.length + cats.length + things2.length;
     { const lk = grid.querySelector('.home-card'), lh = lk && lk.querySelector('.hw');
       if (lk && lk.offsetHeight > 0) { bandLike.h = lk.offsetHeight; bandLike.fs = (lh && parseFloat(lh.style.fontSize)) || bandLike.fs; } }
@@ -8223,6 +8234,8 @@ function suggRender0() {
     const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + fitH + '|' + [green, folders, things2, cats, openItems || []].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
+    // (same message: each row keeps how far along it was slid, so a folder tapped in the grey row stays in view)
+    const keepX = {}; if (host.dataset.ph === homePhrase.join(' ')) host.querySelectorAll('.sugg-band').forEach(sec => { const hd = sec.querySelector('.sugg-head'), r = sec.querySelector('.sugg-row'); if (hd && r) keepX[hd.className.replace(/\bopen\b/g, '').trim()] = r.scrollLeft; });
     host.innerHTML = '';
     { const ph = homePhrase.join(' '); if (host.dataset.ph !== ph) { host.dataset.ph = ph; host.scrollTop = 0; requestAnimationFrame(() => { host.scrollTop = 0; }); } }      // a new word: the rows start again from the top
     host.classList.toggle('show', all > 0);
@@ -8239,6 +8252,8 @@ function suggRender0() {
       const b = document.createElement('button');
       b.className = 'home-card sugg-card';
       if (m.folder) b.classList.add('sugg-folder');
+      if (m.folder && m.g1 && suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null) && suggStack.length === 0) b.classList.add('sugg-open');
+      if (m.openHead || (m.folder && m.g1 && suggStack.length && suggStack[0] && suggStack[0].id === m.folder.id && (suggStack[0].gid ?? null) === (m.group ? m.group.id : null))) b.classList.add('sugg-open');
       if (hgt) b.style.height = hgt + 'px';
       const added = m.phrase.filter((_, j) => !m.used.includes(j));
       const t = document.createElement('span'); t.className = 'hw'; if (fs) t.style.fontSize = fs;
@@ -8248,11 +8263,17 @@ function suggRender0() {
       t.appendChild(hl); b.appendChild(t);
       b.addEventListener('click', e => {
         e.stopPropagation();
-        if (m.back) { buzz(10); suggFolder = null; suggRender(); return; }
-        if (m.folder) { buzz(10); const same = suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null) && !m.group; suggFolder = same ? null : { id: m.folder.id, gid: m.group ? m.group.id : null, key: homePhrase.join(' ') }; bandOpen.fold = true; suggRender();
-          // the folder's words come in as a row under it: the screen moves so both rows show
-          setTimeout(() => { const hs = document.getElementById('suggHost'), r2 = hs.querySelector('.sugg-open-row'), r1 = r2 && r2.previousElementSibling; if (r1) hs.scrollTo({ top: Math.round(r1.getBoundingClientRect().top - hs.getBoundingClientRect().top + hs.scrollTop), behavior: 'smooth' }); }, 80);
-          return; }      // a folder: its words fill its row, in place
+        if (m.back) { buzz(10); suggFolder = null; suggStack = []; suggRender(); return; }
+        if (m.folder) { buzz(10);
+          const key = homePhrase.join(' '), gid = m.group ? m.group.id : null;
+          const same = suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === gid;
+          if (m.openHead) { const up = suggStack.pop(); suggFolder = up && up.key === key ? up : null; }      // the group's own tile: back up a level
+          else if (same) { suggFolder = null; suggStack = []; }      // the open folder tapped again: the second row is as it was
+          else { if (m.g1 || !suggFolder) suggStack = []; else suggStack.push(suggFolder); suggFolder = { id: m.folder.id, gid, key }; }
+          bandOpen.fold = true; bandOpen.things = true; const hs0 = document.getElementById('suggHost'); if (hs0) hs0.dataset.sig = ''; suggRender();
+          // the grey row and the second grey row under it both in view
+          setTimeout(() => { const hs = document.getElementById('suggHost'), r1 = hs && hs.querySelector('.sugg-band .band-fold:not(.band-things) ~ .sugg-row'); if (r1) hs.scrollTo({ top: Math.round(r1.getBoundingClientRect().top - hs.getBoundingClientRect().top + hs.scrollTop), behavior: 'smooth' }); }, 80);
+          return; }      // a folder: its groups and tiles fill the second grey row
         if (m.cat) { try { withGroup(m.cat, added[added.length - 1], m.hint); m.phrase = homePhrase.concat(added); } catch (er) {} }      // "want" + bottle -> "want to drink bottle"
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
@@ -8287,6 +8308,8 @@ function suggRender0() {
       cat: () => band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows) };
     // (green, grey, purple - unless the word's rule puts another band first: "hi" -> the names, "feel" -> the feelings)
     { const rl = magicRuleNow(), ord = (rl && rl.bands) || ['green', 'grey', 'cat']; ord.forEach(k => { bandFns[k](); if (k === 'grey') bandFns.things(); }); }
+    host.querySelectorAll('.sugg-band').forEach(sec => { const hd = sec.querySelector('.sugg-head'), r = sec.querySelector('.sugg-row'); if (!hd || !r) return; const k = hd.className.replace(/\bopen\b/g, '').trim();
+      if (keepX[k] && !k.includes('band-things')) { r.scrollLeft = keepX[k]; requestAnimationFrame(() => { r.scrollLeft = keepX[k]; }); } });      // (the second grey row starts at its beginning: it has just been filled anew)
     if (false) { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
