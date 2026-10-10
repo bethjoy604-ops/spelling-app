@@ -1400,13 +1400,27 @@
   .pic-progress .pp-seg { flex: 1 1 0; border-radius: 8px; background: rgba(255,255,255,0.6); transition: background 0.3s; }
   .pic-progress .pp-seg.done { background: var(--green); }
   .pic-progress .pp-seg.now { background: rgba(255,255,255,0.95); box-shadow: inset 0 0 0 3px var(--green); }
-  .pic-sheet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+  .pic-sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
   .pic-cell { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: #f2f3f5; border: 3px solid transparent; opacity: 0.45; cursor: pointer; }
   .pic-cell.on { border-color: #2f8bff; opacity: 1; }
   .pic-cell img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
   .pic-cell .pic-tick { position: absolute; top: 6px; left: 6px; width: 26px; height: 26px; border-radius: 50%; background: #2f8bff; color: #fff; font-weight: 900; display: flex; align-items: center; justify-content: center; }
   .pic-cell:not(.on) .pic-tick { background: rgba(255,255,255,0.8); }
   .pic-cell .pic-del { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; border: none; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; font-size: 20px; font-weight: 900; line-height: 1; padding: 0; }
+  .pic-cell .pic-label { position: absolute; left: 4px; right: 4px; bottom: 4px; border: none; border-radius: 10px; background: rgba(255,255,255,0.92); font-family: inherit; font-weight: 800; font-size: 13px; padding: 4px 6px; color: var(--ink); white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
+  .pic-cell .pic-label.own { background: #fff3c4; }
+  .pic-choices { display: none; }
+  .view-keyboard.pic-on.pic-choose .pic-choices { display: flex; flex: 1.4 1 0; min-height: 0; gap: clamp(12px, 2vmin, 22px); }
+  .view-keyboard.pic-on.pic-choose #targetBanner, .view-keyboard.pic-on.pic-choose .keyboard, .view-keyboard.pic-on.pic-choose #display { display: none !important; }
+  .view-keyboard.pic-on.pic-choose .pic-box { flex: 3 1 0; }
+  .pic-choice { flex: 1 1 0; min-width: 0; border: none; border-radius: 22px; background: #fff; box-shadow: var(--shadow); font-family: inherit; font-weight: 800; font-size: clamp(30px, 6vmin, 64px); color: var(--ink); padding: 8px; transition: transform 0.12s, background 0.2s, opacity 0.2s; }
+  .pic-choice:active { transform: scale(0.96); }
+  .pic-choice.right { background: var(--green); color: #fff; transform: scale(1.04); }
+  .pic-choice.wrong { opacity: 0.3; animation: picShake 0.35s; }
+  @keyframes picShake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  .pic-bar .pb-mode { display: flex; background: #eef0f3; border-radius: 14px; padding: 3px; }
+  .pic-bar .pb-mode button { background: transparent; padding: 9px 12px; font-size: 16px; }
+  .pic-bar .pb-mode button.on { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
   .pic-cell.pic-add { opacity: 1; border: 3px dashed #c4c8cf; font-size: 22px; font-weight: 800; color: #6b7078; font-family: inherit; }
   #homeMagicBtn.off { filter: grayscale(1); opacity: 0.4; }
   #homeIconsClose { font-size: 40px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.55); background: rgba(255,255,255,0.5); box-shadow: none; padding-bottom: 4px; }
@@ -2656,6 +2670,21 @@
     </div>
 
     <!-- ============ KEYS & BEHAVIOR ============ -->
+    <div class="sgroup" data-group="pictures">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#128444;&#65039;</span>
+        <span class="sg-title">Picture writing</span>
+        <span class="sg-sum" id="sumPictures"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sublabel" style="margin-top:0">How the word is given</div>
+        <div class="seg-row" id="segPicAnswer"></div>
+        <div class="sublabel">Choosing: the other two words</div>
+        <div class="seg-row" id="segPicLevel"></div>
+        <div class="help-note">Turn picture writing on with the picture button in the tools. Hold a tile to give it up to 7 pictures (each can have its own spelling, like "strawberries"). With it on, tap picture tiles to pick them, then Practise. Write: the word is typed on lines under the picture, with the usual prompting. Choose: the word is picked from three tiles under the picture - easy puts very different words beside it, hard puts words that look alike.</div>
+      </div>
+    </div>
     <div class="sgroup" data-group="magic">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">&#10024;</span>
@@ -2862,7 +2891,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 505 - 10 Oct';
+const BUILD = 'build 506 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3070,7 +3099,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, picMode: false, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, picMode: false, picAnswer: 'write', picLevel: 'easy', promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3220,7 +3249,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true, picMode: !!saved.picMode, promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true, picMode: !!saved.picMode, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -3830,7 +3859,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, picMode: !!state.picMode, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, picMode: !!state.picMode, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -5211,7 +5240,8 @@ function spokenText(text) {
 
 let kbSearch = false, searchPrefix = '';
 function setView(name) {
-  if (name !== 'keyboard' && typeof picSession !== 'undefined' && picSession) { picSession = null; const vk = document.getElementById('viewKeyboard'); if (vk) vk.classList.remove('pic-on'); }
+  if (name !== 'keyboard' && typeof picSession !== 'undefined' && picSession) { picSession = null; const vk = document.getElementById('viewKeyboard'); if (vk) vk.classList.remove('pic-on', 'pic-choose'); }
+  if (name !== 'keyboard') wordDone = null;
   setTimeout(() => { try { picBarSync(); } catch (e) {} }, 0);
   // the update prompt belongs to the opening screen and nowhere else
   if (name !== 'splash' && name !== 'setup' && typeof hideUpdateBar === 'function') hideUpdateBar();
@@ -5588,6 +5618,7 @@ function showMastered(word) {
   setTimeout(() => el.classList.remove('show'), 2600);
 }
 function selectTargetWord(w, speakIt) {
+  wordDone = null;
   if (kbSearch) closeLetterSearch();     // a target means the bar is for typing
   phraseAuto = null;
   state.currentTarget = w;
@@ -6124,9 +6155,11 @@ function makeSpecialKey(label, action, cls) {
         }
       }
       if (isPhrase() && isWordComplete()) { finishPhrase(); return; }
+      if (state.currentTarget && wordDone === state.currentTarget) return;      // (already finished: enter again does nothing)
       const trimmed = applyCase(state.text).trim();
       const wasComplete = isWordComplete();
       const completedWord = state.currentTarget;
+      if (wasComplete && completedWord) wordDone = completedWord;
 
       const spokenText = (state.enterSpeechMode === 'correct')
         ? applyCase(correctTextOnly()).trim()
@@ -6245,7 +6278,9 @@ function correctTextOnly() {
   return state.currentTarget.slice(0, state.targetIndex);
 }
 
+let wordDone = null;      // the word just finished: no more letters are taken until it has moved on
 function typeLetter(letter) {
+  if (state.currentTarget && (wordDone === state.currentTarget || (isWordComplete() && !kbSearch))) return;      // (a finished word takes no more letters - it is moving on)
   if (kbSearch) {
     searchPrefix += letter;
     buzz(8);
@@ -6319,6 +6354,9 @@ function typeChar(letter) {
         buzz([20, 80, 40]); clearPromptTimer(); promptVisible = true;
         // A finished phrase reads itself back and ends the trial on its own
         if (isPhrase()) setTimeout(finishPhrase, 1100);
+        else { const w = state.currentTarget; setTimeout(() => {      // a finished word ends the trial on its own too, if enter is not pressed
+          if (state.currentTarget !== w || wordDone === w || !isWordComplete() || !document.getElementById('viewKeyboard').classList.contains('active')) return;
+          const ek = document.querySelector('#keyboard .key.enter'); if (ek) ek.click(); }, 1400); }
       }
       else armPrompt();          // fresh wait for the next letter
     } else {
@@ -6474,7 +6512,8 @@ function trialData() {
   return d;
 }
 function goHomeNow(word) {
-  if ((!state.homeEnabled && !picSession) || state.currentTarget !== word || state.text) return;
+  if ((!state.homeEnabled && !picSession) || state.currentTarget !== word || (state.text && wordDone !== word)) return;
+  state.text = '';
   state.currentTarget = null; state.phraseWords = []; state.targetIndex = 0; state.targetProgress = []; state.targetPromptedFlags = [];
   clearPromptTimer(); promptVisible = true;
   save(); render();
@@ -6485,7 +6524,8 @@ function goHomeAfter(word, wordCount) {
   if (!state.homeEnabled && !picSession) return;
   if (document.getElementById('readBack')) return;      // the read-back screen goes straight to the home page when it is done
   setTimeout(() => {
-    if (state.currentTarget !== word || state.text) return;
+    if (state.currentTarget !== word || (state.text && wordDone !== word)) return;
+    state.text = '';
     state.currentTarget = null;
     state.phraseWords = [];
     state.targetIndex = 0;
@@ -10823,7 +10863,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picMode', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
+  'endCfg', 'magicPrio', 'promptBack', 'picMode', 'picAnswer', 'picLevel', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -14945,12 +14985,12 @@ async function picPut(word, list) {
   const db = await picDB();
   await new Promise((res, rej) => { const tx = db.transaction('pics', 'readwrite'); list.length ? tx.objectStore('pics').put(list, word) : tx.objectStore('pics').delete(word); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   (picURL[word] || []).forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) {} });
-  if (list.length) picURL[word] = list.map(p => ({ id: p.id, on: p.on !== false, url: URL.createObjectURL(p.blob) })); else delete picURL[word];
+  if (list.length) picURL[word] = list.map(p => ({ id: p.id, on: p.on !== false, label: p.label || '', url: URL.createObjectURL(p.blob) })); else delete picURL[word];
 }
 async function picLoadAll() {
   try { const db = await picDB(); const req = db.transaction('pics', 'readonly').objectStore('pics').openCursor();
     req.onsuccess = () => { const c = req.result; if (!c) { picDecorate(); return; }
-      const l = picList(c.value); if (l.length) picURL[c.key] = l.map(p => ({ id: p.id, on: p.on !== false, url: URL.createObjectURL(p.blob) })); c.continue(); }; } catch (e) {}
+      const l = picList(c.value); if (l.length) picURL[c.key] = l.map(p => ({ id: p.id, on: p.on !== false, label: p.label || '', url: URL.createObjectURL(p.blob) })); c.continue(); }; } catch (e) {}
 }
 const picOn = w => (picURL[w] || []).filter(p => p.on);
 const picHas = w => picOn(w).length > 0;
@@ -14997,6 +15037,13 @@ function openPicSheet(word) {
         const del = document.createElement('button'); del.className = 'pic-del'; del.textContent = '×'; del.setAttribute('aria-label', 'Remove this picture');
         del.addEventListener('click', async e => { e.stopPropagation(); if (!confirm('Remove this picture?')) return; const l = (await picGet(word)).filter(x => x.id !== p.id); await picPut(word, l); paint(); picDecorate(true); });
         cell.appendChild(del);
+        // its own spelling (strawberries for a bowl of them): tap the word under it
+        const lab = document.createElement('button'); lab.className = 'pic-label' + (p.label ? ' own' : ''); lab.textContent = '\u270F\uFE0F ' + plainLabel(p.label || word).toLowerCase();
+        lab.addEventListener('click', async e => { e.stopPropagation();
+          const t = prompt('The word to write for this picture (for example "strawberries"). Leave it as it is to use the tile\'s own word.', plainLabel(p.label || word).toLowerCase());
+          if (t === null) return; const k = normaliseWord(t); const l = await picGet(word); const x = l.find(y => y.id === p.id);
+          if (x) { x.label = k && k !== word ? k : ''; await picPut(word, l); paint(); } });
+        cell.appendChild(lab);
         cell.addEventListener('click', async () => { const l = await picGet(word); const x = l.find(y => y.id === p.id); if (x) x.on = x.on === false; await picPut(word, l); buzz(8); paint(); picDecorate(true); });
         grid.appendChild(cell);
       });
@@ -15046,13 +15093,15 @@ function picBarSync() {
   if (!show) { if (bar) bar.classList.remove('show'); return; }
   if (!bar) {
     bar = document.createElement('div'); bar.id = 'picBar'; bar.className = 'pic-bar';
-    bar.innerHTML = '<span class="pb-n"></span><button class="pb-all">Pick all on this page</button><button class="pb-clear">Clear</button><button class="pb-go">▶ Practise</button>';
+    bar.innerHTML = '<span class="pb-n"></span><span class="pb-mode"><button data-m="write">\u270F\uFE0F Write</button><button data-m="choose">\uD83D\uDC46 Choose</button></span><button class="pb-all">Pick all on this page</button><button class="pb-clear">Clear</button><button class="pb-go">\u25B6 Practise</button>';
+    bar.querySelectorAll('.pb-mode button').forEach(b => b.addEventListener('click', () => { buzz(8); state.picAnswer = b.dataset.m; save(); picBarSync(); try { renderSettings(); } catch (e) {} }));
     bar.querySelector('.pb-all').addEventListener('click', () => { buzz(8); document.querySelectorAll('#homeGrid .home-card.pic-tile[data-word]').forEach(c => { if (!picSel.includes(c.dataset.word)) picSel.push(c.dataset.word); }); picDecorate(); });
     bar.querySelector('.pb-clear').addEventListener('click', () => { buzz(8); picSel = []; picDecorate(); });
     bar.querySelector('.pb-go').addEventListener('click', () => { if (!picSel.length) return; buzz(12); picStart(picSel.slice()); });
     document.body.appendChild(bar);
   }
   bar.classList.add('show');
+  bar.querySelectorAll('.pb-mode button').forEach(b => b.classList.toggle('on', (state.picAnswer || 'write') === b.dataset.m));
   bar.querySelector('.pb-n').textContent = picSel.length ? picSel.length + ' picked for practice' : 'Tap the pictures to practise';
   bar.querySelector('.pb-go').disabled = !picSel.length;
   bar.querySelector('.pb-clear').style.display = picSel.length ? '' : 'none';
@@ -15066,8 +15115,8 @@ function picStart(words) {
 }
 function picShow() {
   const s = picSession; if (!s) return;
-  const word = s.queue[s.done]; s.word = word;
-  const pics = picOn(word), pic = pics[Math.floor(Math.random() * pics.length)];
+  const tile = s.queue[s.done], pics = picOn(tile), pic = pics[Math.floor(Math.random() * pics.length)];
+  const word = (pic && pic.label) || tile; s.word = word;      // (a picture can have its own spelling: strawberries)
   const box = document.getElementById('picBox'); box.innerHTML = '';
   const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
   box.onclick = () => { try { warmSpeech(); speakWord(word, 0.9); } catch (e) {} };      // (a tap on the picture says the word)
@@ -15075,7 +15124,45 @@ function picShow() {
   showKeyboard();
   const vk = document.getElementById('viewKeyboard'); vk.classList.add('pic-on');
   picProgressPaint();
-  selectTargetWord(word, false);
+  const choose = state.picAnswer === 'choose';
+  vk.classList.toggle('pic-choose', choose);
+  let row = document.getElementById('picChoices');
+  if (!row) { row = document.createElement('div'); row.id = 'picChoices'; row.className = 'pic-choices'; box.after(row); }
+  row.innerHTML = '';
+  if (!choose) { selectTargetWord(word, false); return; }
+  // choose it: the word and two others, easy (very different words) or hard (words that look alike)
+  state.currentTarget = null; render();
+  const opts = [word].concat(picDistractors(word, state.picLevel === 'hard' ? 'hard' : 'easy', 2)).sort(() => Math.random() - 0.5);
+  opts.forEach(w => {
+    const b = document.createElement('button'); b.className = 'pic-choice'; b.textContent = plainLabel(w).toLowerCase();
+    b.addEventListener('click', () => {
+      if (row.dataset.done === '1') return;
+      if (w === word) {
+        row.dataset.done = '1'; b.classList.add('right'); buzz([20, 80, 40]);
+        try { warmSpeech(); speakWord(word, 0.95); } catch (e) {}
+        const h = state.wordHistory[word] || { n: 0, t: 0 }; h.n++; h.t = Date.now(); state.wordHistory[word] = h;
+        if (state.scoreMode) state.wordsSpelled.push({ word, ts: Date.now(), chose: true, wrongTaps: Number(row.dataset.wrong || 0) });
+        save(); setTimeout(picNext, 1300);
+      } else { b.classList.add('wrong'); b.disabled = true; buzz(8); row.dataset.wrong = String(Number(row.dataset.wrong || 0) + 1); }
+    });
+    row.appendChild(b);
+  });
+  row.dataset.done = ''; row.dataset.wrong = '0';
+}
+// two other words to choose from: easy - as different as can be (another first letter, length, folder);
+// hard - as alike as can be (the same first letter, a similar length, the same folder, letters in common)
+function picDistractors(word, level, n) {
+  const W = String(word).toUpperCase(), folders = new Set(categoriesOf(W).map(c => c.id));
+  const kindOf = w => { try { return kindOfWord(w); } catch (e) { return ''; } };
+  // (things to name, like the word itself: not doing words, numbers or colours - and words with pictures first)
+  let pool = state.words.filter(w => w !== W && !state.hiddenWords[w] && !isSmallWord(w) && !isPunct(w) && /^[A-Z][A-Z' -]*$/.test(w) && categoriesOf(w).some(c => !c.target && !c.smallSec) && kindOf(w) !== 'action' && !describeWord(w));
+  if (pool.length < 6) pool = state.words.filter(w => w !== W && !state.hiddenWords[w] && !isSmallWord(w) && !isPunct(w) && /^[A-Z]/.test(w));
+  const sim = w => { let x = 0; if (w[0] === W[0]) x += 3; if (Math.abs(w.length - W.length) <= 1) x += 2; else if (Math.abs(w.length - W.length) >= 3) x -= 2;
+    if (categoriesOf(w).some(c => folders.has(c.id))) x += 2; const L = new Set(W.replace(/[^A-Z]/g, '')); let k = 0; for (const ch of new Set(w)) if (L.has(ch)) k++; x += k / Math.max(1, L.size) * 3;
+    if (w.slice(-2) === W.slice(-2)) x += 1; return x; };
+  const scored = pool.map(w => [w, sim(w) - (picHas(w) ? 0.5 : 0)]).sort((a, b) => level === 'hard' ? b[1] - a[1] : a[1] - b[1]);
+  const top = scored.slice(0, level === 'hard' ? 6 : 14).sort(() => Math.random() - 0.5);      // (a few of the best, mixed, so it is not always the same two)
+  return top.slice(0, n).map(x => x[0]);
 }
 function picProgressPaint() {
   const s = picSession; let pr = document.getElementById('picProgress');
@@ -15099,7 +15186,7 @@ async function picExportData() {
   const out = {};
   const toURL = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(b); });
   try { const db = await picDB(); const all = await new Promise(res => { const o = {}; const req = db.transaction('pics', 'readonly').objectStore('pics').openCursor(); req.onsuccess = () => { const c = req.result; if (!c) return res(o); o[c.key] = picList(c.value); c.continue(); }; req.onerror = () => res(o); });
-    for (const w of Object.keys(all)) { out[w] = []; for (const p of all[w]) { const d = await toURL(p.blob); if (d) out[w].push({ id: p.id, on: p.on !== false, data: d }); } }
+    for (const w of Object.keys(all)) { out[w] = []; for (const p of all[w]) { const d = await toURL(p.blob); if (d) out[w].push({ id: p.id, on: p.on !== false, label: p.label || '', data: d }); } }
   } catch (e) {}
   return out;
 }
@@ -15107,7 +15194,7 @@ async function picImportData(pics) {
   if (!pics || typeof pics !== 'object') return;
   for (const w of Object.keys(pics)) {
     const list = [];
-    for (const p of pics[w] || []) { try { const b = await (await fetch(p.data)).blob(); list.push({ id: p.id || ('p' + Math.random().toString(36).slice(2, 8)), blob: b, on: p.on !== false }); } catch (e) {} }
+    for (const p of pics[w] || []) { try { const b = await (await fetch(p.data)).blob(); list.push({ id: p.id || ('p' + Math.random().toString(36).slice(2, 8)), blob: b, on: p.on !== false, label: p.label || '' }); } catch (e) {} }
     if (list.length) await picPut(w, list.slice(0, PIC_MAX));
   }
   picDecorate();
@@ -16017,6 +16104,9 @@ function openSettingsSheet() {
 
 function renderSettings() {
   document.getElementById('buildStamp').textContent = BUILD;
+  buildSeg('segPicAnswer', [{ value: 'write', label: '\u270F\uFE0F Write it (notebook)' }, { value: 'choose', label: '\uD83D\uDC46 Choose from 3 tiles' }], state.picAnswer || 'write', v => { state.picAnswer = v; save(); renderSettings(); try { picBarSync(); } catch (e) {} });
+  buildSeg('segPicLevel', [{ value: 'easy', label: 'Easy: very different words' }, { value: 'hard', label: 'Hard: words that look alike' }], state.picLevel || 'easy', v => { state.picLevel = v; save(); renderSettings(); });
+  { const sp = document.getElementById('sumPictures'); if (sp) sp.textContent = (state.picMode ? 'On' : 'Off') + ' \u00B7 ' + (state.picAnswer === 'choose' ? 'Choose (' + (state.picLevel === 'hard' ? 'hard' : 'easy') + ')' : 'Write'); }
   renderSyncStatus();
   // ----- Prompts -----
   document.getElementById('togglePromptColor').classList.toggle('on', state.promptColorOn);
