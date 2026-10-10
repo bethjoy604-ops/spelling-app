@@ -2736,7 +2736,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 471 - 10 Oct';
+const BUILD = 'build 472 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5320,6 +5320,7 @@ function showMastered(word) {
 }
 function selectTargetWord(w, speakIt) {
   if (kbSearch) closeLetterSearch();     // a target means the bar is for typing
+  phraseAuto = null;
   state.currentTarget = w;
   trialErrors = 0;
   state.phraseWords = [];
@@ -5392,9 +5393,10 @@ function justFinishedWord() {
   if (seq[i - 1] === ' ') return false;
   return (i >= seq.length) || seq[i] === ' ';
 }
-function selectPhrase(words, quiet) {
+function selectPhrase(words, quiet, auto) {
   if (kbSearch) closeLetterSearch();
   state.phraseWords = words.slice();
+  phraseAuto = Array.isArray(auto) && auto.some(Boolean) ? auto : null;
   trialErrors = 0;
   state.currentTarget = words.join(' ');
   state.targetIndex = 0;
@@ -5405,9 +5407,19 @@ function selectPhrase(words, quiet) {
   getOrInitWordData(state.currentTarget);
   helpRequested = false;
   kbNumbers = false; shiftOn = false;
+  autoFill();
   armPrompt();
   save(); render();
   if (!quiet && state.targetSpeech) speakWord(state.currentTarget, 0.85);
+}
+// the words of a message that are not targets go into the bar by themselves, up to the next target letter
+let phraseAuto = null;
+function autoFill() {
+  if (!phraseAuto || !state.currentTarget) return;
+  while (state.targetIndex < state.currentTarget.length && phraseAuto[state.targetIndex]) {
+    state.text += state.currentTarget[state.targetIndex];
+    state.targetIndex++; state.targetProgress.push(true); state.targetPromptedFlags.push(false);
+  }
 }
 
 function nextExpectedLetter() {
@@ -5937,6 +5949,7 @@ function typeChar(letter) {
       state.targetIndex++;
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
+      autoFill();
       // fading counted by letters: every so many right letters in a row, the prompt steps down
       if (state.fadeMode && state.fadeCount === 'letter' && /[A-Z]/i.test(expected)) {
         const L = expected.toUpperCase();
@@ -8187,12 +8200,23 @@ function renderPhraseBar() {
 }
 // Words put in the bar were each said aloud as they went in, so pressing enter
 // does not say them again. sayIt is for a phrase that was never voiced.
+// target mode is on while the targets page has any target that is switched on
+function targetsLive() { const t = newFolder(); return !!t && !!t.target && (t.words || []).some(w => !(state.targetOff || {})[w]); }
 function startPhraseFromHome(sayIt) {
   try { homeKeysClose(); } catch (e) {}
   const parts = homePhrase.join(' ').split(' ').filter(Boolean);
   if (parts.length === 0) { showKeyboard(); return; }   // empty simply opens the keyboard
   parts.map(bareWord).forEach(w => { if (w && !state.words.includes(w)) state.words.push(w); });
-  if (parts.length > 1) selectPhrase(parts, !sayIt);
+  // which letters fill themselves in: every word of the message that is not an active target (when targets are on)
+  let auto = null;
+  if (targetsLive() && parts.length > 1) {
+    const due = activeTargets(homePhrase);
+    if (due.length) {
+      const own = []; homePhrase.forEach(w => { const isT = due.includes(w); String(w).split(' ').filter(Boolean).forEach(() => own.push(!isT)); });
+      auto = []; parts.forEach((p, i) => { for (let k = 0; k < p.length; k++) auto.push(own[i]); if (i < parts.length - 1) auto.push(own[i] || own[i + 1]); });
+    }
+  }
+  if (parts.length > 1) selectPhrase(parts, !sayIt, auto);
   else selectTargetWord(parts[0], !!sayIt);
   homePhrase = [];
   hideMagic();
@@ -8303,7 +8327,15 @@ function homeEnter() {
     else chatPost(homePhrase.slice());
     return;
   }
-  if (!state.speakMode) { startPhraseFromHome(); return; }
+  if (!state.speakMode) {
+    // targets switched on: only they are typed (with their prompting); the other words fill themselves in.
+    // A message with no target in it is simply read back.
+    if (targetsLive() && !activeTargets(homePhrase).length && homePhrase.length) {
+      warmSpeech(); buzz(15); readBack(homePhrase.slice(), null, true);
+      homePhrase = []; hideMagic(); save(); renderPhraseBar(); renderHome(true); return;
+    }
+    startPhraseFromHome(); return;
+  }
   if (!homePhrase.length) return;
   warmSpeech();
   buzz(15);
