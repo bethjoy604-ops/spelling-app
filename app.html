@@ -960,7 +960,10 @@
   .tl-sugg button { flex: 1 1 0; min-width: 0; border: none; border-radius: 16px; background: #fff; color: var(--ink); font-family: inherit; font-weight: 800; font-size: clamp(22px, 4vmin, 36px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: var(--shadow); cursor: pointer; }
   .type-layer .tl-keys { display: flex; flex: 5 1 0; min-height: 0; }
   .type-layer.view-keyboard { height: auto; }
-  .type-layer .tl-home .ctl { display: inline-flex !important; }
+  .type-layer .tl-home { display: none !important; }
+  .view-keyboard .target-clear, .view-keyboard .display-clear { display: flex !important; align-items: center; justify-content: center; align-self: flex-start; width: clamp(56px, 9vmin, 76px); height: clamp(56px, 9vmin, 76px); padding: 0; border: none; border-radius: 50%; background: #e0473c; color: #fff; font-family: inherit; font-weight: 900; font-size: clamp(32px, 5.5vmin, 46px); line-height: 1; }      /* the red x: back home */      /* (no home button: the x and the red delete go back) */
+  .type-layer .tl-top { min-height: clamp(210px, 36vh, 360px) !important; max-height: 44vh; }
+  .type-layer .tl-text { font-size: clamp(48px, 10vmin, 100px); }
   .tl-chip { border: none; border-radius: 0.3em; background: #e6e7ea; color: rgba(0,0,0,0.55); font-family: inherit; font-weight: 600; font-size: 0.8em; padding: 0.05em 0.45em; cursor: pointer; }
   .home-keys { display: none; position: fixed; left: 0; right: 0; bottom: 0; top: 160px; z-index: 30; padding: 12px 16px 16px; background: #aeb0b5; transform-origin: top; }
   .home-keys.open { display: flex; animation: hkDown 0.2s ease both; }
@@ -1071,6 +1074,22 @@
   .view-keyboard .display.ds-large { flex: 1.25 1 0; font-size: clamp(46px, 9.5vh, 98px); }
   /* the keyboard is the point of the page, so it takes the lion's share */
   .view-keyboard .keyboard { flex: 5 1 0; }
+  /* the keyboard page: the message bar about twice as tall, the keys closer together and less stretched, no home button
+     (the red x takes you home) */
+  .view-keyboard #homeBtn { display: none !important; }
+  .view-keyboard .controls-row:not(:has(> button:not(#homeBtn):not([style*="display: none"]):not([style*="display:none"]))) { display: none; }
+  .view-keyboard #targetBanner.active { --tile: min(clamp(70px, 15vh, 150px), calc((100vw - 220px) / (var(--n, 6) * 1.85))) !important; min-height: clamp(210px, 36vh, 360px) !important; padding: 18px 28px !important; }
+  .view-keyboard #targetBanner.active .tletter { padding: calc(var(--tile) * 0.1) calc(var(--tile) * 0.12) !important; }
+  .view-keyboard #targetBanner.active .target-word { gap: calc(var(--tile) * 0.14) !important; }
+  .view-keyboard #targetBanner.active { --tile: min(clamp(70px, 15vh, 150px), calc((100vw - 220px) / (var(--n, 6) * 1.85)), calc((clamp(210px, 36vh, 360px) - 30px) / (var(--lines, 1) * 1.5))) !important; }
+  .view-keyboard #targetBanner.active .target-word.wrapwords { flex-wrap: wrap; row-gap: calc(var(--tile) * 0.12); align-content: center; }
+  .view-keyboard #targetBanner.active .target-word.wrapwords .tspace { flex-basis: 100%; height: 0; min-width: 0; padding: 0 !important; overflow: hidden; }
+  .view-keyboard .display { flex: 1.6 1 0 !important; min-height: clamp(210px, 36vh, 360px) !important; }
+  .view-keyboard .display.ds-small { font-size: clamp(48px, 9vh, 90px) !important; }
+  .view-keyboard .display.ds-med { font-size: clamp(64px, 12vh, 130px) !important; }
+  .view-keyboard .display.ds-large { font-size: clamp(80px, 15vh, 160px) !important; }
+  .view-keyboard .keyboard { flex: 2 1 0 !important; gap: clamp(8px, 1.4vmin, 16px) !important; }
+  .view-keyboard .keyboard .row { gap: clamp(8px, 1.4vmin, 16px) !important; }
   .view-keyboard { padding: calc(22px + env(safe-area-inset-top, 0px)) 26px calc(30px + env(safe-area-inset-bottom, 0px)) !important; }      /* the keys keep clear of the edges of the screen */
   .view-keyboard .display { min-height: 0; }
   .display.celebrating {
@@ -2803,7 +2822,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 500 - 10 Oct';
+const BUILD = 'build 501 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5311,7 +5330,7 @@ function typeLayerPaint() {
     b.addEventListener('click', () => { src.click(); inp.blur(); typeLayerPaint(); homeKeysIdle(); });
     msg.appendChild(b);
   });
-  { const bar = document.getElementById('phraseBar'), top = L.querySelector('.tl-top'); const h = bar ? bar.offsetHeight : 0; if (h > 40) { top.style.minHeight = h + 'px'; top.style.maxHeight = (h * 2) + 'px'; } }
+  { const top = L.querySelector('.tl-top'); top.style.minHeight = ''; top.style.maxHeight = ''; }      // (its size is set in the style sheet now: about twice the old height)
 }
 function homeKeysOpen() {
   let L = document.getElementById('typeLayer');
@@ -5322,7 +5341,7 @@ function homeKeysOpen() {
     const text = document.createElement('div'); text.className = 'tl-text';
     const x = document.createElement('button'); x.className = 'tl-x'; x.innerHTML = '&times;'; x.setAttribute('aria-label', 'Close the keyboard');
     x.addEventListener('click', () => { buzz(8); inp.value = ''; homeKeysClose(); });
-    top.appendChild(text);
+    top.appendChild(text); top.appendChild(x);      // (the red x closes the keyboard - there is no home button)
     const sug = document.createElement('div'); sug.className = 'controls-row tl-home';
     { const hb = document.createElement('button'); hb.className = 'ctl icon'; hb.innerHTML = '&#127968;'; hb.setAttribute('aria-label', 'Home'); hb.addEventListener('click', () => { buzz(8); if (inp.value.trim()) { typeLayerQuiet = true; try { commitTypedWord(); } finally { typeLayerQuiet = false; } } homeKeysClose(); }); sug.appendChild(hb); }
     const k = document.createElement('div'); k.className = 'keyboard tl-keys';
@@ -5826,6 +5845,10 @@ function render() {
     banner.classList.add('active');
     banner.classList.toggle('no-text', state.promptTextOn === false);
     const tw = document.getElementById('targetWord');
+    { const ws = state.currentTarget.split(' ').filter(Boolean), wrap = ws.length > 1 && state.currentTarget.length > 9;
+      banner.style.setProperty('--n', String(Math.max(4, wrap ? Math.max(...ws.map(x => x.length)) : state.currentTarget.length)));      // (the letters size to fit the bar)
+      banner.style.setProperty('--lines', String(wrap ? ws.length : 1));
+      tw.classList.toggle('wrapwords', wrap); }      // (a long phrase: a word to each line, in the taller bar)
     const twWas = tw.scrollLeft;
     tw.innerHTML = '';
     // In help mode the word bar always marks the letter to type next, straight
@@ -6580,6 +6603,7 @@ document.getElementById('setupWordBtn').addEventListener('click', () => {
   document.getElementById('wordMenu').classList.add('show');
 });
 document.getElementById('targetClearBtn').addEventListener('click', () => {
+  if (state.homeEnabled) setTimeout(() => { try { touchSession(); showHome(); } catch (e) {} }, 60);      // (the red x is the way home now - there is no home button)
   state.currentTarget = null;
   state.phraseWords = [];
   state.targetIndex = 0;
@@ -16408,6 +16432,7 @@ document.getElementById('recordMenu').addEventListener('click', e => {
 
 // Display clear button — cancel current attempt
 document.getElementById('displayClear').addEventListener('click', () => {
+  if (!state.text && state.homeEnabled) { buzz(10); touchSession(); showHome(); return; }      // nothing typed: the red x goes home
   const content = document.getElementById('displayContent');
   content.classList.add('wiping');
   buzz(10);
