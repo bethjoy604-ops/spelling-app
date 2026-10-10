@@ -961,7 +961,7 @@
   .type-layer .tl-keys { display: flex; flex: 5 1 0; min-height: 0; }
   .type-layer.view-keyboard { height: auto; }
   .type-layer .tl-home { display: none !important; }
-  .view-keyboard .target-clear, .view-keyboard .display-clear { display: flex !important; align-items: center; justify-content: center; align-self: flex-start; width: clamp(56px, 9vmin, 76px); height: clamp(56px, 9vmin, 76px); padding: 0; border: none; border-radius: 50%; background: #e0473c; color: #fff; font-family: inherit; font-weight: 900; font-size: clamp(32px, 5.5vmin, 46px); line-height: 1; }      /* the red x: back home */      /* (no home button: the x and the red delete go back) */
+  .view-keyboard .target-clear, .view-keyboard .display-clear { display: none !important; }      /* (no x in the message bar: the red delete key on the keyboard goes home once the bar is empty) */      /* (no home button: the x and the red delete go back) */
   .type-layer .tl-top { min-height: clamp(210px, 36vh, 360px) !important; max-height: 44vh; }
   .type-layer .tl-text { font-size: clamp(48px, 10vmin, 100px); }
   .tl-chip { border: none; border-radius: 0.3em; background: #e6e7ea; color: rgba(0,0,0,0.55); font-family: inherit; font-weight: 600; font-size: 0.8em; padding: 0.05em 0.45em; cursor: pointer; }
@@ -2822,7 +2822,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 501 - 10 Oct';
+const BUILD = 'build 502 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5341,7 +5341,7 @@ function homeKeysOpen() {
     const text = document.createElement('div'); text.className = 'tl-text';
     const x = document.createElement('button'); x.className = 'tl-x'; x.innerHTML = '&times;'; x.setAttribute('aria-label', 'Close the keyboard');
     x.addEventListener('click', () => { buzz(8); inp.value = ''; homeKeysClose(); });
-    top.appendChild(text); top.appendChild(x);      // (the red x closes the keyboard - there is no home button)
+    top.appendChild(text);      // (the red delete key closes the keyboard once there is nothing left to delete)
     const sug = document.createElement('div'); sug.className = 'controls-row tl-home';
     { const hb = document.createElement('button'); hb.className = 'ctl icon'; hb.innerHTML = '&#127968;'; hb.setAttribute('aria-label', 'Home'); hb.addEventListener('click', () => { buzz(8); if (inp.value.trim()) { typeLayerQuiet = true; try { commitTypedWord(); } finally { typeLayerQuiet = false; } } homeKeysClose(); }); sug.appendChild(hb); }
     const k = document.createElement('div'); k.className = 'keyboard tl-keys';
@@ -6039,6 +6039,7 @@ function makeSpecialKey(label, action, cls) {
       buzz(10);
       if (kbSearch) { searchPrefix = searchPrefix.slice(0, -1); renderSearchStrip(); return; }
       resolvePendingFlash();
+      if (!state.text.length && state.homeEnabled) { touchSession(); showHome(); return; }      // nothing left to delete: the red delete key goes home (there is no home button)
       if (state.text.length > 0) {
         state.text = state.text.slice(0, -1);
         if (state.currentTarget && state.targetProgress.length > 0) {
