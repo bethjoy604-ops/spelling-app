@@ -2748,6 +2748,12 @@
         <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">&#9654; Test this voice</button>
         <div class="help-note" id="voiceTestNote">Plays a short sentence in the voice chosen above, even with the sound switched off.</div>
         <button class="mbtn action primary" id="recordVoiceBtn" style="width: 100%; margin-top: 8px;">🎤 Record my own voice →</button>
+        <div class="sublabel" style="margin-top:14px;">Voice packs (a voice made from sound clips)</div>
+        <div class="settings-list" id="voicePacks"></div>
+        <button class="mbtn action" id="addVoicePackBtn" style="width:100%; margin-top:8px;">Add a voice pack (.zip of word clips)</button>
+        <input type="file" id="voicePackFile" accept=".zip,application/zip" style="display:none">
+        <button class="mbtn action" id="wordListBtn" style="width:100%; margin-top:8px;">Export the word list (to make clips for)</button>
+        <div class="help-note">A voice pack is a .zip of short sound files, one per word, each named after its word (go.mp3, want.m4a, wake up.wav). With a pack chosen, every word that has a clip is said in that voice; any other word uses the voice above.</div>
 
       </div>
     </div>
@@ -2790,7 +2796,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 480 - 10 Oct';
+const BUILD = 'build 481 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3144,7 +3150,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
-        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null,
+        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null,
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -3726,7 +3732,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
-      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null,
+      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null,
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -3804,6 +3810,110 @@ function isSessionStale() {
   if (!state.lastUsed) return true;
   return (Date.now() - state.lastUsed) > SESSION_TIMEOUT_MS;
 }
+
+// ===== Voice packs: sound clips per word, kept in the device's database (they are too big for ordinary storage) =====
+const VP = { db: null, words: {}, urls: {} };      // words: { pack: Set of words }, urls: cached clip links
+function vpDB() {
+  if (VP.db) return Promise.resolve(VP.db);
+  return new Promise((res, rej) => { const r = indexedDB.open('kbd-voicepacks', 1); r.onupgradeneeded = () => { r.result.createObjectStore('clips'); r.result.createObjectStore('packs'); }; r.onsuccess = () => { VP.db = r.result; res(VP.db); }; r.onerror = () => rej(r.error); });
+}
+function vpTx(store, mode, fn) { return vpDB().then(db => new Promise((res, rej) => { const t = db.transaction(store, mode); const out = fn(t.objectStore(store)); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error); })); }
+async function vpLoad() {
+  try {
+    const db = await vpDB();
+    const packs = await new Promise(res => { const out = {}; const c = db.transaction('packs').objectStore('packs').openCursor(); c.onsuccess = () => { const cur = c.result; if (cur) { out[cur.key] = cur.value; cur.continue(); } else res(out); }; c.onerror = () => res(out); });
+    VP.words = {}; Object.keys(packs).forEach(k => { VP.words[k] = new Set(packs[k].words || []); });
+    try { renderVoicePacks(); } catch (e) {}
+  } catch (e) {}
+}
+function vpHas(w) { const p = state.voicePack; return !!p && !!VP.words[p] && VP.words[p].has(w); }
+async function vpPlay(w) {
+  const p = state.voicePack, key = p + '|' + w;
+  try {
+    if (!VP.urls[key]) { const blob = await vpTx('clips', 'readonly', st => st.get(key)); if (!blob) return false; VP.urls[key] = URL.createObjectURL(blob); }
+    try { if (currentAudio) currentAudio.pause(); } catch (e) {}
+    const a = new Audio(VP.urls[key]); try { currentAudio = a; } catch (e) {}
+    await a.play(); return true;
+  } catch (e) { return false; }
+}
+// a .zip read by hand (stored or deflated entries), so the app needs no library
+async function unzipEntries(buf) {
+  const dv = new DataView(buf), u8 = new Uint8Array(buf), out = [];
+  let eocd = -1; for (let i = u8.length - 22; i >= Math.max(0, u8.length - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('not a zip file');
+  let n = dv.getUint16(eocd + 10, true), off = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true), csize = dv.getUint32(off + 20, true), nlen = dv.getUint16(off + 28, true), xlen = dv.getUint16(off + 30, true), clen = dv.getUint16(off + 32, true), lho = dv.getUint32(off + 42, true);
+    const name = dec.decode(u8.subarray(off + 46, off + 46 + nlen));
+    off += 46 + nlen + xlen + clen;
+    const lnl = dv.getUint16(lho + 26, true), lxl = dv.getUint16(lho + 28, true), start = lho + 30 + lnl + lxl;
+    const raw = u8.subarray(start, start + csize);
+    out.push({ name, get: async () => {
+      if (method === 0) return raw.slice();
+      if (method === 8) { const ds = new DecompressionStream('deflate-raw'); const b = await new Response(new Blob([raw]).stream().pipeThrough(ds)).arrayBuffer(); return new Uint8Array(b); }
+      throw new Error('unsupported zip entry');
+    } });
+  }
+  return out;
+}
+const AUDIO_TYPES = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', webm: 'audio/webm' };
+async function addVoicePack(file) {
+  const buf = await file.arrayBuffer();
+  let entries;
+  try { entries = await unzipEntries(buf); } catch (e) { alert('That file could not be opened as a .zip of sound clips.'); return; }
+  const clips = entries.filter(e => { const m = e.name.split('/').pop().match(/\.([a-z0-9]+)$/i); return m && AUDIO_TYPES[m[1].toLowerCase()] && !/^\./.test(e.name.split('/').pop()) && !/__MACOSX/.test(e.name); });
+  if (!clips.length) { alert('There are no sound clips in that file.\n\nA voice pack is a .zip of sound files named after their words (go.mp3, want.mp3 ...). A voice model file (.pth / .index) cannot be used directly - see the note in settings.'); return; }
+  const guess = file.name.replace(/\.zip$/i, '').replace(/[_-].*$/, '') || 'My voice';
+  const name = (prompt('Name for this voice', guess) || '').trim(); if (!name) return;
+  const words = [];
+  for (const e of clips) {
+    const base = e.name.split('/').pop(), ext = base.split('.').pop().toLowerCase();
+    const w = normaliseWord(base.replace(/\.[^.]+$/, '').replace(/_/g, ' '));
+    if (!w) continue;
+    const data = await e.get();
+    await vpTx('clips', 'readwrite', st => st.put(new Blob([data], { type: AUDIO_TYPES[ext] }), name + '|' + w));
+    words.push(w);
+  }
+  await vpTx('packs', 'readwrite', st => st.put({ words, added: Date.now() }, name));
+  state.voicePack = name; save();
+  await vpLoad();
+  alert(name + ': ' + words.length + ' word clip' + (words.length === 1 ? '' : 's') + ' added. It is now the voice in use.');
+}
+async function deleteVoicePack(name) {
+  if (!confirm('Delete the voice "' + name + '"?')) return;
+  const ws = [...(VP.words[name] || [])];
+  await vpTx('clips', 'readwrite', st => { ws.forEach(w => st.delete(name + '|' + w)); });
+  await vpTx('packs', 'readwrite', st => st.delete(name));
+  if (state.voicePack === name) { state.voicePack = null; save(); }
+  await vpLoad();
+}
+function renderVoicePacks() {
+  const box = document.getElementById('voicePacks'); if (!box) return;
+  box.innerHTML = '';
+  const row = (label, on, pick, del) => {
+    const r = document.createElement('div'); r.className = 'setting-row';
+    const l = document.createElement('span'); l.textContent = label; r.appendChild(l);
+    const right = document.createElement('div'); right.style.cssText = 'display:flex;gap:10px;align-items:center';
+    if (del) { const d = document.createElement('button'); d.className = 'hf-btn danger'; d.textContent = 'Delete'; d.addEventListener('click', del); right.appendChild(d); }
+    const t = document.createElement('div'); t.className = 'toggle' + (on ? ' on' : ''); t.addEventListener('click', pick); right.appendChild(t);
+    r.appendChild(right); box.appendChild(r);
+  };
+  row('The voice above (no pack)', !state.voicePack, () => { state.voicePack = null; save(); renderVoicePacks(); });
+  Object.keys(VP.words).sort().forEach(n => row(n + '  (' + VP.words[n].size + ' words)', state.voicePack === n, () => { state.voicePack = n; save(); renderVoicePacks(); try { speakWord('HELLO', 0.95); } catch (e) {} }, () => deleteVoicePack(n)));
+}
+function exportWordList() {
+  const ws = [...new Set((state.words || []).filter(w => !isPunct(w)))].sort();
+  const text = ws.map(w => w.toLowerCase()).join('\n') + '\n';
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'word-list.txt'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+document.getElementById('addVoicePackBtn').addEventListener('click', () => document.getElementById('voicePackFile').click());
+document.getElementById('voicePackFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) addVoicePack(f); });
+document.getElementById('wordListBtn').addEventListener('click', exportWordList);
+setTimeout(vpLoad, 400);
 
 // ===== Custom voice recordings =====
 let recordings = { letterName: {}, letterSound: {}, word: {}, phrase: {} };
@@ -4981,6 +5091,10 @@ function displayWord(w) {
 }
 // Speak a word — prefers a recording, else TTS
 function speakWord(word, rate) {
+  // a voice pack in use: a word it has a clip for is said in that voice
+  { const k = (word || '').toUpperCase().trim(); if (state.voicePack && vpHas(k) && (state.soundOn !== false || sayAnyway)) {
+      const gateQuiet = !state.magicType && !sayAnyway && !state.builderMode && !state.chatMode && document.getElementById('viewHome').classList.contains('active') && !document.querySelector('.read-back');
+      if (!gateQuiet) { vpPlay(k).then(ok => { if (!ok) speak(spokenText(word), rate); }); return; } } }
   // magic off: building a message on the home page is quiet - nothing is said until the green enter
   if (!state.magicType && !sayAnyway && !state.builderMode && !state.chatMode && document.getElementById('viewHome').classList.contains('active') && !document.querySelector('.read-back')) return;
   const key = (word || '').toUpperCase().trim();
@@ -7621,6 +7735,21 @@ function openMagicWords(focusId) {
     n.textContent = 'Each tab of the menu, with its folders as tiles. Tap a folder to switch it on or off, or to choose single tiles inside it.';
     body.appendChild(n);
     const box = document.createElement('div'); box.style.maxHeight = '56vh'; box.style.overflowY = 'auto';
+    // the targets page too, as it is organised: each of its groups is a tile (tap to switch its words on or off)
+    { const t = state.categories.find(c => c.target);
+      if (t && (t.words || []).length) {
+        const h = document.createElement('div'); h.className = 'help-note pick-head sort-head';
+        const ttl = document.createElement('span'); ttl.textContent = t.name + ' (targets)'; h.appendChild(ttl); box.appendChild(h);
+        const grid = document.createElement('div'); grid.className = 'mw-grid';
+        const gs = listGroups(t), inG = new Set([].concat(...gs.map(g => g.words)));
+        const groupTile = (label, ws) => {
+          const offN = ws.filter(w => (state.magicOffWord || {})[w]).length, on = offN < ws.length;
+          grid.appendChild(tile(label, on, on && offN > 0, () => { const allOn = offN === 0; ws.forEach(w => { if (allOn) state.magicOffWord[w] = true; else delete state.magicOffWord[w]; }); save(); openMagicWords(null); }, 'folder'));
+        };
+        gs.forEach(g => { if (g.words.length) groupTile(g.name, g.words); });
+        const loose = t.words.filter(w => !inG.has(w)); if (loose.length) groupTile('not in a group', loose);
+        box.appendChild(grid);
+      } }
     kids(null).forEach(tab => {
       const h = document.createElement('div'); h.className = 'help-note pick-head sort-head';
       const t = document.createElement('span'); t.textContent = tab.name; h.appendChild(t);
