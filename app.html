@@ -2797,7 +2797,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 483 - 10 Oct';
+const BUILD = 'build 484 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3151,7 +3151,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
-        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {},
+        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -3733,7 +3733,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
-      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {},
+      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -7690,6 +7690,22 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
 let suggFolder = null;
 const bandOpen = { fold: true, cat: true };      // every band opens with the message; each bar folds its own
 // ---- Magic settings: which words magic may suggest. Folders (and whole tabs) or single tiles can be switched off.
+// Words used together in a message are remembered as a pair: the more often, the sooner magic offers one after the other
+// (a word right after another counts double)
+function coUseNote(words) {
+  const ws = words.filter(w => !isPunct(w)); state.coUse = state.coUse || {};
+  for (let i = 0; i < ws.length; i++) for (let j = 0; j < ws.length; j++) {
+    if (i === j || ws[i] === ws[j]) continue;
+    const a = ws[i], b = ws[j], m = state.coUse[a] = state.coUse[a] || {};
+    m[b] = (m[b] || 0) + (j === i + 1 ? 2 : 1);
+  }
+  save();
+}
+function coScore(w) {
+  const cu = state.coUse || {}, n = homePhrase.length; let sc = 0;
+  homePhrase.forEach((p, i) => { const m = cu[p]; if (m && m[w]) sc += m[w] * (i === n - 1 ? 3 : 1); });
+  return sc;
+}
 function magicPrioWords() {
   const t = state.categories.find(c => c.target), pr = state.magicPrio || {};
   if (!t || !Object.keys(pr).length) return [];
@@ -7936,6 +7952,26 @@ function suggRender0() {
     // the words magic may suggest, as chosen in its settings (whole folders or single tiles switched off)
     { const ok = m => m.folder ? !magicCatOff(m.folder) : magicAllowed(m.phrase[m.phrase.length - 1]);
       green = green.filter(ok); folders = folders.filter(ok); cats = cats.filter(ok);
+      // words used with this message's words before come first (most used together first), then the rest as they were
+      { const lastOf = m => m.phrase[m.phrase.length - 1];
+        // (a word often used with these, missing from the rows, is brought into its row)
+        if (live) { const cu = state.coUse || {}, seen = new Set([].concat(green, folders, cats).filter(m => !m.folder).map(lastOf));
+          const cand = {}; homePhrase.forEach(p => Object.entries(cu[p] || {}).forEach(([w, n]) => { cand[w] = (cand[w] || 0) + n; }));
+          Object.entries(cand).sort((x, y) => y[1] - x[1]).slice(0, 6).forEach(([w]) => {
+            if (seen.has(w) || homePhrase.includes(w) || state.hiddenWords[w] || !state.words.includes(w) || !magicAllowed(w) || isSmallWord(w)) return;
+            const item = { phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) };
+            let k = ''; try { k = kindOfWord(w); } catch (e) {}
+            if (k === 'action') { if (cfg.green.on) green.push(Object.assign(item, { act: true })); }
+            else if (isCategoryWord(w)) { if (cfg.cat.on) cats.push(item); }
+            else if (cfg.grey.on) folders.unshift(item);
+            seen.add(w);
+          }); }
+        const bySc = list => { const sc = list.map((m, i) => [m.folder ? 0 : coScore(lastOf(m)), i, m]); if (!sc.some(x => x[0] > 0)) return list; return sc.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(x => x[2]); };
+        green = bySc(green); cats = bySc(cats);
+        // grey keeps each folder after its own words: whole runs move together, by their best word
+        { const runs = []; let cur = []; folders.forEach(m => { cur.push(m); if (m.folder) { runs.push(cur); cur = []; } }); if (cur.length) runs.push(cur);
+          const rs = runs.map((r, i) => [Math.max(0, ...r.filter(m => !m.folder).map(m => coScore(lastOf(m)))), i, r]);
+          if (rs.some(x => x[0] > 0)) folders = [].concat(...rs.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(x => x[2])); } }
       // prioritised targets: their words go first in the row they belong to (added if they were not there)
       { const pw = magicPrioWords(); if (pw.length && live) {
           const lastOf = m => m.phrase[m.phrase.length - 1];
@@ -8572,6 +8608,7 @@ function homeEnter() {
   // (folder names, choice-board and menu words that went into the message are words of the library too)
   if (homePhrase.length && !state.builderMode) homePhrase.filter(w => !isPunct(w)).forEach(magicKnow);
   if (homePhrase.length && !state.builderMode) { state.recentTiles = (state.recentTiles || []).concat(homePhrase.filter(w => !isPunct(w))).slice(-30); save(); }
+  if (homePhrase.length > 1) coUseNote(homePhrase);
   // menu mode: the sentence is done, so a sub-folder steps back up to the page of folders it came from
   if (!state.builderMode && homePhrase.length && homePath.length > 1) homePath = homePath.slice(0, -1);
   if (state.builderMode && homePhrase.length) {
