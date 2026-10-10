@@ -2802,7 +2802,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 497 - 10 Oct';
+const BUILD = 'build 498 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -13774,6 +13774,32 @@ function arrangeLast() {
 function magicTilesSync() { try { if (!magicInHome && !state.builderMode) { magicSigShown = '\u0000'; renderPhraseBar(); } } catch (e) {} }
 // Word order: "park" + go is offered as "go park" beside the message - tap it to take it, or tap a word to keep the order
 let seqOffer = null;      // { from: 'PARK GO', to: [...] }
+// the doing words that go with a thing (a drink -> drink, a food -> eat, a show -> watch ...)
+function verbsFor(w) {
+  let k = ''; try { k = magicKind(w); } catch (e) {}
+  const bev = state.categories.some(c => (c.groups || []).some(g => /^(beverages|drinks)$/i.test(String(g.name || '').trim()) && (g.words || []).includes(w)));
+  const F = { watch: ['WATCH', 'PLAY', 'SEE'], music: ['LISTEN', 'PLAY', 'SING', 'DANCE', 'REPEAT'], book: ['READ', 'OPEN', 'GET'], game: ['PLAY', 'OPEN', 'GET'],
+    food: bev ? ['DRINK', 'OPEN', 'GET', 'SIP', 'POUR'] : ['EAT', 'CUT', 'OPEN', 'MAKE', 'COOK', 'BITE', 'PEEL', 'GET'], place: ['GO', 'WALK', 'SEE', 'COME'], person: ['HUG', 'HELP', 'SEE', 'CALL', 'TELL', 'ASK'] };
+  return F[k] || [];
+}
+// A word to take out: two doing words side by side that do not go together ("eat drink bottle" -> drink bottle -
+// the one that goes with the thing stays; with no thing yet, the later one, as a change of mind), or a word twice in a row.
+// (want, need, go, help ... lead into another doing word, so "want eat", "go play", "help open" stay.)
+function dropExtra(ph) {
+  const out = ph.slice();
+  for (let i = 0; i < out.length - 1; i++) if (out[i] === out[i + 1] && !isPunct(out[i])) { out.splice(i + 1, 1); return out; }
+  const act = w => { try { return kindOfWord(w) === 'action'; } catch (e) { return false; } };
+  const LEADS = ['WANT', 'NEED', 'LIKE', 'LOVE', 'GO', 'COME', 'HELP', "LET'S", 'LETS', 'TRY', 'STOP', 'START', 'CAN', 'WILL', 'GET', 'MORE', 'MAKE', 'LET', 'DO'];
+  for (let i = 0; i < out.length - 1; i++) {
+    const a = out[i], b = out[i + 1];
+    if (!act(a) || !act(b) || LEADS.includes(a) || MAGIC_WANTS.includes(a)) continue;
+    const thing = out.slice(i + 2).find(w => !isSmallWord(w) && !isPunct(w) && !act(w));
+    let drop = i;      // (no thing to decide by: the earlier one goes)
+    if (thing) { const fit = verbsFor(thing); if (fit.includes(a) && !fit.includes(b)) drop = i + 1; }
+    out.splice(drop, 1); return out;
+  }
+  return null;
+}
 function seqOfferNow() {
   const keep = seqOffer && seqOffer.from === homePhrase.join(' ') ? seqOffer : null;
   seqOffer = null;
@@ -13781,9 +13807,11 @@ function seqOfferNow() {
   const was = homePhrase.slice();
   let moved = false;
   try { moved = arrangeLast(); } catch (e) {}
-  const arrMoved = homePhrase.slice();
+  let arrMoved = homePhrase.slice();
   homePhrase = was;
-  seqOffer = moved ? { from: was.join(' '), to: arrMoved } : keep;
+  let dropped = null; try { dropped = dropExtra(arrMoved); } catch (e) {}      // (and a word that is not needed, taken out)
+  if (dropped) { arrMoved = dropped; moved = true; }
+  seqOffer = moved && arrMoved.join(' ') !== was.join(' ') ? { from: was.join(' '), to: arrMoved } : keep;
 }
 function smallRowPop() {
   const viaMagic = Date.now() - magicPickAt < 500;
