@@ -534,6 +534,14 @@
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: var(--surface); }
+  .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .mg-dot { flex: none; width: 22px; height: 22px; border-radius: 7px; border: 2px solid rgba(0,0,0,0.08); }
+  .mg-name { font-weight: 800; }
+  .mg-eg { font-size: 13px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+  .mg-row.off .mg-name, .mg-row.off .mg-dot { opacity: 0.45; }
+  .mg-seg { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; gap: 2px; }
+  .mg-seg button { border: none; background: none; border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 800; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .mg-seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
   .mw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 12px; }
   .mw-tile { position: relative; min-height: 64px; border: 2px solid var(--border); border-radius: 14px; background: #eef0f3; color: rgba(0,0,0,0.4); font-family: inherit; font-weight: 900; font-size: 17px; padding: 8px 10px 20px; cursor: pointer; text-align: center; }
   .mw-tile.on { background: #fff; color: var(--ink); border-color: #cfe9d4; }
@@ -870,7 +878,8 @@
   .view-home.magic-full .sugg-host { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; }
   .view-home.magic-full .sugg-host::-webkit-scrollbar { display: none; }
   /* each band fills the screen and snaps into place: scroll once, the next band clicks in */
-  .view-home.magic-full .sugg-host { scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .view-home.magic-full .sugg-host { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .view-home.magic-full.no-small-band #smallHost { display: none !important; }
   .view-home.magic-full .sugg-band { box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; padding-bottom: 14px; }
   /* the bands sit close together; only the last one fills the screen, so each can still click up to the top */
   .view-home.magic-full .sugg-band:last-child { min-height: 100%; }
@@ -2772,7 +2781,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 477 - 10 Oct';
+const BUILD = 'build 478 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7841,6 +7850,7 @@ function suggRender0() {
     band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
     band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows);
     // last, the blue small words: the fourth band, at the bottom of the scroll (verb, then thing, then describing, then the little words)
+    document.getElementById('viewHome').classList.toggle('no-small-band', !cfg.small.on);
     if (cfg.small.on) { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
@@ -14120,6 +14130,28 @@ document.getElementById('homeMagicBtn').addEventListener('click', () => {
   try { if (state.magicType && homePhrase.length) smallRowPop(); else suggRender(); } catch (e) {}
   try { renderSettings(); } catch (e) {}
 });
+// a finger lets go of the bands: the page glides on to the start of the next band (or back to this one) - done here
+// rather than with the browser's snapping, which iPad Safari makes sticky
+{ const hs = document.getElementById('suggHost'); let down = false, y0 = 0, t = null, gliding = false;
+  const bands = () => [...hs.querySelectorAll(':scope > .sugg-band')].filter(x => x.offsetHeight > 0).map(x => x.offsetTop - hs.offsetTop);
+  const settle = () => {
+    if (down || gliding || !document.getElementById('viewHome').classList.contains('magic-full')) return;
+    const tops = bands(); if (!tops.length) return;
+    const top = hs.scrollTop, max = hs.scrollHeight - hs.clientHeight;
+    if (top >= max - 2) return;      // at the very end: leave it there
+    const moved = top - y0;
+    let to;
+    if (Math.abs(moved) < 30) to = tops.reduce((a, b) => Math.abs(b - top) < Math.abs(a - top) ? b : a);
+    else if (moved > 0) to = tops.find(x => x > y0 + 4) ?? tops[tops.length - 1];
+    else to = [...tops].reverse().find(x => x < y0 - 4) ?? 0;
+    to = Math.min(to, max);
+    if (Math.abs(to - top) < 3) return;
+    gliding = true; hs.scrollTo({ top: to, behavior: 'smooth' }); setTimeout(() => { gliding = false; y0 = hs.scrollTop; }, 450);
+  };
+  hs.addEventListener('touchstart', () => { down = true; y0 = hs.scrollTop; clearTimeout(t); }, { passive: true });
+  hs.addEventListener('touchend', () => { down = false; clearTimeout(t); t = setTimeout(settle, 160); }, { passive: true });
+  hs.addEventListener('touchcancel', () => { down = false; }, { passive: true });
+  hs.addEventListener('scroll', () => { clearTimeout(t); if (!down) t = setTimeout(settle, 160); }, { passive: true }); }
 // a mouse wheel or trackpad over the bands: one band per scroll, like a swipe
 { const hs = document.getElementById('suggHost'); let lock = 0;
   hs.addEventListener('wheel', e => {
@@ -15069,16 +15101,23 @@ function renderSettings() {
       tg.addEventListener('click', () => { flip(); save(); renderSettings(); suggRefresh(); });
       right.appendChild(tg); row.appendChild(right); host.appendChild(row);
     };
-    sub('Which kinds of words magic shows');
+    sub('Which rows of words magic shows');
     const l1 = list();
-    [['green', 'Doing words', 'green'], ['grey', 'My Stuff: things and folders', 'grey'], ['cat', 'Describing and category words', 'purple'], ['small', 'Small words', 'blue']].forEach(([k, name, col]) => {
-      let extra = null;
-      if (k !== 'small') {
-        extra = document.createElement('button'); extra.textContent = cfg[k].rows === 2 ? '2 rows' : '1 row';
-        extra.style.cssText = 'border:none;border-radius:10px;padding:6px 12px;font:inherit;font-weight:800;font-size:14px;background:var(--bg);cursor:pointer;white-space:nowrap';
-        extra.addEventListener('click', () => { const c = bandCfg(); c[k].rows = c[k].rows === 2 ? 1 : 2; state.bandCfg = c; save(); renderSettings(); });
+    [['green', 'Doing words', '#cdebd1', 'go, more, play, eat ...'], ['grey', 'My Stuff', '#d9dbe0', 'things, people and their folders'], ['cat', 'Describing and category words', '#e4dbf7', 'colours, how many, when ...'], ['small', 'Small words', '#bfd8ff', 'I, the, to, and ...']].forEach(([k, name, col, eg]) => {
+      const row = document.createElement('div'); row.className = 'setting-row mg-row' + (cfg[k].on ? '' : ' off');
+      const left = document.createElement('div'); left.className = 'mg-left';
+      const dot = document.createElement('span'); dot.className = 'mg-dot'; dot.style.background = col; left.appendChild(dot);
+      const txt = document.createElement('div'); txt.innerHTML = '<div class="mg-name"></div><div class="mg-eg"></div>'; txt.firstChild.textContent = name; txt.lastChild.textContent = eg; left.appendChild(txt);
+      row.appendChild(left);
+      const right = document.createElement('div'); right.style.cssText = 'display:flex;align-items:center;gap:12px;flex:none';
+      if (k !== 'small' && cfg[k].on) {
+        const seg = document.createElement('div'); seg.className = 'mg-seg';
+        [1, 2].forEach(n => { const b = document.createElement('button'); b.textContent = n === 1 ? '1 row' : '2 rows'; b.className = cfg[k].rows === n ? 'on' : ''; b.addEventListener('click', () => { const c = bandCfg(); c[k].rows = n; state.bandCfg = c; save(); renderSettings(); suggRefresh(); }); seg.appendChild(b); });
+        right.appendChild(seg);
       }
-      sw(l1, name + ' (' + col + ')', cfg[k].on, () => { const c = bandCfg(); c[k].on = !c[k].on; state.bandCfg = c; }, extra);
+      const tg = document.createElement('div'); tg.className = 'toggle' + (cfg[k].on ? ' on' : '');
+      tg.addEventListener('click', () => { const c = bandCfg(); c[k].on = !c[k].on; state.bandCfg = c; save(); renderSettings(); suggRefresh(); });
+      right.appendChild(tg); row.appendChild(right); l1.appendChild(row);
     });
     sub('Rules');
     const l2 = list();
