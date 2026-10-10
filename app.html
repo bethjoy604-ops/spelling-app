@@ -2891,7 +2891,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 506 - 10 Oct';
+const BUILD = 'build 507 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -12946,7 +12946,7 @@ function syncPageEdit(cat) {
 // most even ("Chicken / Tenders", "Sweet Potato / Fries"), at the largest size that fits the tile.
 // a long single word that would not fit is split with a hyphen and stacked ("overstimu-" / "lated")
 // short everyday words, so a word made of two ("playground", "bedroom", "basketball") splits where its two words meet
-const COMPOUND_PARTS = new Set(('spider super hero play ground bed room bath ball basket foot hand head phone phones phone sun flower butter fly rain bow tooth brush hair cut pan cake cakes cup '
+const COMPOUND_PARTS = new Set(('berries spider super hero play ground bed room bath ball basket foot hand head phone phones phone sun flower butter fly rain bow tooth brush hair cut pan cake cakes cup '
   + 'meat balls ball straw berry blue black rasp goose snow man fire truck work out side in door way back pack lunch box tool toy town house home school book shelf case '
   + 'sea shell sand table chair arm wheel water melon pine apple pop corn pea nut nuts milk shake ice cream cheese burger hot dog dogs sweet heart grand mother father ma pa '
   + 'kid kids sky light night day time sleep over under stand up down air plane port bird hide seek tram poline sea horse star fish gold silver key board card birth '
@@ -15132,7 +15132,10 @@ function picShow() {
   if (!choose) { selectTargetWord(word, false); return; }
   // choose it: the word and two others, easy (very different words) or hard (words that look alike)
   state.currentTarget = null; render();
-  const opts = [word].concat(picDistractors(word, state.picLevel === 'hard' ? 'hard' : 'easy', 2)).sort(() => Math.random() - 0.5);
+  // the right word moves to a different place each time (never where it was on the last page)
+  const others = picDistractors(word, state.picLevel === 'hard' ? 'hard' : 'easy', 2).sort(() => Math.random() - 0.5);
+  const spots = [0, 1, 2].filter(k => k !== s.lastPos), pos = spots[Math.floor(Math.random() * spots.length)]; s.lastPos = pos;
+  const opts = others.slice(); opts.splice(pos, 0, word);
   opts.forEach(w => {
     const b = document.createElement('button'); b.className = 'pic-choice'; b.textContent = plainLabel(w).toLowerCase();
     b.addEventListener('click', () => {
@@ -15148,6 +15151,13 @@ function picShow() {
     row.appendChild(b);
   });
   row.dataset.done = ''; row.dataset.wrong = '0';
+  // a word too long for its tile is split with a hyphen and stacked ("straw-" / "berries"), then made smaller if it still does not fit
+  requestAnimationFrame(() => row.querySelectorAll('.pic-choice').forEach(b => {
+    const fits = () => { const r = document.createRange(); r.selectNodeContents(b); return r.getBoundingClientRect().width <= b.clientWidth - 36; };      // (with room to spare at the edges)
+    if (fits()) return;
+    const hs = hyphenSplit(b.textContent); if (hs) { b.textContent = hs[0] + '-\n' + hs[1]; b.style.whiteSpace = 'pre-line'; b.style.lineHeight = '1.1'; }
+    let g = 0; while (!fits() && g++ < 8) b.style.fontSize = Math.round(parseFloat(getComputedStyle(b).fontSize) * 0.9) + 'px';
+  }));
 }
 // two other words to choose from: easy - as different as can be (another first letter, length, folder);
 // hard - as alike as can be (the same first letter, a similar length, the same folder, letters in common)
@@ -15155,7 +15165,7 @@ function picDistractors(word, level, n) {
   const W = String(word).toUpperCase(), folders = new Set(categoriesOf(W).map(c => c.id));
   const kindOf = w => { try { return kindOfWord(w); } catch (e) { return ''; } };
   // (things to name, like the word itself: not doing words, numbers or colours - and words with pictures first)
-  let pool = state.words.filter(w => w !== W && !state.hiddenWords[w] && !isSmallWord(w) && !isPunct(w) && /^[A-Z][A-Z' -]*$/.test(w) && categoriesOf(w).some(c => !c.target && !c.smallSec) && kindOf(w) !== 'action' && !describeWord(w));
+  let pool = state.words.filter(w => w !== W && !state.hiddenWords[w] && !isSmallWord(w) && !isPunct(w) && /^[A-Z][A-Z' -]*$/.test(w) && categoriesOf(w).some(c => !c.target && !c.smallSec && !c.small) && !categoriesOf(w).some(c => c.small) && kindOf(w) !== 'action' && !describeWord(w));      // (not Chat's words - yes, no, ok)
   if (pool.length < 6) pool = state.words.filter(w => w !== W && !state.hiddenWords[w] && !isSmallWord(w) && !isPunct(w) && /^[A-Z]/.test(w));
   const sim = w => { let x = 0; if (w[0] === W[0]) x += 3; if (Math.abs(w.length - W.length) <= 1) x += 2; else if (Math.abs(w.length - W.length) >= 3) x -= 2;
     if (categoriesOf(w).some(c => folders.has(c.id))) x += 2; const L = new Set(W.replace(/[^A-Z]/g, '')); let k = 0; for (const ch of new Set(w)) if (L.has(ch)) k++; x += k / Math.max(1, L.size) * 3;
