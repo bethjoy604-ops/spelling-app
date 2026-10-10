@@ -2767,7 +2767,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 475 - 10 Oct';
+const BUILD = 'build 476 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -11499,7 +11499,7 @@ function openGroupHead(cat, group) {
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = group.name;
     body.appendChild(p);
     body.appendChild(sheetBtn('Sort several into groups (full list)', '', () => openGroupSorter(cat, null)));
-    if (cat.target) body.appendChild(sheetBtn('Choose targets from the whole library', '', () => openTargetPicker(cat)));
+    if (cat.target) body.appendChild(sheetBtn('Choose targets for ' + group.name + ' from the whole library', '', () => openTargetPicker(cat, group)));
     body.appendChild(sheetBtn('Rename', '', () => askText('Rename heading', 'Save', group.name, typed => {
       const name = String(typed || '').replace(/\s+/g, ' ').trim();
       if (!name) return false;
@@ -12293,7 +12293,7 @@ function feedHiddenButtons(body, cat) {
 }
 // "+ target": every tile in the library as a grid, the ones already targets ticked. A tap ticks or
 // unticks one - the same way tiles are chosen for a custom page.
-function openTargetPicker(cat) {
+function openTargetPicker(cat, intoGroup) {
   openWordSheet(body => {
     sheetTitle(body, 'Target words');
     const n = document.createElement('div');
@@ -12319,7 +12319,7 @@ function openTargetPicker(cat) {
       tg.addEventListener('click', () => {
         const every = ws.every(w => (cat.words || []).includes(w));
         if (every) { cat.words = (cat.words || []).filter(w => !ws.includes(w)); listGroups(cat); }
-        else ws.forEach(w => { if (!(cat.words || []).includes(w)) addTitleTo(cat, null, sentenceLabel(w)); });
+        else ws.forEach(w => { if (!(cat.words || []).includes(w)) { addTitleTo(cat, intoGroup || null, sentenceLabel(w)); delete state.hiddenWords[w]; } });
         save(); buzz(8); list.querySelectorAll('.pick-row').forEach(r => r._paint && r._paint()); paintT();
       });
       paintT(); h.appendChild(tg);
@@ -12331,7 +12331,7 @@ function openTargetPicker(cat) {
         r._paint = paint;
         r.addEventListener('click', () => {
           if ((cat.words || []).includes(w)) { cat.words = cat.words.filter(x => x !== w); listGroups(cat); }
-          else addTitleTo(cat, null, sentenceLabel(w));
+          else { addTitleTo(cat, intoGroup || null, sentenceLabel(w)); delete state.hiddenWords[w]; }      // a hidden tile chosen as a target shows again in its folder too
           save(); paint();
         });
         paint();
