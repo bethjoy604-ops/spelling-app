@@ -314,6 +314,7 @@
     align-self: flex-start; box-shadow: var(--shadow); word-break: break-word;
   }
   .chat-bubble.reply { align-self: flex-end; background: #bfd8ff; }
+  .pb-seq { font-size: 0.5em !important; }
   .pb-plural { align-self: center; border: 3px dashed #9db8e6; background: #fff; color: #4a6fb0; border-radius: 14px; font-family: inherit; font-weight: 900; font-size: 0.62em; padding: 0.05em 0.45em; margin-left: 2px; line-height: 1.15; cursor: pointer; }
   /* chat mode on the main page: the conversation sits above the key bar, its newest message in view,
      with a bar under it (like the small words' bar) to fold it away */
@@ -1471,6 +1472,9 @@
     animation: fadeIn 0.18s ease;
   }
   .overlay.show { display: flex; }
+  /* settings opened from the home page's switches: a page under them, not a small window */
+  #settingsMenu.page { top: var(--set-top, 120px); background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; align-items: stretch; padding: 0 16px 16px; z-index: 45; }
+  #settingsMenu.page .sheet { width: 100%; max-width: none; max-height: none; height: 100%; box-sizing: border-box; border-radius: 22px; animation: none; padding: 22px 28px; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .sheet {
     background: var(--surface);
@@ -2736,7 +2740,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 472 - 10 Oct';
+const BUILD = 'build 474 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3090,7 +3094,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
-        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false,
+        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false,
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -3672,7 +3676,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
-      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false,
+      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false,
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -5070,6 +5074,8 @@ function flashBar() {
 // a tap on the key bar itself (not its buttons) opens the keyboard page, to type there
 document.getElementById('phraseBar').addEventListener('click', e => {
   if (e.target.closest('button, .pb-suggest')) return;
+  // a word in the message tapped while options sit beside it: the word stays as it is, and the options go
+  if (e.target.closest('.pb-chip') && document.querySelector('#pbWords .pb-plural')) { chipsKept = homePhrase.join(' '); seqOffer = null; buzz(8); renderPhraseBar(); return; }
   document.getElementById('pbInput').blur();
   hideBarFlash();
   if (state.builderMode) { showKeyboard(); return; }
@@ -6241,6 +6247,7 @@ function openKeyMenu(letter) {
   menu.classList.add('show');
 }
 function closeAllMenus() {
+  { const m = document.getElementById('settingsMenu'); if (m) { m.classList.remove('page'); const b = document.getElementById('homeSettingsBtn'); if (b) b.classList.add('off'); } }
   ['keyMenu','settingsMenu','wordMenu','wordBankMenu','dataMenu','recordMenu','searchMenu','manageMenu','catWordsMenu','importMenu','wordSheet'].forEach(id =>
     document.getElementById(id).classList.remove('show'));
 }
@@ -8133,8 +8140,16 @@ function endingChip(box, i, w, to, label) {
   });
   box.appendChild(b);
 }
+let chipsKept = '';      // the message as it was when a word in it was tapped: its options are put away
 function pluralChip(box) {
-  if (state.pluralChip === false || state.builderMode || !homePhrase.length) return;
+  if (state.builderMode || !homePhrase.length || chipsKept === homePhrase.join(' ')) return;
+  if (seqOffer && seqOffer.from === homePhrase.join(' ')) {
+    const b = document.createElement('button'); b.className = 'pb-plural pb-seq';
+    b.textContent = '\u21C4 ' + sentenceWords(seqOffer.to).join(' ').toLowerCase(); b.setAttribute('aria-label', 'Put it in this order');
+    b.addEventListener('click', e => { e.stopPropagation(); if (!seqOffer || seqOffer.from !== homePhrase.join(' ')) return; homePhrase = seqOffer.to.slice(); arrPrev = homePhrase.slice(); seqOffer = null; buzz(10); renderPhraseBar(); try { const h = document.getElementById('suggHost'); h.dataset.sig = ''; suggRender(); } catch (er) {} });
+    box.appendChild(b);
+  }
+  if (state.pluralChip === false) return;
   const i = homePhrase.length - 1, w = homePhrase[i];
   if (verbable(w)) {
     verbForms(w).forEach(([suf, to]) => {
@@ -11491,6 +11506,40 @@ function targetPauseBtn(word) {
   paintP();
   return pb;
 }
+// Every target with a tick: tick the ones to take off (all or none at once), then take them off in one go
+function openTargetRemover(cat, startWord) {
+  const off = new Set(startWord ? [startWord] : []);
+  const draw = () => openWordSheet(body => {
+    sheetTitle(body, 'Take targets off the list');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 6px';
+    n.textContent = 'Tick the targets to take off. They stay in their own folders; only the target list changes.';
+    body.appendChild(n);
+    const all = (cat.words || []).slice().sort(byLabel);
+    const bar = document.createElement('div'); bar.className = 'sort-bar';
+    const mini = (t, fn) => { const b = document.createElement('button'); b.className = 'sort-mini'; b.textContent = t; b.addEventListener('click', () => { fn(); buzz(8); draw(); }); bar.appendChild(b); };
+    mini('Select all', () => all.forEach(w => off.add(w)));
+    mini('Select none', () => off.clear());
+    body.appendChild(bar);
+    const list = document.createElement('div'); list.className = 'pick-list'; list.style.maxHeight = '48vh'; list.style.overflowY = 'auto';
+    const lab = () => 'Take ' + off.size + ' off the targets';
+    all.forEach(w => {
+      const r = document.createElement('button'); r.className = 'pick-row' + (off.has(w) ? ' on' : '');
+      const paint = () => { r.classList.toggle('on', off.has(w)); r.textContent = (off.has(w) ? '\u2713  ' : '') + plainLabel(w); };
+      r.addEventListener('click', () => { if (off.has(w)) off.delete(w); else off.add(w); buzz(6); paint(); go.firstChild && (go.textContent = lab()); go.disabled = !off.size; });
+      paint(); list.appendChild(r);
+    });
+    body.appendChild(list);
+    const go = sheetBtn(lab(), 'danger', () => {
+      cat.words = (cat.words || []).filter(w => !off.has(w)); listGroups(cat);
+      off.forEach(w => { if (state.targetState) delete state.targetState[w]; });
+      off.clear(); save(); renderHome(true); draw();
+    });
+    go.disabled = !off.size;
+    body.appendChild(go);
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); renderHome(true); }));
+  });
+  draw();
+}
 // Sort into groups: the page's whole list with ticks - choose several (or all), pick where they go, move them in one go
 function openGroupSorter(cat, startWord) {
   const chosen = new Set(startWord ? [startWord] : []);
@@ -11571,6 +11620,7 @@ function openTitleActions(word, cat, extra) {
     const groups = usesGroups(cat) ? listGroups(cat) : [];
     if (usesGroups(cat)) body.appendChild(sheetBtn('Sort several into groups (full list)', '', () => openGroupSorter(cat, word)));
     if (cat.target) body.appendChild(sheetBtn('Choose targets from the whole library', '', () => openTargetPicker(cat)));
+    if (cat.target) body.appendChild(sheetBtn('Select targets to take off the list', '', () => openTargetRemover(cat, word)));
     if (groups.length) {
       const h = document.createElement('div');
       h.className = 'help-note'; h.style.margin = '14px 0 6px';
@@ -12710,6 +12760,11 @@ function renderSlotGrid(grid, cat, folders) {
     const shutRank = x => (cat.feedShut || {})[x.f.id] ? 1 : 0;
     const ordered = panels.filter(x => !(cat.feedHid || {})[x.f.id]).sort((a, b) => shutRank(a) - shutRank(b) || fRank(a.f) - fRank(b.f) || panels.indexOf(a) - panels.indexOf(b));
     const dragList = ordered.map(x => x.f);
+    // (placed wide panels first, within open / folded: a one-tile panel then fills the space beside one, rather than three singles in a row)
+    if (cols >= 3 && ordered.some(x => x.mine.length === 1) && ordered.some(x => x.mine.length >= 2)) {
+      const rank = x => shutRank(x) * 2 + (x.mine.length === 1 ? 1 : 0);
+      const keep = ordered.slice(); ordered.sort((a, b) => rank(a) - rank(b) || keep.indexOf(a) - keep.indexOf(b));
+    }
     const placed = [];
     ordered.forEach(({ f, mine }) => {
       const shut = !!cat.feedShut[f.id];
@@ -13016,14 +13071,26 @@ function arrangeLast() {
 }
 // the page's tiles follow the green row: open, they are the folders that go with the message; folded, the page's own
 function magicTilesSync() { try { if (!magicInHome && !state.builderMode) { magicSigShown = '\u0000'; renderPhraseBar(); } } catch (e) {} }
-function smallRowPop() {
-  // magic off: a tile only puts its word in the message - no reordering, no rows opening, the page stays as it is
-  if (!state.magicType && !state.builderMode) { arrPrev = homePhrase.slice(); return; }
-  const viaMagic = Date.now() - magicPickAt < 500;
+// Word order: "park" + go is offered as "go park" beside the message - tap it to take it, or tap a word to keep the order
+let seqOffer = null;      // { from: 'PARK GO', to: [...] }
+function seqOfferNow() {
+  const keep = seqOffer && seqOffer.from === homePhrase.join(' ') ? seqOffer : null;
+  seqOffer = null;
+  if (state.seqOn === false || state.builderMode) return;
+  const was = homePhrase.slice();
   let moved = false;
-  try { if (!viaMagic && !state.builderMode) moved = arrangeLast(); } catch (e) {}
+  try { moved = arrangeLast(); } catch (e) {}
+  const arrMoved = homePhrase.slice();
+  homePhrase = was;
+  seqOffer = moved ? { from: was.join(' '), to: arrMoved } : keep;
+}
+function smallRowPop() {
+  const viaMagic = Date.now() - magicPickAt < 500;
+  if (!viaMagic) seqOfferNow(); else seqOffer = null;
+  // magic off: a tile only puts its word in the message - no rows opening, the page stays as it is
+  if (!state.magicType && !state.builderMode) { arrPrev = homePhrase.slice(); if (seqOffer) try { renderPhraseBar(); } catch (e) {} return; }
   arrPrev = homePhrase.slice();
-  if (moved) { try { renderPhraseBar(); } catch (e) {} }
+  if (seqOffer) { try { renderPhraseBar(); } catch (e) {} }
   smallRowPop0();
   if (state.builderMode) return;
   rowsByTap = false; magicKeep = false;
@@ -13981,6 +14048,7 @@ function onTargetsPage() { try { return !state.builderMode && homePath.length > 
 function closeIcons() {
   clearTimeout(iconsTimer); iconsTimer = null;
   if (!state.iconsOpen) return;
+  { const m = document.getElementById('settingsMenu'); if (m.classList.contains('show') && m.classList.contains('page')) { armIcons(); return; } }      // settings is open as a page under them
   if (onTargetsPage()) return;
   state.iconsOpen = false;
   const g = document.getElementById('homeGrid'); const top = g.scrollTop;
@@ -14078,7 +14146,16 @@ document.getElementById('homeHelpBtn').addEventListener('click', () => {
   helpRequested = false;
   buzz(10); save(); render(); renderHome(true);
 });
-document.getElementById('homeSettingsBtn').addEventListener('click', openSettingsSheet);
+// from the switches on the home page, settings opens as a page of its own under them; the gear again closes it
+document.getElementById('homeSettingsBtn').addEventListener('click', () => {
+  const m = document.getElementById('settingsMenu');
+  if (m.classList.contains('show')) { m.querySelector('[data-action="cancel"]') ? m.querySelector('[data-action="cancel"]').click() : (closeAllMenus(), save(), render(), showHome()); return; }
+  const row = document.querySelector('#viewHome .home-row');
+  m.style.setProperty('--set-top', Math.round(row.getBoundingClientRect().bottom + 8) + 'px');
+  m.classList.add('page');
+  openSettingsSheet();
+  document.getElementById('homeSettingsBtn').classList.remove('off');
+});
 
 // ===== Search by tapping letters =====
 function openLetterSearch() {
@@ -14955,6 +15032,11 @@ function renderSettings() {
       const lab = document.createElement('span'); lab.textContent = 'Doing words right after a title or thing (e.g. play after Free)'; row.appendChild(lab);
       const tg = document.createElement('div'); tg.className = 'toggle' + (state.magicActAfterThing !== false ? ' on' : '');
       tg.addEventListener('click', () => { state.magicActAfterThing = state.magicActAfterThing === false; save(); renderSettings(); suggRefresh(); });
+      row.appendChild(tg); box.appendChild(row); }
+    { const row = document.createElement('div'); row.className = 'setting-row';
+      const lab = document.createElement('span'); lab.textContent = 'Word order help (park + go offers "go park")'; row.appendChild(lab);
+      const tg = document.createElement('div'); tg.className = 'toggle' + (state.seqOn !== false ? ' on' : '');
+      tg.addEventListener('click', () => { state.seqOn = state.seqOn === false; save(); renderSettings(); });
       row.appendChild(tg); box.appendChild(row); }
     { const b = document.createElement('button'); b.className = 'mbtn action'; b.style.cssText = 'width:100%;margin-top:8px';
       const offN = Object.keys(state.magicOffCat || {}).length + Object.keys(state.magicOffWord || {}).length;
