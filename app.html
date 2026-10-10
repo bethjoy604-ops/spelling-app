@@ -314,6 +314,11 @@
     align-self: flex-start; box-shadow: var(--shadow); word-break: break-word;
   }
   .chat-bubble.reply { align-self: flex-end; background: #bfd8ff; }
+  .phrase-bar { position: relative; }
+  .phrase-bar.has-opts { padding-bottom: 64px !important; }
+  .pb-opts { position: absolute; left: 24px; right: 220px; bottom: 12px; display: flex; flex-wrap: nowrap; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+  .pb-opts:empty { display: none; }
+  .pb-opts .pb-plural { font-size: 24px !important; padding: 2px 14px !important; margin: 0 !important; flex: none; }
   .pb-seq { font-size: 0.5em !important; }
   .pb-plural { align-self: center; border: 3px dashed #9db8e6; background: #fff; color: #4a6fb0; border-radius: 14px; font-family: inherit; font-weight: 900; font-size: 0.62em; padding: 0.05em 0.45em; margin-left: 2px; line-height: 1.15; cursor: pointer; }
   /* chat mode on the main page: the conversation sits above the key bar, its newest message in view,
@@ -2767,7 +2772,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 476 - 10 Oct';
+const BUILD = 'build 477 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5102,7 +5107,7 @@ function flashBar() {
 document.getElementById('phraseBar').addEventListener('click', e => {
   if (e.target.closest('button, .pb-suggest')) return;
   // a word in the message tapped while options sit beside it: the word stays as it is, and the options go
-  if (e.target.closest('.pb-chip') && document.querySelector('#pbWords .pb-plural')) { chipsKept = homePhrase.join(' '); seqOffer = null; buzz(8); renderPhraseBar(); return; }
+  if (e.target.closest('.pb-chip') && document.querySelector('#pbOpts .pb-plural')) { chipsKept = homePhrase.join(' '); seqOffer = null; buzz(8); renderPhraseBar(); return; }
   document.getElementById('pbInput').blur();
   hideBarFlash();
   if (state.builderMode) { showKeyboard(); return; }
@@ -8226,7 +8231,12 @@ function renderPhraseBar() {
     c.textContent = i || !whole ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // a capital to start only once it reads as a whole sentence
     box.appendChild(c);
   });
-  try { pluralChip(box); } catch (e) {}
+  // the ending / word-order options sit in their own small row along the bottom of the bar, so the words keep their room
+  { let opts = document.getElementById('pbOpts');
+    if (!opts) { opts = document.createElement('div'); opts.id = 'pbOpts'; opts.className = 'pb-opts'; bar.appendChild(opts); }
+    opts.innerHTML = '';
+    try { pluralChip(opts); } catch (e) {}
+    bar.classList.toggle('has-opts', !!opts.firstChild); }
   box.scrollTop = box.scrollHeight;      // the newest words are the ones in view
   box.classList.toggle('clipped', box.scrollTop > 2);
   if (!box._clipWatch) { box._clipWatch = true; box.addEventListener('scroll', () => box.classList.toggle('clipped', box.scrollTop > 2)); }
