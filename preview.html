@@ -1381,11 +1381,33 @@
   /* the writing page: a big picture like the drawing square of a school book, the word written on lines under it */
   .pic-box { display: none; }
   .view-keyboard.pic-on .pic-box { display: flex; flex: 2.6 1 0; min-height: 0; align-items: center; justify-content: center; background: #fff; border-radius: 22px; box-shadow: var(--shadow); padding: 14px; border: 3px solid #e3e5ea; }
-  .view-keyboard.pic-on .pic-box img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 14px; }
+  .view-keyboard.pic-on .pic-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; }
   .view-keyboard.pic-on #targetBanner.active { min-height: 0 !important; flex: 0 0 auto; --tile: min(clamp(48px, 9vh, 96px), calc((100vw - 220px) / (var(--n, 6) * 1.85))) !important;
     background-color: #fff; background-image: linear-gradient(to bottom, transparent calc(78% - 2px), #8fb3e8 calc(78% - 2px), #8fb3e8 78%, transparent 78%), repeating-linear-gradient(to right, #c9d6ea 0 14px, transparent 14px 26px);
     background-size: 100% 100%, 100% 2px; background-position: 0 0, 0 42%; background-repeat: no-repeat; }
   .view-keyboard.pic-on .keyboard { flex: 3.4 1 0 !important; }
+  .home-card.pic-picked { box-shadow: 0 0 0 6px #2f8bff, var(--shadow) !important; }
+  .home-card.pic-picked::after { content: '\2713'; position: absolute; top: 8px; left: 10px; width: 34px; height: 34px; border-radius: 50%; background: #2f8bff; color: #fff; font-size: 22px; font-weight: 900; display: flex; align-items: center; justify-content: center; z-index: 2; }
+  .home-card .pic-count { position: absolute; bottom: 8px; right: 10px; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; background: rgba(0,0,0,0.55); color: #fff; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; z-index: 2; }
+  .pic-bar { display: none; position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 45; gap: 10px; align-items: center; background: #fff; border-radius: 22px; padding: 10px 12px 10px 20px; box-shadow: 0 6px 24px rgba(0,0,0,0.18); max-width: calc(100vw - 32px); }
+  .pic-bar.show { display: flex; }
+  .pic-bar .pb-n { font-weight: 800; font-size: 18px; color: var(--ink); white-space: nowrap; }
+  .pic-bar button { border: none; border-radius: 14px; padding: 12px 16px; font-family: inherit; font-weight: 800; font-size: 17px; background: #eef0f3; color: var(--ink); white-space: nowrap; }
+  .pic-bar .pb-go { background: var(--green); color: #fff; font-size: 19px; }
+  .pic-bar .pb-go:disabled { opacity: 0.4; }
+  .pic-progress { display: none; }
+  .view-keyboard.pic-on .pic-progress { display: flex; flex: 0 0 auto; gap: 6px; height: 16px; }
+  .pic-progress .pp-seg { flex: 1 1 0; border-radius: 8px; background: rgba(255,255,255,0.6); transition: background 0.3s; }
+  .pic-progress .pp-seg.done { background: var(--green); }
+  .pic-progress .pp-seg.now { background: rgba(255,255,255,0.95); box-shadow: inset 0 0 0 3px var(--green); }
+  .pic-sheet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+  .pic-cell { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: #f2f3f5; border: 3px solid transparent; opacity: 0.45; cursor: pointer; }
+  .pic-cell.on { border-color: #2f8bff; opacity: 1; }
+  .pic-cell img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .pic-cell .pic-tick { position: absolute; top: 6px; left: 6px; width: 26px; height: 26px; border-radius: 50%; background: #2f8bff; color: #fff; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+  .pic-cell:not(.on) .pic-tick { background: rgba(255,255,255,0.8); }
+  .pic-cell .pic-del { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; border: none; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; font-size: 20px; font-weight: 900; line-height: 1; padding: 0; }
+  .pic-cell.pic-add { opacity: 1; border: 3px dashed #c4c8cf; font-size: 22px; font-weight: 800; color: #6b7078; font-family: inherit; }
   #homeMagicBtn.off { filter: grayscale(1); opacity: 0.4; }
   #homeIconsClose { font-size: 40px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.55); background: rgba(255,255,255,0.5); box-shadow: none; padding-bottom: 4px; }
   /* the close × does the + button's job while the pop-out is open */
@@ -2724,7 +2746,7 @@
         <button class="mbtn action" id="exportSettingsBtn" style="width:100%; margin-top:8px;">Export my settings</button>
         <button class="mbtn action" id="importLayoutBtn" style="width:100%; margin-top:8px;">Import a layout or settings file</button>
         <input type="file" id="importLayoutFile" accept=".json,application/json" style="display:none">
-        <div class="help-note">The layout file has everything needed to make this device's set-up the built-in one: the folders, tiles and groups and their places, hidden tiles, targets, custom pages, builder pages, the small words, what magic has learned about words, and every setting. The settings file is just the settings (magic, prompting and fading, keyboard, voice, sizes ...). Not in either: what each device learns as it is used - word use, letter scores, prompt fading progress, chat history, recordings and voice files.</div>
+        <div class="help-note">The layout file has everything needed to make this device's set-up the built-in one: the folders, tiles and groups and their places, hidden tiles, targets, custom pages, builder pages, the small words, what magic has learned about words, the pictures for picture writing, and every setting. The settings file is just the settings (magic, prompting and fading, keyboard, voice, sizes ...). Not in either: what each device learns as it is used - word use, letter scores, prompt fading progress, chat history, recordings and voice files.</div>
         <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
         <div class="help-note">Saves every sentence built in the builder, with its date and time, as a file that opens in Numbers or Excel. The builder page itself shows the latest 30.</div>
       </div>
@@ -2840,7 +2862,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 504 - 10 Oct';
+const BUILD = 'build 505 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5190,6 +5212,7 @@ function spokenText(text) {
 let kbSearch = false, searchPrefix = '';
 function setView(name) {
   if (name !== 'keyboard' && typeof picSession !== 'undefined' && picSession) { picSession = null; const vk = document.getElementById('viewKeyboard'); if (vk) vk.classList.remove('pic-on'); }
+  setTimeout(() => { try { picBarSync(); } catch (e) {} }, 0);
   // the update prompt belongs to the opening screen and nowhere else
   if (name !== 'splash' && name !== 'setup' && typeof hideUpdateBar === 'function') hideUpdateBar();
   ['splash', 'setup', 'home', 'keyboard', 'chat'].forEach(v => {
@@ -9967,7 +9990,7 @@ function importLayoutFile(file) {
     homePath = []; builderPath = [];
     save();
     showHome();
-    alert('Layout imported.');
+    if (L.pictures) picImportData(L.pictures).then(() => alert('Layout imported, with its pictures.')); else alert('Layout imported.');
   };
   r.readAsText(file);
 }
@@ -10803,9 +10826,10 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'endCfg', 'magicPrio', 'promptBack', 'picMode', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
-function exportLayout() {
+async function exportLayout() {
   const layout = layoutNow();
   layout.settings = settingsNow();
+  try { const pics = await picExportData(); if (Object.keys(pics).length) layout.pictures = pics; } catch (e) {}      // (the library's pictures go with it)
   const text = JSON.stringify(layout, null, 1);
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const a = document.createElement('a');
@@ -14906,91 +14930,190 @@ document.getElementById('homeIconsClose').addEventListener('click', e => { e.sto
   row.addEventListener('touchend', () => { on = false; }, { passive: true }); }
 // the wand: magic suggestions on or off, the same switch as in settings
 // ===== Picture writing =====
-// A word in the library can be given a picture (from the iPad's photos or camera). With picture writing switched on,
-// tiles with a picture show it (the ones without are faded with a small camera), and tapping one opens the writing
-// page: the picture large, the word written on lines under it with the keyboard and the usual prompting.
-// The pictures are kept on this device (not in the layout file).
-const picURL = {};      // word -> a picture's address, for showing it
-let picSession = null, picDone = [];
+// Each word in the library can have up to 7 pictures (from the iPad's photos or camera); each can be switched on or off.
+// With picture writing switched on, tiles with a picture show one (those without are faded with a small camera).
+// Tapping picture tiles picks them for a practice session (a tick on each); "Practise" starts it: each word comes up
+// with one of its pictures (a different one each time, at random), large above writing lines and the keyboard, and the
+// bar at the top fills one step for every word written. The pictures are part of the library: they go into the layout file.
+const PIC_MAX = 7;
+const picURL = {};      // word -> [{ id, url, on }]
+let picSession = null, picSel = [];
 function picDB() { return new Promise((res, rej) => { const r = indexedDB.open('kbd-pictures', 1); r.onupgradeneeded = () => r.result.createObjectStore('pics'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+function picList(v) { return Array.isArray(v) ? v : (v ? [{ id: 'p1', blob: v, on: true }] : []); }      // (one picture as it was first kept)
+async function picGet(word) { const db = await picDB(); return new Promise(res => { const r = db.transaction('pics', 'readonly').objectStore('pics').get(word); r.onsuccess = () => res(picList(r.result)); r.onerror = () => res([]); }); }
+async function picPut(word, list) {
+  const db = await picDB();
+  await new Promise((res, rej) => { const tx = db.transaction('pics', 'readwrite'); list.length ? tx.objectStore('pics').put(list, word) : tx.objectStore('pics').delete(word); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  (picURL[word] || []).forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) {} });
+  if (list.length) picURL[word] = list.map(p => ({ id: p.id, on: p.on !== false, url: URL.createObjectURL(p.blob) })); else delete picURL[word];
+}
 async function picLoadAll() {
-  try { const db = await picDB(); const tx = db.transaction('pics', 'readonly'), st = tx.objectStore('pics');
-    const req = st.openCursor(); req.onsuccess = () => { const c = req.result; if (!c) { picDecorate(); return; } try { picURL[c.key] = URL.createObjectURL(c.value); } catch (e) {} c.continue(); }; } catch (e) {}
+  try { const db = await picDB(); const req = db.transaction('pics', 'readonly').objectStore('pics').openCursor();
+    req.onsuccess = () => { const c = req.result; if (!c) { picDecorate(); return; }
+      const l = picList(c.value); if (l.length) picURL[c.key] = l.map(p => ({ id: p.id, on: p.on !== false, url: URL.createObjectURL(p.blob) })); c.continue(); }; } catch (e) {}
 }
-async function picStore(word, blob) {
-  const db = await picDB(); await new Promise((res, rej) => { const tx = db.transaction('pics', 'readwrite'); blob ? tx.objectStore('pics').put(blob, word) : tx.objectStore('pics').delete(word); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
-  if (picURL[word]) { try { URL.revokeObjectURL(picURL[word]); } catch (e) {} delete picURL[word]; }
-  if (blob) picURL[word] = URL.createObjectURL(blob);
+const picOn = w => (picURL[w] || []).filter(p => p.on);
+const picHas = w => picOn(w).length > 0;
+// a photo made smaller (it only needs to fill the picture square)
+function picShrink(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => { const M = 800, k = Math.min(1, M / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(u);
+      cv.toBlob(b => res(b || file), 'image/jpeg', 0.82); };
+    img.onerror = () => { URL.revokeObjectURL(u); rej(new Error('That file is not a picture this iPad can open.')); };
+    img.src = u;
+  });
 }
-// a photo chosen: made smaller (it only needs to fill the picture square) and kept
 function picChoose(word, done) {
   let inp = document.getElementById('picFile');
-  if (!inp) { inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.id = 'picFile'; inp.style.display = 'none'; document.body.appendChild(inp); }
+  if (!inp) { inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true; inp.id = 'picFile'; inp.style.display = 'none'; document.body.appendChild(inp); }
   inp.value = '';
-  inp.onchange = () => {
-    const f = inp.files && inp.files[0]; if (!f) return;
-    const img = new Image(), u = URL.createObjectURL(f);
-    img.onload = () => {
-      const M = 900, k = Math.min(1, M / Math.max(img.width, img.height)), cv = document.createElement('canvas');
-      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
-      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(u);
-      cv.toBlob(async b => { try { await picStore(word, b || f); } catch (e) { alert('The picture could not be saved: ' + e.message); return; } buzz(10); picDecorate(true); if (done) done(); }, 'image/jpeg', 0.85);
-    };
-    img.onerror = () => { URL.revokeObjectURL(u); alert('That file is not a picture this iPad can open.'); };
-    img.src = u;
+  inp.onchange = async () => {
+    const files = [...(inp.files || [])]; if (!files.length) return;
+    const list = await picGet(word);
+    const room = PIC_MAX - list.length;
+    if (room <= 0) { alert('This tile already has ' + PIC_MAX + ' pictures. Remove one to add another.'); return; }
+    for (const f of files.slice(0, room)) { try { list.push({ id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), blob: await picShrink(f), on: true }); } catch (e) { alert(e.message); } }
+    if (files.length > room) alert('Only ' + room + ' more could be added: a tile can have up to ' + PIC_MAX + ' pictures.');
+    try { await picPut(word, list); } catch (e) { alert('The pictures could not be saved: ' + e.message); return; }
+    buzz(10); picDecorate(true); if (done) done();
   };
   inp.click();
 }
-function picMenuBtns(body, word) {
-  const has = !!picURL[word];
-  body.appendChild(sheetBtn(has ? '\uD83D\uDCF7  Change the picture' : '\uD83D\uDCF7  Add a picture (picture writing)', '', () => { closeWordSheet(); picChoose(word); }));
-  if (has) body.appendChild(sheetBtn('Remove the picture', '', async () => { await picStore(word, null); closeWordSheet(); picDecorate(true); }));
+// a tile's pictures: tap one to switch it on or off for practice, add more (up to 7), or remove one
+function openPicSheet(word) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Pictures: ' + plainLabel(word));
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px';
+    n.textContent = 'Up to ' + PIC_MAX + ' pictures. Tap a picture to use it in practice or not (a tick: used). Practice picks one of the ticked pictures at random each time.';
+    body.appendChild(n);
+    const grid = document.createElement('div'); grid.className = 'pic-sheet-grid'; body.appendChild(grid);
+    const paint = () => { grid.innerHTML = '';
+      (picURL[word] || []).forEach(p => {
+        const cell = document.createElement('div'); cell.className = 'pic-cell' + (p.on ? ' on' : '');
+        const im = document.createElement('img'); im.src = p.url; cell.appendChild(im);
+        const tick = document.createElement('span'); tick.className = 'pic-tick'; tick.textContent = p.on ? '✓' : ''; cell.appendChild(tick);
+        const del = document.createElement('button'); del.className = 'pic-del'; del.textContent = '×'; del.setAttribute('aria-label', 'Remove this picture');
+        del.addEventListener('click', async e => { e.stopPropagation(); if (!confirm('Remove this picture?')) return; const l = (await picGet(word)).filter(x => x.id !== p.id); await picPut(word, l); paint(); picDecorate(true); });
+        cell.appendChild(del);
+        cell.addEventListener('click', async () => { const l = await picGet(word); const x = l.find(y => y.id === p.id); if (x) x.on = x.on === false; await picPut(word, l); buzz(8); paint(); picDecorate(true); });
+        grid.appendChild(cell);
+      });
+      if ((picURL[word] || []).length < PIC_MAX) { const add = document.createElement('button'); add.className = 'pic-cell pic-add'; add.textContent = '📷 +'; add.addEventListener('click', () => picChoose(word, paint)); grid.appendChild(add); }
+    };
+    paint();
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); picDecorate(true); }));
+  });
 }
-// the tiles on the page: a picture for those that have one, faded with a camera for those that do not
-function picDecorate(force) {
+function picMenuBtns(body, word) {
+  const k = (picURL[word] || []).length;
+  body.appendChild(sheetBtn('📷  ' + (k ? 'Pictures (' + k + ')' : 'Add pictures (picture writing)'), '', () => { closeWordSheet(); setTimeout(() => openPicSheet(word), 30); }));
+}
+// the tiles on the page: one of its pictures for each that has one; faded with a camera for those that do not; a tick when picked
+function picDecorate() {
   const grid = document.getElementById('homeGrid'); if (!grid) return;
   const on = !!state.picMode && !state.builderMode;
   grid.querySelectorAll('.home-card[data-word]').forEach(card => {
-    const w = card.dataset.word, u = on && picURL[w];
+    const w = card.dataset.word, pics = on ? picOn(w) : [], u = pics.length ? pics[0].url : null;
     let im = card.querySelector(':scope > .pic-img');
     if (u) { if (!im) { im = document.createElement('img'); im.className = 'pic-img'; im.alt = w; card.appendChild(im); } if (im.getAttribute('src') !== u) im.src = u; }
     else if (im) im.remove();
     card.classList.toggle('pic-tile', !!u);
     card.classList.toggle('no-pic', on && !u && !isSmallWord(w) && !isPunct(w));
+    card.classList.toggle('pic-picked', on && picSel.includes(w));
+    let n = card.querySelector(':scope > .pic-count'); const many = on && pics.length > 1;
+    if (many) { if (!n) { n = document.createElement('span'); n.className = 'pic-count'; card.appendChild(n); } n.textContent = pics.length; } else if (n) n.remove();
   });
+  picBarSync();
 }
 { let t = null; new MutationObserver(() => { cancelAnimationFrame(t); t = requestAnimationFrame(() => picDecorate()); }).observe(document.getElementById('homeGrid'), { childList: true, subtree: true }); }
-// with picture writing on, a tap on a tile with a picture opens its writing page; on one without, adds a picture
+// with picture writing on: a tap on a picture tile picks it (or unpicks it) for practice; on a tile without one, adds pictures
 document.getElementById('homeGrid').addEventListener('click', e => {
   if (!state.picMode || state.builderMode) return;
   const card = e.target.closest && e.target.closest('.home-card[data-word]');
   if (!card || card.classList.contains('folder-card')) return;
   const w = card.dataset.word; if (isSmallWord(w) || isPunct(w)) return;
-  e.stopPropagation(); e.preventDefault();
-  if (picURL[w]) picPractice(w); else picChoose(w);
+  e.stopPropagation(); e.preventDefault(); buzz(8);
+  if (!picHas(w)) { if ((picURL[w] || []).length) openPicSheet(w); else picChoose(w); return; }
+  picSel = picSel.includes(w) ? picSel.filter(x => x !== w) : picSel.concat([w]);
+  picDecorate();
 }, true);
-function picWords() { return state.words.filter(w => picURL[w] && !state.hiddenWords[w]); }
-function picPractice(word) {
-  picSession = { word }; picDone = picDone.filter(x => x !== word).concat([word]).slice(-50);
+// the practice bar along the bottom while picture writing is on: how many are picked, and Practise
+function picBarSync() {
+  let bar = document.getElementById('picBar');
+  const show = !!state.picMode && !state.builderMode && document.getElementById('viewHome').classList.contains('active');
+  if (!show) { if (bar) bar.classList.remove('show'); return; }
+  if (!bar) {
+    bar = document.createElement('div'); bar.id = 'picBar'; bar.className = 'pic-bar';
+    bar.innerHTML = '<span class="pb-n"></span><button class="pb-all">Pick all on this page</button><button class="pb-clear">Clear</button><button class="pb-go">▶ Practise</button>';
+    bar.querySelector('.pb-all').addEventListener('click', () => { buzz(8); document.querySelectorAll('#homeGrid .home-card.pic-tile[data-word]').forEach(c => { if (!picSel.includes(c.dataset.word)) picSel.push(c.dataset.word); }); picDecorate(); });
+    bar.querySelector('.pb-clear').addEventListener('click', () => { buzz(8); picSel = []; picDecorate(); });
+    bar.querySelector('.pb-go').addEventListener('click', () => { if (!picSel.length) return; buzz(12); picStart(picSel.slice()); });
+    document.body.appendChild(bar);
+  }
+  bar.classList.add('show');
+  bar.querySelector('.pb-n').textContent = picSel.length ? picSel.length + ' picked for practice' : 'Tap the pictures to practise';
+  bar.querySelector('.pb-go').disabled = !picSel.length;
+  bar.querySelector('.pb-clear').style.display = picSel.length ? '' : 'none';
+}
+// a session: the picked words in a mixed-up order, each with one of its pictures picked at random
+function picStart(words) {
+  const q = words.filter(picHas).sort(() => Math.random() - 0.5);
+  if (!q.length) return;
+  picSession = { queue: q, total: q.length, done: 0 };
+  picShow();
+}
+function picShow() {
+  const s = picSession; if (!s) return;
+  const word = s.queue[s.done]; s.word = word;
+  const pics = picOn(word), pic = pics[Math.floor(Math.random() * pics.length)];
   const box = document.getElementById('picBox'); box.innerHTML = '';
-  const im = document.createElement('img'); im.src = picURL[word]; im.alt = ''; box.appendChild(im);
+  const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
   box.onclick = () => { try { warmSpeech(); speakWord(word, 0.9); } catch (e) {} };      // (a tap on the picture says the word)
   homePhrase = []; try { renderPhraseBar(); } catch (e) {}
   showKeyboard();
-  document.getElementById('viewKeyboard').classList.add('pic-on');
+  const vk = document.getElementById('viewKeyboard'); vk.classList.add('pic-on');
+  picProgressPaint();
   selectTargetWord(word, false);
 }
-// the next picture: one not written for a while
+function picProgressPaint() {
+  const s = picSession; let pr = document.getElementById('picProgress');
+  if (!pr) { pr = document.createElement('div'); pr.id = 'picProgress'; pr.className = 'pic-progress'; const vk = document.getElementById('viewKeyboard'); vk.insertBefore(pr, vk.firstChild); }
+  pr.innerHTML = ''; if (!s) return;
+  for (let i = 0; i < s.total; i++) { const seg = document.createElement('span'); seg.className = 'pp-seg' + (i < s.done ? ' done' : '') + (i === s.done ? ' now' : ''); pr.appendChild(seg); }
+}
+// a word written: the bar fills one step, then the next picture - or, at the end, a well done and back home
 function picNext() {
-  const ws = picWords(); if (!ws.length) { picSession = null; showHome(); return; }
-  const fresh = ws.filter(w => !picDone.includes(w));
-  const pool = fresh.length ? fresh : ws.filter(w => w !== (picSession && picSession.word));
-  const w = (pool.length ? pool : ws)[Math.floor(Math.random() * (pool.length ? pool : ws).length)];
-  if (!fresh.length) picDone = [];
-  picPractice(w);
+  const s = picSession; if (!s) { showHome(); return; }
+  s.done++; picProgressPaint();
+  if (s.done >= s.total) {
+    try { showMastered && document.getElementById('levelUp') && (() => { const el = document.getElementById('levelUp'); el.classList.remove('mastered'); document.getElementById('luEmoji').textContent = '🌟'; document.getElementById('luText').textContent = 'All ' + s.total + ' done!'; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1900); })(); } catch (e) {}
+    setTimeout(() => { picSession = null; picSel = []; showHome(); }, 2000);
+    return;
+  }
+  setTimeout(picShow, 350);
+}
+// the pictures as part of the library file: each as a small picture written out in the file
+async function picExportData() {
+  const out = {};
+  const toURL = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(b); });
+  try { const db = await picDB(); const all = await new Promise(res => { const o = {}; const req = db.transaction('pics', 'readonly').objectStore('pics').openCursor(); req.onsuccess = () => { const c = req.result; if (!c) return res(o); o[c.key] = picList(c.value); c.continue(); }; req.onerror = () => res(o); });
+    for (const w of Object.keys(all)) { out[w] = []; for (const p of all[w]) { const d = await toURL(p.blob); if (d) out[w].push({ id: p.id, on: p.on !== false, data: d }); } }
+  } catch (e) {}
+  return out;
+}
+async function picImportData(pics) {
+  if (!pics || typeof pics !== 'object') return;
+  for (const w of Object.keys(pics)) {
+    const list = [];
+    for (const p of pics[w] || []) { try { const b = await (await fetch(p.data)).blob(); list.push({ id: p.id || ('p' + Math.random().toString(36).slice(2, 8)), blob: b, on: p.on !== false }); } catch (e) {} }
+    if (list.length) await picPut(w, list.slice(0, PIC_MAX));
+  }
+  picDecorate();
 }
 document.getElementById('homePicBtn').addEventListener('click', () => {
-  state.picMode = !state.picMode; buzz(10); save(); renderHome(true); picDecorate(true);
+  state.picMode = !state.picMode; buzz(10); if (!state.picMode) picSel = []; save(); renderHome(true); picDecorate();
   { const b = document.getElementById('homePicBtn'); b.classList.toggle('off', !state.picMode); b.setAttribute('aria-pressed', state.picMode ? 'true' : 'false'); }
 });
 setTimeout(picLoadAll, 300);
