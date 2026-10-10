@@ -2798,7 +2798,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 488 - 10 Oct';
+const BUILD = 'build 489 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8061,6 +8061,16 @@ function suggRender0() {
           if (!leadFoldersNow().length) folders = bring(folders, w => kindOf(w) !== 'action' && !isCategoryWord(w) && !isSmallWord(w), w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));      // (after go, eat, watch ... the grey row keeps to that word's own folders)
           cats = bring(cats, w => isCategoryWord(w) && kindOf(w) !== 'action', w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
         } }
+      // the doing words that go with the last word come first in green: a show -> watch, play; a song -> listen, play;
+      // a food -> eat, cut; a drink -> drink, open; a place -> go (kept even when doing words after a title are off)
+      if (live && cfg.green.on && homePhrase.length) { const lw = homePhrase[homePhrase.length - 1]; let k = ''; try { k = magicKind(lw); } catch (e) {}
+        const bev = state.categories.some(c => (c.groups || []).some(g => /^(beverages|drinks)$/i.test(String(g.name || '').trim()) && (g.words || []).includes(lw)));
+        const ACTS = { watch: ['WATCH', 'PLAY', 'SEE'], music: ['LISTEN', 'PLAY', 'SING', 'DANCE', 'REPEAT'], book: ['READ', 'OPEN'], game: ['PLAY', 'OPEN'],
+          food: bev ? ['DRINK', 'OPEN', 'GET'] : ['EAT', 'CUT', 'OPEN', 'MAKE'], place: ['GO', 'WALK', 'SEE'], person: ['HUG', 'HELP', 'SEE', 'CALL'] };
+        const want = (ACTS[k] || []).filter(w => !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w) && magicAllowed(w));
+        if (want.length) { const lastOf = m => m.phrase[m.phrase.length - 1];
+          const front = want.map(w => { const at = green.findIndex(m => !m.folder && lastOf(m) === w); const m = at >= 0 ? green.splice(at, 1)[0] : { phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i), act: true }; m.lead = w; return m; });
+          green = front.concat(green); } }
       // purple is for the describing and category words only: doing words (want, need, go) belong in green
       cats = cats.filter(m => { const w = m.phrase[m.phrase.length - 1]; let k = ''; try { k = kindOfWord(w); } catch (e) {} return k !== 'action' && !MAGIC_WANTS.includes(w) && !green.some(g => g.phrase[g.phrase.length - 1] === w); });
       // (folders left with no tiles of their own before them stay - they still open their words)
