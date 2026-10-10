@@ -894,7 +894,7 @@
   .view-home.magic-full .sugg-band:last-child { min-height: 100%; }
   .view-home.magic-full .sugg-band .sugg-row:last-child { margin-bottom: 0; }
   .sugg-band.band-small:not(:has(.small-host:not(:empty))) { display: none; }
-  .sugg-host .sugg-open-row { margin-top: -2px; }
+  .sugg-host .sugg-open-row { margin-top: 14px; }
   .sugg-row.two-rows { display: grid !important; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: calc((100% - 32px) / 3); gap: 12px 16px; }
   .sugg-row.two-rows .sugg-card { flex: none !important; }
   .cat-hl { background: #ebe3fb; border-radius: 0.3em; padding: 0.08em 0.35em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
@@ -2796,7 +2796,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 481 - 10 Oct';
+const BUILD = 'build 482 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7953,6 +7953,10 @@ function suggRender0() {
     }
     const fitting = fitH >= 90;
     vwM.classList.toggle('magic-fit', !!all && fitting);
+    // exactly two rows tall, so a swipe lands on whole rows with nothing cut off at the top or bottom
+    host.style.height = all && fitting ? (Math.min(Math.round(bandLike.h || 160), fitH) * 2 + 14) + 'px' : '';
+    host.style.flex = all && fitting ? 'none' : '';
+    if (all && fitting) requestAnimationFrame(() => { const r = host.querySelector('.sugg-row'); if (r && r.offsetHeight) host.style.height = (r.offsetHeight * 2 + 14) + 'px'; });      // (measured: the tiles' own borders count too)
     const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + fitH + '|' + [green, folders, cats, openItems || []].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
@@ -7981,7 +7985,10 @@ function suggRender0() {
       b.addEventListener('click', e => {
         e.stopPropagation();
         if (m.back) { buzz(10); suggFolder = null; suggRender(); return; }
-        if (m.folder) { buzz(10); const same = suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null) && !m.group; suggFolder = same ? null : { id: m.folder.id, gid: m.group ? m.group.id : null, key: homePhrase.join(' ') }; bandOpen.fold = true; suggRender(); return; }      // a folder: its words fill its row, in place
+        if (m.folder) { buzz(10); const same = suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null) && !m.group; suggFolder = same ? null : { id: m.folder.id, gid: m.group ? m.group.id : null, key: homePhrase.join(' ') }; bandOpen.fold = true; suggRender();
+          // the folder's words come in as a row under it: the screen moves so both rows show
+          setTimeout(() => { const hs = document.getElementById('suggHost'), r2 = hs.querySelector('.sugg-open-row'), r1 = r2 && r2.previousElementSibling; if (r1) hs.scrollTo({ top: Math.round(r1.getBoundingClientRect().top - hs.getBoundingClientRect().top + hs.scrollTop), behavior: 'smooth' }); }, 80);
+          return; }      // a folder: its words fill its row, in place
         if (m.cat) { try { withGroup(m.cat, added[added.length - 1], m.hint); m.phrase = homePhrase.concat(added); } catch (er) {} }      // "want" + bottle -> "want to drink bottle"
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
@@ -14331,7 +14338,7 @@ document.getElementById('homeMagicBtn').addEventListener('click', () => {
 // a finger lets go of the bands: the page glides on to the start of the next band (or back to this one) - done here
 // rather than with the browser's snapping, which iPad Safari makes sticky
 { const hs = document.getElementById('suggHost'); let down = false, y0 = 0, t = null, gliding = false;
-  const bands = () => [...hs.querySelectorAll(':scope > .sugg-band')].filter(x => x.offsetHeight > 0).map(x => x.offsetTop - hs.offsetTop);
+  const bands = () => [...hs.querySelectorAll('.sugg-row')].filter(x => x.offsetHeight > 0).map(x => Math.round(x.getBoundingClientRect().top - hs.getBoundingClientRect().top + hs.scrollTop));      // every row of tiles is a stop
   const settle = () => {
     if (down || gliding || !document.getElementById('viewHome').classList.contains('magic-full')) return;
     const tops = bands(); if (!tops.length) return;
