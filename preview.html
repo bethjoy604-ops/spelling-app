@@ -319,7 +319,7 @@
   .pb-opts { position: absolute; left: 24px; right: 220px; bottom: 12px; display: flex; flex-wrap: nowrap; gap: 10px; overflow-x: auto; scrollbar-width: none; }
   .pb-opts:empty { display: none; }
   .pb-opts .pb-plural { font-size: 24px !important; padding: 2px 14px !important; margin: 0 !important; flex: none; }
-  .pb-seq { font-size: 0.5em !important; }
+  .pb-words .pb-seq { font-size: 0.55em !important; padding: 0.1em 0.5em !important; margin-left: 6px !important; vertical-align: middle; }
   .pb-plural { align-self: center; border: 3px dashed #9db8e6; background: #fff; color: #4a6fb0; border-radius: 14px; font-family: inherit; font-weight: 900; font-size: 0.62em; padding: 0.05em 0.45em; margin-left: 2px; line-height: 1.15; cursor: pointer; }
   /* chat mode on the main page: the conversation sits above the key bar, its newest message in view,
      with a bar under it (like the small words' bar) to fold it away */
@@ -545,6 +545,7 @@
   .mw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 12px; }
   .mw-tile { position: relative; min-height: 64px; border: 2px solid var(--border); border-radius: 14px; background: #eef0f3; color: rgba(0,0,0,0.4); font-family: inherit; font-weight: 900; font-size: 17px; padding: 8px 10px 20px; cursor: pointer; text-align: center; }
   .mw-tile.on { background: #fff; color: var(--ink); border-color: #cfe9d4; }
+  .mw-tile.prio { border-color: #f2c94c; background: #fffbea; color: var(--ink); }
   .mw-tile.folder::after { content: ''; position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #bfd8ff; }
   .mw-tile .mw-m { position: absolute; left: 0; right: 0; bottom: 4px; font-size: 12px; font-weight: 800; color: var(--muted); }
   .mw-tile.on .mw-m { color: var(--green); }
@@ -924,7 +925,7 @@
   .small-host.sm-full { flex: 1 1 auto !important; min-height: 0; overflow-y: auto; scrollbar-width: none; }
   .small-host.sm-full::-webkit-scrollbar { display: none; }
   .small-host.sm-full .small-strip { max-height: none !important; height: auto !important; overflow: visible !important; margin-top: 10px; }
-  .small-host.sm-open { padding-bottom: 30px; margin-bottom: 14px; }      /* open, the small words stand apart from the page tiles under them */
+  .small-host.sm-open { padding-bottom: 4px; margin-bottom: 0; }      /* open, the small words stand apart from the page tiles under them */
   .sm-hl { background: #d6e4fd; border-radius: 0.3em; padding: 0.08em 0.4em; }
   .sugg-host { display: none; flex-shrink: 0; }
   .sugg-host.show { display: block; }
@@ -2796,7 +2797,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 482 - 10 Oct';
+const BUILD = 'build 483 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3150,7 +3151,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
-        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null,
+        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {},
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -3732,7 +3733,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
-      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null,
+      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {},
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -5239,7 +5240,7 @@ function flashBar() {
 document.getElementById('phraseBar').addEventListener('click', e => {
   if (e.target.closest('button, .pb-suggest')) return;
   // a word in the message tapped while options sit beside it: the word stays as it is, and the options go
-  if (e.target.closest('.pb-chip') && document.querySelector('#pbOpts .pb-plural')) { chipsKept = homePhrase.join(' '); seqOffer = null; buzz(8); renderPhraseBar(); return; }
+  if (e.target.closest('.pb-chip') && document.querySelector('#pbOpts .pb-plural, #pbWords .pb-seq')) { chipsKept = homePhrase.join(' '); seqOffer = null; buzz(8); renderPhraseBar(); return; }
   document.getElementById('pbInput').blur();
   hideBarFlash();
   if (state.builderMode) { showKeyboard(); return; }
@@ -7689,6 +7690,14 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
 let suggFolder = null;
 const bandOpen = { fold: true, cat: true };      // every band opens with the message; each bar folds its own
 // ---- Magic settings: which words magic may suggest. Folders (and whole tabs) or single tiles can be switched off.
+function magicPrioWords() {
+  const t = state.categories.find(c => c.target), pr = state.magicPrio || {};
+  if (!t || !Object.keys(pr).length) return [];
+  const gs = listGroups(t), inG = new Set([].concat(...gs.map(g => g.words))), out = [];
+  gs.forEach(g => { if (pr['g' + g.id]) g.words.forEach(w => out.push(w)); });
+  if (pr.loose) t.words.filter(w => !inG.has(w)).forEach(w => out.push(w));
+  return out.filter(w => !(state.targetOff || {})[w] && !state.hiddenWords[w]);
+}
 function magicCatOff(c) { const off = state.magicOffCat || {}; let x = c, g = 0; while (x && g++ < 20) { if (off[x.id]) return true; x = x.parent ? catById(x.parent) : null; } return false; }
 function magicAllowed(w) {
   if ((state.magicOffWord || {})[w]) return false;
@@ -7742,12 +7751,19 @@ function openMagicWords(focusId) {
         const ttl = document.createElement('span'); ttl.textContent = t.name + ' (targets)'; h.appendChild(ttl); box.appendChild(h);
         const grid = document.createElement('div'); grid.className = 'mw-grid';
         const gs = listGroups(t), inG = new Set([].concat(...gs.map(g => g.words)));
-        const groupTile = (label, ws) => {
-          const offN = ws.filter(w => (state.magicOffWord || {})[w]).length, on = offN < ws.length;
-          grid.appendChild(tile(label, on, on && offN > 0, () => { const allOn = offN === 0; ws.forEach(w => { if (allOn) state.magicOffWord[w] = true; else delete state.magicOffWord[w]; }); save(); openMagicWords(null); }, 'folder'));
+        // targets are not switched off here: a group tapped is put first - magic looks for its words before any others
+        state.magicPrio = state.magicPrio || {};
+        const note = document.createElement('div'); note.className = 'help-note'; note.style.margin = '0 0 6px'; note.textContent = 'Tap a group to put its words first in magic suggestions (\u2605). The other folders stay on.';
+        box.appendChild(note);
+        const groupTile = (label, ws, key) => {
+          const on = !!state.magicPrio[key];
+          const b = tile((on ? '\u2605 ' : '') + label, true, false, () => { if (on) delete state.magicPrio[key]; else state.magicPrio[key] = true; save(); openMagicWords(null); }, 'folder');
+          b.querySelector('.mw-m').textContent = on ? 'first' : 'as usual';
+          if (on) b.classList.add('prio');
+          grid.appendChild(b);
         };
-        gs.forEach(g => { if (g.words.length) groupTile(g.name, g.words); });
-        const loose = t.words.filter(w => !inG.has(w)); if (loose.length) groupTile('not in a group', loose);
+        gs.forEach(g => { if (g.words.length) groupTile(g.name, g.words, 'g' + g.id); });
+        const loose = t.words.filter(w => !inG.has(w)); if (loose.length) groupTile('not in a group', loose, 'loose');
         box.appendChild(grid);
       } }
     kids(null).forEach(tab => {
@@ -7920,6 +7936,15 @@ function suggRender0() {
     // the words magic may suggest, as chosen in its settings (whole folders or single tiles switched off)
     { const ok = m => m.folder ? !magicCatOff(m.folder) : magicAllowed(m.phrase[m.phrase.length - 1]);
       green = green.filter(ok); folders = folders.filter(ok); cats = cats.filter(ok);
+      // prioritised targets: their words go first in the row they belong to (added if they were not there)
+      { const pw = magicPrioWords(); if (pw.length && live) {
+          const lastOf = m => m.phrase[m.phrase.length - 1];
+          const bring = (list, test, mk) => { const front = []; pw.forEach(w => { if (homePhrase.includes(w) || !test(w)) return; const at = list.findIndex(m => !m.folder && lastOf(m) === w); front.push(at >= 0 ? list.splice(at, 1)[0] : mk(w)); }); return front.concat(list); };
+          const kindOf = w => { try { return kindOfWord(w); } catch (e) { return ''; } };
+          green = bring(green, w => kindOf(w) === 'action', w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i), act: true }));
+          folders = bring(folders, w => kindOf(w) !== 'action' && !isCategoryWord(w) && !isSmallWord(w), w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
+          cats = bring(cats, w => isCategoryWord(w) && kindOf(w) !== 'action', w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
+        } }
       // purple is for the describing and category words only: doing words (want, need, go) belong in green
       cats = cats.filter(m => { const w = m.phrase[m.phrase.length - 1]; let k = ''; try { k = kindOfWord(w); } catch (e) {} return k !== 'action' && !MAGIC_WANTS.includes(w) && !green.some(g => g.phrase[g.phrase.length - 1] === w); });
       // (folders left with no tiles of their own before them stay - they still open their words)
@@ -8414,6 +8439,7 @@ function renderPhraseBar() {
     if (!opts) { opts = document.createElement('div'); opts.id = 'pbOpts'; opts.className = 'pb-opts'; bar.appendChild(opts); }
     opts.innerHTML = '';
     try { pluralChip(opts); } catch (e) {}
+    { const sq = opts.querySelector('.pb-seq'); if (sq) box.appendChild(sq); }      // the word order offer sits beside the words, bigger
     bar.classList.toggle('has-opts', !!opts.firstChild); }
   box.scrollTop = box.scrollHeight;      // the newest words are the ones in view
   box.classList.toggle('clipped', box.scrollTop > 2);
@@ -10076,7 +10102,25 @@ function smallRows(owner) {
   // one list that fills six across and then carries on underneath (older saved row breaks are dropped)
   smallRowList(owner).forEach(w => { if (w !== '\n' && !rows[0].includes(w)) rows[0].push(w); });
   rows[0] = punctLast(rows[0]);
+  // magic on, with words in the message: the small words most likely to come next go first
+  try { if (state.magicType && !state.builderMode && homePhrase.length && !selWords) { const rel = smallNext(); if (rel.length) rows[0] = rel.concat(rows[0].filter(w => !rel.includes(w))); } } catch (e) {}
   return rows.filter(r => r.length);
+}
+function smallNext() {
+  const n = homePhrase.length, last = homePhrase[n - 1];
+  const all = new Set(allSmallWords().filter(w => !state.hiddenWords[w]));
+  let k = ''; try { k = kindOfWord(last); } catch (e) {}
+  let want;
+  if (['WANT', 'NEED', 'LIKE', 'HAVE', 'LOVE'].includes(last)) want = ['TO', 'A', 'THE', 'MORE', 'SOME', 'IT', 'MY', 'THIS', 'THAT'];
+  else if (last === 'I') want = ['AM', 'CAN', "DON'T", 'WILL', 'WANT', 'NEED', 'LIKE'];
+  else if (last === 'YOU' || last === 'WE' || last === 'THEY') want = ['ARE', 'CAN', "DON'T", 'WILL', 'WANT'];
+  else if (['GO', 'COME', 'RUN', 'WALK'].includes(last)) want = ['TO', 'IN', 'OUT', 'UP', 'DOWN', 'THE', 'HOME', 'NOW'];
+  else if (last === 'TO') want = ['THE', 'A', 'MY', 'GO', 'PLAY', 'EAT'];
+  else if (['THE', 'A', 'AN', 'MY', 'YOUR', 'SOME', 'MORE'].includes(last)) want = [];
+  else if (k === 'action') want = ['THE', 'A', 'MY', 'IT', 'TO', 'THIS', 'THAT', 'WITH', 'IN', 'ON', 'AND'];
+  else if (last === 'IS' || last === 'ARE' || last === 'AM') want = ['NOT', 'A', 'THE', 'MY', 'IT', 'THIS'];
+  else want = ['AND', 'PLEASE', 'IS', 'ON', 'IN', 'WITH', 'NOW', 'TOO', '?', '.'];
+  return want.filter(w => all.has(w) && w !== last).slice(0, 6);
 }
 function setSmallRows(owner, rows) {
   const flat = [];
