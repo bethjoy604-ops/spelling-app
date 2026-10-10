@@ -2822,7 +2822,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 502 - 10 Oct';
+const BUILD = 'build 503 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5845,8 +5845,8 @@ function render() {
     banner.classList.add('active');
     banner.classList.toggle('no-text', state.promptTextOn === false);
     const tw = document.getElementById('targetWord');
-    { const ws = state.currentTarget.split(' ').filter(Boolean), wrap = ws.length > 1 && state.currentTarget.length > 9;
-      banner.style.setProperty('--n', String(Math.max(4, wrap ? Math.max(...ws.map(x => x.length)) : state.currentTarget.length)));      // (the letters size to fit the bar)
+    { const ws = state.currentTarget.split(' ').filter(Boolean), wrap = false;      // (a phrase stays on one line, left to right: the bar slides along to the word being spelled)
+      banner.style.setProperty('--n', String(Math.max(4, Math.min(state.currentTarget.length, Math.max(...ws.map(x => x.length)) + 1))));      // (sized so the word being spelled fits)      // (the letters size to fit the bar)
       banner.style.setProperty('--lines', String(wrap ? ws.length : 1));
       tw.classList.toggle('wrapwords', wrap); }      // (a long phrase: a word to each line, in the taller bar)
     const twWas = tw.scrollLeft;
