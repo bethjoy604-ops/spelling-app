@@ -2684,9 +2684,10 @@
         <button class="mbtn action" id="restoreFoldersBtn" style="width:100%; margin-top:8px;">Bring back missing default folders</button>
         <div class="help-note">Puts back any built-in folder that has been deleted, such as Chat, with its original words. Folders that are still there are left exactly as they are.</div>
         <button class="mbtn action" id="exportLayoutBtn" style="width:100%; margin-top:8px;">Export my layout</button>
-        <button class="mbtn action" id="importLayoutBtn" style="width:100%; margin-top:8px;">Import a layout file</button>
+        <button class="mbtn action" id="exportSettingsBtn" style="width:100%; margin-top:8px;">Export my settings</button>
+        <button class="mbtn action" id="importLayoutBtn" style="width:100%; margin-top:8px;">Import a layout or settings file</button>
         <input type="file" id="importLayoutFile" accept=".json,application/json" style="display:none">
-        <div class="help-note">Saves the folders, the words and their places, the builder pages and the small-words rows as one file, so the layout on this device can be made the built-in default.</div>
+        <div class="help-note">The layout file has everything needed to make this device's set-up the built-in one: the folders, tiles and groups and their places, hidden tiles, targets, custom pages, builder pages, the small words, what magic has learned about words, and every setting. The settings file is just the settings (magic, prompting and fading, keyboard, voice, sizes ...). Not in either: what each device learns as it is used - word use, letter scores, prompt fading progress, chat history, recordings and voice files.</div>
         <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
         <div class="help-note">Saves every sentence built in the builder, with its date and time, as a file that opens in Numbers or Excel. The builder page itself shows the latest 30.</div>
       </div>
@@ -2802,7 +2803,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 498 - 10 Oct';
+const BUILD = 'build 499 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9870,6 +9871,8 @@ function applyLayout(L, keep) {
   if (L.gridFill) state.gridFill = L.gridFill;
   if (L.bankSort) state.bankSort = L.bankSort;
   state.rowOpenBy = {};
+  if (L.compoundOf && typeof L.compoundOf === 'object') state.compoundOf = Object.assign({}, state.compoundOf || {}, L.compoundOf);
+  if (L.pathOf && typeof L.pathOf === 'object') state.pathOf = Object.assign({}, state.pathOf || {}, L.pathOf);
   if (L.settings && typeof L.settings === 'object') SETTINGS_KEYS.forEach(k => { if (L.settings[k] !== undefined) state[k] = JSON.parse(JSON.stringify(L.settings[k])); });      // (a file exported with its settings brings them too)
   // none of the step-by-step changes that older installs went through apply
   ['starterDone', 'groupsV2', 'groupsV3', 'groupsV4', 'groupsV5', 'groupsV6',
@@ -9903,8 +9906,13 @@ function importLayoutFile(file) {
   r.onload = () => {
     let L = null;
     try { L = JSON.parse(String(r.result)); } catch (e) {}
+    if (L && L.kind === 'spelling-app-settings' && L.settings && typeof L.settings === 'object') {      // a settings file: the settings only
+      if (!confirm('Replace the settings on this device (magic, prompting, keyboard and the rest) with the ones in this file?\n\nThe folders and tiles are not changed.')) return;
+      SETTINGS_KEYS.forEach(k => { if (L.settings[k] !== undefined) state[k] = JSON.parse(JSON.stringify(L.settings[k])); });
+      save(); try { renderSettings(); } catch (e) {} showHome(); alert('Settings imported.'); return;
+    }
     if (!L || L.kind !== 'spelling-app-layout' || !Array.isArray(L.categories) || !L.categories.length) {
-      alert('That file is not a layout exported from this app.');
+      alert('That file is not a layout or settings file exported from this app.');
       return;
     }
     if (!confirm('Replace the folders, groups, small words rows and builder pages on this device with the ones in this file?' + (L.settings ? '\n\nThe settings saved in the file (magic, prompts, keyboard and the rest) replace this device\'s too.' : '') + '\n\nWords already on this device are kept. This cannot be undone.')) return;
@@ -10706,6 +10714,7 @@ function layoutNow() {
     targetOff: Object.keys(state.targetOff || {}),
     pairs: state.pairs || [],
     builder: state.builder,
+    compoundOf: state.compoundOf || {}, pathOf: state.pathOf || {},      // (what magic has learned about words: "chocolate chip cookies" is a food ...)
   };
 }
 // Recently removed: before anything is deleted, the whole layout is kept (the last ten), so a folder,
@@ -10761,6 +10770,14 @@ function exportLayout() {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 document.getElementById('exportLayoutBtn').addEventListener('click', exportLayout);
+// the settings on their own, as a file
+function exportSettingsFile() {
+  const text = JSON.stringify({ kind: 'spelling-app-settings', version: 1, build: BUILD, exported: new Date().toISOString(), settings: settingsNow() }, null, 1);
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'spelling-app-settings.json'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+document.getElementById('exportSettingsBtn').addEventListener('click', exportSettingsFile);
 document.getElementById('importLayoutBtn').addEventListener('click', () => document.getElementById('importLayoutFile').click());
 document.getElementById('importLayoutFile').addEventListener('change', e => {
   const f = e.target.files && e.target.files[0];
@@ -13115,7 +13132,7 @@ function renderSlotGrid(grid, cat, folders) {
   // every folder of words and every choice board has its own row of six small words (a page that is
   // only a menu of folders has none - unless it shows a custom page of words)
   const hasFeedWords = !!cat && Array.isArray(cat.feed) && cat.feed.length > 0 && !cat.feedOff;
-  const strip = arrange && !sec && !!cat && !cat.small && !cat.target && (!isBoardMenu(cat) || hasFeedWords) && state.smallRowsOn !== false;
+  const strip = arrange && !sec && !!cat && !cat.small && !cat.target && (!isBoardMenu(cat) || hasFeedWords) && state.smallRowsOn !== false && smallBandWanted();      // (pages have no small words row of their own now - only Chat; magic's small-words band still uses it when it is on)
   const topRow = false;    // (the small words bar has its own place above the folder menu now)
   smallHostRedo = null;
   grid.style.gridTemplateRows = topRow ? 'auto' : '';
@@ -13258,7 +13275,7 @@ function renderSlotGrid(grid, cat, folders) {
     smallHostSet(el);
     };
     paint(); smallHostRedo = paint;
-  } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null; if (!sec) { if (popRowUntil && homePhrase.length && popRowPaint) { smallHostRedo = popRowPaint; popRowPaint(); } else if (atPopularRoot() && !cat) { if (!popRowUntil) popRowShut = true; if (!homePhrase.length) { popRowShut = true; stripFull = null; } popRowUntil = Infinity; smallHostRedo = popRowPaint = popRowDraw; popRowDraw(); } else { popRowUntil = 0; smallHostSet(null); } }      // (a redraw of the page - the green offer arriving, say - leaves the open row as it is)
+  } else { stripKey = null; clearTimeout(stripTimer); stripTimer = null; if (!sec) { if (popRowUntil && homePhrase.length && popRowPaint) { smallHostRedo = popRowPaint; popRowPaint(); } else if (atPopularRoot() && !cat && smallBandWanted()) { if (!popRowUntil) popRowShut = true; if (!homePhrase.length) { popRowShut = true; stripFull = null; } popRowUntil = Infinity; smallHostRedo = popRowPaint = popRowDraw; popRowDraw(); } else { popRowUntil = 0; smallHostSet(null); } }      // (a redraw of the page - the green offer arriving, say - leaves the open row as it is)
   }
   const place = (el, cell) => {
     const r = Math.floor(cell / cols) + (topRow ? 1 : 0), c = cell % cols;
@@ -13708,6 +13725,8 @@ function smallRowDrop() {
 }
 // Small words in Popular's own order: the ones entered most in the last thirty, then the most used
 function popularRank(w) { return (state.recentTiles || []).filter(x => x === w).length * 1000 + ((state.wordHistory[w] || {}).n || 0); }
+// the small words row appears outside Chat only as magic's small-words band (Settings > Magic mode)
+function smallBandWanted() { try { return !!state.magicType && !state.builderMode && bandCfg().small.on; } catch (e) { return false; } }
 function atPopularRoot() { return !state.builderMode && homePath.length === 0 && state.smallRowsOn !== false; }
 // The row of a page with none of its own (Popular): a blue bar that opens to the row
 function popRowDraw() {
@@ -13873,6 +13892,7 @@ function smallRowPop0() {
   if (state.smallRowsOn === false) return;
   setTimeout(smallRowEmptyCheck, 0);
   // (opened this way it stays until the page is scrolled, the blue is tapped, or the bar is emptied)
+  if (stripKey === null && !smallFullHook && !smallBandWanted()) return;      // (no small words row away from Chat, unless magic's small-words band is on)
   if (stripKey !== null) { stripShut = false; stripFull = null; clearTimeout(stripTimer); stripTimer = null; if (smallHostRedo) smallHostRedo(); }
   else if (!smallFullHook) {
     // a page with no row of its own: one appears for the five seconds, then goes
