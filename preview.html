@@ -336,6 +336,7 @@
   .chat-pane.shut .cp-bar { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 20' fill='none' stroke='%23989ca5' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 5l10 9 10-9'/%3E%3C/svg%3E"); }
   .chat-pane .cp-bar .chat-mini { font-size: 13px; padding: 2px 6px; color: rgba(0,0,0,0.42); }
   .chat-pane.shut .cp-thread { display: none; }
+  .chat-pane .cp-bar .cp-label { font-size: 16px; font-weight: 700; color: rgba(0,0,0,0.48); }
   /* folded, it all but disappears into the page: just its arrow on the grey */
   .chat-pane.shut { background: transparent; box-shadow: none; }
   .chat-pane.shut .cp-bar { background-color: transparent; height: 30px; }
@@ -2797,7 +2798,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 486 - 10 Oct';
+const BUILD = 'build 487 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8482,6 +8483,7 @@ function pluralChip(box) {
     b.textContent = '\u21C4 ' + sentenceWords(seqOffer.to).join(' ').toLowerCase(); b.setAttribute('aria-label', 'Put it in this order');
     b.addEventListener('click', e => { e.stopPropagation(); if (!seqOffer || seqOffer.from !== homePhrase.join(' ')) return; homePhrase = seqOffer.to.slice(); arrPrev = homePhrase.slice(); seqOffer = null; buzz(10); renderPhraseBar(); try { const h = document.getElementById('suggHost'); h.dataset.sig = ''; suggRender(); } catch (er) {} });
     box.appendChild(b);
+    return;      // (the order offer alone: the ending options come back once it is taken or put away)
   }
   if (state.pluralChip === false) return;
   const i = homePhrase.length - 1, w = homePhrase[i];
@@ -8819,37 +8821,45 @@ function chatPost(words) {
 let chatPaneSig = '', chatPaneBig = false, chatBarTap = 0, chatBarTimer = null;
 // the conversation shows when a message has just gone in, then goes after five seconds left alone, giving the
 // page its room back for finding tiles; the next message brings it back (touched, it stays a little longer)
-let chatPaneAway = true, chatAwayTimer = null;
+let chatPaneAway = true, chatAwayTimer = null, chatPaneHeld = false;
 function chatPaneShow() {
-  chatPaneAway = false; clearTimeout(chatAwayTimer);
-  chatAwayTimer = setTimeout(() => { if (chatPaneBig) return; chatPaneAway = true; renderChatPane(true); try { renderHome(true); } catch (e) {} }, 5000);
+  chatPaneAway = false; chatPaneHeld = false; clearTimeout(chatAwayTimer);
+  chatAwayTimer = setTimeout(() => { if (chatPaneBig || chatPaneHeld) return; chatPaneAway = true; renderChatPane(true); try { renderHome(true); } catch (e) {} }, 5000);
 }
-document.getElementById('chatPane').addEventListener('pointerdown', () => { if (!chatPaneAway) chatPaneShow(); }, true);
+document.getElementById('chatPane').addEventListener('pointerdown', () => { if (!chatPaneAway && !chatPaneHeld) chatPaneShow(); }, true);
 function renderChatPane(force) {
   const pane = document.getElementById('chatPane'); if (!pane) return;
   const showing = (state.chatLog || []).filter(m => (m.t || 0) >= chatShownFrom);
-  const on = !!state.chatMode && !state.builderMode && showing.length > 0 && !chatPaneAway;
+  // with a conversation, its folded bar always stays above the key bar: a tap opens the history (and it stays open
+  // until it is folded again); after a message it opens by itself for five seconds, then folds back to the bar
+  const any = (state.chatLog || []).length > 0, shut = !!state.chatPaneShut || (chatPaneAway && !chatPaneHeld);
+  const on = !!state.chatMode && !state.builderMode && any;
   pane.classList.toggle('show', on);
-  pane.classList.toggle('shut', !!state.chatPaneShut);
-  pane.classList.toggle('big', chatPaneBig && !state.chatPaneShut);
+  pane.classList.toggle('shut', shut);
+  pane.classList.toggle('big', chatPaneBig && !shut);
   if (!on) { pane.innerHTML = ''; chatPaneSig = ''; return; }
-  const sig = showing.length + '|' + (showing[showing.length - 1].t) + '|' + showing.map(m => (m.replies || []).length).join(',');
+  const list = showing.length && !chatPaneHeld ? showing : (state.chatLog || []);      // (opened by hand: the whole history, even after "clear")
+  const sig = shut + '|' + list.length + '|' + (list[list.length - 1].t) + '|' + list.map(m => (m.replies || []).length).join(',');
   if (!force && sig === chatPaneSig && pane.firstChild) return;
   chatPaneSig = sig;
   pane.innerHTML = '';
   const th = document.createElement('div'); th.className = 'cp-thread';
-  showing.slice(-60).forEach(m => chatBubbles(m).forEach(d => th.appendChild(d)));
+  list.slice(-60).forEach(m => chatBubbles(m).forEach(d => th.appendChild(d)));
   pane.appendChild(th);
   const bar = document.createElement('div'); bar.className = 'cp-bar'; bar.setAttribute('role', 'button');
   const mb = (text, label, fn) => { const b = document.createElement('button'); b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label); b.addEventListener('click', e => { e.stopPropagation(); fn(); }); bar.appendChild(b); };
-  if (!state.chatPaneShut) mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); buzz(10); renderChatPane(true); });
-  bar.setAttribute('aria-label', state.chatPaneShut ? 'Show the conversation' : 'Hide the conversation');
+  if (!shut) mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); chatPaneHeld = false; chatPaneAway = true; state.chatPaneShut = false; buzz(10); renderChatPane(true); });
+  bar.setAttribute('aria-label', shut ? 'Show the conversation' : 'Hide the conversation');
+  if (shut) { const lb = document.createElement('span'); lb.className = 'chat-mini cp-label'; lb.textContent = '\uD83D\uDCAC chat (' + (state.chatLog || []).length + ')'; bar.appendChild(lb); }      // folded: still plain to find
   // one tap folds it away (or opens it); a double tap while it is open gives the big view, and another goes back
   bar.addEventListener('click', () => {
     const now = Date.now();
-    if (now - chatBarTap < 320 && !state.chatPaneShut) { clearTimeout(chatBarTimer); chatBarTap = 0; chatPaneBig = !chatPaneBig; if (!chatPaneBig) chatPaneShow(); buzz(12); renderChatPane(true); return; }
+    if (now - chatBarTap < 320 && !shut) { clearTimeout(chatBarTimer); chatBarTap = 0; chatPaneBig = !chatPaneBig; buzz(12); renderChatPane(true); return; }
     chatBarTap = now; clearTimeout(chatBarTimer);
-    chatBarTimer = setTimeout(() => { state.chatPaneShut = !state.chatPaneShut; if (state.chatPaneShut) chatPaneBig = false; buzz(10); save(); renderChatPane(true); try { renderHome(true); } catch (e) {} }, state.chatPaneShut ? 0 : 320);
+    chatBarTimer = setTimeout(() => {
+      if (shut) { state.chatPaneShut = false; chatPaneHeld = true; chatPaneAway = false; clearTimeout(chatAwayTimer); }      // opened by hand: it stays
+      else { state.chatPaneShut = false; chatPaneHeld = false; chatPaneAway = true; chatPaneBig = false; clearTimeout(chatAwayTimer); }      // folded: back to the bar
+      buzz(10); save(); renderChatPane(true); try { renderHome(true); } catch (e) {} }, shut ? 0 : 320);
   });
   pane.appendChild(bar);
   requestAnimationFrame(() => { th.scrollTop = th.scrollHeight; });      // the newest message in view; scroll up for the earlier ones
@@ -13457,7 +13467,7 @@ function seqOfferNow() {
 }
 function smallRowPop() {
   const viaMagic = Date.now() - magicPickAt < 500;
-  if (!viaMagic) seqOfferNow(); else seqOffer = null;
+  seqOfferNow();      // (a doing word picked from the magic rows after a thing is offered in order too: "mandarin" + eat -> eat mandarin)
   // magic off: a tile only puts its word in the message - no rows opening, the page stays as it is
   if (!state.magicType && !state.builderMode) { arrPrev = homePhrase.slice(); if (seqOffer) try { renderPhraseBar(); } catch (e) {} return; }
   arrPrev = homePhrase.slice();
