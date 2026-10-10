@@ -886,7 +886,9 @@
   .view-home.magic-fit .sugg-band { padding-bottom: 14px; }
   .view-home.magic-fit .sugg-band:last-child { padding-bottom: 0; }
   .view-home.magic-fit .sugg-band .sugg-row { margin-bottom: 0; }
-  .view-home.magic-full .band-small .small-head:not(.group-head), .view-home.magic-full .band-small .band-bar { display: none !important; }
+  .view-home.magic-full #smallHost .small-head:not(.group-head), .view-home.magic-full #smallHost .band-bar { display: none !important; }
+  .view-home.magic-full #smallHost, .view-home.magic-full #smallHost.sm-open { padding-bottom: 0 !important; margin-bottom: 0 !important; }
+  .view-home.magic-full #smallHost .small-strip { padding-bottom: 0 !important; }
   .view-home.magic-full .sugg-band { box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; padding-bottom: 14px; }
   /* the bands sit close together; only the last one fills the screen, so each can still click up to the top */
   .view-home.magic-full .sugg-band:last-child { min-height: 100%; }
@@ -2788,7 +2790,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 479 - 10 Oct';
+const BUILD = 'build 480 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7789,33 +7791,42 @@ function suggRender0() {
     // the words magic may suggest, as chosen in its settings (whole folders or single tiles switched off)
     { const ok = m => m.folder ? !magicCatOff(m.folder) : magicAllowed(m.phrase[m.phrase.length - 1]);
       green = green.filter(ok); folders = folders.filter(ok); cats = cats.filter(ok);
+      // purple is for the describing and category words only: doing words (want, need, go) belong in green
+      cats = cats.filter(m => { const w = m.phrase[m.phrase.length - 1]; let k = ''; try { k = kindOfWord(w); } catch (e) {} return k !== 'action' && !MAGIC_WANTS.includes(w) && !green.some(g => g.phrase[g.phrase.length - 1] === w); });
       // (folders left with no tiles of their own before them stay - they still open their words)
       // doing words straight after a title or thing ("Free" -> play) only if that is switched on
       if (state.magicActAfterThing === false && homePhrase.length) { const lw = homePhrase[homePhrase.length - 1]; let k = ''; try { k = magicKind(lw); } catch (e) {} let k2 = ''; try { k2 = kindOfWord(lw); } catch (e) {}
-        if (['food', 'drink', 'thing', 'things', 'music', 'watch', 'book', 'game', 'person', 'place'].includes(k) || k2 === 'title') green = green.filter(m => m.lead); } }
+        if (['music', 'watch', 'book', 'game'].includes(k)) green = green.filter(m => m.lead); } }      // (only after a title - a song, show, book or game; after a thing or place like "park" the doing words stay)
     const all = green.length + folders.length + cats.length;
     { const lk = grid.querySelector('.home-card'), lh = lk && lk.querySelector('.hw');
       if (lk && lk.offsetHeight > 0) { bandLike.h = lk.offsetHeight; bandLike.fs = (lh && parseFloat(lh.style.fontSize)) || bandLike.fs; } }
     document.getElementById('viewHome').classList.toggle('magic-full', all > 0);
     if (all) document.getElementById('viewHome').classList.remove('scrolled');      // the rows have the screen: no page tiles under them
     // every row on the screen at once: the tiles are sized so all the rows fit, with no bars and no half rows showing
+    // the small words sit on top of the magic rows (as on every other page), open; under them, two rows of tiles fill
+    // the room exactly - the rest are one swipe away, a whole row at a time
+    const vwM = document.getElementById('viewHome');
+    vwM.classList.toggle('no-small-band', !cfg.small.on);
+    { const sh = document.getElementById('smallHost');
+      if (sh) { if (host.contains(sh)) host.after(sh);
+        if (all && cfg.small.on) { if (sh.nextElementSibling !== host) host.before(sh); }
+        else if (sh.previousElementSibling !== host) host.after(sh); } }
+    if (all && cfg.small.on) { try { smallTopOpen(); } catch (e) {} }
     let fitH = 0;
     if (all) {
       host.classList.add('show');
-      // (all the room from the top of the rows to the bottom of the screen - the blue row may still be sitting under them)
-      const vw = document.getElementById('viewHome'), vr = vw.getBoundingClientRect();
-      const avail = host.clientHeight ? Math.round(vr.bottom - host.getBoundingClientRect().top - (parseFloat(getComputedStyle(vw).paddingBottom) || 0)) : 0;
+      const vr = vwM.getBoundingClientRect();
+      const avail = host.clientHeight ? Math.round(vr.bottom - host.getBoundingClientRect().top - (parseFloat(getComputedStyle(vwM).paddingBottom) || 0)) : 0;
       if (!avail) requestAnimationFrame(() => { host.dataset.sig = ''; suggRender(); });
       const nRows = (green.length && !suggShut ? cfg.green.rows : 0) + (folders.length && bandOpen.fold ? cfg.grey.rows : 0) + (openItems && openItems.length ? 1 : 0) + (cats.length && bandOpen.cat ? cfg.cat.rows : 0);
-      const smallH = cfg.small.on && document.getElementById('smallHost').firstChild ? 136 : 0;
-      if (nRows && avail) fitH = Math.floor((avail - smallH - 14 * (nRows - 1 + (smallH ? 1 : 0)) - 24) / nRows);
+      const show = Math.min(2, nRows);
+      if (show && avail) fitH = Math.floor((avail - 14 * (show - 1) - 16) / show);
     }
     const fitting = fitH >= 90;
-    document.getElementById('viewHome').classList.toggle('magic-fit', !!all && fitting);
+    vwM.classList.toggle('magic-fit', !!all && fitting);
     const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + fitH + '|' + [green, folders, cats, openItems || []].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
-    { const sh = document.getElementById('smallHost'); if (sh && host.contains(sh)) host.after(sh); }      // the blue band goes back to its own place before the rows are redrawn
     host.innerHTML = '';
     host.classList.toggle('show', all > 0);
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = all && !suggShut ? 'none' : ''; });
@@ -7872,9 +7883,7 @@ function suggRender0() {
     band(green, !suggShut, '', 'Doing words', () => { suggShut = !suggShut; magicKeep = suggShut; }, () => 'sugg-hl', cfg.green.rows);
     band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
     band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows);
-    // last, the blue small words: the fourth band, at the bottom of the scroll (verb, then thing, then describing, then the little words)
-    document.getElementById('viewHome').classList.toggle('no-small-band', !cfg.small.on);
-    if (cfg.small.on) { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
+    if (false) { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -14231,6 +14240,12 @@ document.getElementById('homeMagicBtn').addEventListener('click', () => {
   }, { passive: false }); }
 // the blue band opens by itself when it is scrolled to (once for each message; folded by hand, it stays folded)
 let blueAutoFor = null;
+// in the magic rows the small words are always open (their bar is hidden there)
+function smallTopOpen() {
+  const sh = document.getElementById('smallHost');
+  const bar = sh && sh.querySelector('.small-head:not(.group-head)');
+  if (bar && bar.getAttribute('aria-expanded') !== 'true' && !sh.querySelector('.small-strip')) bar.click();
+}
 function blueAutoOpen() {
   const v = document.getElementById('viewHome'), hs = document.getElementById('suggHost');
   if (!v.classList.contains('magic-full')) return;
