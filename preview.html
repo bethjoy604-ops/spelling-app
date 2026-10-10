@@ -2453,6 +2453,8 @@
         <div class="sublabel">What fades each time</div>
         <div class="seg-row" id="segFadeOrder"></div>
         <div class="help-note" id="fadeNote"></div>
+        <div class="settings-list" style="margin-top:12px"><div class="setting-row"><span>Step prompts back up after misses</span><div class="toggle on" id="togglePromptBack"></div></div></div>
+        <div class="help-note" id="promptBackNote"></div>
       </div>
     </div>
 
@@ -2799,7 +2801,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 490 - 10 Oct';
+const BUILD = 'build 491 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3006,7 +3008,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true,
+  letterFade: {}, letterStreak: {}, fadeV2: true, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3156,7 +3158,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
+        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true, promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -3759,7 +3761,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -5656,9 +5658,66 @@ function promptsShowing() {
 function clearPromptTimer() {
   if (promptDelayTimer) { clearTimeout(promptDelayTimer); promptDelayTimer = null; }
 }
+// ---- Prompting steps back up after repeated misses (words on the targets page only) ----
+// Each letter's turn starts when the letter before it is typed (or the word begins). No key within 5 seconds, or a
+// wrong key, is one miss for that letter (counted once per turn). 3 misses on the same letter of a word - across any
+// number of tries - bring that letter's prompt back up one level; 3 misses spread over the word bring the whole word
+// back up one level. Every miss is kept in a log (promptMissLog) for the data to be organised later.
+const MISS_WAIT_MS = 5000, MISS_LIMIT = 3;
+let missTimer = null, missCounted = new Set(), missTrialKey = '';
+function isListedTarget(w) { const t = state.categories.find(c => c.target), u = String(w || '').trim().toUpperCase(); return !!u && !!t && (t.words || []).some(x => String(x).toUpperCase() === u); }
+function missTargetAt(i) { return isListedTarget(state.currentTarget) || isListedTarget(wordAtIndex(i)); }
+function missArm() {
+  clearTimeout(missTimer); missTimer = null;
+  if (state.promptBack === false || !state.fadeMode || !state.currentTarget || isWordComplete()) return;
+  const i = state.targetIndex, key = state.currentTarget;
+  if (key !== missTrialKey || (i === 0 && !state.text)) { missTrialKey = key; missCounted = new Set(); }      // a new try at the word
+  const ch = key[i]; if (!ch || ch === ' ' || missCounted.has(i) || !missTargetAt(i)) return;
+  missTimer = setTimeout(() => {
+    missTimer = null;
+    if (state.currentTarget !== key || state.targetIndex !== i) return;
+    const kv = document.getElementById('viewKeyboard');
+    if (document.hidden || !kv || !kv.classList.contains('active')) return;      // (away from the keyboard is not a miss)
+    missNote('no key'); render();
+  }, MISS_WAIT_MS);
+}
+function missNote(kind, typed) {
+  const word = state.currentTarget, i = state.targetIndex;
+  if (state.promptBack === false || !state.fadeMode || !word || missCounted.has(i) || !word[i] || word[i] === ' ' || !missTargetAt(i)) return;
+  missCounted.add(i); clearTimeout(missTimer); missTimer = null;
+  state.promptMiss = state.promptMiss || {};
+  const m = state.promptMiss[word] = state.promptMiss[word] || { word: 0, at: {} };
+  m.word++; m.at[i] = (m.at[i] || 0) + 1;
+  const ev = { t: Date.now(), word, i, letter: String(word[i]).toUpperCase(), kind, typed: typed || null, level: fadeLevelAt(i), fadeBy: state.fadeCount === 'letter' ? 'letter' : 'word' };
+  if (m.at[i] >= MISS_LIMIT) { if (promptStepUp(word, [i])) ev.stepUp = 'letter'; m.word = 0; m.at = {}; }
+  else if (m.word >= MISS_LIMIT) {
+    const own = isListedTarget(word), wi = wordAtIndex(i), idx = [];
+    for (let k = 0; k < word.length; k++) if (word[k] !== ' ' && (own || wordAtIndex(k) === wi)) idx.push(k);
+    if (promptStepUp(word, idx)) ev.stepUp = 'word';
+    m.word = 0; m.at = {};
+  }
+  state.promptMissLog = (state.promptMissLog || []).concat([ev]).slice(-3000);
+  save();
+}
+// one level back up (the reverse of fading); the count towards the next fade starts again
+function promptStepUp(word, idx) {
+  let any = false;
+  if (state.fadeCount === 'letter') {
+    state.letterFade = state.letterFade || {}; state.letterStreak = state.letterStreak || {};
+    const seen = new Set();
+    idx.forEach(k => { const L = String(word[k]).toUpperCase(); if (!/[A-Z]/.test(L) || seen.has(L)) return; seen.add(L);
+      if ((state.letterFade[L] || 0) > 0) { state.letterFade[L]--; any = true; } state.letterStreak[L] = 0; });
+  } else {
+    const f = state.wordFadeLevels[word];
+    if (f) idx.forEach(k => { if ((f[k] || 0) > 0) { f[k]--; any = true; } });
+    const c = state.wordTrialCounters[word]; if (c) c.successes = 0;
+  }
+  return any;
+}
 // Called whenever the expected letter changes, or after an error that restarts the wait
 function armPrompt(force) {
   clearPromptTimer();
+  try { missArm(); } catch (e) {}
   verbalSpokenFor = -1;
   // Once help has been asked for, the rest of the word keeps prompting, each
   // letter after its own short wait so there is a chance to try first
@@ -6265,6 +6324,7 @@ function playErrorPhrase() {
 let fadeStreak = 0, trialErrors = 0;
 function handleError(expectedLetter, typedLetter) {
   fadeStreak = 0; trialErrors++;
+  try { missNote('wrong key', typedLetter); } catch (e) {}
   if (state.fadeCount === 'letter' && expectedLetter) { state.letterStreak = state.letterStreak || {}; state.letterStreak[String(expectedLetter).toUpperCase()] = 0; }
   // 1. What the app says
   const gap = state.letterSpeech ? 450 : 0;
@@ -7590,6 +7650,14 @@ function leadFoldersNow() {
   const M = leadFoldersNow.map || {}, lw = homePhrase.slice().reverse().find(w => M[w]);
   return lw ? M[lw] : [];
 }
+// the folders that lead the grey row: those of the doing word ("go" -> places); with none, those that go with the
+// last word itself (a place -> people, places; a food -> food; a show -> tv, movies)
+function greyLeadNow() {
+  const lead = leadFoldersNow(); if (lead.length) return lead;
+  const lw = homePhrase[homePhrase.length - 1]; let k = ''; try { k = magicKind(lw); } catch (e) {}
+  const KF = { place: ['people', 'places'], food: ['food'], person: ['places', 'people', 'food', 'things'], watch: ['tv', 'movies', 'characters'], music: ['music', 'people'], book: ['books', 'characters'], game: ['games', 'things'] };
+  return KF[k] || [];
+}
 function relatedFolders(word) {
       // each doing word has the folders it most likely leads to, in order; the rest follow, and the unlikely ones go last
       // ("play" -> games, things, music, tv, movies ... and food at the very end)
@@ -7995,11 +8063,14 @@ function suggRender0() {
         const homeOf = w => stuff.find(c => (c.words || []).includes(w));
         const order = [];
         // the folders the doing word leads to come first ("go" -> places), then the rest
-        { const lead = leadFoldersNow(); lead.forEach(nm => { const c = stuff.find(x => String(x.name).trim().toLowerCase() === nm); if (c && !order.includes(c)) order.push(c); }); }
+        { const lead = greyLeadNow(); lead.forEach(nm => { const c = stuff.find(x => String(x.name).trim().toLowerCase() === nm); if (c && !order.includes(c)) order.push(c); }); }
+        // then the folders holding prioritised target words (the folder comes forward - its tiles are still the likely ones, with a target among them)
+        const prioW = live ? magicPrioWords() : [], prioSet = new Set(prioW);
+        if (prioW.length) stuff.forEach(c => { if (!order.includes(c) && (c.words || []).some(w => prioSet.has(w) && exists(w))) order.push(c); });
         ws.forEach(m => { const c = m.cat && stuff.includes(m.cat) ? m.cat : homeOf(m.phrase[m.phrase.length - 1]); if (c && !order.includes(c)) order.push(c); });
         relatedFolders(homePhrase[n - 1] || '').forEach(c => { if (stuff.includes(c) && !order.includes(c)) order.push(c); });
         stuff.forEach(c => { if (!order.includes(c)) order.push(c); });
-        const rule = magicRuleNow(), lead1 = leadFoldersNow()[0];
+        const rule = magicRuleNow(), lead1 = greyLeadNow()[0];
         order.forEach(c => {
           const shown = [];
           ((rule && rule.g) || []).forEach(gn => { const g = listGroups(c).find(x => !x.hidden && String(x.name || '').trim().toLowerCase() === gn); if (!g) return;
@@ -8009,6 +8080,8 @@ function suggRender0() {
             folders.push({ folder: c, group: g, phrase: homePhrase.concat(['▸' + c.id + '/' + g.id]), used: idx }); });
           const picks = ws.filter(m => (m.cat === c || homeOf(m.phrase[m.phrase.length - 1]) === c)).map(m => m.phrase[m.phrase.length - 1]);
           (c.words || []).slice().sort((x, y) => used(y) - used(x)).forEach(w => { if (!picks.includes(w)) picks.push(w); });
+          { const tw = picks.find(w => prioSet.has(w) && exists(w) && !shown.includes(w)) || (c.words || []).filter(w => prioSet.has(w) && exists(w) && !shown.includes(w)).sort((x, y) => used(y) - used(x))[0];
+            if (tw) { picks.splice(picks.indexOf(tw) >= 0 ? picks.indexOf(tw) : picks.length, picks.indexOf(tw) >= 0 ? 1 : 0); picks.splice(Math.min(1, picks.filter(w => exists(w) && !shown.includes(w)).length), 0, tw); } }      // (one target word in each folder: the likeliest word first, the target next)
           picks.filter(w => exists(w) && !shown.includes(w)).slice(0, String(c.name).trim().toLowerCase() === lead1 && !shown.length ? 4 : 2).forEach(w => folders.push({ phrase: homePhrase.concat([w]), used: idx, cat: c }));
           folders.push({ folder: c, group: null, phrase: homePhrase.concat(['▸' + c.id]), used: idx });
         });
@@ -8040,7 +8113,7 @@ function suggRender0() {
         green = bySc(green); cats = bySc(cats);
         // grey keeps each folder after its own words: whole runs move together, by their best word
         { const runs = []; let cur = []; folders.forEach(m => { cur.push(m); if (m.folder) { runs.push(cur); cur = []; } }); if (cur.length) runs.push(cur);
-          const lead = leadFoldersNow(), tier = r => { const f = r.find(m => m.folder); return f && lead.includes(String(f.folder.name).trim().toLowerCase()) ? 0 : 1; };
+          const lead = greyLeadNow(), tier = r => { const f = r.find(m => m.folder); return f && lead.includes(String(f.folder.name).trim().toLowerCase()) ? 0 : 1; };
           const rs = runs.map((r, i) => [Math.max(0, ...r.filter(m => !m.folder).map(m => coScore(lastOf(m)))), i, r, tier(r)]);
           if (rs.some(x => x[0] > 0)) folders = [].concat(...rs.sort((a, b) => a[3] - b[3] || b[0] - a[0] || a[1] - b[1]).map(x => x[2])); } }      // (the doing word's own folders stay first)
       // the word's own rule: its doing words first in green ("need" -> help, more), its describing words first in purple ("feel" -> feelings, "sit" -> down, now)
@@ -8059,7 +8132,7 @@ function suggRender0() {
           const bring = (list, test, mk) => { const front = []; pw.forEach(w => { if (homePhrase.includes(w) || !test(w)) return; const at = list.findIndex(m => !m.folder && lastOf(m) === w); front.push(at >= 0 ? list.splice(at, 1)[0] : mk(w)); }); return front.concat(list); };
           const kindOf = w => { try { return kindOfWord(w); } catch (e) { return ''; } };
           green = bring(green, w => kindOf(w) === 'action', w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i), act: true }));
-          if (!leadFoldersNow().length) folders = bring(folders, w => kindOf(w) !== 'action' && !isCategoryWord(w) && !isSmallWord(w), w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));      // (after go, eat, watch ... the grey row keeps to that word's own folders)
+          // (grey: the targets are not put first - their folders come forward instead, with one target among each folder's likely tiles)
           cats = bring(cats, w => isCategoryWord(w) && kindOf(w) !== 'action', w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) }));
         } }
       // the doing words that go with the last word come first in green: a show -> watch, play; a song -> listen, play;
@@ -10514,7 +10587,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
+  'endCfg', 'magicPrio', 'promptBack', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 function exportLayout() {
@@ -15584,6 +15657,11 @@ function renderSettings() {
   document.getElementById('toggleTargetSpeech').classList.toggle('on', state.targetSpeech);
   document.getElementById('toggleScore').classList.toggle('on', state.scoreMode);
   document.getElementById('toggleFade').classList.toggle('on', state.fadeMode);
+  { document.getElementById('togglePromptBack').classList.toggle('on', state.promptBack !== false);
+    const lg = (state.promptMissLog || []), ups = lg.filter(e => e.stepUp).length;
+    document.getElementById('promptBackNote').textContent = (state.promptBack !== false
+      ? 'For words on the targets page: a letter missed - no key within ' + (MISS_WAIT_MS / 1000) + ' seconds of its turn, or the wrong key - counts once. ' + MISS_LIMIT + ' misses on the same letter of a word (over any number of tries) bring that letter\'s prompt back up one step (colour, jiggle or magnifying come back, in reverse order of fading); ' + MISS_LIMIT + ' misses spread across the word bring the whole word back up one step.'
+      : 'Off: prompts only ever fade.') + (lg.length ? ' So far: ' + lg.length + ' misses noted, ' + ups + ' step' + (ups === 1 ? '' : 's') + ' back up.' : ''); }
   document.getElementById('toggleRotate').classList.toggle('on', state.rotateMode);
   document.getElementById('togglePromptText').classList.toggle('on', state.promptTextOn !== false);
   document.getElementById('togglePromptDelay').classList.toggle('on', state.promptDelaySec > 0);
@@ -15922,6 +16000,7 @@ document.getElementById('toggleEnterSpeech').addEventListener('click', () => { s
 document.getElementById('toggleTargetSpeech').addEventListener('click', () => { state.targetSpeech = !state.targetSpeech; save(); renderSettings(); });
 document.getElementById('toggleScore').addEventListener('click', () => { state.scoreMode = !state.scoreMode; save(); renderSettings(); });
 document.getElementById('toggleFade').addEventListener('click', () => { state.fadeMode = !state.fadeMode; save(); render(); renderSettings(); });
+document.getElementById('togglePromptBack').addEventListener('click', () => { state.promptBack = state.promptBack === false; save(); renderSettings(); });
 document.getElementById('toggleRotate').addEventListener('click', () => { state.rotateMode = !state.rotateMode; save(); renderSettings(); });
 document.getElementById('resetAll').addEventListener('click', () => {
   if (confirm('Reset all highlight colors? Hidden keys and phonemes will not change.')) {
