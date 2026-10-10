@@ -528,6 +528,12 @@
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: var(--surface); }
+  .mw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 12px; }
+  .mw-tile { position: relative; min-height: 64px; border: 2px solid var(--border); border-radius: 14px; background: #eef0f3; color: rgba(0,0,0,0.4); font-family: inherit; font-weight: 900; font-size: 17px; padding: 8px 10px 20px; cursor: pointer; text-align: center; }
+  .mw-tile.on { background: #fff; color: var(--ink); border-color: #cfe9d4; }
+  .mw-tile.folder::after { content: ''; position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #bfd8ff; }
+  .mw-tile .mw-m { position: absolute; left: 0; right: 0; bottom: 4px; font-size: 12px; font-weight: 800; color: var(--muted); }
+  .mw-tile.on .mw-m { color: var(--green); }
   .sort-to { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
   .sort-dest { border: 2px solid var(--border); background: var(--surface); border-radius: 14px; padding: 8px 14px; font-family: inherit; font-weight: 900; font-size: 16px; color: var(--ink); cursor: pointer; }
   .sort-dest.on { background: var(--green); border-color: var(--green); color: #fff; }
@@ -2569,9 +2575,9 @@
           <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
         </div>
 
-        <div class="sublabel">Magic suggestion rows</div>
+        <div class="sublabel">Magic mode</div>
         <div class="settings-list" id="bandSettings"></div>
-        <div class="help-note" style="margin:6px 4px 0">Each row of suggestions can be switched off, or given two rows of tiles instead of one. The small words row is switched off below.</div>
+        <div class="help-note" style="margin:6px 4px 0">Each row of suggestions can be switched off, or given two rows of tiles instead of one. The words magic can suggest can be chosen by tab, folder or single tile.</div>
 
         <div class="sublabel">Small words rows (every page)</div>
         <div class="settings-list">
@@ -2730,7 +2736,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 470 - 9 Oct';
+const BUILD = 'build 471 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3084,7 +3090,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
-        bandCfg: saved.bandCfg || null,
+        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false,
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -3666,7 +3672,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
-      bandCfg: state.bandCfg || null,
+      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false,
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -7496,8 +7502,72 @@ document.addEventListener('click', e => {      // the blue bar opening its row: 
 })();
 let suggFolder = null;
 const bandOpen = { fold: true, cat: true };      // every band opens with the message; each bar folds its own
+// ---- Magic settings: which words magic may suggest. Folders (and whole tabs) or single tiles can be switched off.
+function magicCatOff(c) { const off = state.magicOffCat || {}; let x = c, g = 0; while (x && g++ < 20) { if (off[x.id]) return true; x = x.parent ? catById(x.parent) : null; } return false; }
+function magicAllowed(w) {
+  if ((state.magicOffWord || {})[w]) return false;
+  const cs = categoriesOf(w).filter(c => !c.target);
+  return !cs.length || cs.some(c => !magicCatOff(c));
+}
+function openMagicWords(focusId) {
+  state.magicOffCat = state.magicOffCat || {}; state.magicOffWord = state.magicOffWord || {};
+  const kids = id => state.categories.filter(c => (c.parent || null) === id && !c.target && !c.smallSec).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const toggleCat = c => { if (state.magicOffCat[c.id]) delete state.magicOffCat[c.id]; else state.magicOffCat[c.id] = true; save(); };
+  const tile = (label, on, some, fn, cls) => {
+    const b = document.createElement('button'); b.className = 'mw-tile' + (on ? ' on' : '') + (some ? ' some' : '') + (cls ? ' ' + cls : '');
+    const t = document.createElement('span'); t.className = 'mw-l'; t.textContent = label; b.appendChild(t);
+    const m = document.createElement('span'); m.className = 'mw-m'; m.textContent = on ? (some ? 'some' : '\u2713') : 'off'; b.appendChild(m);
+    b.addEventListener('click', fn); return b;
+  };
+  if (focusId) {      // one folder: its own switch, and every tile in it
+    const c = catById(focusId);
+    openWordSheet(body => {
+      sheetTitle(body, 'Magic words: ' + c.name);
+      const sw = sheetSwitch('Magic can suggest from ' + c.name, !magicCatOff(c), () => { toggleCat(c); setTimeout(() => openMagicWords(c.id), 10); });
+      body.appendChild(sw);
+      const subs = kids(c.id);
+      const grid = document.createElement('div'); grid.className = 'mw-grid';
+      subs.forEach(f => grid.appendChild(tile(f.name, !magicCatOff(f), false, () => openMagicWords(f.id), 'folder')));
+      const ws = (c.words || []).filter(w => !isPunct(w)).slice().sort(byLabel);
+      ws.forEach(w => grid.appendChild(tile(plainLabel(w), magicAllowed(w) && !magicCatOff(c), false, () => {
+        if (state.magicOffWord[w]) delete state.magicOffWord[w]; else state.magicOffWord[w] = true; save(); openMagicWords(c.id);
+      })));
+      body.appendChild(grid);
+      const all = document.createElement('div'); all.className = 'sort-bar';
+      const mb = (t, fn) => { const b = document.createElement('button'); b.className = 'sort-mini'; b.textContent = t; b.addEventListener('click', () => { fn(); save(); openMagicWords(c.id); }); all.appendChild(b); };
+      mb('All tiles on', () => ws.forEach(w => delete state.magicOffWord[w]));
+      mb('All tiles off', () => ws.forEach(w => { state.magicOffWord[w] = true; }));
+      body.insertBefore(all, grid);
+      body.appendChild(sheetBtn('\u2039  Back to all tabs', '', () => openMagicWords(c.parent || null)));
+      body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); suggRefresh(); }));
+    });
+    return;
+  }
+  openWordSheet(body => {
+    sheetTitle(body, 'Words magic can suggest');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 8px';
+    n.textContent = 'Each tab of the menu, with its folders as tiles. Tap a folder to switch it on or off, or to choose single tiles inside it.';
+    body.appendChild(n);
+    const box = document.createElement('div'); box.style.maxHeight = '56vh'; box.style.overflowY = 'auto';
+    kids(null).forEach(tab => {
+      const h = document.createElement('div'); h.className = 'help-note pick-head sort-head';
+      const t = document.createElement('span'); t.textContent = tab.name; h.appendChild(t);
+      const tg = document.createElement('button'); tg.className = 'sort-mini'; tg.textContent = magicCatOff(tab) ? 'turn on' : 'turn off';
+      tg.addEventListener('click', () => { toggleCat(tab); openMagicWords(null); }); h.appendChild(tg);
+      box.appendChild(h);
+      const grid = document.createElement('div'); grid.className = 'mw-grid';
+      const subs = kids(tab.id);
+      if ((tab.words || []).length) grid.appendChild(tile('words in ' + tab.name, !magicCatOff(tab), (tab.words || []).some(w => (state.magicOffWord || {})[w]), () => openMagicWords(tab.id)));
+      subs.forEach(f => grid.appendChild(tile(f.name, !magicCatOff(f), (f.words || []).some(w => (state.magicOffWord || {})[w]), () => openMagicWords(f.id), 'folder')));
+      box.appendChild(grid);
+    });
+    body.appendChild(box);
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); suggRefresh(); }));
+  });
+}
+function suggRefresh() { try { const h = document.getElementById('suggHost'); if (h) h.dataset.sig = ''; suggRender(); renderSettings(); } catch (e) {} }
 function bandCfg() {
-  const d = { green: { on: true, rows: 1 }, grey: { on: true, rows: 1 }, cat: { on: true, rows: 1 } }, c = state.bandCfg || {};
+  const d = { green: { on: true, rows: 1 }, grey: { on: true, rows: 1 }, cat: { on: true, rows: 1 }, small: { on: true, rows: 1 } }, c = state.bandCfg || {};
   Object.keys(d).forEach(k => { if (c[k]) d[k] = { on: c[k].on !== false, rows: c[k].rows === 2 ? 2 : 1 }; });
   return d;
 }
@@ -7645,6 +7715,13 @@ function suggRender0() {
     } catch (e) { green = []; folders = []; cats = []; }
     const cfg = bandCfg();
     if (!cfg.green.on) green = []; if (!cfg.grey.on) folders = []; if (!cfg.cat.on) cats = [];
+    // the words magic may suggest, as chosen in its settings (whole folders or single tiles switched off)
+    { const ok = m => m.folder ? !magicCatOff(m.folder) : magicAllowed(m.phrase[m.phrase.length - 1]);
+      green = green.filter(ok); folders = folders.filter(ok); cats = cats.filter(ok);
+      // (folders left with no tiles of their own before them stay - they still open their words)
+      // doing words straight after a title or thing ("Free" -> play) only if that is switched on
+      if (state.magicActAfterThing === false && homePhrase.length) { const lw = homePhrase[homePhrase.length - 1]; let k = ''; try { k = magicKind(lw); } catch (e) {} let k2 = ''; try { k2 = kindOfWord(lw); } catch (e) {}
+        if (['food', 'drink', 'thing', 'things', 'music', 'watch', 'book', 'game', 'person', 'place'].includes(k) || k2 === 'title') green = green.filter(m => m.lead); } }
     const all = green.length + folders.length + cats.length;
     { const lk = grid.querySelector('.home-card'), lh = lk && lk.querySelector('.hw');
       if (lk && lk.offsetHeight > 0) { bandLike.h = lk.offsetHeight; bandLike.fs = (lh && parseFloat(lh.style.fontSize)) || bandLike.fs; } }
@@ -7710,7 +7787,7 @@ function suggRender0() {
     band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
     band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows);
     // last, the blue small words: the fourth band, at the bottom of the scroll (verb, then thing, then describing, then the little words)
-    { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
+    if (cfg.small.on) { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
 // (whenever the page's tiles are redrawn, the suggestion tiles go back in)
@@ -14831,7 +14908,7 @@ function renderSettings() {
   document.getElementById('togglePlural').classList.toggle('on', state.pluralChip !== false);
   document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
   { const box = document.getElementById('bandSettings'), cfg = bandCfg(); box.innerHTML = '';
-    [['green', 'Doing words (green)'], ['grey', 'Things and folders (grey)'], ['cat', 'Describing and category words (purple)']].forEach(([k, name]) => {
+    [['green', 'Doing words (green)'], ['grey', 'Things and folders (grey)'], ['cat', 'Describing and category words (purple)'], ['small', 'Small words (blue)']].forEach(([k, name]) => {
       const row = document.createElement('div'); row.className = 'setting-row';
       const lab = document.createElement('span'); lab.textContent = name; row.appendChild(lab);
       const right = document.createElement('div'); right.style.cssText = 'display:flex;align-items:center;gap:10px';
@@ -14840,8 +14917,17 @@ function renderSettings() {
       rows.addEventListener('click', () => { const c = bandCfg(); c[k].rows = c[k].rows === 2 ? 1 : 2; state.bandCfg = c; save(); renderSettings(); });
       const tg = document.createElement('div'); tg.className = 'toggle' + (cfg[k].on ? ' on' : '');
       tg.addEventListener('click', () => { const c = bandCfg(); c[k].on = !c[k].on; state.bandCfg = c; save(); renderSettings(); });
-      right.appendChild(rows); right.appendChild(tg); row.appendChild(right); box.appendChild(row);
-    }); }
+      if (k !== 'small') right.appendChild(rows); right.appendChild(tg); row.appendChild(right); box.appendChild(row);
+    });
+    { const row = document.createElement('div'); row.className = 'setting-row';
+      const lab = document.createElement('span'); lab.textContent = 'Doing words right after a title or thing (e.g. play after Free)'; row.appendChild(lab);
+      const tg = document.createElement('div'); tg.className = 'toggle' + (state.magicActAfterThing !== false ? ' on' : '');
+      tg.addEventListener('click', () => { state.magicActAfterThing = state.magicActAfterThing === false; save(); renderSettings(); suggRefresh(); });
+      row.appendChild(tg); box.appendChild(row); }
+    { const b = document.createElement('button'); b.className = 'mbtn action'; b.style.cssText = 'width:100%;margin-top:8px';
+      const offN = Object.keys(state.magicOffCat || {}).length + Object.keys(state.magicOffWord || {}).length;
+      b.textContent = 'Choose the words magic can suggest' + (offN ? ' (' + offN + ' off)' : '');
+      b.addEventListener('click', () => openMagicWords(null)); box.appendChild(b); } }
   document.getElementById('toggleSmallFold').classList.toggle('on', state.smallRowsFold !== false);
   document.getElementById('smallMaxN').textContent = state.smallRowMax || 3;
 
