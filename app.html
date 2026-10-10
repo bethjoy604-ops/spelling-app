@@ -1369,7 +1369,23 @@
   .home-row:not(.icons-open) #homeSettingsBtn, .home-row:not(.icons-open) #homeTargetBtn,
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
   .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn,
-  .home-row:not(.icons-open) #homeMagicBtn, .home-row:not(.icons-open) #homeIconsClose { display: none !important; }
+  .home-row:not(.icons-open) #homeMagicBtn, .home-row:not(.icons-open) #homePicBtn, .home-row:not(.icons-open) #homeIconsClose { display: none !important; }
+  #homePicBtn.off { filter: grayscale(1); opacity: 0.4; }
+  /* ---- Picture writing ---- */
+  /* tiles with a picture show the picture; tiles still without one are faded, with a small camera to add it */
+  .home-card.pic-tile { padding: 6px !important; overflow: hidden; }
+  .home-card.pic-tile > .hw, .home-card.pic-tile > *:not(.pic-img):not(.dot):not(.tile-dot) { visibility: hidden; position: absolute; }
+  .home-card.pic-tile .pic-img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; pointer-events: none; }
+  .home-card.no-pic { opacity: 0.5; }
+  .home-card.no-pic::before { content: '\1F4F7 +'; position: absolute; top: 8px; right: 12px; font-size: 16px; font-weight: 800; color: rgba(0,0,0,0.5); }
+  /* the writing page: a big picture like the drawing square of a school book, the word written on lines under it */
+  .pic-box { display: none; }
+  .view-keyboard.pic-on .pic-box { display: flex; flex: 2.6 1 0; min-height: 0; align-items: center; justify-content: center; background: #fff; border-radius: 22px; box-shadow: var(--shadow); padding: 14px; border: 3px solid #e3e5ea; }
+  .view-keyboard.pic-on .pic-box img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 14px; }
+  .view-keyboard.pic-on #targetBanner.active { min-height: 0 !important; flex: 0 0 auto; --tile: min(clamp(48px, 9vh, 96px), calc((100vw - 220px) / (var(--n, 6) * 1.85))) !important;
+    background-color: #fff; background-image: linear-gradient(to bottom, transparent calc(78% - 2px), #8fb3e8 calc(78% - 2px), #8fb3e8 78%, transparent 78%), repeating-linear-gradient(to right, #c9d6ea 0 14px, transparent 14px 26px);
+    background-size: 100% 100%, 100% 2px; background-position: 0 0, 0 42%; background-repeat: no-repeat; }
+  .view-keyboard.pic-on .keyboard { flex: 3.4 1 0 !important; }
   #homeMagicBtn.off { filter: grayscale(1); opacity: 0.4; }
   #homeIconsClose { font-size: 40px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.55); background: rgba(255,255,255,0.5); box-shadow: none; padding-bottom: 4px; }
   /* the close × does the + button's job while the pop-out is open */
@@ -2071,6 +2087,7 @@
     <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
     <button class="ctl icon" id="homeMagicBtn" aria-label="Magic suggestions" aria-pressed="true">&#129668;</button>
+    <button class="ctl icon" id="homePicBtn" aria-label="Picture writing" aria-pressed="false">&#128444;&#65039;</button>
     <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon" id="homeIconsClose" aria-label="Close the switches">&times;</button>
     <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#128736;&#65039;</button>
@@ -2112,6 +2129,7 @@
 
 <!-- ===== KEYBOARD ===== -->
 <div class="view view-keyboard" id="viewKeyboard">
+  <div class="pic-box" id="picBox" aria-label="The picture to write about"></div>
   <div class="target-banner" id="targetBanner">
     <div class="target-word" id="targetWord"></div>
     <button class="target-clear" id="targetClearBtn" title="Clear target">×</button>
@@ -2822,7 +2840,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 503 - 10 Oct';
+const BUILD = 'build 504 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3030,7 +3048,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, picMode: false, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3180,7 +3198,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true, promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true, picMode: !!saved.picMode, promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -3790,7 +3808,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, picMode: !!state.picMode, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -5171,6 +5189,7 @@ function spokenText(text) {
 
 let kbSearch = false, searchPrefix = '';
 function setView(name) {
+  if (name !== 'keyboard' && typeof picSession !== 'undefined' && picSession) { picSession = null; const vk = document.getElementById('viewKeyboard'); if (vk) vk.classList.remove('pic-on'); }
   // the update prompt belongs to the opening screen and nowhere else
   if (name !== 'splash' && name !== 'setup' && typeof hideUpdateBar === 'function') hideUpdateBar();
   ['splash', 'setup', 'home', 'keyboard', 'chat'].forEach(v => {
@@ -6432,14 +6451,15 @@ function trialData() {
   return d;
 }
 function goHomeNow(word) {
-  if (!state.homeEnabled || state.currentTarget !== word || state.text) return;
+  if ((!state.homeEnabled && !picSession) || state.currentTarget !== word || state.text) return;
   state.currentTarget = null; state.phraseWords = []; state.targetIndex = 0; state.targetProgress = []; state.targetPromptedFlags = [];
   clearPromptTimer(); promptVisible = true;
   save(); render();
+  if (picSession) { picNext(); return; }      // picture writing: on to the next picture
   showHome();
 }
 function goHomeAfter(word, wordCount) {
-  if (!state.homeEnabled) return;
+  if (!state.homeEnabled && !picSession) return;
   if (document.getElementById('readBack')) return;      // the read-back screen goes straight to the home page when it is done
   setTimeout(() => {
     if (state.currentTarget !== word || state.text) return;
@@ -6450,6 +6470,7 @@ function goHomeAfter(word, wordCount) {
     state.targetPromptedFlags = [];
     clearPromptTimer(); promptVisible = true;
     save(); render();
+    if (picSession) { picNext(); return; }      // picture writing: on to the next picture
     showHome();
   }, HOME_AFTER_WORD_MS + Math.max(0, (wordCount || 1) - 1) * 800);   // a phrase takes longer to read out
 }
@@ -9741,6 +9762,7 @@ function renderHome(reset) {
     document.querySelector('.home-row').classList.toggle('tools', !!state.iconsOpen);     // the tabs sit closer while the pop-out is open
     document.querySelector('.home-row').classList.toggle('icons-open', !!state.iconsOpen);
     { const mb = document.getElementById('homeMagicBtn'); mb.classList.toggle('off', !state.magicType); mb.setAttribute('aria-pressed', state.magicType ? 'true' : 'false'); }
+    { const pb = document.getElementById('homePicBtn'); if (pb) { pb.classList.toggle('off', !state.picMode); pb.setAttribute('aria-pressed', state.picMode ? 'true' : 'false'); } }
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
     { const it = document.getElementById('homeIconsToggle'); it.textContent = '\uD83D\uDEE0\uFE0F'; it.style.display = (!state.builderMode && homePath.length && Date.now() >= menuPeekUntil && !state.iconsOpen) ? 'none' : ''; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
     document.getElementById('railToggle').style.display = '';
@@ -10778,7 +10800,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
+  'endCfg', 'magicPrio', 'promptBack', 'picMode', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 function exportLayout() {
@@ -14610,6 +14632,7 @@ function openWordActions(word, cat, extra) {
       const nb = newListBtn(word);
       if (nb) body.appendChild(nb);
       body.appendChild(smallWordBtn(word));
+      picMenuBtns(body, word);
       body.appendChild(sheetBtn(filed ? 'Remove from ' + page : 'Delete this word', 'danger', () => poofWord(word)));
       body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
       const n = document.createElement('div');
@@ -14629,6 +14652,7 @@ function openWordActions(word, cat, extra) {
     const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
+    picMenuBtns(body, word);
     if (hasSmallStrip(cat) && !cat.smallSec) pairBtns(body, word, cat);
     if (!cat.smallSec && !cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; closeWordSheet(); renderHome(true); }));
     deleteWordBtns(body, word, cat);
@@ -14881,6 +14905,95 @@ document.getElementById('homeIconsClose').addEventListener('click', e => { e.sto
     if ((Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) || (-dy > 40 && -dy > Math.abs(dx) * 1.5)) { on = false; closeIconsNow(); } }, { passive: true });
   row.addEventListener('touchend', () => { on = false; }, { passive: true }); }
 // the wand: magic suggestions on or off, the same switch as in settings
+// ===== Picture writing =====
+// A word in the library can be given a picture (from the iPad's photos or camera). With picture writing switched on,
+// tiles with a picture show it (the ones without are faded with a small camera), and tapping one opens the writing
+// page: the picture large, the word written on lines under it with the keyboard and the usual prompting.
+// The pictures are kept on this device (not in the layout file).
+const picURL = {};      // word -> a picture's address, for showing it
+let picSession = null, picDone = [];
+function picDB() { return new Promise((res, rej) => { const r = indexedDB.open('kbd-pictures', 1); r.onupgradeneeded = () => r.result.createObjectStore('pics'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function picLoadAll() {
+  try { const db = await picDB(); const tx = db.transaction('pics', 'readonly'), st = tx.objectStore('pics');
+    const req = st.openCursor(); req.onsuccess = () => { const c = req.result; if (!c) { picDecorate(); return; } try { picURL[c.key] = URL.createObjectURL(c.value); } catch (e) {} c.continue(); }; } catch (e) {}
+}
+async function picStore(word, blob) {
+  const db = await picDB(); await new Promise((res, rej) => { const tx = db.transaction('pics', 'readwrite'); blob ? tx.objectStore('pics').put(blob, word) : tx.objectStore('pics').delete(word); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  if (picURL[word]) { try { URL.revokeObjectURL(picURL[word]); } catch (e) {} delete picURL[word]; }
+  if (blob) picURL[word] = URL.createObjectURL(blob);
+}
+// a photo chosen: made smaller (it only needs to fill the picture square) and kept
+function picChoose(word, done) {
+  let inp = document.getElementById('picFile');
+  if (!inp) { inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.id = 'picFile'; inp.style.display = 'none'; document.body.appendChild(inp); }
+  inp.value = '';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    const img = new Image(), u = URL.createObjectURL(f);
+    img.onload = () => {
+      const M = 900, k = Math.min(1, M / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(u);
+      cv.toBlob(async b => { try { await picStore(word, b || f); } catch (e) { alert('The picture could not be saved: ' + e.message); return; } buzz(10); picDecorate(true); if (done) done(); }, 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); alert('That file is not a picture this iPad can open.'); };
+    img.src = u;
+  };
+  inp.click();
+}
+function picMenuBtns(body, word) {
+  const has = !!picURL[word];
+  body.appendChild(sheetBtn(has ? '\uD83D\uDCF7  Change the picture' : '\uD83D\uDCF7  Add a picture (picture writing)', '', () => { closeWordSheet(); picChoose(word); }));
+  if (has) body.appendChild(sheetBtn('Remove the picture', '', async () => { await picStore(word, null); closeWordSheet(); picDecorate(true); }));
+}
+// the tiles on the page: a picture for those that have one, faded with a camera for those that do not
+function picDecorate(force) {
+  const grid = document.getElementById('homeGrid'); if (!grid) return;
+  const on = !!state.picMode && !state.builderMode;
+  grid.querySelectorAll('.home-card[data-word]').forEach(card => {
+    const w = card.dataset.word, u = on && picURL[w];
+    let im = card.querySelector(':scope > .pic-img');
+    if (u) { if (!im) { im = document.createElement('img'); im.className = 'pic-img'; im.alt = w; card.appendChild(im); } if (im.getAttribute('src') !== u) im.src = u; }
+    else if (im) im.remove();
+    card.classList.toggle('pic-tile', !!u);
+    card.classList.toggle('no-pic', on && !u && !isSmallWord(w) && !isPunct(w));
+  });
+}
+{ let t = null; new MutationObserver(() => { cancelAnimationFrame(t); t = requestAnimationFrame(() => picDecorate()); }).observe(document.getElementById('homeGrid'), { childList: true, subtree: true }); }
+// with picture writing on, a tap on a tile with a picture opens its writing page; on one without, adds a picture
+document.getElementById('homeGrid').addEventListener('click', e => {
+  if (!state.picMode || state.builderMode) return;
+  const card = e.target.closest && e.target.closest('.home-card[data-word]');
+  if (!card || card.classList.contains('folder-card')) return;
+  const w = card.dataset.word; if (isSmallWord(w) || isPunct(w)) return;
+  e.stopPropagation(); e.preventDefault();
+  if (picURL[w]) picPractice(w); else picChoose(w);
+}, true);
+function picWords() { return state.words.filter(w => picURL[w] && !state.hiddenWords[w]); }
+function picPractice(word) {
+  picSession = { word }; picDone = picDone.filter(x => x !== word).concat([word]).slice(-50);
+  const box = document.getElementById('picBox'); box.innerHTML = '';
+  const im = document.createElement('img'); im.src = picURL[word]; im.alt = ''; box.appendChild(im);
+  box.onclick = () => { try { warmSpeech(); speakWord(word, 0.9); } catch (e) {} };      // (a tap on the picture says the word)
+  homePhrase = []; try { renderPhraseBar(); } catch (e) {}
+  showKeyboard();
+  document.getElementById('viewKeyboard').classList.add('pic-on');
+  selectTargetWord(word, false);
+}
+// the next picture: one not written for a while
+function picNext() {
+  const ws = picWords(); if (!ws.length) { picSession = null; showHome(); return; }
+  const fresh = ws.filter(w => !picDone.includes(w));
+  const pool = fresh.length ? fresh : ws.filter(w => w !== (picSession && picSession.word));
+  const w = (pool.length ? pool : ws)[Math.floor(Math.random() * (pool.length ? pool : ws).length)];
+  if (!fresh.length) picDone = [];
+  picPractice(w);
+}
+document.getElementById('homePicBtn').addEventListener('click', () => {
+  state.picMode = !state.picMode; buzz(10); save(); renderHome(true); picDecorate(true);
+  { const b = document.getElementById('homePicBtn'); b.classList.toggle('off', !state.picMode); b.setAttribute('aria-pressed', state.picMode ? 'true' : 'false'); }
+});
+setTimeout(picLoadAll, 300);
 document.getElementById('homeMagicBtn').addEventListener('click', () => {
   state.magicType = !state.magicType; buzz(10);
   magicSkipped = null; suggFolder = null;
