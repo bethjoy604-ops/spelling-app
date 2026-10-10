@@ -1527,6 +1527,7 @@
   .mbtn.danger { background: var(--red-soft); color: #c0392b; }
   .mbtn.primary { background: var(--ink); color: white; }
   /* the lighter edit menus */
+  #wordSheet { z-index: 70; }      /* a menu opened from settings comes up over it */
   #wordSheetBody > .mbtn.action { padding: 11px 12px; font-size: 15px; margin-top: 6px !important; }
   #wordSheetBody > .mbtn.confirm { background: var(--green); color: #fff; padding: 14px; font-size: 16px; margin-top: 12px !important; }
   #wordSheetBody > .mbtn.cancel { background: none; color: var(--muted); padding: 10px; }
@@ -2441,13 +2442,19 @@
         <div class="settings-list">
           <div class="setting-row"><span>Collect data (prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
         </div>
-        <div class="sublabel">Record which prompts were in use</div>
+        <div class="sublabel" style="font-size:15px;color:var(--ink)">Stimulus prompts (record which were in use)</div>
+        <div class="sublabel">On the keyboard</div>
         <div class="settings-list">
-          <div class="setting-row"><span>Textual model (the written word above the keyboard)</span><div class="toggle on" data-dc="textual"></div></div>
-          <div class="setting-row"><span>Verbal prompts (saying the letter to type next)</span><div class="toggle on" data-dc="verbal"></div></div>
-          <div class="setting-row"><span>Visual: highlight and its intensity</span><div class="toggle on" data-dc="highlight"></div></div>
-          <div class="setting-row"><span>Visual: magnifying</span><div class="toggle on" data-dc="magnify"></div></div>
-          <div class="setting-row"><span>Visual: pulsing / movement</span><div class="toggle on" data-dc="movement"></div></div>
+          <div class="setting-row"><span>Highlight: the key coloured, and how strongly</span><div class="toggle on" data-dc="highlight"></div></div>
+          <div class="setting-row"><span>Magnifying: the key made bigger</span><div class="toggle on" data-dc="magnify"></div></div>
+          <div class="setting-row"><span>Pulsing / movement of the key</span><div class="toggle on" data-dc="movement"></div></div>
+          <div class="setting-row"><span>Verbal: saying the letter to type next</span><div class="toggle on" data-dc="verbal"></div></div>
+        </div>
+        <div class="sublabel">In the text model (the target word in the bar)</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Textual model: the written word shown</span><div class="toggle on" data-dc="textual"></div></div>
+          <div class="setting-row"><span>Highlight: the next letter coloured</span><div class="toggle on" data-dc="tilecolor"></div></div>
+          <div class="setting-row"><span>Magnifying: the next letter made bigger</span><div class="toggle on" data-dc="tilemag"></div></div>
         </div>
         <div class="sublabel">Record error corrections and delays</div>
         <div class="settings-list">
@@ -2561,6 +2568,30 @@
     </div>
 
     <!-- ============ KEYS & BEHAVIOR ============ -->
+    <div class="sgroup" data-group="magic">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#10024;</span>
+        <span class="sg-title">Magic mode</span>
+        <span class="sg-sum" id="sumMagic"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sublabel" style="margin-top:0">Magic on or off</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>&#10024; Magic suggestions after each tile</span><div class="toggle on" id="toggleMagic"></div></div>
+        </div>
+        <div id="bandSettings"></div>
+        <div class="sublabel">In the message bar</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Ending buttons beside a word</span><div class="toggle on" id="togglePlural"></div></div>
+          <div class="setting-row"><span>Word order help (park + go offers "go park")</span><div class="toggle on" id="toggleSeq"></div></div>
+        </div>
+        <div class="sublabel">Which endings are offered</div>
+        <div class="settings-list" id="endingSettings"></div>
+        <div class="help-note" style="margin:6px 4px 0">Either one is only offered: tap it to take it, or tap the word itself to keep it as it is.</div>
+      </div>
+    </div>
+
     <div class="sgroup" data-group="keys">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">⌨️</span>
@@ -2574,14 +2605,10 @@
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
           <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
           <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
-          <div class="setting-row"><span>&#10024; Magic type (phrase suggestions)</span><div class="toggle on" id="toggleMagic"></div></div>
-          <div class="setting-row"><span>Ending buttons beside a word in the message (+s, +ing, +ed)</span><div class="toggle on" id="togglePlural"></div></div>
           <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
         </div>
 
-        <div class="sublabel">Magic mode</div>
-        <div class="settings-list" id="bandSettings"></div>
-        <div class="help-note" style="margin:6px 4px 0">Each row of suggestions can be switched off, or given two rows of tiles instead of one. The words magic can suggest can be chosen by tab, folder or single tile.</div>
+
 
         <div class="sublabel">Small words rows (every page)</div>
         <div class="settings-list">
@@ -2740,7 +2767,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 474 - 10 Oct';
+const BUILD = 'build 475 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3094,7 +3121,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
-        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false,
+        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null,
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true,
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -3676,7 +3703,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
-      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false,
+      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null,
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true,
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -6123,9 +6150,11 @@ function trialData() {
   if (dcOn('textual') && state.promptTextOn !== false) pr.push('text');
   if (dcOn('verbal') && state.promptVerbalOn) pr.push('voice');
   if (dcOn('highlight') && state.promptColorOn) pr.push('highlight (' + (state.promptIntensity || 'medium') + ')');
-  if (dcOn('magnify') && (state.promptSizeOn || state.promptTileOn)) pr.push('magnify');
+  if (dcOn('magnify') && state.promptSizeOn) pr.push('magnify key');
+  if (dcOn('tilecolor') && state.promptColorOn) pr.push('highlight in text');
+  if (dcOn('tilemag') && state.promptTileOn) pr.push('magnify in text');
   if (dcOn('movement') && state.promptPulseOn) pr.push('pulse');
-  if (pr.length || ['textual', 'verbal', 'highlight', 'magnify', 'movement'].some(dcOn)) d.prompts = pr;
+  if (pr.length || ['textual', 'verbal', 'highlight', 'magnify', 'movement', 'tilecolor', 'tilemag'].some(dcOn)) d.prompts = pr;
   if (dcOn('errors')) d.errors = trialErrors;
   if (dcOn('delay')) { d.delaySec = state.promptDelaySec || 0; d.afterDelay = state.promptDelaySec > 0 ? state.targetPromptedFlags.filter(p => p).length : 0; }
   return d;
@@ -8140,6 +8169,7 @@ function endingChip(box, i, w, to, label) {
   });
   box.appendChild(b);
 }
+function endCfg() { const d = { plural: true, s: true, ing: true, ed: true }, c = state.endCfg || {}; Object.keys(d).forEach(k => { if (k in c) d[k] = !!c[k]; }); return d; }
 let chipsKept = '';      // the message as it was when a word in it was tapped: its options are put away
 function pluralChip(box) {
   if (state.builderMode || !homePhrase.length || chipsKept === homePhrase.join(' ')) return;
@@ -8152,8 +8182,9 @@ function pluralChip(box) {
   if (state.pluralChip === false) return;
   const i = homePhrase.length - 1, w = homePhrase[i];
   if (verbable(w)) {
+    const E = endCfg();
     verbForms(w).forEach(([suf, to]) => {
-      if (to === w) return;
+      if (to === w || !E[suf]) return;
       let label;
       if (suf === 'ing') label = '+ing';
       else if (suf === 'ed') label = PAST_ODD[w] ? to.toLowerCase() : '+ed';
@@ -8162,7 +8193,7 @@ function pluralChip(box) {
     });
     return;
   }
-  if (!pluralable(w)) return;
+  if (!pluralable(w) || !endCfg().plural) return;
   const pl = pluralOf(w);
   let p = 0; while (p < w.length && w[p] === pl[p]) p++;
   endingChip(box, i, w, pl, p >= w.length - 1 ? '+' + pl.slice(p).toLowerCase() : pl.toLowerCase());      // just the ending, unless the word changes more than that
@@ -15017,31 +15048,48 @@ function renderSettings() {
   document.getElementById('togglePlural').classList.toggle('on', state.pluralChip !== false);
   document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
   { const box = document.getElementById('bandSettings'), cfg = bandCfg(); box.innerHTML = '';
-    [['green', 'Doing words (green)'], ['grey', 'Things and folders (grey)'], ['cat', 'Describing and category words (purple)'], ['small', 'Small words (blue)']].forEach(([k, name]) => {
+    const sub = t => { const d = document.createElement('div'); d.className = 'sublabel'; d.textContent = t; box.appendChild(d); };
+    const list = () => { const d = document.createElement('div'); d.className = 'settings-list'; box.appendChild(d); return d; };
+    const sw = (host, label, on, flip, extra) => {
       const row = document.createElement('div'); row.className = 'setting-row';
-      const lab = document.createElement('span'); lab.textContent = name; row.appendChild(lab);
-      const right = document.createElement('div'); right.style.cssText = 'display:flex;align-items:center;gap:10px';
-      const rows = document.createElement('button'); rows.className = 'mini-btn'; rows.textContent = cfg[k].rows === 2 ? '2 rows' : '1 row';
-      rows.style.cssText = 'border:none;border-radius:10px;padding:6px 12px;font:inherit;font-weight:700;background:var(--bg);cursor:pointer';
-      rows.addEventListener('click', () => { const c = bandCfg(); c[k].rows = c[k].rows === 2 ? 1 : 2; state.bandCfg = c; save(); renderSettings(); });
-      const tg = document.createElement('div'); tg.className = 'toggle' + (cfg[k].on ? ' on' : '');
-      tg.addEventListener('click', () => { const c = bandCfg(); c[k].on = !c[k].on; state.bandCfg = c; save(); renderSettings(); });
-      if (k !== 'small') right.appendChild(rows); right.appendChild(tg); row.appendChild(right); box.appendChild(row);
+      const lab = document.createElement('span'); lab.textContent = label; row.appendChild(lab);
+      const right = document.createElement('div'); right.style.cssText = 'display:flex;align-items:center;gap:10px;flex:none';
+      if (extra) right.appendChild(extra);
+      const tg = document.createElement('div'); tg.className = 'toggle' + (on ? ' on' : '');
+      tg.addEventListener('click', () => { flip(); save(); renderSettings(); suggRefresh(); });
+      right.appendChild(tg); row.appendChild(right); host.appendChild(row);
+    };
+    sub('Which kinds of words magic shows');
+    const l1 = list();
+    [['green', 'Doing words', 'green'], ['grey', 'My Stuff: things and folders', 'grey'], ['cat', 'Describing and category words', 'purple'], ['small', 'Small words', 'blue']].forEach(([k, name, col]) => {
+      let extra = null;
+      if (k !== 'small') {
+        extra = document.createElement('button'); extra.textContent = cfg[k].rows === 2 ? '2 rows' : '1 row';
+        extra.style.cssText = 'border:none;border-radius:10px;padding:6px 12px;font:inherit;font-weight:800;font-size:14px;background:var(--bg);cursor:pointer;white-space:nowrap';
+        extra.addEventListener('click', () => { const c = bandCfg(); c[k].rows = c[k].rows === 2 ? 1 : 2; state.bandCfg = c; save(); renderSettings(); });
+      }
+      sw(l1, name + ' (' + col + ')', cfg[k].on, () => { const c = bandCfg(); c[k].on = !c[k].on; state.bandCfg = c; }, extra);
     });
-    { const row = document.createElement('div'); row.className = 'setting-row';
-      const lab = document.createElement('span'); lab.textContent = 'Doing words right after a title or thing (e.g. play after Free)'; row.appendChild(lab);
-      const tg = document.createElement('div'); tg.className = 'toggle' + (state.magicActAfterThing !== false ? ' on' : '');
-      tg.addEventListener('click', () => { state.magicActAfterThing = state.magicActAfterThing === false; save(); renderSettings(); suggRefresh(); });
-      row.appendChild(tg); box.appendChild(row); }
-    { const row = document.createElement('div'); row.className = 'setting-row';
-      const lab = document.createElement('span'); lab.textContent = 'Word order help (park + go offers "go park")'; row.appendChild(lab);
-      const tg = document.createElement('div'); tg.className = 'toggle' + (state.seqOn !== false ? ' on' : '');
-      tg.addEventListener('click', () => { state.seqOn = state.seqOn === false; save(); renderSettings(); });
-      row.appendChild(tg); box.appendChild(row); }
-    { const b = document.createElement('button'); b.className = 'mbtn action'; b.style.cssText = 'width:100%;margin-top:8px';
+    sub('Rules');
+    const l2 = list();
+    sw(l2, 'Doing words right after a title or thing (play after Free)', state.magicActAfterThing !== false, () => { state.magicActAfterThing = state.magicActAfterThing === false; });
+    sub('Words magic can suggest');
+    { const b = document.createElement('button'); b.className = 'mbtn action'; b.style.cssText = 'width:100%;margin-top:4px';
       const offN = Object.keys(state.magicOffCat || {}).length + Object.keys(state.magicOffWord || {}).length;
-      b.textContent = 'Choose the words magic can suggest' + (offN ? ' (' + offN + ' off)' : '');
-      b.addEventListener('click', () => openMagicWords(null)); box.appendChild(b); } }
+      b.textContent = 'Choose by tab, folder or tile' + (offN ? '  \u00B7  ' + offN + ' switched off' : '');
+      b.addEventListener('click', () => openMagicWords(null)); box.appendChild(b); }
+    { const s2 = document.getElementById('sumMagic'); if (s2) s2.textContent = state.magicType ? 'On' : 'Off'; }
+    { const t = document.getElementById('toggleSeq'); if (t) t.classList.toggle('on', state.seqOn !== false); }
+    // the ending buttons, one by one
+    const eb = document.getElementById('endingSettings');
+    if (eb) { eb.innerHTML = ''; const E = endCfg();
+      [['plural', 'Things: plural (+s, +es, +ies, feet)'], ['s', 'Doing words: +s (runs, watches)'], ['ing', 'Doing words: +ing (running, making)'], ['ed', 'Doing words: +ed / past (stopped, went)']].forEach(([k, label]) => {
+        const row = document.createElement('div'); row.className = 'setting-row';
+        const lab = document.createElement('span'); lab.textContent = label; row.appendChild(lab);
+        const tg = document.createElement('div'); tg.className = 'toggle' + (E[k] ? ' on' : '');
+        tg.addEventListener('click', () => { const c = endCfg(); c[k] = !c[k]; state.endCfg = c; save(); renderSettings(); try { renderPhraseBar(); } catch (e) {} });
+        row.appendChild(tg); eb.appendChild(row);
+      }); } }
   document.getElementById('toggleSmallFold').classList.toggle('on', state.smallRowsFold !== false);
   document.getElementById('smallMaxN').textContent = state.smallRowMax || 3;
 
@@ -15076,8 +15124,8 @@ function renderSettings() {
     const what = state.fadeCount === 'letter' ? 'the prompt for that letter fades one step - in every word that has it' : state.fadeOrder === 'full' ? 'the prompt on every letter of that word fades one step' : 'the prompt fades one step on one more letter, starting from the ' + (state.fadeOrder === 'first' ? 'first' : 'last') + ' letter';
     document.getElementById('fadeNote').textContent = state.fadeMode ? 'After every ' + n + ' ' + (state.fadeCount === 'letter' ? (n === 1 ? 'time a letter is typed right' : 'times in a row a letter is typed right') : unit) + ', ' + what + '. The order of fading: on the keyboard first - the colour grows lighter and goes, then the jiggle, then the magnifying - and last the prompt in the word bar above.' : 'Fading is off: prompts stay as they are set.';
     document.getElementById('sumPractice').textContent = state.fadeMode ? 'Every ' + n + (state.fadeCount === 'letter' ? ' letters' : ' words') : 'Off';
-    const on = ['textual', 'verbal', 'highlight', 'magnify', 'movement', 'errors', 'delay'].filter(dcOn).length;
-    document.getElementById('sumData').textContent = state.scoreMode ? on + ' of 7 kinds' : 'Off'; }
+    const on = ['textual', 'verbal', 'highlight', 'magnify', 'movement', 'tilecolor', 'tilemag', 'errors', 'delay'].filter(dcOn).length;
+    document.getElementById('sumData').textContent = state.scoreMode ? on + ' of 9 kinds' : 'Off'; }
   document.querySelectorAll('#settingsMenu [data-dc]').forEach(t => { t.classList.toggle('on', dcOn(t.dataset.dc)); t.closest('.setting-row').style.opacity = state.scoreMode ? '' : '0.45'; });
 
   const list = document.getElementById('hiddenList');
@@ -15357,6 +15405,7 @@ document.getElementById('toggleHelpBtn').addEventListener('click', () => {
 document.getElementById('toggleHome').addEventListener('click', () => {
   state.homeEnabled = !state.homeEnabled; save(); renderSettings();
 });
+document.getElementById('toggleSeq').addEventListener('click', () => { state.seqOn = state.seqOn === false; if (state.seqOn === false) seqOffer = null; save(); renderSettings(); try { renderPhraseBar(); } catch (e) {} });
 document.getElementById('togglePlural').addEventListener('click', () => { state.pluralChip = state.pluralChip === false; save(); renderSettings(); try { renderPhraseBar(); } catch (e) {} });
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
