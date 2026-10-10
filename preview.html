@@ -2797,7 +2797,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 485 - 10 Oct';
+const BUILD = 'build 486 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7531,6 +7531,34 @@ function verbWords(table, fallback) {
     if (c) (c.words || []).filter(w => !state.hiddenWords[w] && !homePhrase.includes(w) && !isPunct(w) && !out.includes(w)).sort((a, b) => used(b) - used(a)).forEach(w => out.push(w)); });
   return out;
 }
+// What each word leads to, as the family uses them: f - the My Stuff folders first in grey (in order); g - groups inside
+// those folders whose tiles come first (with the group itself as a tile); gw - doing words first in green; c - category
+// folders whose words come first in purple; cw - single words first in purple; bands - which band comes first on the screen
+const MAGIC_RULES = (() => {
+  const greet = { f: ['people'], bands: ['grey', 'green', 'cat'] }, music = { f: ['music', 'people'] };
+  return {
+    HI: greet, HELLO: greet, HEY: greet, BYE: greet, GOODBYE: greet, 'GOOD MORNING': greet, 'GOOD NIGHT': greet, 'THANK YOU': greet,
+    GO: { f: ['places', 'people'] },
+    WANT: { bands: ['grey', 'green', 'cat'] },
+    FEEL: { c: ['feelings'], bands: ['cat', 'green', 'grey'] },
+    NEED: { f: ['things', 'food'], g: ['supplies'], gw: ['HELP', 'MORE'] },
+    EAT: { f: ['food'] },
+    DRINK: { f: ['food'], g: ['beverages'] },
+    PLAY: { f: ['music', 'tv', 'movies', 'games', 'things', 'stuff', 'people', 'places', 'characters', 'books'] },
+    MAKE: { f: ['food', 'things', 'stuff'], g: ['mains', 'sides'] },
+    COOK: { f: ['food'], g: ['mains', 'sides'] },
+    OPEN: { f: ['food', 'things', 'stuff', 'books', 'games'], g: ['beverages'] },
+    READ: { f: ['books', 'characters'] },
+    SIT: { f: ['people', 'places'], cw: ['DOWN', 'NOW'], bands: ['cat', 'grey', 'green'] },
+    WATCH: { f: ['tv', 'movies', 'characters', 'people'] },
+    REPEAT: music, LISTEN: music, SING: music, DANCE: music
+  };
+})();
+// the rule for the message as it stands: its last word, looking back past small words ("go to the" -> go)
+function magicRuleNow() {
+  for (let i = homePhrase.length - 1; i >= 0; i--) { const w = homePhrase[i]; if (MAGIC_RULES[w]) return MAGIC_RULES[w]; if (!isSmallWord(w) && !isPunct(w)) return null; }
+  return null;
+}
 // the folders a doing word in the message leads to first ("go" -> places, people): those lead the grey row
 function leadFoldersNow() {
   if (!leadFoldersNow.map) { try { relatedFolders(''); } catch (e) {} }
@@ -7549,6 +7577,7 @@ function relatedFolders(word) {
         HELP: ['people'], HUG: ['people'], CALL: ['people'], HI: ['people'], HELLO: ['people'], BYE: ['people'],
         OPEN: ['stuff', 'things', 'food', 'books', 'games'], GET: ['stuff', 'things', 'food', 'clothes'], WEAR: ['clothes'], SING: ['music'], DANCE: ['music'] };
       const LASTF = { PLAY: ['food', 'clothes', 'routines'], WATCH: ['food', 'clothes'], LISTEN: ['food', 'clothes', 'places'], READ: ['food', 'clothes', 'music'], EAT: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], DRINK: ['clothes', 'books', 'games', 'music', 'tv', 'movies'], GO: ['food', 'clothes'], WEAR: ['food', 'music', 'tv', 'movies', 'books', 'games'] };
+      Object.keys(MAGIC_RULES).forEach(k => { if (MAGIC_RULES[k].f) LEADF[k] = MAGIC_RULES[k].f; });
       leadFoldersNow.map = LEADF;
       const lw = homePhrase.slice().reverse().find(w => LEADF[w]), first = lw ? LEADF[lw] : [], lastF = (lw && LASTF[lw]) || [];
       const rk = c => { const n = String(c.name || '').trim().toLowerCase(), k = first.indexOf(n); return k >= 0 ? k : (lastF.includes(n) ? 200 : 99); };
@@ -7945,10 +7974,17 @@ function suggRender0() {
         ws.forEach(m => { const c = m.cat && stuff.includes(m.cat) ? m.cat : homeOf(m.phrase[m.phrase.length - 1]); if (c && !order.includes(c)) order.push(c); });
         relatedFolders(homePhrase[n - 1] || '').forEach(c => { if (stuff.includes(c) && !order.includes(c)) order.push(c); });
         stuff.forEach(c => { if (!order.includes(c)) order.push(c); });
+        const rule = magicRuleNow(), lead1 = leadFoldersNow()[0];
         order.forEach(c => {
+          const shown = [];
+          ((rule && rule.g) || []).forEach(gn => { const g = listGroups(c).find(x => !x.hidden && String(x.name || '').trim().toLowerCase() === gn); if (!g) return;
+            const gp = (g.words || []).filter(w => exists(w) && !shown.includes(w)).sort((x, y) => used(y) - used(x)).slice(0, 3);
+            if (!gp.length) return;
+            gp.forEach(w => { shown.push(w); folders.push({ phrase: homePhrase.concat([w]), used: idx, cat: c }); });
+            folders.push({ folder: c, group: g, phrase: homePhrase.concat(['▸' + c.id + '/' + g.id]), used: idx }); });
           const picks = ws.filter(m => (m.cat === c || homeOf(m.phrase[m.phrase.length - 1]) === c)).map(m => m.phrase[m.phrase.length - 1]);
           (c.words || []).slice().sort((x, y) => used(y) - used(x)).forEach(w => { if (!picks.includes(w)) picks.push(w); });
-          picks.filter(exists).slice(0, 2).forEach(w => folders.push({ phrase: homePhrase.concat([w]), used: idx, cat: c }));
+          picks.filter(w => exists(w) && !shown.includes(w)).slice(0, String(c.name).trim().toLowerCase() === lead1 && !shown.length ? 4 : 2).forEach(w => folders.push({ phrase: homePhrase.concat([w]), used: idx, cat: c }));
           folders.push({ folder: c, group: null, phrase: homePhrase.concat(['▸' + c.id]), used: idx });
         });
       }
@@ -7982,6 +8018,16 @@ function suggRender0() {
           const lead = leadFoldersNow(), tier = r => { const f = r.find(m => m.folder); return f && lead.includes(String(f.folder.name).trim().toLowerCase()) ? 0 : 1; };
           const rs = runs.map((r, i) => [Math.max(0, ...r.filter(m => !m.folder).map(m => coScore(lastOf(m)))), i, r, tier(r)]);
           if (rs.some(x => x[0] > 0)) folders = [].concat(...rs.sort((a, b) => a[3] - b[3] || b[0] - a[0] || a[1] - b[1]).map(x => x[2])); } }      // (the doing word's own folders stay first)
+      // the word's own rule: its doing words first in green ("need" -> help, more), its describing words first in purple ("feel" -> feelings, "sit" -> down, now)
+      { const rule = live ? magicRuleNow() : null; if (rule) {
+          const lastOf = m => m.phrase[m.phrase.length - 1], mk = w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) });
+          const ok = w => !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w) && magicAllowed(w);
+          const bring = (list, ws, mkI) => { const front = []; ws.forEach(w => { if (!ok(w) || front.some(m => lastOf(m) === w)) return; const at = list.findIndex(m => !m.folder && lastOf(m) === w); front.push(at >= 0 ? list.splice(at, 1)[0] : mkI(w)); }); return front.concat(list); };
+          if (rule.gw && cfg.green.on) green = bring(green, rule.gw, w => Object.assign(mk(w), { act: true }));
+          if (cfg.cat.on) { const cw = (rule.cw || []).slice();
+            (rule.c || []).forEach(nm => { const c = state.categories.find(x => !x.target && !x.smallSec && String(x.name || '').trim().toLowerCase() === nm); if (c && !magicCatOff(c)) (c.words || []).forEach(w => cw.push(w)); });
+            if (cw.length) cats = bring(cats, cw, mk); }
+        } }
       // prioritised targets: their words go first in the row they belong to (added if they were not there)
       { const pw = magicPrioWords(); if (pw.length && live) {
           const lastOf = m => m.phrase[m.phrase.length - 1];
@@ -8032,6 +8078,7 @@ function suggRender0() {
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
     host.innerHTML = '';
+    { const ph = homePhrase.join(' '); if (host.dataset.ph !== ph) { host.dataset.ph = ph; host.scrollTop = 0; requestAnimationFrame(() => { host.scrollTop = 0; }); } }      // a new word: the rows start again from the top
     host.classList.toggle('show', all > 0);
     grid.querySelectorAll(':scope > .chat-log').forEach(x => { x.style.display = all && !suggShut ? 'none' : ''; });
     if (!all) return;
@@ -8087,9 +8134,12 @@ function suggRender0() {
         sec.appendChild(r2);
       }
     };
-    band(green, !suggShut, '', 'Doing words', () => { suggShut = !suggShut; magicKeep = suggShut; }, () => 'sugg-hl', cfg.green.rows);
-    band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows);
-    band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows);
+    const bandFns = {
+      green: () => band(green, !suggShut, '', 'Doing words', () => { suggShut = !suggShut; magicKeep = suggShut; }, () => 'sugg-hl', cfg.green.rows),
+      grey: () => band(folders, bandOpen.fold, 'band-fold', 'Things and folders', () => { bandOpen.fold = !bandOpen.fold; if (!bandOpen.fold) suggFolder = null; }, m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder', cfg.grey.rows),
+      cat: () => band(cats, bandOpen.cat, 'band-cat', 'Describing and category words', () => { bandOpen.cat = !bandOpen.cat; }, () => 'cat-hl', cfg.cat.rows) };
+    // (green, grey, purple - unless the word's rule puts another band first: "hi" -> the names, "feel" -> the feelings)
+    { const rl = magicRuleNow(), ord = (rl && rl.bands) || ['green', 'grey', 'cat']; ord.forEach(k => bandFns[k]()); }
     if (false) { const sh = document.getElementById('smallHost'); if (sh) { const sec = document.createElement('div'); sec.className = 'sugg-band band-small'; sec.appendChild(sh); host.appendChild(sec); setTimeout(() => { try { blueAutoOpen(); } catch (e) {} }, 150); } }
   } finally { suggBusy = false; if (suggObs) suggObs.takeRecords(); }
 }
@@ -9531,6 +9581,7 @@ function applyLayout(L, keep) {
   if (L.gridFill) state.gridFill = L.gridFill;
   if (L.bankSort) state.bankSort = L.bankSort;
   state.rowOpenBy = {};
+  if (L.settings && typeof L.settings === 'object') SETTINGS_KEYS.forEach(k => { if (L.settings[k] !== undefined) state[k] = JSON.parse(JSON.stringify(L.settings[k])); });      // (a file exported with its settings brings them too)
   // none of the step-by-step changes that older installs went through apply
   ['starterDone', 'groupsV2', 'groupsV3', 'groupsV4', 'groupsV5', 'groupsV6',
    'layoutV7', 'layoutV8', 'layoutV9', 'caseV2', 'smallV2', 'builderV2'].forEach(k => { state[k] = true; });
@@ -9567,7 +9618,7 @@ function importLayoutFile(file) {
       alert('That file is not a layout exported from this app.');
       return;
     }
-    if (!confirm('Replace the folders, groups, small words rows and builder pages on this device with the ones in this file?\n\nWords already on this device are kept. This cannot be undone.')) return;
+    if (!confirm('Replace the folders, groups, small words rows and builder pages on this device with the ones in this file?' + (L.settings ? '\n\nThe settings saved in the file (magic, prompts, keyboard and the rest) replace this device\'s too.' : '') + '\n\nWords already on this device are kept. This cannot be undone.')) return;
     applyLayout(L, true);
     homePath = []; builderPath = [];
     save();
@@ -10398,8 +10449,18 @@ function renderTrash() {
     row.appendChild(b); box.appendChild(row);
   });
 }
+// The settings that go out with an exported layout (and so into the built-in one): how the app looks and behaves -
+// not what it has learned (word use, pairs used together, letter scores), the chat history, sync details or voice files
+const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'phonemes', 'letterSpeech', 'enterSpeech', 'setupMode', 'phoneticMode', 'haptics', 'targetSpeech',
+  'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
+  'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
+  'railOpen', 'kbRailOpen', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
+  'endCfg', 'magicPrio', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
+  'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
+function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 function exportLayout() {
   const layout = layoutNow();
+  layout.settings = settingsNow();
   const text = JSON.stringify(layout, null, 1);
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const a = document.createElement('a');
