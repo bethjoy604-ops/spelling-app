@@ -2801,7 +2801,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 491 - 10 Oct';
+const BUILD = 'build 492 - 10 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8071,8 +8071,23 @@ function suggRender0() {
         relatedFolders(homePhrase[n - 1] || '').forEach(c => { if (stuff.includes(c) && !order.includes(c)) order.push(c); });
         stuff.forEach(c => { if (!order.includes(c)) order.push(c); });
         const rule = magicRuleNow(), lead1 = greyLeadNow()[0];
+        // after a title (a show, song, book or game): first its own group ("Peppa Pig"), the characters named in it
+        // (Peppa), and the things it is used with (tv, ipad); then the folders as usual
+        const frontW = new Set();
+        { const lw = homePhrase[n - 1]; let k = ''; try { k = magicKind(lw); } catch (e) {}
+          if (['watch', 'music', 'book', 'game'].includes(k)) {
+            const home = state.categories.find(c => !c.target && !c.hidden && (c.words || []).includes(lw) && stuff.includes(c));
+            const g = home && listGroups(home).find(x => !x.hidden && (x.words || []).includes(lw));
+            if (g && (g.words || []).some(w => w !== lw && exists(w))) folders.push({ folder: home, group: g, phrase: homePhrase.concat(['\u25B8' + home.id + '/' + g.id]), used: idx });
+            const names = ((g ? g.name + ' ' : '') + lw).toUpperCase().split(/[^A-Z']+/).filter(x => x.length > 2);
+            const chars = stuff.find(c => String(c.name).trim().toLowerCase() === 'characters');
+            if (chars) (chars.words || []).filter(w => exists(w) && w.split(/\s+/).some(p => names.includes(p))).forEach(w => { frontW.add(w); folders.push({ phrase: homePhrase.concat([w]), used: idx, cat: chars }); });
+            if (home) { folders.push({ folder: home, group: null, phrase: homePhrase.concat(['\u25B8' + home.id]), used: idx }); const at = order.indexOf(home); if (at >= 0) order.splice(at, 1); }      // its own folder ("tv") next
+            const THINGS = { watch: ['TV', 'IPAD', 'REMOTE'], music: ['SPEAKER', 'HEADPHONES', 'IPAD'], book: [], game: ['IPAD'] };
+            THINGS[k].filter(w => exists(w) && !frontW.has(w) && !stuff.some(c => String(c.name).trim().toLowerCase() === w.toLowerCase())).slice(0, 1).forEach(w => { frontW.add(w); folders.push({ phrase: homePhrase.concat([w]), used: idx, cat: stuff.find(c => (c.words || []).includes(w)) }); });
+          } }
         order.forEach(c => {
-          const shown = [];
+          const shown = [...frontW];
           ((rule && rule.g) || []).forEach(gn => { const g = listGroups(c).find(x => !x.hidden && String(x.name || '').trim().toLowerCase() === gn); if (!g) return;
             const gp = (g.words || []).filter(w => exists(w) && !shown.includes(w)).sort((x, y) => used(y) - used(x)).slice(0, 3);
             if (!gp.length) return;
