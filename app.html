@@ -3131,7 +3131,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 548 - 11 Oct';
+const BUILD = 'build 549 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16457,18 +16457,41 @@ const SOUND_IPA_UK = Object.assign({}, SOUND_IPA_US, { o: 'ɒ', r: 'ɹ', er: 'ɜ
 function ttsVoice() { try { return localStorage.getItem('kbd-tts-voice') || 'en-US-Neural2-F'; } catch (e) { return 'en-US-Neural2-F'; } }
 function ttsVoiceSet(v) { try { localStorage.setItem('kbd-tts-voice', v || 'en-US-Neural2-F'); } catch (e) {} }
 function ttsKey() { try { return localStorage.getItem('kbd-tts-key') || ''; } catch (e) { return ''; } }
-async function ttsMake(id) {
-  const key = ttsKey(); if (!key) throw new Error('no key');
-  const voice = ttsVoice(), lang = voice.split('-').slice(0, 2).join('-') || 'en-US', ipa = (/^en-(GB|AU|IN)/.test(lang) ? SOUND_IPA_UK : SOUND_IPA_US)[id];
+// the sounds that can be held (s, m, sh, ee ...) are made a little longer so they are not clipped
+const SOUND_HOLD = new Set(['f', 'l', 'm', 'n', 'r', 's', 'v', 'z', 'sh', 'zh', 'th', 'dh', 'ng', 'ee', 'oo', 'ar', 'or', 'aw', 'er']);
+function ttsSayAs() { try { return JSON.parse(localStorage.getItem('kbd-tts-say') || '{}'); } catch (e) { return {}; } }
+function ttsSayAsSet(id, v) { const m = ttsSayAs(); if (v) m[id] = v; else delete m[id]; try { localStorage.setItem('kbd-tts-say', JSON.stringify(m)); } catch (e) {} }
+// the request for one sound: its own "say as" (IPA between slashes, or plain words), else the sound in IPA
+function ttsSsml(id, voice) {
+  const lang = voice.split('-').slice(0, 2).join('-') || 'en-US', own = ttsSayAs()[id], text = SOUND_K[id] ? SOUND_K[id].label : id;
+  const esc = t => String(t).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  if (own && !/^\/.*\/$/.test(own.trim())) return '<speak>' + esc(own) + '</speak>';
+  let ipa = own ? own.trim().slice(1, -1) : (/^en-(GB|AU|IN)/.test(lang) ? SOUND_IPA_UK : SOUND_IPA_US)[id];
   if (!ipa) throw new Error('no sound');
-  const text = SOUND_K[id] ? SOUND_K[id].label : id;
+  if (!own && SOUND_HOLD.has(id) && !/ː/.test(ipa)) ipa += 'ː';
+  return '<speak><phoneme alphabet="ipa" ph="' + esc(ipa) + '">' + esc(text) + '</phoneme></speak>';
+}
+async function ttsFetch(id, voice) {
+  const key = ttsKey(); if (!key) throw new Error('no key');
+  voice = voice || ttsVoice(); const lang = voice.split('-').slice(0, 2).join('-') || 'en-US';
   const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(key), { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: { ssml: '<speak><phoneme alphabet="ipa" ph="' + ipa + '">' + text + '</phoneme></speak>' }, voice: { languageCode: lang, name: voice }, audioConfig: { audioEncoding: 'MP3', speakingRate: 0.8 } }) });
+    body: JSON.stringify({ input: { ssml: ttsSsml(id, voice) }, voice: { languageCode: lang, name: voice }, audioConfig: { audioEncoding: 'MP3', speakingRate: 0.85 } }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.audioContent) throw new Error((j.error && j.error.message) || ('error ' + r.status));
   const bin = atob(j.audioContent), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-  await smPut('a', id, new Blob([u8], { type: 'audio/mpeg' }));
+  return new Blob([u8], { type: 'audio/mpeg' });
 }
+async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); }
+// a few sounds one after another in a voice, to compare voices before making them all (nothing is kept)
+async function ttsTest(voice, status) {
+  const ids = ['m', 'a', 's', 'sh', 'ee', 't'];
+  for (const id of ids) { if (status) status.textContent = voice + ': ' + SOUND_K[id].label + '…';
+    const blob = await ttsFetch(id, voice); const u = URL.createObjectURL(blob);
+    await new Promise(res => { const a = new Audio(u); a.onended = res; a.onerror = res; a.play().catch(res); setTimeout(res, 3000); });
+    URL.revokeObjectURL(u); await new Promise(r => setTimeout(r, 250)); }
+  if (status) status.textContent = 'That was m, a, s, sh, ee, t in ' + voice + '.';
+}
+const TTS_VOICES = ['en-US-Neural2-F', 'en-US-Neural2-D', 'en-US-Wavenet-F', 'en-US-Standard-C', 'en-GB-Neural2-A', 'en-GB-Wavenet-A', 'en-AU-Neural2-A'];
 // a .zip of sound files named after their sounds (sh.mp3, ee.mp3, igh.mp3; a video as sh.mp4)
 async function smAddZip(file) {
   let entries; try { entries = await unzipEntries(await file.arrayBuffer()); } catch (e) { alert('That file could not be opened as a .zip of sound files.'); return 0; }
@@ -16501,13 +16524,15 @@ function openSoundMedia() {
     const kr = document.createElement('div'); kr.className = 'sm-row';
     const ki = document.createElement('input'); ki.type = 'password'; ki.placeholder = 'Google Cloud API key'; ki.value = ttsKey(); ki.className = 'sm-input'; ki.autocomplete = 'off';
     ki.addEventListener('change', () => { try { localStorage.setItem('kbd-tts-key', ki.value.trim()); } catch (e) {} });
-    const vi = document.createElement('input'); vi.type = 'text'; vi.value = ttsVoice(); vi.className = 'sm-input sm-voice'; vi.title = 'Voice name, e.g. en-US-Neural2-F or en-GB-Neural2-A';
-    vi.addEventListener('change', () => ttsVoiceSet(vi.value.trim()));
+    const vi = document.createElement('select'); vi.className = 'sm-input sm-voice';
+    const vs = TTS_VOICES.includes(ttsVoice()) ? TTS_VOICES : [ttsVoice()].concat(TTS_VOICES);
+    vs.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v.replace(/^en-(US|GB|AU)-/, (m, c) => ({ US: 'US ', GB: 'UK ', AU: 'Aus ' }[c])).replace(/-/g, ' '); if (v === ttsVoice()) o.selected = true; vi.appendChild(o); });
+    vi.addEventListener('change', () => ttsVoiceSet(vi.value));
     kr.appendChild(ki); kr.appendChild(vi); body.appendChild(kr);
     const mk = document.createElement('div'); mk.className = 'sm-row';
     const status = document.createElement('div'); status.className = 'help-note';
     const run = async (all, b) => {
-      try { localStorage.setItem('kbd-tts-key', ki.value.trim()); } catch (e) {} ttsVoiceSet(vi.value.trim());
+      try { localStorage.setItem('kbd-tts-key', ki.value.trim()); } catch (e) {} ttsVoiceSet(vi.value);
       if (!ttsKey()) { status.textContent = 'Paste the API key first.'; return; }
       const ids = soundAllIds().filter(id => all || !SM.a.has(id)); let ok = 0, bad = '';
       b.disabled = true;
@@ -16517,9 +16542,11 @@ function openSoundMedia() {
       status.textContent = ok + ' sound file' + (ok === 1 ? '' : 's') + ' made.' + (bad ? ' Stopped: ' + bad : '');
       drawList();
     };
+    mk.appendChild(btn('Test this voice', async b => { try { localStorage.setItem('kbd-tts-key', ki.value.trim()); } catch (e) {} ttsVoiceSet(vi.value); if (!ttsKey()) { status.textContent = 'Paste the API key first.'; return; }
+      b.disabled = true; try { await ttsTest(vi.value, status); } catch (e) { status.textContent = 'Could not make the test: ' + (e.message || e); } b.disabled = false; }));
     mk.appendChild(btn('Make the missing sounds', b => run(false, b), 'primary')); mk.appendChild(btn('Remake every sound', b => { if (confirm('Replace every sound file (including your own) with the Google voice?')) run(true, b); }));
     body.appendChild(mk); body.appendChild(status);
-    note('A Google Cloud key with the Text-to-Speech API turned on. It stays on this device only. A British voice (en-GB-...) uses British vowels.');
+    note('A Google Cloud key with the Text-to-Speech API turned on (it stays on this device only). Test a voice first; a UK voice uses British vowels. Each sound below can then be remade (\u21BB) or told how to sound (\u270E). These sounds are used only by the sound keyboard games - the ordinary keyboard keeps its letters.');
     head('A set of files at once');
     const zr = document.createElement('div'); zr.className = 'sm-row';
     zr.appendChild(btn('Add a .zip of sound files', () => smPick('.zip,application/zip', async f => { const n = await smAddZip(f); alert(n + ' file' + (n === 1 ? '' : 's') + ' added.'); drawList(); })));
@@ -16535,6 +16562,9 @@ function openSoundMedia() {
         const l = document.createElement('div'); l.className = 'sm-lab ' + (soundIsVowel(id) ? 'v' : 'c'); l.innerHTML = '<b></b><em></em>'; l.firstChild.textContent = K.label; l.lastChild.textContent = K.ex || ''; r.appendChild(l);
         const st = document.createElement('span'); st.className = 'sm-st'; st.textContent = (SM.a.has(id) ? '🔊' : '') + (SM.v.has(id) ? ' 🎬' : ''); r.appendChild(st);
         r.appendChild(btn('▶', () => { if (SM.v.has(id)) { const box = document.createElement('div'); box.className = 'sm-vidpop'; box.addEventListener('click', () => box.remove()); document.body.appendChild(box); smVideoInto(box, id).then(v => { if (v) v.addEventListener('ended', () => setTimeout(() => box.remove(), 600)); }); } else soundSay(id); }));
+        if (ttsKey()) { r.appendChild(btn('\u21BB', async b => { b.disabled = true; try { await ttsMake(id); drawList(); soundSay(id); } catch (e) { alert('Could not make it: ' + (e.message || e)); } b.disabled = false; }));
+          r.appendChild(btn('\u270E', () => { const cur = ttsSayAs()[id] || ''; const v = prompt('How the Google voice should say "' + K.label + '" (as in ' + (K.ex || '') + ').\n\nIPA between slashes, e.g. /s\u02D0/, or plain words, e.g. sss or ah. Leave it empty for the usual sound.', cur);
+            if (v === null) return; ttsSayAsSet(id, v.trim()); ttsMake(id).then(() => { drawList(); soundSay(id); }).catch(e => alert('Could not make it: ' + (e.message || e))); })); }
         r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); drawList(); soundSay(id); })));
         r.appendChild(btn(SM.v.has(id) ? 'Video ✓' : 'Video', () => smPick('video/*', async f => { await smPut('v', id, f); drawList(); })));
         if (SM.a.has(id) || SM.v.has(id)) r.appendChild(btn('✕', async () => { if (!confirm('Remove the audio and video for ' + K.label + '?')) return; await smDel('a', id); await smDel('v', id); drawList(); }, 'danger'));
