@@ -2994,7 +2994,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 513 - 11 Oct';
+const BUILD = 'build 514 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15554,7 +15554,9 @@ function gameTrial() {
 function gameLay() {
   const g = game, c = g.cur, row = document.getElementById('gmRow');
   const rest = c.tiles.filter(w => w !== c.word).sort(() => Math.random() - 0.5);
-  const spots = [0, 1, 2].filter(k => k !== g.lastPos), pos = spots[Math.floor(Math.random() * spots.length)]; g.lastPos = pos;
+  // the right tile goes to a random place among the first three (one screen of the row) - truly random every time,
+  // after a mistake too; with "within 6" (state.gameSpread, for later) anywhere in the first two screens
+  const within = Math.min(c.tiles.length, state.gameSpread === 6 ? 6 : 3), pos = Math.floor(Math.random() * within); g.lastPos = pos;
   const order = rest.slice(); order.splice(pos, 0, c.word);
   row.innerHTML = ''; row.scrollLeft = 0;
   order.forEach(w => {
@@ -15620,7 +15622,7 @@ function gameLetterNext() {
 function gameLetterLay() {
   const g = game, c = g.cur, row = document.getElementById('gmRow');
   const rest = c.tiles.filter(x => x !== c.letter).sort(() => Math.random() - 0.5);
-  const spots = [0, 1, 2, 3, 4, 5].filter(k => k !== g.lastPos), pos = spots[Math.floor(Math.random() * spots.length)]; g.lastPos = pos;
+  const pos = Math.floor(Math.random() * c.tiles.length); g.lastPos = pos;      // (random every time, among all six)
   rest.splice(pos, 0, c.letter);
   row.innerHTML = ''; row.scrollLeft = 0;
   rest.forEach(x => {
