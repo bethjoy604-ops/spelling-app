@@ -3139,7 +3139,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 551 - 11 Oct';
+const BUILD = 'build 552 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15994,16 +15994,20 @@ const gameSkip = {};
 const gameOpenF = {};
 // the ready targets by folder for the Games menu: each main folder (the top folder under Categories / My Stuff ...) with
 // how many targets it holds, and inside it the folders the targets are in
-const GAME_ROOTS = /^(categories|my stuff|popular|chat|things|people|places)$/i;
+const GAME_ROOTS = /^(categories|my stuff|popular|chat|things|groups|choices|folders)$/i;
 function gameTargetTree(words) {
   const mains = new Map();
   const node = (m, c) => { if (!m.has(c.id)) m.set(c.id, { key: 'f' + c.id, label: c.name, words: [], subs: new Map(), order: c.order || 0 }); return m.get(c.id); };
   words.forEach(w => {
     categoriesOf(w).filter(c => !c.target && !c.small && !c.smallSec && /[A-Za-z0-9]/.test(c.name || '')).forEach(c => {
       const chain = []; let x = c, g = 0; while (x && g++ < 20) { chain.unshift(x); x = x.parent ? catById(x.parent) : null; }
-      let mainC = chain[0]; if (chain.length > 1 && GAME_ROOTS.test(String(mainC.name).trim())) mainC = chain[1];
+      // (the folders that only hold other folders - Categories, Groups, Choices, Things ... - are passed over: the main folder is the first real one)
+      let k = 0; while (k < chain.length - 1 && GAME_ROOTS.test(String(chain[k].name).trim())) k++;
+      const mainC = chain[k];
       const m = node(mains, mainC); if (!m.words.includes(w)) m.words.push(w);
-      if (c !== mainC) { const sb = node(m.subs, c); if (!sb.words.includes(w)) sb.words.push(w); }
+      if (c !== mainC) { const sb = node(m.subs, chain[k + 1] || c); if (!sb.words.includes(w)) sb.words.push(w); }
+      else { try { listGroups(mainC).filter(g => !g.hidden && (g.words || []).includes(w)).forEach(g => { const key = 'g' + mainC.id + '_' + (g.id != null ? g.id : g.name);
+        if (!m.subs.has(key)) m.subs.set(key, { key, label: g.name, words: [], subs: new Map() }); const sb = m.subs.get(key); if (!sb.words.includes(w)) sb.words.push(w); }); } catch (e) {} }
     });
   });
   return [...mains.values()].map(m => Object.assign(m, { subs: [...m.subs.values()].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })) }))
