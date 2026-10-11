@@ -2252,7 +2252,7 @@
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
     <!-- the pop-out, left to right: menu mode, chat, speak, games, then the plus that opens settings and targets -->
     <button class="ctl icon pop" id="railToggle" aria-label="Menu mode">&#9776;</button>
-    <button class="ctl icon pop" id="homeChatBtn" aria-label="Chat mode" aria-pressed="false">&#128172;</button>
+    <button class="ctl icon pop" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
     <button class="ctl icon pop" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
     <button class="ctl icon pop" id="homePicBtn" aria-label="Games" aria-pressed="false">&#127918;</button>
     <button class="ctl icon pop" id="homeMoreBtn" aria-label="More: settings and targets" aria-expanded="false">&#10133;</button>
@@ -2260,7 +2260,7 @@
     <button class="ctl icon pop more" id="homeTargetBtn" aria-label="Target words" aria-pressed="false">&#127919;</button>
     <!-- (no longer in the pop-out: builder is a choice under games; magic, matching words and sound are in settings; SOS is in the prompting settings) -->
     <button class="ctl icon retired" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
-    <button class="ctl icon retired" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
+    <button class="ctl icon retired" id="homeChatBtn" aria-label="Chat mode" aria-pressed="false">&#128172;</button>
     <button class="ctl icon retired" id="homeMagicBtn" aria-label="Magic suggestions" aria-pressed="true">&#129668;</button>
     <button class="ctl icon retired" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
     <button class="ctl icon pop" id="homeIconsClose" aria-label="Close the switches">&times;</button>
@@ -2851,7 +2851,11 @@
         <span class="sg-chev">▾</span>
       </button>
       <div class="sgroup-body">
-        <div class="sublabel" style="margin-top:0">On-screen buttons</div>
+        <div class="sublabel" style="margin-top:0">Chat</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>&#128172; Chat mode (the green enter opens the chat page with the message on top)</span><div class="toggle on" id="toggleChatMode"></div></div>
+        </div>
+        <div class="sublabel">On-screen buttons</div>
         <div class="settings-list">
           <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
           <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
@@ -3028,7 +3032,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 533 - 11 Oct';
+const BUILD = 'build 534 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3192,7 +3196,8 @@ const state = {
   chatLog: [],                // the conversation: { text, replies: [], t } per message, oldest first
   modesV2: false,             // the one-time move of every device onto the starting settings of 6 Oct
   modesV1: false,             // the one-time return to the starting switches: menu on; builder, speak and chat off
-  chatMode: false,            // home enter key: on = open the chat page with the message on top
+  chatMode: true,             // home enter key: on = open the chat page with the message on top (on unless switched off in settings)
+  chatOnV1: true,
   speakMode: false,           // home enter key: on = say the tiles aloud, off = go and spell them
   builderMode: false,         // home shows the sentence builder's pages instead of the menu and tiles
   builder: null,              // the builder's tree of pages; made from the defaults the first time
@@ -3421,7 +3426,7 @@ async function load() {
         chatLog: Array.isArray(saved.chatLog) ? saved.chatLog : [], chatPaneShut: !!saved.chatPaneShut, pluralChip: saved.pluralChip !== false,
         modesV1: saved.modesV1 ?? false,
         modesV2: saved.modesV2 ?? false,
-        chatMode: saved.chatMode ?? false,
+        chatMode: saved.chatOnV1 ? (saved.chatMode ?? true) : true, chatOnV1: true,      // (chat moved into settings, on for everyone once)
         speakMode: saved.speakMode ?? false,
         builderMode: saved.builderMode ?? false,
         builder: saved.builder || null,
@@ -3650,7 +3655,7 @@ async function load() {
   if (!state.modesV2) {
     state.modesV2 = true;
     Object.assign(state, {
-      builderMode: false, speakMode: false, chatMode: false, railOpen: true, soundOn: true, suggestOn: true,
+      builderMode: false, speakMode: false, chatMode: true, railOpen: true, soundOn: true, suggestOn: true,
       helpMode: false, helpDelaySec: 3,
       promptColorOn: true, promptColor: 'blue', promptIntensity: 'medium', promptPulseOn: true, promptTextColorOn: true, promptTextPulseOn: true,
       promptSizeOn: true, promptSize: 'large', promptTileOn: true, promptTileSize: 'large',
@@ -4034,7 +4039,7 @@ async function save() {
       chatLog: state.chatLog, chatPaneShut: !!state.chatPaneShut, pluralChip: state.pluralChip !== false,
       modesV1: state.modesV1,
       modesV2: state.modesV2,
-      chatMode: state.chatMode,
+      chatMode: state.chatMode, chatOnV1: true,
       speakMode: state.speakMode,
       builderMode: state.builderMode,
       builder: state.builder,
@@ -9683,7 +9688,7 @@ document.getElementById('homeSoundBtn').addEventListener('click', () => {
 });
 function renderSpeakBtn() {
   const sb = document.getElementById('homeSoundBtn');
-  sb.classList.toggle('off', state.soundOn === false);
+  sb.classList.toggle('off', state.soundOn === false); sb.textContent = state.soundOn === false ? '\uD83D\uDD07' : '\uD83D\uDD0A';
   sb.setAttribute('aria-pressed', state.soundOn === false ? 'false' : 'true');
   const cb = document.getElementById('homeChatBtn');
   cb.classList.toggle('off', !state.chatMode);
@@ -17135,6 +17140,7 @@ function renderSettings() {
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
   document.getElementById('toggleSuggestOn').classList.toggle('on', state.suggestOn !== false);
+  document.getElementById('toggleChatMode').classList.toggle('on', !!state.chatMode);
   document.getElementById('toggleSoundOn').classList.toggle('on', state.soundOn !== false);
   document.getElementById('togglePlural').classList.toggle('on', state.pluralChip !== false);
   document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
@@ -17516,6 +17522,7 @@ document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
   try { if (!state.magicType) hideMagic(); renderHome(true); } catch (e) {}
 });
+document.getElementById('toggleChatMode').addEventListener('click', () => { state.chatMode = !state.chatMode; save(); renderSettings(); try { renderHome(true); } catch (e) {} });
 document.getElementById('toggleSuggestOn').addEventListener('click', () => { state.suggestOn = state.suggestOn === false; save(); renderSettings(); try { renderTypeSuggest(); } catch (e) {} });
 document.getElementById('toggleSoundOn').addEventListener('click', () => { document.getElementById('homeSoundBtn').click(); renderSettings(); });
 document.getElementById('toggleSmallFold').addEventListener('click', () => {
