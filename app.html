@@ -949,6 +949,8 @@
   .target-banner .tletter.gone:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
   .target-banner .tletter.boosted:not(.next) { color: var(--ink) !important; box-shadow: none !important; }
   .target-banner .tletter.boosted.next { box-shadow: none !important; }
+  .target-banner .tletter.flash-hint { animation: flashHint 1.5s ease both; }
+  @keyframes flashHint { 0% { opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
   .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
   .type-layer { display: none; position: fixed; inset: 0; z-index: 40; flex-direction: column; gap: 12px; background: #aeb0b5; padding: calc(22px + env(safe-area-inset-top, 0px)) 26px 8px; }
   .type-layer.open { display: flex; animation: tlUp 0.18s ease both; }
@@ -1373,6 +1375,7 @@
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
   .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn,
   .home-row:not(.icons-open) #homeMagicBtn, .home-row:not(.icons-open) #homePicBtn, .home-row:not(.icons-open) #homeIconsClose, .home-row:not(.icons-open) #homeMoreBtn { display: none !important; }
+  #homePicBtn { background: #e8473b; }
   #homePicBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* ---- Picture writing ---- */
   /* tiles with a picture show the picture; tiles still without one are faded, with a small camera to add it */
@@ -1456,11 +1459,14 @@
   .gm-acts.picked .gm-act:not(.on) { display: none; }
   .gm-head { display: flex; align-items: baseline; gap: 12px; margin: 18px 2px 10px; font-size: 22px; font-weight: 900; color: var(--ink); }
   .gm-head-n { font-size: 15px; font-weight: 800; color: var(--muted); }
+  .gm-count.rec { background: #ebfaee; box-shadow: inset 0 0 0 3px var(--green); }
+  .gm-counts { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)) !important; }
   .gm-act.off { opacity: 0.4; filter: grayscale(1); cursor: default; }
   .view-keyboard.pic-on .pic-progress.gm-bar { height: 18px; gap: 5px; }
   .gm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
   .gm-chip { border: 3px solid transparent; border-radius: 999px; background: #eef0f3; font-family: inherit; font-weight: 800; font-size: 17px; padding: 9px 16px; color: var(--ink); }
   .gm-chip.on { background: #ebfaee; border-color: var(--green); }
+  .gm-chip.gm-add { background: #fff; border: 3px dashed #c4c8cf; color: var(--muted); }
   .gm-count:disabled { opacity: 0.4; }
   .gm-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
   .gm-count { border: none; border-radius: 18px; background: #eef0f3; font-family: inherit; font-weight: 900; font-size: 30px; padding: 22px 6px; color: var(--ink); }
@@ -3019,7 +3025,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 527 - 11 Oct';
+const BUILD = 'build 530 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3229,7 +3235,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', gamesOn: { sight: true, write: true, tiles: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3398,7 +3404,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', gamesOn: Object.assign({ sight: true, write: true, tiles: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4011,7 +4017,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -5722,7 +5728,34 @@ const FADE_MAX = 8, FADE_KB = 5, FADE_PLAIN = 7;
 // The level a letter is shown at. Whatever the letters have reached (counted by word or by letter), the word's prompts
 // only start to fade once the keyboard has nothing left for every letter of the word, and then from the first letter on:
 // a letter is never further on in the word's steps than the letters before it.
+// The Spelling game (picture + keyboard) fades as one: a single level for every letter of every picture, so the
+// keyboard's prompts and then the word's go together. 3 pictures in a row with no wrong key: one step less; a wrong key
+// in the 3 pictures after a step: one step back. At the last step nothing shows until a wait passes - then the part of
+// the keyboard is ringed and the letter flashes in the word (spellHint).
+function spellGameNow() { try { return !!game && game.mode === 'write'; } catch (e) { return false; } }
+function spellLevel() { return pOn('fadeMode') ? Math.max(0, Math.min(FADE_MAX, (state.spellFade || {}).lv || 0)) : 0; }
+function spellFadeAfter(ok) {
+  if (!pOn('fadeMode')) return;
+  const f = state.spellFade = Object.assign({ lv: 0, streak: 0, watch: 0 }, state.spellFade || {});
+  const watching = f.watch > 0; if (f.watch > 0) f.watch--;
+  if (ok) { f.streak++; if (f.streak >= 3 && f.lv < FADE_MAX) { f.lv++; f.streak = 0; f.watch = 3; } }
+  else { f.streak = 0; if (watching && f.lv > 0) { f.lv--; f.watch = 0; } }
+}
+let spellHint = { key: '', i: -1, kb: false, until: 0 }, spellHintTimer = null;
+function spellHintArm() {
+  clearTimeout(spellHintTimer); spellHintTimer = null;
+  if (!spellGameNow() || spellLevel() < FADE_MAX || !state.currentTarget || isWordComplete()) return;
+  const key = state.currentTarget, i = state.targetIndex, wait = Math.max(2, Math.min(10, state.promptDelaySec || 4)) * 1000;
+  if (spellHint.key !== key || spellHint.i !== i) spellHint = { key, i, kb: false, until: 0 };
+  spellHintTimer = setTimeout(() => {
+    if (state.currentTarget !== key || state.targetIndex !== i) return;
+    spellHint = { key, i, kb: true, until: Date.now() + 1500 };      // ring stays; the letter shows for a moment
+    render(); setTimeout(() => { render(); spellHintArm(); }, 1550);   // (and flashes again after the next wait)
+  }, wait);
+}
+function hintAt(i) { const h = spellHint; if (!spellGameNow() || h.key !== state.currentTarget || h.i !== i || !h.kb) return { kb: false, word: false }; return { kb: true, word: Date.now() < h.until }; }
 function fadeLevelAt(index) {
+  if (spellGameNow()) return spellLevel();
   const raw = fadeRawAt(index); if (raw <= FADE_KB) return raw;
   const t = state.currentTarget || '';
   let lv = raw;
@@ -5735,6 +5768,7 @@ function fadeLevelAt(index) {
   return lv;
 }
 function fadeRawAt(index) {
+  if (spellGameNow()) return spellLevel();
   if (!state.currentTarget) return 0;
   // counted by letter: a letter carries its fading with it into every word that has it
   if (state.fadeCount === 'letter') { const L = String(state.currentTarget[index] || '').toUpperCase(); return Math.min(FADE_MAX, (state.letterFade || {})[L] || 0); }
@@ -5982,7 +6016,8 @@ function missNote(kind, typed) {
   const m = state.promptMiss[word] = state.promptMiss[word] || { word: 0, at: {} };
   m.word++; m.at[i] = (m.at[i] || 0) + 1;
   const ev = { t: Date.now(), word, i, letter: String(word[i]).toUpperCase(), kind, typed: typed || null, level: fadeLevelAt(i), fadeBy: state.fadeCount === 'letter' ? 'letter' : 'word' };
-  if (m.at[i] >= MISS_LIMIT) { if (promptStepUp(word, [i])) ev.stepUp = 'letter'; m.word = 0; m.at = {}; }
+  if (spellGameNow()) { m.word = 0; m.at = {}; }      // (the Spelling game keeps its own level)
+  else if (m.at[i] >= MISS_LIMIT) { if (promptStepUp(word, [i])) ev.stepUp = 'letter'; m.word = 0; m.at = {}; }
   else if (m.word >= MISS_LIMIT) {
     const own = isListedTarget(word), wi = wordAtIndex(i), idx = [];
     for (let k = 0; k < word.length; k++) if (word[k] !== ' ' && (own || wordAtIndex(k) === wi)) idx.push(k);
@@ -6010,6 +6045,7 @@ function promptStepUp(word, idx) {
 // Called whenever the expected letter changes, or after an error that restarts the wait
 function armPrompt(force) {
   clearPromptTimer();
+  try { spellHintArm(); } catch (e) {}
   try { missArm(); } catch (e) {}
   verbalSpokenFor = -1;
   // Once help has been asked for, the rest of the word keeps prompting, each
@@ -6058,7 +6094,7 @@ function isLetterPrompted(letter) {
   if (!anyPromptEnabled()) return false;
   const expected = nextExpectedLetter();
   if (expected && expected === letter && promptsShowing()) return true;
-  if (expected && expected === letter && boostLevel(state.targetIndex) >= 1) return true;
+  if (expected && expected === letter && (boostLevel(state.targetIndex) >= 1 || hintAt(state.targetIndex).kb)) return true;
   return false;
 }
 
@@ -6110,8 +6146,8 @@ function render() {
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex &&
-               ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1)) {
-        const fl = fadeLevelAt(i), E = boostLevel(i), on = showing && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
+               ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1 || hintAt(i).word)) {
+        const fl = fadeLevelAt(i), E = Math.max(boostLevel(i), hintAt(i).word ? 1 : 0), on = showing && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
         const sh = (lim, step) => (showing && fl < lim) || E >= step;
         if (E >= 1) s.classList.add('boosted');      // (errors in a row: the letter shows again in the word)
         if ((pOn('promptTextColorOn') && sh(6, 4)) || helpLead) s.classList.add('next');
@@ -6120,7 +6156,8 @@ function render() {
         if (pOn('promptTextPulseOn') && sh(6, 3)) s.classList.add('pulse');
       }
       else s.classList.add('pending');
-      if (i >= state.targetIndex && ch !== ' ' && fadeLevelAt(i) >= FADE_MAX && !boostLevel(i)) s.classList.add('gone');      // (faded right out: typed from memory)
+      if (i >= state.targetIndex && ch !== ' ' && fadeLevelAt(i) >= FADE_MAX && !boostLevel(i) && !hintAt(i).word) s.classList.add('gone');
+      if (i === state.targetIndex && hintAt(i).word) s.classList.add('flash-hint');      // (faded right out: typed from memory)
       s.textContent = (ch === ' ') ? '\u2423' : displayLetterAt(ch, i);
       tw.appendChild(s);
     });
@@ -6256,7 +6293,7 @@ function makeLetterKey(letter, expected) {
   const lvl = state.keyLevels[letter];
   if (lvl) k.classList.add('level-' + lvl);
   if (state.hiddenKeys[letter]) k.classList.add('hidden');
-  const E = expected && letter === expected ? boostLevel(state.targetIndex) : 0;
+  const E = expected && letter === expected ? Math.max(boostLevel(state.targetIndex), hintAt(state.targetIndex).kb ? 2 : 0) : 0;
   if (expected && letter === expected && (kbPromptsShowing() || E >= 2)) {
     const fl = fadeLevelAt(state.targetIndex), show = kbPromptsShowing();
     const sh = (lim, step) => (show && fl < lim) || E >= step;
@@ -6397,7 +6434,7 @@ function makeSpecialKey(label, action, cls) {
         counter.abandons = 0;
 
         // Fade the blue prompt every 3 consecutive successes
-        if (pOn('fadeMode') && state.fadeCount !== 'letter' && counter.successes % fadeN() === 0) {
+        if (pOn('fadeMode') && !spellGameNow() && state.fadeCount !== 'letter' && counter.successes % fadeN() === 0) {
           setTimeout(() => { triggerFade(completedWord); save(); render(); }, 950);
         }
         // Rotate to next word after 3 in a row
@@ -6526,7 +6563,7 @@ function typeChar(letter) {
       state.targetPromptedFlags.push(prompted);
       autoFill();
       // fading counted by letters: every so many right letters in a row, the prompt steps down
-      if (pOn('fadeMode') && state.fadeCount === 'letter' && /[A-Z]/i.test(expected)) {
+      if (pOn('fadeMode') && !spellGameNow() && state.fadeCount === 'letter' && /[A-Z]/i.test(expected)) {
         const L = expected.toUpperCase();
         state.letterStreak = state.letterStreak || {}; state.letterFade = state.letterFade || {};
         state.letterStreak[L] = (state.letterStreak[L] || 0) + 1;
@@ -12593,6 +12630,7 @@ function groupProgress(body, cat, group) {
   const count = rows => { const c = { g: 0, b: 0, y: 0 }; rows.forEach(r => { const k = r.res === 'first' || r === 'g' ? 'g' : r.res === 'second' || r === 'b' ? 'b' : 'y'; c[k]++; }); return c; };
   const what = P.mode === 'typing' ? ['on their own', 'faded prompts', 'full prompts'] : P.mode === 'write' ? ['no wrong keys', '1–2 wrong keys', 'lots of help'] : ['first try', 'second try', 'with the pulse'];
   const total = count(P.wordT);
+  if (P.mode === 'write') { const lv = spellLevel(); add('help-note', 'Prompt level now: step ' + lv + ' of ' + FADE_MAX + (lv === 0 ? ' (every prompt)' : lv < FADE_KB ? ' (keyboard prompts fading)' : lv < FADE_MAX ? ' (keyboard done, word prompts fading)' : ' (on their own - a hint only after a wait)')); }
   add('chk-head', (total.g + total.b + total.y) + ' practice opportunities');
   body.appendChild(bar(total, true));
   const key = add('pg-key'); [['g', what[0]], ['b', what[1]], ['y', what[2]]].forEach(([k, t]) => { const s = document.createElement('span'); s.innerHTML = '<i class="pg-' + k + '"></i>'; s.appendChild(document.createTextNode(t)); key.appendChild(s); });
@@ -15588,7 +15626,43 @@ function gameTargetSets(words) {
 // the games in the Games menu, and which are switched on (in settings, under Games)
 const GAME_LIST = [['sight', '\uD83D\uDC40', 'Sight words'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Spelling tiles'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
 function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, builder: false }, state.gamesOn || {}); }
-function gameChooseCount() {
+// + Add more in the Games menu: the whole library with ticks; a ticked word becomes a target in this game's group and
+// in the Unsorted group on the targets page (made when first needed), to be sorted later. Done goes back to the menu.
+function openGameAdd(mode) {
+  const t = state.categories.find(c => c.target) || (ensureTargets(), state.categories.find(c => c.target)); if (!t) return;
+  const gs = listGroups(t), re = practiceRe(mode), game = gs.find(x => re.test(String(x.name || '').trim()));
+  if (!game) return;
+  let uns = gs.find(x => /^unsorted$/i.test(String(x.name || '').trim()));
+  const inG = w => (game.words || []).includes(w);
+  openWordSheet(body => {
+    sheetTitle(body, 'Add to ' + game.name);
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '4px 0 8px';
+    n.textContent = 'Tick words to practise in ' + game.name + '. They also go into the Unsorted group on the targets page. A word is ready once it has a picture (\uD83D\uDDBC\uFE0F) - add one from its menu or the targets page.';
+    body.appendChild(n);
+    const list = document.createElement('div'); list.className = 'pick-list pick-grid'; list.style.maxHeight = '56vh'; list.style.overflowY = 'auto'; body.appendChild(list);
+    const put = w => {
+      if (!(t.words || []).includes(w)) { addTitleTo(t, null, sentenceLabel(w)); delete state.hiddenWords[w]; }
+      if (!uns) { uns = { id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: 'Unsorted', words: [], open: false }; t.groups.push(uns); }
+      if (!uns.words.includes(w)) uns.words.push(w);
+      if (!inG(w)) game.words.push(w);
+    };
+    const take = w => { game.words = game.words.filter(y => y !== w); if (uns) uns.words = uns.words.filter(y => y !== w); };
+    const done = new Set();
+    const pathName = f => { const a = []; let x = f, g = 0; while (x && g++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a.join(' \u203A '); };
+    state.categories.filter(c => !c.target && !c.small && !c.smallSec && (c.words || []).length).forEach(f => {
+      const ws = (f.words || []).filter(w => !isPunct(w) && !done.has(w) && (done.add(w), true)); if (!ws.length) return;
+      const h = document.createElement('div'); h.className = 'help-note pick-head sort-head'; const sp = document.createElement('span'); sp.textContent = pathName(f); h.appendChild(sp); list.appendChild(h);
+      ws.forEach(w => {
+        const r = document.createElement('button'); r.className = 'pick-row';
+        const paint = () => { const on = inG(w); r.classList.toggle('on', on); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w) + (picHas(w) ? ' \uD83D\uDDBC\uFE0F' : ''); };
+        r.addEventListener('click', () => { if (inG(w)) take(w); else put(w); save(); buzz(8); paint(); });
+        paint(); list.appendChild(r);
+      });
+    });
+    body.appendChild(sheetBtn('Done', 'primary', () => { save(); gameChooseCount(mode); }));
+  });
+}
+function gameChooseCount(preMode) {
   try { ensureTargets(); } catch (e) {}
   const sight = practiceGroupWords('sight'), write = practiceGroupWords('write'), tiles = practiceGroupWords('tiles');
   openWordSheet(body => {
@@ -15609,22 +15683,31 @@ function gameChooseCount() {
         n.textContent = (pick.length ? ws.length + ' of ' + all.length : 'All ' + all.length) + ' target' + (all.length === 1 ? '' : 's');
         chips.querySelectorAll('.gm-chip').forEach(c => c.classList.toggle('on', c.dataset.key === '*' ? !pick.length : pick.includes(c.dataset.key)));
         row.querySelectorAll('.gm-count').forEach(b => { b.disabled = !ws.length; });
+        // a suggestion: about 3 turns for each target chosen (5 targets: 15 turns)
+        const rec = Math.max(1, Math.min(100, ws.length * 3));
+        tn.textContent = ws.length ? 'Suggested: ' + rec + ' (about 3 for each of the ' + ws.length + ' target' + (ws.length === 1 ? '' : 's') + ')' : '';
+        const recB = row.querySelector('.gm-count.rec-own'); recB.textContent = rec; recB.dataset.n = rec; recB.style.display = [5, 10, 15].includes(rec) ? 'none' : '';
+        row.querySelectorAll('.gm-count').forEach(b => b.classList.toggle('rec', Number(b.dataset.n) === rec));
       };
       const chip = (key, label, k) => { const c = document.createElement('button'); c.className = 'gm-chip'; c.dataset.key = key; c.textContent = label + (k != null ? '  ' + k : '');
         c.addEventListener('click', () => { buzz(8); if (key === '*') pick.length = 0; else { const i = pick.indexOf(key); if (i >= 0) pick.splice(i, 1); else pick.push(key); } paint(); }); chips.appendChild(c); };
       chip('*', 'All', all.length);
       sets.forEach(x => chip(x.key, x.label, x.words.length));
+      { const c = document.createElement('button'); c.className = 'gm-chip gm-add'; c.textContent = '+ Add more';      // (words from the library: they go into this game's group, and into Unsorted on the targets page)
+        c.addEventListener('click', () => { buzz(8); openGameAdd(mode); }); chips.appendChild(c); }
       const head = t => { const h = document.createElement('div'); h.className = 'gm-head'; h.textContent = t; count.appendChild(h); return h; };
-      const wh = head('Words'); wh.appendChild(n); if (sets.length) count.appendChild(chips);
-      head('Turns');
+      const wh = head('Words'); wh.appendChild(n); count.appendChild(chips);
+      const th = head('Turns'); const tn = document.createElement('span'); tn.className = 'gm-head-n'; th.appendChild(tn);
       const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, pick.length ? ws : null); };
-      [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.addEventListener('click', () => go(k)); row.appendChild(b); });
+      [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.dataset.n = k; b.addEventListener('click', () => go(k)); row.appendChild(b); });
+      { const b = document.createElement('button'); b.className = 'gm-count rec-own'; b.addEventListener('click', () => go(Number(b.dataset.n))); row.appendChild(b); }      // (the suggested number, when it is not 5, 10 or 15)
       const c = document.createElement('button'); c.className = 'gm-count'; c.textContent = 'Other'; c.addEventListener('click', () => { const v = parseInt(prompt('How many turns?', '20'), 10); if (v > 0) go(Math.min(100, v)); }); row.appendChild(c);
       count.appendChild(row); paint(); };
     [['sight', '\uD83D\uDC40', 'Sight words', 'Match the picture to its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'Type the word for the picture', write], ['tiles', '\uD83D\uDD24', 'Spelling tiles', 'Pick the letters for the picture', tiles]].forEach(([m, ic, nm, sub, ws]) => {
       const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
       b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : 'No targets with pictures in the "' + nm + '" group yet') + '</span>';
-      b.addEventListener('click', () => { if (off) { buzz(8); return; } if (!ws.length) { alert('Add targets to the "' + nm + '" group on the targets page, and give them pictures (the camera at the end of each target).'); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else count.innerHTML = ''; });      // (one chosen: the others step away until it is tapped again)
+      b.dataset.m = m;
+      b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else count.innerHTML = ''; });      // (one chosen: the others step away until it is tapped again)
       acts.appendChild(b);
     });
     { const b = document.createElement('button'); const off = !gamesOn().builder; b.className = 'gm-act' + (off ? ' off' : '');
@@ -15632,6 +15715,7 @@ function gameChooseCount() {
       b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); closeWordSheet(); gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); });
       acts.appendChild(b); }
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); gameOff(); }));
+    if (preMode) { const pb = acts.querySelector('.gm-act[data-m="' + preMode + '"]'); if (pb && !pb.classList.contains('off')) pb.click(); }      // (back from + Add more: the same game, still chosen)
   });
 }
 function gameStart(n, mode, only) {
@@ -15670,6 +15754,7 @@ function gameWriteTrial() {
 function gameWriteDone() {
   const g = game; if (!g) return;
   const errs = trialErrors || 0, res = (helpRequested || errs >= 3) ? 'prompted' : errs === 0 ? 'first' : 'second';
+  try { spellFadeAfter(errs === 0 && !helpRequested); } catch (e) {}
   g.seq[g.i].res = res; g.res.push({ word: g.cur.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
   state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: g.cur.word, tile: g.cur.tile, res, errors: errs, fix: !!g.seq[g.i].fix, mode: 'write' }]).slice(-3000);
   if (errs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: g.cur.tile, fix: true }); }
@@ -15690,7 +15775,7 @@ function picSay(box, word) {
   box.classList.remove('saying'); void box.offsetWidth; box.classList.add('saying');
   setTimeout(() => { w.remove(); box.classList.remove('saying'); }, 1500);
 }
-function picBtnSync() { const b = document.getElementById('homePicBtn'); if (b) { const on = !!state.picMode || !!state.builderMode; b.classList.toggle('off', !on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); } }
+function picBtnSync() { const b = document.getElementById('homePicBtn'); if (b) { const on = !!state.picMode || !!state.builderMode; b.classList.toggle('off', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); } }      // (red when ready to start; greyed while a game is going)
 function gameView() {
   let v = document.getElementById('gameView'); if (v) v.remove();
   v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '');
