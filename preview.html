@@ -1480,6 +1480,14 @@
   .snd1-ear { font-size: clamp(90px, 16vmin, 170px); }
   .snd1-sp { font-weight: 900; font-size: clamp(110px, 20vmin, 220px); line-height: 1; color: var(--ink); }
   .snd1-card.saying { animation: sayBounce 0.6s ease 1; }
+  .rec-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 12px; border-radius: 22px; margin: 6px 0 10px; }
+  .rec-card.v { background: #b9e6c0; color: #0f3d1a; } .rec-card.c { background: #d6d0f7; color: #2b2466; }
+  .rec-card b { font-size: 96px; line-height: 1; } .rec-card em { font-style: normal; font-size: 22px; font-weight: 700; } .rec-card small { font-size: 15px; opacity: 0.85; text-align: center; }
+  .rec-st { text-align: center; font-size: 16px; min-height: 22px; }
+  .rec-row { display: flex; gap: 10px; justify-content: center; margin: 8px 0 12px; }
+  .rec-btn { flex: 1 1 0; min-height: 64px; border: 0; border-radius: 16px; background: #eef0f3; font-family: inherit; font-weight: 800; font-size: 20px; color: var(--ink); }
+  .rec-btn.nav { flex: 0 0 64px; font-size: 22px; }
+  .rec-btn.rec { background: #ffe1e1; color: #c62828; } .rec-btn.rec.on { background: #e53935; color: #fff; animation: gmPulse 1s ease-in-out infinite; }
   .sm-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
   .sm-input { flex: 1 1 180px; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #c9ced8; }
   .sm-voice { flex: 0 1 190px; }
@@ -3131,7 +3139,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 550 - 11 Oct';
+const BUILD = 'build 551 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16569,6 +16577,70 @@ async function smBuiltinLoad() {
   } catch (e) {}
 }
 setTimeout(smBuiltinLoad, 2500);
+// ===== Recording the sounds on the device: one sound at a time, its example word beside it. Each recording has the quiet
+// at its start and end cut off, so the sound plays the moment its key is tapped.
+let sndRecStream = null;
+async function sndRecOpen() { if (sndRecStream && sndRecStream.active) return sndRecStream; sndRecStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true } }); return sndRecStream; }
+function sndRecClose() { try { if (sndRecStream) sndRecStream.getTracks().forEach(t => t.stop()); } catch (e) {} sndRecStream = null; }
+function sndRecRecord(maxMs, onStop) {
+  const types = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'];
+  const type = types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+  const mr = new MediaRecorder(sndRecStream, type ? { mimeType: type } : undefined), chunks = [];
+  mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise(res => { mr.onstop = () => res(new Blob(chunks, { type: mr.mimeType || type || 'audio/webm' })); });
+  mr.start(); const t = setTimeout(() => { if (mr.state !== 'inactive') mr.stop(); }, maxMs);
+  return { stop: () => { clearTimeout(t); if (mr.state !== 'inactive') mr.stop(); }, done: done.then(b => { if (onStop) onStop(); return b; }) };
+}
+// the quiet before and after the sound cut off; saved as a small .wav (falls back to the recording as it was)
+async function sndRecTrim(blob) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; const ac = new AC();
+    const buf = await new Promise((res, rej) => { blob.arrayBuffer().then(ab => { const p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }, rej); });
+    const d = buf.getChannelData(0), sr = buf.sampleRate; let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    if (peak < 0.01) { try { ac.close(); } catch (e) {} return blob; }
+    const th = peak * 0.08, pad = Math.round(sr * 0.04); let a = 0, z = d.length - 1;
+    while (a < d.length && Math.abs(d[a]) < th) a++; while (z > a && Math.abs(d[z]) < th) z--;
+    a = Math.max(0, a - pad); z = Math.min(d.length - 1, z + pad * 2);
+    const n = z - a + 1, gain = Math.min(4, 0.89 / peak), fade = Math.round(sr * 0.01);
+    const out = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+    out.setUint32(24, sr, true); out.setUint32(28, sr * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); w(36, 'data'); out.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) { let v = d[a + i] * gain; if (i < fade) v *= i / fade; if (n - i < fade) v *= (n - i) / fade; v = Math.max(-1, Math.min(1, v)); out.setInt16(44 + i * 2, v * 0x7FFF, true); }
+    try { ac.close(); } catch (e) {}
+    return new Blob([out.buffer], { type: 'audio/wav' });
+  } catch (e) { return blob; }
+}
+// the order to record in: the first sounds taught first, then the rest of the letters, then the sounds of two or more
+function sndRecOrder() { const first = 'msatnifp'.split(''); return first.concat('abcdefghijklmnopqrstuvwxyz'.split('').filter(l => !first.includes(l)), Object.keys(SOUND_SAT)); }
+const REC_TIP = { schwa: 'the quick, weak "uh" (as in the a in sofa)', q: 'k + w (as in queen)', x: 'k + s (as in fox)', dh: 'the buzzy th in this', th: 'the quiet th in thin', uu: 'the short oo in book', oo: 'the long oo in moon', zh: 'the sound in the middle of treasure' };
+function openSoundRecorder(startId) {
+  const ids = sndRecOrder(); let i = Math.max(0, ids.indexOf(startId)); let rec = null;
+  const end = () => { if (rec) try { rec.stop(); } catch (e) {} sndRecClose(); };
+  const draw = () => openWordSheet(body => {
+    const id = ids[i], K = SOUND_K[id];
+    sheetTitle(body, 'Record the sounds · ' + (i + 1) + ' of ' + ids.length);
+    const card = document.createElement('div'); card.className = 'rec-card ' + (soundIsVowel(id) ? 'v' : 'c');
+    card.innerHTML = '<b></b><em></em><small></small>'; card.querySelector('b').textContent = K.label; card.querySelector('em').textContent = 'as in ' + (K.ex || ''); card.querySelector('small').textContent = REC_TIP[id] || 'Say just the sound - not the letter\'s name, and no "uh" after it.';
+    body.appendChild(card);
+    const st = document.createElement('div'); st.className = 'help-note rec-st'; st.textContent = SM.a.has(id) ? (smBuiltin().has('a|' + id) ? 'Has the built-in sound. Record to use your own.' : 'Recorded ✓ - play it, or record again.') : 'Not recorded yet.'; body.appendChild(st);
+    const row = document.createElement('div'); row.className = 'rec-row'; body.appendChild(row);
+    const b = (t, cls, fn) => { const x = document.createElement('button'); x.className = 'rec-btn ' + (cls || ''); x.textContent = t; x.addEventListener('click', e => { e.stopPropagation(); fn(x); }); row.appendChild(x); return x; };
+    b('◀', 'nav', () => { end(); if (i > 0) i--; draw(); });
+    const rb = b('● Record', 'rec', async x => {
+      if (rec) { rec.stop(); return; }
+      try { await sndRecOpen(); } catch (e) { st.textContent = 'The microphone could not be used. Allow it for this page in the iPad settings (Settings > Safari > Microphone) and try again.'; return; }
+      x.classList.add('on'); x.textContent = '■ Stop'; st.textContent = 'Recording… say "' + K.label + '" now.';
+      rec = sndRecRecord(2600, () => {}); const raw = await rec.done; rec = null; x.classList.remove('on'); x.textContent = '● Record';
+      st.textContent = 'Saving…'; const clip = await sndRecTrim(raw); await smPut('a', id, clip); smMarkOwn('a', id); st.textContent = 'Recorded ✓ - listen:'; soundSay(id);
+    });
+    b('▶ Play', '', () => soundSay(id));
+    b('▶', 'nav', () => { end(); if (i < ids.length - 1) i++; else { closeWordSheet(); try { openSoundMedia(); } catch (e) {} return; } draw(); });
+    const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'Record somewhere quiet, close to the iPad. The quiet before and after is cut off by itself. ▶ goes to the next sound; every recording is kept as it is made.'; body.appendChild(n);
+    body.appendChild(sheetBtn('Done', 'primary', () => { end(); closeWordSheet(); try { openSoundMedia(); } catch (e) {} }));
+    void rb;
+  });
+  smLoad().then(draw);
+}
 // Settings > Games > Sounds: every sound with its audio and video, the Google voice, and a set of files at once
 function openSoundMedia() {
   const draw = () => openWordSheet(body => {
@@ -16576,7 +16648,10 @@ function openSoundMedia() {
     const note = t => { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = t; body.appendChild(n); return n; };
     const head = t => { const h = document.createElement('div'); h.className = 'help-note chk-head'; h.textContent = t; body.appendChild(h); };
     const btn = (t, fn, cls) => { const b = document.createElement('button'); b.className = 'hf-btn' + (cls ? ' ' + cls : ''); b.textContent = t; b.addEventListener('click', e => { e.stopPropagation(); fn(b); }); return b; };
-    head('Google voice (makes a file for each sound, once)');
+    head('Record them (you, or anyone with a clear voice)');
+    { const rr = document.createElement('div'); rr.className = 'sm-row'; rr.appendChild(btn('\uD83C\uDF99\uFE0F Record the sounds, one by one', () => openSoundRecorder(soundAllIds().find(id => !SM.a.has(id))), 'primary')); body.appendChild(rr); }
+    note('Goes through every sound with its example word: tap Record, say the sound, and go on to the next. About 15 minutes for all of them.');
+    head('Google voice (needs a Google Cloud key)');
     const kr = document.createElement('div'); kr.className = 'sm-row';
     const ki = document.createElement('input'); ki.type = 'password'; ki.placeholder = 'Google Cloud API key'; ki.value = ttsKey(); ki.className = 'sm-input'; ki.autocomplete = 'off';
     ki.addEventListener('change', () => { try { localStorage.setItem('kbd-tts-key', ki.value.trim()); } catch (e) {} });
@@ -16618,6 +16693,7 @@ function openSoundMedia() {
         const r = document.createElement('div'); r.className = 'sm-snd';
         const l = document.createElement('div'); l.className = 'sm-lab ' + (soundIsVowel(id) ? 'v' : 'c'); l.innerHTML = '<b></b><em></em>'; l.firstChild.textContent = K.label; l.lastChild.textContent = K.ex || ''; r.appendChild(l);
         const st = document.createElement('span'); st.className = 'sm-st'; st.textContent = (SM.a.has(id) ? '🔊' : '') + (SM.v.has(id) ? ' 🎬' : ''); r.appendChild(st);
+        r.appendChild(btn('\uD83C\uDF99\uFE0F', () => openSoundRecorder(id)));
         r.appendChild(btn('▶', () => { if (SM.v.has(id)) { const box = document.createElement('div'); box.className = 'sm-vidpop'; box.addEventListener('click', () => box.remove()); document.body.appendChild(box); smVideoInto(box, id).then(v => { if (v) v.addEventListener('ended', () => setTimeout(() => box.remove(), 600)); }); } else soundSay(id); }));
         if (ttsKey()) { r.appendChild(btn('\u21BB', async b => { b.disabled = true; try { await ttsMake(id); drawList(); soundSay(id); } catch (e) { alert('Could not make it: ' + (e.message || e)); } b.disabled = false; }));
           r.appendChild(btn('\u270E', () => { const cur = ttsSayAs()[id] || ''; const v = prompt('How the Google voice should say "' + K.label + '" (as in ' + (K.ex || '') + ').\n\nIPA between slashes, e.g. /s\u02D0/, or plain words, e.g. sss or ah. Leave it empty for the usual sound.', cur);
