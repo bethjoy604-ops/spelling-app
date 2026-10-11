@@ -945,7 +945,8 @@
   .sugg-row .sugg-card:nth-child(3n+1) { scroll-snap-stop: always; }
   .sugg-card .hw { white-space: normal; text-align: center; line-height: 1.5; padding: 0 14px; overflow-wrap: anywhere; }
   .view-home.keys-open .sugg-host { display: none; }
-  .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next { color: transparent !important; }
+  .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next, .target-banner .tletter.gone { color: transparent !important; }
+  .target-banner .tletter.gone:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
   .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
   .type-layer { display: none; position: fixed; inset: 0; z-index: 40; flex-direction: column; gap: 12px; background: #aeb0b5; padding: calc(22px + env(safe-area-inset-top, 0px)) 26px 8px; }
   .type-layer.open { display: flex; animation: tlUp 0.18s ease both; }
@@ -2568,33 +2569,27 @@
         </div>
         <div class="help-note">"Say the next letter" is spoken once when the prompt appears, and again after a wrong letter.</div>
 
-        <div class="sublabel">Textual prompt</div>
+        <div class="sublabel">Target word prompts (the word to copy)</div>
         <div class="settings-list">
           <div class="setting-row"><span>Show the word to copy above the keyboard</span><div class="toggle on" id="togglePromptText"></div></div>
+          <div class="setting-row"><span>Colour the next letter in the word</span><div class="toggle" id="togglePromptTextColor"></div></div>
+          <div class="setting-row"><span>Pulse the next letter in the word</span><div class="toggle on" id="togglePromptTextPulse"></div></div>
+          <div class="setting-row"><span>Grow the next letter in the word</span><div class="toggle" id="togglePromptTile"></div></div>
         </div>
-        <div class="help-note">Off: the letters still to type are left blank, so the word is spelled from memory. Letters appear as they are typed.</div>
+        <div class="seg-row" id="segTileSize" style="margin-top:8px;"></div>
+        <div class="help-note">Word off: the letters still to type are left blank, so the word is spelled from memory. Letters appear as they are typed.</div>
 
-        <div class="sublabel">Movement</div>
+        <div class="sublabel">Keyboard prompts (typing the letters)</div>
         <div class="settings-list">
-          <div class="setting-row"><span>Pulse the prompted letter</span><div class="toggle on" id="togglePromptPulse"></div></div>
-        </div>
-
-        <div class="sublabel">Highlight</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Highlight the next letter</span><div class="toggle" id="togglePromptColor"></div></div>
+          <div class="setting-row"><span>Colour the next key</span><div class="toggle" id="togglePromptColor"></div></div>
         </div>
         <div class="swatch-row" id="colorSwatches" style="margin-top:10px;"></div>
         <div class="seg-row" id="segIntensity" style="margin-top:8px;"></div>
-
-        <div class="sublabel">Magnification</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Enlarge the next letter's key</span><div class="toggle" id="togglePromptSize"></div></div>
+        <div class="settings-list" style="margin-top:10px;">
+          <div class="setting-row"><span>Pulse the next key</span><div class="toggle on" id="togglePromptPulse"></div></div>
+          <div class="setting-row"><span>Enlarge the next key</span><div class="toggle" id="togglePromptSize"></div></div>
         </div>
         <div class="seg-row" id="segPromptSize" style="margin-top:8px;"></div>
-        <div class="settings-list" style="margin-top:10px;">
-          <div class="setting-row"><span>Grow the next letter in the word above</span><div class="toggle" id="togglePromptTile"></div></div>
-        </div>
-        <div class="seg-row" id="segTileSize" style="margin-top:8px;"></div>
 
         <div class="sublabel">Time delay</div>
         <div class="settings-list">
@@ -2994,7 +2989,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 514 - 11 Oct';
+const BUILD = 'build 516 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3106,6 +3101,8 @@ const state = {
   promptColor: 'blue',        // key of PROMPT_COLORS
   promptIntensity: 'medium',  // light | medium | dark
   promptPulseOn: true,        // gentle pulsing motion on the prompted letter
+  promptTextColorOn: true,    // colour the next letter in the target word (the keyboard's colour is promptColorOn)
+  promptTextPulseOn: true,    // pulse the next letter in the target word (the keyboard's pulse is promptPulseOn)
   promptSizeOn: true,         // enlarge the next letter's key
   promptTileOn: true,         // magnify the letter in the Target bar
   promptTileSize: 'large',    // small | med | large
@@ -3202,7 +3199,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3308,13 +3305,15 @@ async function load() {
         pendingLetterCounts: saved.pendingLetterCounts || {},
         fadeMode: saved.fadeMode ?? true,
         rotateMode: saved.rotateMode ?? false,
-        wordFadeLevels: (() => { const f = saved.wordFadeLevels || {}; if (!saved.fadeV2) Object.keys(f).forEach(w => { if (Array.isArray(f[w])) f[w] = f[w].map(v => Math.min(6, (v || 0) * 2)); }); return f; })(),      // (fading used to have three steps; it has six now)
+        wordFadeLevels: (() => { const f = saved.wordFadeLevels || {}; if (!saved.fadeV2) Object.keys(f).forEach(w => { if (Array.isArray(f[w])) f[w] = f[w].map(v => Math.min(6, (v || 0) * 2)); }); if (!saved.fadeV3) Object.keys(f).forEach(w => { if (Array.isArray(f[w])) f[w] = f[w].map(v => (v || 0) >= 6 ? 8 : (v || 0)); }); return f; })(),      // (fading used to have three steps; it has six now)
         wordTrialCounters: saved.wordTrialCounters || {},
 
         promptColorOn: saved.promptColorOn ?? true,
         promptColor: PROMPT_COLORS[saved.promptColor] ? saved.promptColor : 'blue',
         promptIntensity: INTENSITY_LABELS[saved.promptIntensity] ? saved.promptIntensity : 'medium',
         promptPulseOn: saved.promptPulseOn ?? true,
+        promptTextColorOn: saved.promptTextColorOn ?? (saved.promptColorOn ?? true),
+        promptTextPulseOn: saved.promptTextPulseOn ?? (saved.promptPulseOn ?? true),
         promptSizeOn: saved.promptSizeOn ?? true,
         promptTileOn: saved.promptTileOn ?? true,
         promptTileSize: SIZE_STEPS.includes(saved.promptTileSize) ? saved.promptTileSize : 'large',
@@ -3369,7 +3368,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: saved.letterFade || {}, letterStreak: saved.letterStreak || {}, fadeV2: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -3614,7 +3613,7 @@ async function load() {
     Object.assign(state, {
       builderMode: false, speakMode: false, chatMode: false, railOpen: true, soundOn: true, suggestOn: true,
       helpMode: false, helpDelaySec: 3,
-      promptColorOn: true, promptColor: 'blue', promptIntensity: 'medium', promptPulseOn: true,
+      promptColorOn: true, promptColor: 'blue', promptIntensity: 'medium', promptPulseOn: true, promptTextColorOn: true, promptTextPulseOn: true,
       promptSizeOn: true, promptSize: 'large', promptTileOn: true, promptTileSize: 'large',
       promptVerbalOn: false, otherKeysMode: 'normal', promptDelaySec: 0,
       errorFeedback: 'none', errorPromptAction: 'now', errorLetterMode: 'flash', speakErrorLetter: true, enterSpeechMode: 'correct',
@@ -3927,6 +3926,8 @@ async function save() {
       promptColor: state.promptColor,
       promptIntensity: state.promptIntensity,
       promptPulseOn: state.promptPulseOn,
+      promptTextColorOn: state.promptTextColorOn,
+      promptTextPulseOn: state.promptTextPulseOn,
       promptSizeOn: state.promptSizeOn,
       promptTileOn: state.promptTileOn,
       promptTileSize: state.promptTileSize,
@@ -3980,7 +3981,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -4487,7 +4488,7 @@ async function syncOpen(bytes, key) {
 const SYNC_SETTING_KEYS = [
   'caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'phonemes', 'letterSpeech', 'enterSpeech',
   'phoneticMode', 'haptics', 'targetSpeech', 'voiceName', 'voiceRate', 'voicePitch',
-  'promptColor', 'promptShade', 'promptHighlightOn', 'promptPulseOn', 'promptSizeOn',
+  'promptColor', 'promptShade', 'promptHighlightOn', 'promptPulseOn', 'promptSizeOn', 'promptTextColorOn', 'promptTextPulseOn',
   'promptTileOn', 'promptTileSize', 'promptSize', 'promptVerbalOn', 'promptDelaySec',
   'helpMode', 'helpDelaySec', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn',
   'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect',
@@ -5685,7 +5686,12 @@ function getOrInitWordData(word) {
 // The prompt fades in a set order, a step at a time: first on the keyboard - the colour grows lighter
 // (1, 2) and goes (3), then the jiggle (4), then the magnifying (5) - and last of all the prompt in
 // the word bar above (6: that letter is on its own).
-const FADE_MAX = 6;
+// Fading, one step at a time for each letter. The keyboard's prompts go first, then the target word's:
+//  0 everything on · 1-2 the key's colour lighter · 3 key colour gone (pulse, bigger key) · 4 pulse gone (bigger key)
+//  5 the keyboard has no prompt - the word still colours, pulses and enlarges the letter · 6 the word only enlarges it
+//  7 the letter is plain in the word (no prompt at all) · 8 the letter is gone from the word: typed from memory
+// In the word's steps (5 to 8) the letters go from the first to the last, once every letter's keyboard prompts are gone.
+const FADE_MAX = 8, FADE_KB = 5, FADE_PLAIN = 7;
 function fadeLevelAt(index) {
   if (!state.currentTarget) return 0;
   // counted by letter: a letter carries its fading with it into every word that has it
@@ -5699,10 +5705,18 @@ function triggerFade(word) {
   const fades = state.wordFadeLevels[word];
   if (!fades) return;
   // the whole word steps down together
+  const letters = fades.map((_, i) => i).filter(i => word[i] !== ' ');
+  // the target word's steps: only when the keyboard has nothing left for any letter, and from the first letter on
+  if (letters.every(i => fades[i] >= FADE_KB)) {
+    const i = letters.find(k => fades[k] < FADE_MAX);
+    if (i === undefined) { showMastered(word); return; }
+    fades[i]++;
+    showLevelUp(word[i], fades[i] >= FADE_MAX);
+    return;
+  }
   if (state.fadeOrder === 'full') {
-    let any = false;
-    for (let i = 0; i < fades.length; i++) { if (word[i] !== ' ' && fades[i] < FADE_MAX) { fades[i]++; any = true; } }
-    if (any) showLevelUp(word[0], false); else showMastered(word);
+    letters.forEach(i => { if (fades[i] < FADE_KB) fades[i]++; });
+    showLevelUp(word[0], false);
     return;
   }
   // one letter at a time: from the last letter back, or from the first letter on
@@ -5710,10 +5724,9 @@ function triggerFade(word) {
   if (state.fadeOrder !== 'first') idx.reverse();
   for (const i of idx) {
     if (word[i] === ' ') continue;
-    if (fades[i] < FADE_MAX) {
+    if (fades[i] < FADE_KB) {      // (the keyboard's steps, in the chosen order)
       fades[i]++;
-      const faded = (fades[i] >= FADE_MAX);
-      showLevelUp(word[i], faded);
+      showLevelUp(word[i], false);
       return;
     }
   }
@@ -5869,12 +5882,12 @@ function applyPromptTheme() {
 // Any visual/verbal prompt at all?
 function anyPromptEnabled() {
   return pOn('promptColorOn') || pOn('promptSizeOn') || pOn('promptVerbalOn') ||
-         pOn('promptPulseOn') || pOn('promptTileOn') || state.otherKeysMode !== 'normal';
+         pOn('promptPulseOn') || pOn('promptTileOn') || pOn('promptTextColorOn') || pOn('promptTextPulseOn') || state.otherKeysMode !== 'normal';
 }
 // Prompts are showing right now (delay elapsed, letter not fully faded)
 function promptsShowing() {
   if (!state.currentTarget || isWordComplete()) return false;
-  if (fadeLevelAt(state.targetIndex) >= FADE_MAX) return false;
+  if (fadeLevelAt(state.targetIndex) >= FADE_PLAIN) return false;
   // In help mode nothing appears until it's asked for
   if (state.helpMode && !helpRequested) return false;
   return promptVisible;
@@ -5884,7 +5897,7 @@ let kbLagKey = '', kbLagAt = 0, kbLagTimer = null;
 function barPromptNow() {
   if (!promptsShowing()) return false;
   const fl = fadeLevelAt(state.targetIndex);
-  return (pOn('promptColorOn') && fl < 3) || (pOn('promptTileOn') && fl < FADE_MAX);
+  return (pOn('promptTextColorOn') && fl < 6) || (pOn('promptTileOn') && fl < FADE_PLAIN) || (pOn('promptTextPulseOn') && fl < 6);
 }
 function kbPromptsShowing() {
   if (!promptsShowing()) { kbLagKey = ''; return false; }
@@ -6038,7 +6051,7 @@ function render() {
   banner.classList.add('bs-' + state.bannerSize);
   if (state.currentTarget) {
     banner.classList.add('active');
-    banner.classList.toggle('no-text', state.promptTextOn === false);
+    banner.classList.toggle('no-text', pOpt('promptTextOn') === false);
     const tw = document.getElementById('targetWord');
     { const ws = state.currentTarget.split(' ').filter(Boolean), wrap = false;      // (a phrase stays on one line, left to right: the bar slides along to the word being spelled)
       banner.style.setProperty('--n', String(Math.max(4, Math.min(state.currentTarget.length, Math.max(...ws.map(x => x.length)) + 1))));      // (sized so the word being spelled fits)      // (the letters size to fit the bar)
@@ -6054,18 +6067,18 @@ function render() {
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex &&
-               ((showing && (pOn('promptColorOn') || pOn('promptTileOn'))) || helpLead)) {
-        const fl = fadeLevelAt(i);      // the colour in the word bar fades in step with the colour on the key
-        if ((pOn('promptColorOn') || helpLead) && fl < 3) {
+               ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead)) {
+        const fl = fadeLevelAt(i);      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
+        if ((pOn('promptTextColorOn') || helpLead) && fl < 6) {
           s.classList.add('next');
-          if (fl > 0) s.classList.add('fade-' + fl);
         } else {
           s.classList.add('pending');
         }
-        if (pOn('promptTileOn')) s.classList.add('magnify', 'tmag-' + state.promptTileSize);
-        if (pOn('promptPulseOn') && fl < 2) s.classList.add('pulse');
+        if (pOn('promptTileOn') && fl < FADE_PLAIN) s.classList.add('magnify', 'tmag-' + state.promptTileSize);
+        if (pOn('promptTextPulseOn') && fl < 6) s.classList.add('pulse');
       }
       else s.classList.add('pending');
+      if (i >= state.targetIndex && ch !== ' ' && fadeLevelAt(i) >= FADE_MAX) s.classList.add('gone');      // (faded right out: typed from memory)
       s.textContent = (ch === ' ') ? '\u2423' : displayLetterAt(ch, i);
       tw.appendChild(s);
     });
@@ -6645,7 +6658,8 @@ function trialData() {
   if (dcOn('verbal') && pOn('promptVerbalOn')) pr.push('voice');
   if (dcOn('highlight') && pOn('promptColorOn')) pr.push('highlight (' + (state.promptIntensity || 'medium') + ')');
   if (dcOn('magnify') && pOn('promptSizeOn')) pr.push('magnify key');
-  if (dcOn('tilecolor') && pOn('promptColorOn')) pr.push('highlight in text');
+  if (dcOn('tilecolor') && pOn('promptTextColorOn')) pr.push('highlight in text');
+  if (dcOn('movement') && pOn('promptTextPulseOn')) pr.push('pulse in text');
   if (dcOn('tilemag') && pOn('promptTileOn')) pr.push('magnify in text');
   if (dcOn('movement') && pOn('promptPulseOn')) pr.push('pulse');
   if (pr.length || ['textual', 'verbal', 'highlight', 'magnify', 'movement', 'tilecolor', 'tilemag'].some(dcOn)) d.prompts = pr;
@@ -11002,7 +11016,7 @@ function renderTrash() {
 // The settings that go out with an exported layout (and so into the built-in one): how the app looks and behaves -
 // not what it has learned (word use, pairs used together, letter scores), the chat history, sync details or voice files
 const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'phonemes', 'letterSpeech', 'enterSpeech', 'setupMode', 'phoneticMode', 'haptics', 'targetSpeech',
-  'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
+  'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
   'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
@@ -12438,8 +12452,10 @@ function groupPromptRows(g) {
     ['h', 'Other tiles'], ['r', 'picLevel', 'easy', 'Easy (' + what + ' that look different)', state.picLevel || 'easy'], ['r', 'picLevel', 'hard', 'Hard (' + what + ' that look alike)', state.picLevel || 'easy'],
   ];
   const rows = [
-    ['h', 'Prompts'], ['b', 'promptColorOn', 'Colour the next letter'], ['b', 'promptPulseOn', 'Pulse the key'], ['b', 'promptSizeOn', 'Bigger key'],
-    ['b', 'promptTileOn', 'Bigger letter in the message bar'], ['b', 'promptVerbalOn', 'Say the next letter'], ['b', 'speakErrorLetter', 'Say a wrong letter'],
+    ['h', 'Target word (the word to copy)'], ['b', 'promptTextOn', 'Show the target word'], ['b', 'promptTextColorOn', 'Colour the next letter in the word'],
+    ['b', 'promptTextPulseOn', 'Pulse the next letter in the word'], ['b', 'promptTileOn', 'Bigger next letter in the word'],
+    ['h', 'Keyboard (typing the letters)'], ['b', 'promptColorOn', 'Colour the next key'], ['b', 'promptPulseOn', 'Pulse the next key'], ['b', 'promptSizeOn', 'Bigger next key'],
+    ['h', 'Voice'], ['b', 'promptVerbalOn', 'Say the next letter'], ['b', 'speakErrorLetter', 'Say a wrong letter'],
     ['h', 'Prompt fading'], ['b', 'fadeMode', 'Fade the prompts as spelling improves'],
     ['h', 'Error correction · after a wrong key']
   ].concat(Object.entries(ERROR_ACTION_LABELS).map(([v, l]) => ['r', 'errorPromptAction', v, l, state.errorPromptAction]));
@@ -14843,12 +14859,17 @@ function openTargetSettings() {
       [['promptColorOn', 'SOS colours the next letter'], ['promptPulseOn', 'SOS pulses the key'], ['promptSizeOn', 'SOS makes the key bigger'], ['promptTileOn', 'SOS makes the letter bigger in the target bar'], ['promptVerbalOn', 'SOS says the next letter']]
         .forEach(([k, label]) => toggle(b, label, cur(k), () => { const o = sp(); o[k] = !o[k]; }));
     }],
-    ['look', 'How the prompt looks', b => {
-      toggle(b, 'Colour the next letter', state.promptColorOn, () => { state.promptColorOn = !state.promptColorOn; });
+    ['word', 'Target word (the word to copy)', b => {
+      toggle(b, 'Show the target word', state.promptTextOn !== false, () => { state.promptTextOn = state.promptTextOn === false; });
+      toggle(b, 'Colour the next letter', state.promptTextColorOn, () => { state.promptTextColorOn = !state.promptTextColorOn; });
+      toggle(b, 'Pulse the next letter', state.promptTextPulseOn, () => { state.promptTextPulseOn = !state.promptTextPulseOn; });
+      toggle(b, 'Bigger next letter', state.promptTileOn, () => { state.promptTileOn = !state.promptTileOn; });
+    }],
+    ['look', 'Keyboard (typing the letters)', b => {
+      toggle(b, 'Colour the next key', state.promptColorOn, () => { state.promptColorOn = !state.promptColorOn; });
       seg(b, 'Colour strength', Object.entries(INTENSITY_LABELS), state.promptIntensity, v => { state.promptIntensity = v; state.promptColorOn = true; });
-      toggle(b, 'Pulse', state.promptPulseOn, () => { state.promptPulseOn = !state.promptPulseOn; });
-      toggle(b, 'Bigger key', state.promptSizeOn, () => { state.promptSizeOn = !state.promptSizeOn; });
-      toggle(b, 'Bigger letter in the target bar', state.promptTileOn, () => { state.promptTileOn = !state.promptTileOn; });
+      toggle(b, 'Pulse the next key', state.promptPulseOn, () => { state.promptPulseOn = !state.promptPulseOn; });
+      toggle(b, 'Bigger next key', state.promptSizeOn, () => { state.promptSizeOn = !state.promptSizeOn; });
     }],
     ['sound', 'Sound', b => {
       toggle(b, 'Say the next letter', state.promptVerbalOn, () => { state.promptVerbalOn = !state.promptVerbalOn; });
@@ -16645,6 +16666,8 @@ function promptSummary() {
   if (state.promptPulseOn) on.push('Pulse');
   if (state.promptSizeOn) on.push(SIZE_LABELS[state.promptSize] + ' size');
   if (state.promptTileOn) on.push(SIZE_LABELS[state.promptTileSize] + ' tile');
+  if (state.promptTextColorOn) on.push('Word colour');
+  if (state.promptTextPulseOn) on.push('Word pulse');
   if (state.promptVerbalOn) on.push('Voice');
   if (state.otherKeysMode !== 'normal') on.push(OTHER_KEYS_LABELS[state.otherKeysMode]);
   if (state.promptDelaySec > 0) on.push(state.promptDelaySec + 's wait');
@@ -16721,6 +16744,8 @@ function renderSettings() {
   document.getElementById('togglePromptSize').classList.toggle('on', state.promptSizeOn);
   document.getElementById('togglePromptPulse').classList.toggle('on', state.promptPulseOn);
   document.getElementById('togglePromptTile').classList.toggle('on', state.promptTileOn);
+  document.getElementById('togglePromptTextColor').classList.toggle('on', !!state.promptTextColorOn);
+  document.getElementById('togglePromptTextPulse').classList.toggle('on', !!state.promptTextPulseOn);
   document.getElementById('togglePromptVerbal').classList.toggle('on', state.promptVerbalOn);
   document.getElementById('toggleHelpMode').classList.toggle('on', state.helpMode);
   buildSwatches();
@@ -16943,6 +16968,8 @@ document.getElementById('togglePromptColor').addEventListener('click', () => {
 document.getElementById('togglePromptPulse').addEventListener('click', () => {
   state.promptPulseOn = !state.promptPulseOn; save(); render(); renderSettings();
 });
+document.getElementById('togglePromptTextColor').addEventListener('click', () => { state.promptTextColorOn = !state.promptTextColorOn; save(); render(); renderSettings(); });
+document.getElementById('togglePromptTextPulse').addEventListener('click', () => { state.promptTextPulseOn = !state.promptTextPulseOn; save(); render(); renderSettings(); });
 document.getElementById('togglePromptTile').addEventListener('click', () => {
   state.promptTileOn = !state.promptTileOn; save(); render(); renderSettings();
 });
