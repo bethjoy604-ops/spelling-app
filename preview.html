@@ -1445,9 +1445,11 @@
   .game-view.gm-sound .gm-pic { flex: 1 1 0; flex-direction: column; gap: 10px; padding: 16px 20px 18px; }
   .game-view.gm-sound .gm-pic img { flex: 1 1 0; min-height: 0; width: 100%; height: auto; }
   .game-view.gm-sound .gm-pic.no-pic { justify-content: center; }
-  .snd-word { font-family: inherit; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1; color: var(--ink); letter-spacing: 0.02em; }
-  .snd-cells { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-  .snd-cell { min-width: clamp(64px, 9vmin, 104px); height: clamp(64px, 9vmin, 104px); padding: 0 10px; box-sizing: border-box; border-radius: 14px; border: 3px dashed #c4c8cf; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: clamp(34px, 6vmin, 64px); color: #9aa1ab; background: #fff; }
+  .snd-word { font-family: inherit; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1.15; color: var(--ink); letter-spacing: 0.02em; margin-bottom: clamp(16px, 3vh, 36px); }
+  .snd-word span { border-radius: 10px; padding: 0 0.02em; transition: background 0.2s; }
+  .snd-word span.now { background: #ffe45c; box-shadow: 0 0 0 4px #ffe45c; }
+  .snd-cells { display: flex; gap: clamp(16px, 2.6vmin, 30px); justify-content: center; flex-wrap: wrap; }
+  .snd-cell { min-width: clamp(76px, 11vmin, 132px); height: clamp(76px, 11vmin, 132px); padding: 0 14px; box-sizing: border-box; border-radius: 16px; border: 3px dashed #c4c8cf; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1; color: #9aa1ab; background: #fff; }
   .snd-cell.next { border-style: solid; border-color: #2f8bff; }
   .snd-cell.filled { border: 3px solid #d7dbe1; background: #f4f5f7; color: #8e959f; }
   .snd-cell.lit { background: #ffe45c; color: var(--ink); border-color: #e0c000; }
@@ -3073,7 +3075,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 542 - 11 Oct';
+const BUILD = 'build 543 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16129,29 +16131,30 @@ const SOUND_SAME = { c: ['c', 'k'], k: ['k', 'c'], th: ['th', 'dh'], dh: ['dh', 
 // A word's sounds, from its spelling: each a { id, alt } - alt are the other sounds accepted for it. Set by hand (Sounds,
 // in the word's menu on the targets page) when the spelling does not say it plainly.
 function soundSplit(word) {
-  const own = (state.soundSplits || {})[word]; if (Array.isArray(own) && own.length) return own.map(id => ({ id, alt: SOUND_SAME[id] || [id] }));
+  const own = (state.soundSplits || {})[word]; if (Array.isArray(own) && own.length) { const lw = String(word || '').toLowerCase().replace(/[^a-z]/g, ''); let p = 0;
+    return own.map(id => { const lab = (SOUND_K[id] ? SOUND_K[id].label : id); const k = lw.indexOf(lab, p); let at = []; if (k >= 0 && /^[a-z]+$/.test(lab)) { at = lab.split('').map((_, j) => k + j); p = k + lab.length; } return { id, alt: SOUND_SAME[id] || [id], at }; }); }
   const w = String(word || '').toLowerCase().replace(/[^a-z]/g, ''); if (!w) return [];
-  const out = [], add = (id, alt) => out.push({ id, alt: alt || SOUND_SAME[id] || [id] });
+  const out = [], add = (id, alt, at) => out.push({ id, alt: alt || SOUND_SAME[id] || [id], at: at || [] });      // (at: the letters of the word it is spelled with)
   const V = 'aeiou', isC = ch => ch && !V.includes(ch);
   let i = 0;
   while (i < w.length) {
     const r = w.slice(i), at = (str) => r.startsWith(str), last = i === w.length - 1;
     // vowel, consonant, then a final e: the long vowel (cake, bike, home, cute, these)
     if (V.includes(w[i]) && isC(w[i + 1]) && w[i + 2] === 'e' && i + 3 === w.length && !(w[i] === 'e' && w[i + 1] === 'r')) {
-      const lv = { a: 'ai', i: 'igh', o: 'oa', u: 'oo', e: 'ee' }[w[i]]; add(lv); const c = w[i + 1]; add(c === 'c' ? 's' : c, c === 'c' ? ['s'] : undefined); i += 3; continue; }
+      const lv = { a: 'ai', i: 'igh', o: 'oa', u: 'oo', e: 'ee' }[w[i]]; add(lv, undefined, [i, i + 2]); const c = w[i + 1]; add(c === 'c' ? 's' : c, c === 'c' ? ['s'] : undefined, [i + 1]); i += 3; continue; }
     const rules = [['igh', 'igh'], ['air', 'air'], ['are', 'air', 'end'], ['ear', 'ear'], ['eer', 'ear'], ['tch', 'ch'], ['dge', 'j'], ['ore', 'or', 'end'],
       ['sh', 'sh'], ['ch', 'ch'], ['th', 'th'], ['ng', 'ng'], ['ck', 'k'], ['ph', 'f'], ['wh', 'w'], ['ee', 'ee'], ['ea', 'ee'], ['oo', 'oo'], ['oa', 'oa'],
       ['ow', 'ow', null, ['ow', 'oa']], ['ou', 'ow'], ['oi', 'oi'], ['oy', 'oi'], ['ai', 'ai'], ['ay', 'ai'], ['aw', 'aw'], ['au', 'aw'], ['ar', 'ar'], ['or', 'or'],
       ['er', 'er'], ['ir', 'er'], ['ur', 'er'], ['ie', 'igh', 'end']];
     const hit = rules.find(([sp, , where]) => at(sp) && (where !== 'end' || i + sp.length === w.length));
-    if (hit) { const [sp, id, , alt] = hit; add(id, alt); i += sp.length; continue; }
-    if (at('qu')) { add('k'); add('w'); i += 2; continue; }
+    if (hit) { const [sp, id, , alt] = hit; add(id, alt, sp.split('').map((_, k) => i + k)); i += sp.length; continue; }
+    if (at('qu')) { add('k', undefined, [i]); add('w', undefined, [i + 1]); i += 2; continue; }
     const ch = w[i];
-    if (i > 0 && ch === w[i - 1] && isC(ch)) { i++; continue; }                    // a doubled letter is one sound (bell, kiss)
-    if (ch === 'e' && last && i > 0) { i++; continue; }                             // a silent final e
-    if (ch === 'y' && last && i > 0) { add(i <= 2 ? 'igh' : 'ee', i <= 2 ? ['igh'] : ['ee']); i++; continue; }      // my - happy
-    if (ch === 'c' && 'eiy'.includes(w[i + 1] || '')) { add('s', ['s']); i++; continue; }      // a soft c (city)
-    add(ch); i++;
+    if (i > 0 && ch === w[i - 1] && isC(ch)) { if (out.length) out[out.length - 1].at.push(i); i++; continue; }                    // a doubled letter is one sound (bell, kiss)
+    if (ch === 'e' && last && i > 0) { if (out.length) out[out.length - 1].at.push(i); i++; continue; }                             // a silent final e
+    if (ch === 'y' && last && i > 0) { add(i <= 2 ? 'igh' : 'ee', i <= 2 ? ['igh'] : ['ee'], [i]); i++; continue; }      // my - happy
+    if (ch === 'c' && 'eiy'.includes(w[i + 1] || '')) { add('s', ['s'], [i]); i++; continue; }      // a soft c (city)
+    add(ch, undefined, [i]); i++;
   }
   return out;
 }
@@ -16193,10 +16196,15 @@ function gameSoundTrial() {
   g.cur = { word: tile, tile, parts, k: 0, tries: 0, prompted: false, wrongs: 0, anyPrompt: false, lets: [] };
   const box = document.getElementById('gmPic'); box.innerHTML = '';
   if (pic) { const im = document.createElement('img'); im.src = pic.url; im.alt = ''; box.appendChild(im); }
-  const wd = document.createElement('div'); wd.className = 'snd-word'; wd.textContent = plainLabel(tile).toLowerCase(); box.appendChild(wd);
+  const wd = document.createElement('div'); wd.className = 'snd-word'; wd.id = 'gmWord';
+  { let li = 0; [...plainLabel(tile).toLowerCase()].forEach(ch => { const sp = document.createElement('span'); sp.textContent = ch;
+      if (/[a-z]/.test(ch)) { const k = parts.findIndex(p => (p.at || []).includes(li)); if (k >= 0) sp.dataset.k = k; li++; }
+      wd.appendChild(sp); }); }
+  box.appendChild(wd);
   const cells = document.createElement('div'); cells.className = 'snd-cells'; cells.id = 'gmCells';
   parts.forEach((p, k) => { const c = document.createElement('span'); c.className = 'snd-cell' + (k === 0 ? ' next' : ''); c.dataset.k = k; cells.appendChild(c); });
   box.appendChild(cells);
+  soundWordMark(0);
   box.classList.toggle('no-pic', !pic); box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
   document.getElementById('gmMsg').textContent = '';
   const row = document.getElementById('gmRow'); row.innerHTML = ''; soundKbBuild(row);
@@ -16212,6 +16220,7 @@ function soundEnter(id) {
     const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (cell) { cell.textContent = SOUND_K[want.id] ? SOUND_K[want.id].label : want.id; cell.classList.add('filled'); cell.classList.remove('next'); }
     c.k++; c.tries = 0; c.prompted = false; buzz(15);
     const nx = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (nx) nx.classList.add('next');
+    soundWordMark(c.k);
     soundKbPaint();
     if (c.k >= c.parts.length) gameSoundDone();
     return;
@@ -16223,6 +16232,8 @@ function soundEnter(id) {
   soundKbPaint();
 }
 // the word done: the sounds said one by one, each cell lit in turn (slow blend), then the whole word (fast blend)
+// the letters of the word for the sound being built are lit (sh in sheep, the a and the e in cake)
+function soundWordMark(k) { document.querySelectorAll('#gmWord span').forEach(sp => { const pk = sp.dataset.k == null ? -1 : Number(sp.dataset.k); sp.classList.toggle('now', pk === k); sp.classList.toggle('done', pk >= 0 && pk < k); }); }
 function gameSoundDone() {
   const g = game, c = g.cur; g.busy = true;
   const res = c.anyPrompt ? 'prompted' : c.wrongs ? 'second' : 'first';
@@ -16234,7 +16245,8 @@ function gameSoundDone() {
   const step = () => {
     cells.forEach(x => x.classList.remove('lit'));
     if (game !== g) return;
-    if (k < cells.length) { cells[k].classList.add('lit'); soundSay(c.parts[k].id); k++; setTimeout(step, 700); return; }
+    if (k < cells.length) { cells[k].classList.add('lit'); soundWordMark(k); soundSay(c.parts[k].id); k++; setTimeout(step, 700); return; }
+    soundWordMark(-1);
     document.getElementById('gmCells').classList.add('gm-word-done');
     try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; }
     buzz([20, 80, 40]); gameStars(document.getElementById('gmCells'));
