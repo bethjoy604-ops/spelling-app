@@ -1453,6 +1453,9 @@
   .gm-act .ga-s { font-weight: 700; font-size: 15px; color: var(--muted); }
   .gm-act.on { border-color: var(--green); background: #ebfaee; }
   .gm-act.empty { opacity: 0.55; }
+  .gm-acts.picked .gm-act:not(.on) { display: none; }
+  .gm-head { display: flex; align-items: baseline; gap: 12px; margin: 18px 2px 10px; font-size: 22px; font-weight: 900; color: var(--ink); }
+  .gm-head-n { font-size: 15px; font-weight: 800; color: var(--muted); }
   .gm-act.off { opacity: 0.4; filter: grayscale(1); cursor: default; }
   .view-keyboard.pic-on .pic-progress.gm-bar { height: 18px; gap: 5px; }
   .gm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
@@ -3016,7 +3019,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 524 - 11 Oct';
+const BUILD = 'build 525 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15599,12 +15602,12 @@ function gameChooseCount() {
       // which targets: every ready one, or only those in the folders / groups ticked (Characters, Movies, Trucks ...)
       const sets = gameTargetSets(all), pick = gamePick[mode] = (gamePick[mode] || []).filter(k => sets.some(x => x.key === k));
       const chosen = () => pick.length ? all.filter(w => sets.some(x => pick.includes(x.key) && x.words.includes(w))) : all;
-      const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '12px 0 8px';
+      const n = document.createElement('span'); n.className = 'gm-head-n';
       const chips = document.createElement('div'); chips.className = 'gm-chips';
       const row = document.createElement('div'); row.className = 'gm-counts';
       const paint = () => {
         const ws = chosen();
-        n.textContent = (pick.length ? ws.length + ' of ' + all.length : 'All ' + all.length) + ' target' + (all.length === 1 ? '' : 's') + '. Tick folders or groups to practise only those, then pick how many turns.';
+        n.textContent = (pick.length ? ws.length + ' of ' + all.length : 'All ' + all.length) + ' target' + (all.length === 1 ? '' : 's');
         chips.querySelectorAll('.gm-chip').forEach(c => c.classList.toggle('on', c.dataset.key === '*' ? !pick.length : pick.includes(c.dataset.key)));
         row.querySelectorAll('.gm-count').forEach(b => { b.disabled = !ws.length; });
       };
@@ -15612,7 +15615,9 @@ function gameChooseCount() {
         c.addEventListener('click', () => { buzz(8); if (key === '*') pick.length = 0; else { const i = pick.indexOf(key); if (i >= 0) pick.splice(i, 1); else pick.push(key); } paint(); }); chips.appendChild(c); };
       chip('*', 'All', all.length);
       sets.forEach(x => chip(x.key, x.label, x.words.length));
-      count.appendChild(n); if (sets.length) count.appendChild(chips);
+      const head = t => { const h = document.createElement('div'); h.className = 'gm-head'; h.textContent = t; count.appendChild(h); return h; };
+      const wh = head('Words'); wh.appendChild(n); if (sets.length) count.appendChild(chips);
+      head('Turns');
       const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, pick.length ? ws : null); };
       [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.addEventListener('click', () => go(k)); row.appendChild(b); });
       const c = document.createElement('button'); c.className = 'gm-count'; c.textContent = 'Other'; c.addEventListener('click', () => { const v = parseInt(prompt('How many turns?', '20'), 10); if (v > 0) go(Math.min(100, v)); }); row.appendChild(c);
@@ -15620,7 +15625,7 @@ function gameChooseCount() {
     [['sight', '\uD83D\uDC40', 'Sight words', 'Match the picture to its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'Type the word for the picture', write], ['tiles', '\uD83D\uDD24', 'Spelling tiles', 'Pick the letters for the picture', tiles]].forEach(([m, ic, nm, sub, ws]) => {
       const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
       b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : 'No targets with pictures in the "' + nm + '" group yet') + '</span>';
-      b.addEventListener('click', () => { if (off) { buzz(8); return; } if (!ws.length) { alert('Add targets to the "' + nm + '" group on the targets page, and give them pictures (the camera at the end of each target).'); return; } buzz(8); mode = m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b)); pickCount(); });
+      b.addEventListener('click', () => { if (off) { buzz(8); return; } if (!ws.length) { alert('Add targets to the "' + nm + '" group on the targets page, and give them pictures (the camera at the end of each target).'); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else count.innerHTML = ''; });      // (one chosen: the others step away until it is tapped again)
       acts.appendChild(b);
     });
     { const b = document.createElement('button'); const off = !gamesOn().builder; b.className = 'gm-act' + (off ? ' off' : '');
