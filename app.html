@@ -3131,7 +3131,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 549 - 11 Oct';
+const BUILD = 'build 550 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16481,7 +16481,7 @@ async function ttsFetch(id, voice) {
   const bin = atob(j.audioContent), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return new Blob([u8], { type: 'audio/mpeg' });
 }
-async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); }
+async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); try { smMarkOwn('a', id); } catch (e) {} }
 // a few sounds one after another in a voice, to compare voices before making them all (nothing is kept)
 async function ttsTest(voice, status) {
   const ids = ['m', 'a', 's', 'sh', 'ee', 't'];
@@ -16500,11 +16500,12 @@ async function smAddZip(file) {
   for (const e of entries) {
     const base = e.name.split('/').pop(); if (!base || /^\./.test(base) || /__MACOSX/.test(e.name)) continue;
     const m = base.match(/^(.+)\.([a-z0-9]+)$/i); if (!m) continue;
-    const ext = m[2].toLowerCase(), nm = m[1].toLowerCase().replace(/[^a-z]/g, '');
+    const ext = m[2].toLowerCase(), nm = m[1].toLowerCase().replace(/\.video$/, '').replace(/[^a-z]/g, '');
     const id = SOUND_K[nm] && !SOUND_K[nm].label.includes('ə') ? nm : (SOUND_BY_LABEL[nm] || null); if (!id) continue;
     const data = await e.get();
-    if (AUDIO_TYPES[ext]) { await smPut('a', id, new Blob([data], { type: AUDIO_TYPES[ext] })); n++; }
-    else if (VID[ext]) { await smPut('v', id, new Blob([data], { type: VID[ext] })); n++; }
+    const isV = /\.video$/i.test(m[1]) || !!VID[ext] && !AUDIO_TYPES[ext] || (ext === 'webm' && /\.video$/i.test(m[1]));
+    if (!isV && AUDIO_TYPES[ext]) { await smPut('a', id, new Blob([data], { type: AUDIO_TYPES[ext] })); smMarkOwn('a', id); n++; }
+    else if (VID[ext]) { await smPut('v', id, new Blob([data], { type: VID[ext] })); smMarkOwn('v', id); n++; }
   }
   return n;
 }
@@ -16513,6 +16514,61 @@ function smPick(accept, fn) {
   inp.addEventListener('change', () => { const f = inp.files && inp.files[0]; inp.remove(); if (f) fn(f); });
   document.body.appendChild(inp); inp.click();
 }
+// ===== Sounds for everyone: the sounds made or recorded on one device, saved as a .zip (Share these sounds) to be built
+// into the app; every device then fetches the built-in set (sounds/manifest.json beside the app) when its version is new.
+// A device's own sound (recorded or loaded on it) is never replaced by the built-in one.
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+// a .zip with the files stored as they are (sound and video files are compressed already)
+function zipStore(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  files.forEach(f => {
+    const name = enc.encode(f.name), data = f.data, crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(h.buffer), name, data);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), name);
+    off += 30 + name.length + data.length;
+  });
+  const csize = central.reduce((n, x) => n + x.length, 0);
+  const e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob(parts.concat(central, [new Uint8Array(e.buffer)]), { type: 'application/zip' });
+}
+const MEDIA_EXT = { 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'aac', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/ogg': 'ogg', 'audio/webm': 'webm', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
+async function smExportZip() {
+  await smLoad();
+  const files = [];
+  for (const kind of ['a', 'v']) for (const id of SM[kind]) {
+    const blob = await smTx('readonly', st => st.get(kind + '|' + id)); if (!blob) continue;
+    const ext = MEDIA_EXT[blob.type] || (kind === 'v' ? 'mp4' : 'mp3');
+    files.push({ name: id + (kind === 'v' ? '.video' : '') + '.' + ext, data: new Uint8Array(await blob.arrayBuffer()) });
+  }
+  if (!files.length) { alert('There are no sound files on this device yet.'); return; }
+  const url = URL.createObjectURL(zipStore(files)), a = document.createElement('a');
+  a.href = url; a.download = 'sounds-' + new Date().toISOString().slice(0, 10) + '.zip'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  alert(files.length + ' file' + (files.length === 1 ? '' : 's') + ' saved as a .zip. Send it to be built into the app, and every device will get these sounds.');
+}
+// which sounds on this device came from the built-in set (those may be updated; the device's own never are)
+function smBuiltin() { try { return new Set(JSON.parse(localStorage.getItem('kbd-sm-builtin') || '[]')); } catch (e) { return new Set(); } }
+function smBuiltinSave(s) { try { localStorage.setItem('kbd-sm-builtin', JSON.stringify([...s])); } catch (e) {} }
+function smMarkOwn(kind, id) { const b = smBuiltin(); if (b.delete(kind + '|' + id)) smBuiltinSave(b); }
+async function smBuiltinLoad() {
+  try {
+    const r = await fetch('sounds/manifest.json', { cache: 'no-cache' }); if (!r.ok) return;
+    const m = await r.json(); const ver = Number(m.version || 0); let have = 0; try { have = Number(localStorage.getItem('kbd-sm-ver') || 0); } catch (e) {}
+    if (!ver || ver <= have) return;
+    await smLoad(); const b = smBuiltin();
+    for (const [id, f] of Object.entries(m.files || {})) for (const kind of ['a', 'v']) {
+      const path = f[kind]; if (!path || !SOUND_K[id]) continue;
+      const key = kind + '|' + id; if (SM[kind].has(id) && !b.has(key)) continue;      // (this device's own: kept)
+      const res = await fetch(path, { cache: 'no-cache' }); if (!res.ok) continue;
+      await smPut(kind, id, await res.blob()); b.add(key);
+    }
+    smBuiltinSave(b); try { localStorage.setItem('kbd-sm-ver', String(ver)); } catch (e) {}
+  } catch (e) {}
+}
+setTimeout(smBuiltinLoad, 2500);
 // Settings > Games > Sounds: every sound with its audio and video, the Google voice, and a set of files at once
 function openSoundMedia() {
   const draw = () => openWordSheet(body => {
@@ -16549,9 +16605,10 @@ function openSoundMedia() {
     note('A Google Cloud key with the Text-to-Speech API turned on (it stays on this device only). Test a voice first; a UK voice uses British vowels. Each sound below can then be remade (\u21BB) or told how to sound (\u270E). These sounds are used only by the sound keyboard games - the ordinary keyboard keeps its letters.');
     head('A set of files at once');
     const zr = document.createElement('div'); zr.className = 'sm-row';
+    zr.appendChild(btn('Share these sounds (.zip for everyone)', () => smExportZip()));
     zr.appendChild(btn('Add a .zip of sound files', () => smPick('.zip,application/zip', async f => { const n = await smAddZip(f); alert(n + ' file' + (n === 1 ? '' : 's') + ' added.'); drawList(); })));
     body.appendChild(zr);
-    note('Name each file after its sound: sh.mp3, ee.mp3, igh.mp3, a.mp3 (a video as sh.mp4). The voiced th is dh, the oo in book is uu, the weak vowel is schwa.');
+    note('Share these sounds saves every sound on this device as one .zip: once it is built into the app, every device gets them (a device\'s own recordings are kept). Adding a .zip: name each file after its sound - sh.mp3, ee.mp3, igh.mp3, a.mp3, a video as sh.mp4. The voiced th is dh, the oo in book is uu, the weak vowel is schwa.');
     head('Each sound');
     const list = document.createElement('div'); list.className = 'sm-list'; body.appendChild(list);
     const drawList = () => {
@@ -16565,8 +16622,8 @@ function openSoundMedia() {
         if (ttsKey()) { r.appendChild(btn('\u21BB', async b => { b.disabled = true; try { await ttsMake(id); drawList(); soundSay(id); } catch (e) { alert('Could not make it: ' + (e.message || e)); } b.disabled = false; }));
           r.appendChild(btn('\u270E', () => { const cur = ttsSayAs()[id] || ''; const v = prompt('How the Google voice should say "' + K.label + '" (as in ' + (K.ex || '') + ').\n\nIPA between slashes, e.g. /s\u02D0/, or plain words, e.g. sss or ah. Leave it empty for the usual sound.', cur);
             if (v === null) return; ttsSayAsSet(id, v.trim()); ttsMake(id).then(() => { drawList(); soundSay(id); }).catch(e => alert('Could not make it: ' + (e.message || e))); })); }
-        r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); drawList(); soundSay(id); })));
-        r.appendChild(btn(SM.v.has(id) ? 'Video ✓' : 'Video', () => smPick('video/*', async f => { await smPut('v', id, f); drawList(); })));
+        r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); smMarkOwn('a', id); drawList(); soundSay(id); })));
+        r.appendChild(btn(SM.v.has(id) ? 'Video ✓' : 'Video', () => smPick('video/*', async f => { await smPut('v', id, f); smMarkOwn('v', id); drawList(); })));
         if (SM.a.has(id) || SM.v.has(id)) r.appendChild(btn('✕', async () => { if (!confirm('Remove the audio and video for ' + K.label + '?')) return; await smDel('a', id); await smDel('v', id); drawList(); }, 'danger'));
         list.appendChild(r);
       });
