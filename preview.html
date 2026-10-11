@@ -3028,7 +3028,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 532 - 11 Oct';
+const BUILD = 'build 533 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15713,8 +15713,8 @@ function gameChooseCount(preMode) {
     sheetTitle(body, 'Games');
     const acts = document.createElement('div'); acts.className = 'gm-acts'; body.appendChild(acts);
     const count = document.createElement('div'); body.appendChild(count);
-    let mode = null;
-    const pickCount = () => { count.innerHTML = '';
+    let mode = null, startNow = null;
+    const pickCount = () => { count.innerHTML = ''; startNow = null;
       const all = mode === 'write' ? write : mode === 'tiles' ? tiles : sight;
       // which targets: every ready one, or only those in the folders / groups ticked (Characters, Movies, Trucks ...)
       const sets = gameTargetSets(all), pick = gamePick[mode] = (gamePick[mode] || []).filter(k => sets.some(x => x.key === k));
@@ -15732,6 +15732,7 @@ function gameChooseCount(preMode) {
         tn.textContent = ws.length ? 'Suggested: ' + rec + ' (about 3 for each of the ' + ws.length + ' target' + (ws.length === 1 ? '' : 's') + ')' : '';
         const recB = row.querySelector('.gm-count.rec-own'); recB.textContent = rec; recB.dataset.n = rec; recB.style.display = [5, 10, 15].includes(rec) ? 'none' : '';
         row.querySelectorAll('.gm-count').forEach(b => b.classList.toggle('rec', Number(b.dataset.n) === rec));
+        startNow = ws.length ? () => go(rec) : null;      // (Done starts the game with the suggested number of turns)
       };
       const chip = (key, label, k) => { const c = document.createElement('button'); c.className = 'gm-chip'; c.dataset.key = key; c.textContent = label + (k != null ? '  ' + k : '');
         c.addEventListener('click', () => { buzz(8); if (key === '*') pick.length = 0; else { const i = pick.indexOf(key); if (i >= 0) pick.splice(i, 1); else pick.push(key); } paint(); }); chips.appendChild(c); };
@@ -15751,13 +15752,15 @@ function gameChooseCount(preMode) {
       const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
       b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : 'No targets with pictures in the "' + nm + '" group yet') + '</span>';
       b.dataset.m = m;
-      b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else count.innerHTML = ''; });      // (one chosen: the others step away until it is tapped again)
+      b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else { count.innerHTML = ''; startNow = null; } });      // (one chosen: the others step away until it is tapped again)
       acts.appendChild(b);
     });
     { const b = document.createElement('button'); const off = !gamesOn().builder; b.className = 'gm-act' + (off ? ' off' : '');
       b.innerHTML = '<span class="ga-ic">\uD83E\uDDF1</span><span class="ga-t">Sentence builder</span><span class="ga-s">' + (off ? 'Switched off in settings' : 'Build a message one step at a time') + '</span>';
       b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); closeWordSheet(); gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); });
       acts.appendChild(b); }
+    // Done: with a game chosen, it starts (with the green-outlined, suggested number of turns); otherwise it just closes
+    body.appendChild(sheetBtn('Done', 'primary', () => { if (mode && startNow) { buzz(10); startNow(); return; } closeWordSheet(); }));
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); gameOff(); }));
     if (preMode) { const pb = acts.querySelector('.gm-act[data-m="' + preMode + '"]'); if (pb && !pb.classList.contains('off')) pb.click(); }      // (back from + Add more: the same game, still chosen)
   });
