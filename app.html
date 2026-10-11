@@ -315,6 +315,8 @@
   }
   .chat-bubble.reply { align-self: flex-end; background: #bfd8ff; }
   .phrase-bar { position: relative; }
+  /* an empty message bar: three soft dots (the typing box's placeholder), a cue that it can be typed into */
+  #pbInput::placeholder { color: rgba(0,0,0,0.22); letter-spacing: 0.18em; font-weight: 900; }
   .phrase-bar.has-opts { padding-bottom: 64px !important; }
   .pb-opts { position: absolute; left: 24px; right: 220px; bottom: 12px; display: flex; flex-wrap: nowrap; gap: 10px; overflow-x: auto; scrollbar-width: none; }
   .pb-opts:empty { display: none; }
@@ -3032,7 +3034,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 537 - 11 Oct';
+const BUILD = 'build 538 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9237,7 +9239,7 @@ function renderPhraseBar0() {
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
-  document.getElementById('pbInput').placeholder = '';
+  document.getElementById('pbInput').placeholder = homePhrase.length ? '' : '\u2022\u2022\u2022';      // (an empty bar: three dots, a cue that it can be typed into)
 }
 // Words put in the bar were each said aloud as they went in, so pressing enter
 // does not say them again. sayIt is for a phrase that was never voiced.
