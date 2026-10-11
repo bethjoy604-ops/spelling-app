@@ -1467,6 +1467,11 @@
   .sk.opt.c { background: #efecfd; border-color: #8777dc; }
   .sk.opt em { font-style: normal; font-weight: 600; font-size: clamp(10px, 1.6vmin, 15px); opacity: 0.85; }
   .sk.gm-pulse { animation: gmPulse 1.1s ease-in-out infinite; box-shadow: 0 0 0 6px #ffc93c; }
+  /* magic tiles in columns: a grid of six, three columns (green, grey, purple), two tiles down each */
+  .sugg-row.cols-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; overflow: visible !important; flex-wrap: nowrap; }
+  .sugg-row.cols-grid > .sugg-card { width: auto !important; min-width: 0 !important; flex: none !important; margin: 0 !important; }
+  .sugg-row.cols-grid > .sugg-gap { visibility: hidden; }
+  .sugg-band.band-cols { margin-bottom: 14px; }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -1497,6 +1502,10 @@
   .pick-row.no-pic:not(.on) { opacity: 0.6; }
   .home-card.menu-tile { color: #fff !important; box-shadow: var(--shadow); }
   .home-card.menu-tile .hw { font-size: clamp(36px, 6vmin, 72px) !important; color: #fff !important; background: none !important; }
+  .gm-wordpick { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 14px; padding: 12px; border-radius: 16px; background: #f4f5f7; }
+  .gm-wp-head { flex-basis: 100%; font-size: 14px; font-weight: 800; color: var(--muted); }
+  .gm-chip.gm-word:not(.on) { opacity: 0.55; text-decoration: line-through; }
+  .gm-chip.gm-wp-done { background: var(--green); color: #fff; }
   .gm-chip.gm-add { background: #fff; border: 3px dashed #c4c8cf; color: var(--muted); }
   .gm-count:disabled { opacity: 0.4; }
   .gm-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
@@ -2867,6 +2876,7 @@
         <div class="settings-list">
           <div class="setting-row"><span>Ending buttons beside a word</span><div class="toggle on" id="togglePlural"></div></div>
           <div class="setting-row"><span>Word order help (park + go offers "go park")</span><div class="toggle on" id="toggleSeq"></div></div>
+          <div class="setting-row"><span>Magic tiles in columns: green, grey, purple side by side</span><div class="toggle on" id="toggleMagicCols"></div></div>
         </div>
         <div class="sublabel">Which endings are offered</div>
         <div class="settings-list" id="endingSettings"></div>
@@ -3063,7 +3073,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 540 - 11 Oct';
+const BUILD = 'build 542 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3444,7 +3454,7 @@ async function load() {
         builderHide: saved.builderHide || {},
         capKeep: saved.capKeep || {},
         smallRowsOn: saved.smallRowsOn ?? true,
-        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
+        bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
         letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
@@ -4071,7 +4081,7 @@ async function save() {
       builderHide: state.builderHide,
       capKeep: state.capKeep || {},
       smallRowsOn: state.smallRowsOn !== false,
-      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
+      bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
       letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
@@ -8690,6 +8700,7 @@ function suggRender0() {
       if (!cfg.cat.on) { cats1 = []; cats2 = []; }
     }
     cats = [];
+    const greenAll = green.slice(), greyFolders0 = folders.slice(), greyThings0 = things2.slice(); let openGrid = null;      // (for the columns)
     // green, two rows: together they are a grid of the six likeliest (three in each), and each slides on to more
     let green2 = [];
     { const a = [], b = []; green.forEach((m, i) => { (Math.floor(i / 3) % 2 ? b : a).push(m); }); green = a; green2 = b; }
@@ -8706,7 +8717,7 @@ function suggRender0() {
         const others = folders.filter(m => !(m.folder === oc && (m.group || null) === (og || null))).map(m => Object.assign({}, m, { other: true }));
         const all6 = [{ folder: oc, group: og || null, phrase: homePhrase.concat(['\u25B8open']), used: idx, openHead: true }].concat(tiles.map(w => ({ phrase: homePhrase.concat([w]), used: idx, cat: oc, hint: og ? og.name : '' })), subs, others);
         const r1 = [], r2 = []; all6.forEach((m, i) => { (Math.floor(i / 3) % 2 ? r2 : r1).push(m); });
-        folders = r1; things2 = r2; bandOpen.fold = true; bandOpen.things = true;
+        folders = r1; things2 = r2; bandOpen.fold = true; bandOpen.things = true; openGrid = all6;
       } else suggFolder = null;
     }
     openItems = null;
@@ -8740,7 +8751,7 @@ function suggRender0() {
     // exactly two rows tall, so a swipe lands on whole rows with nothing cut off at the top or bottom
     host.style.height = all && fitting ? (Math.min(Math.round(bandLike.h || 160), fitH) * 2 + 14) + 'px' : '';
     host.style.flex = all && fitting ? 'none' : '';
-    if (all && fitting) requestAnimationFrame(() => { const r = host.querySelector('.sugg-row'); if (r && r.offsetHeight) host.style.height = (r.offsetHeight * 2 + 14) + 'px'; });      // (measured: the tiles' own borders count too)
+    if (all && fitting) requestAnimationFrame(() => { const r = host.querySelector('.sugg-row'); if (r && r.offsetHeight) host.style.height = (r.classList.contains('cols-grid') ? r.offsetHeight : r.offsetHeight * 2 + 14) + 'px'; });      // (measured: the tiles' own borders count too)
     const sig = [suggShut, bandOpen.fold, bandOpen.cat].map(x => x ? 1 : 0).join('') + '|' + fitH + '|' + [green, green2, folders, things2, cats1, cats2].map(l => l.map(m => m.phrase.join(' ')).join(',')).join('|');
     if (host.dataset.sig === sig && host.firstChild) return;
     host.dataset.sig = sig;
@@ -8829,7 +8840,24 @@ function suggRender0() {
         band(things2, bandOpen.things, 'band-fold band-things', 'Things', () => { bandOpen.things = !bandOpen.things; }, () => 'name-hl word-in-folder', 1, !folders.length); },
       cat: () => { band(cats1, bandOpen.cat, 'band-cat', 'Choices', cT, () => 'cat-hl', 1, true); band(cats2, bandOpen.cat, 'band-cat band-cat2', 'Groups', cT, () => 'cat-hl', 1, !cats1.length); } };
     // (green, grey, purple - unless the word's rule puts another band first: "hi" -> the names, "feel" -> the feelings)
-    { const rl = magicRuleNow(), ord = (rl && rl.bands) || ['green', 'grey', 'cat']; ord.forEach(k => bandFns[k]()); }
+    if (state.magicCols !== false) {
+      // Columns: each grid of six is green (doing words) | grey (things, My Stuff, parts) | purple (choices, groups), two
+      // tiles down each; scrolling down, the next grid of six carries on down the same three columns, less likely each time.
+      // A grey folder tapped: the grid of six becomes its tiles (all grey, the folder in the corner); tapped again, the
+      // columns are back. A word tapped goes into the message, and the columns are worked out again for the new message.
+      const mix = (a, b) => { const out = []; for (let i = 0; i < Math.max(a.length, b.length); i++) { if (a[i]) out.push(a[i]); if (b[i]) out.push(b[i]); } return out; };
+      const colG = greenAll, colT = mix(greyThings0, greyFolders0), colP = mix(cats1, cats2);
+      const cell = (m, hl, col) => { if (!m) { const e = document.createElement('div'); e.className = 'sugg-gap ' + col; if (hgt) e.style.height = hgt + 'px'; return e; } const b = tile(m, hl); b.classList.add(col); return b; };
+      const pair = list => { const sec = document.createElement('div'); sec.className = 'sugg-band pair-start band-cols'; const row = document.createElement('div'); row.className = 'sugg-row pair-start cols-grid'; list.forEach(x => row.appendChild(x)); sec.appendChild(row); host.appendChild(sec); };
+      const greyHl = m => (m.folder || m.back) ? 'name-hl' : 'name-hl word-in-folder';
+      if (openGrid) { for (let k = 0; k < Math.min(openGrid.length, 18); k += 6) pair(openGrid.slice(k, k + 6).map(m => cell(m, greyHl(m), 'col-t'))); }
+      const pairs = Math.min(8, Math.ceil(Math.max(colG.length, colT.length, colP.length) / 2));
+      for (let p = 0; p < pairs; p++) {
+        const cells = []; [2 * p, 2 * p + 1].forEach(r => { cells.push(cell(colG[r], 'sugg-hl', 'col-g'), cell(colT[r], colT[r] ? greyHl(colT[r]) : '', 'col-t'), cell(colP[r], 'cat-hl', 'col-p')); });
+        pair(cells);
+      }
+      if (openGrid) requestAnimationFrame(() => { host.scrollTop = 0; });
+    } else { const rl = magicRuleNow(), ord = (rl && rl.bands) || ['green', 'grey', 'cat']; ord.forEach(k => bandFns[k]()); }
     // a single word that still breaks across lines in its tile ("temperatur/e"): split with a hyphen and stacked instead
     requestAnimationFrame(() => host.querySelectorAll('.sugg-card .hw > span').forEach(sp => {
       const txt = sp.textContent; if (/[\s\n-]/.test(txt) || sp.getClientRects().length < 2) return;
@@ -11245,7 +11273,7 @@ function renderTrash() {
 const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'phonemes', 'letterSpeech', 'enterSpeech', 'setupMode', 'phoneticMode', 'haptics', 'targetSpeech',
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
-  'railOpen', 'kbRailOpen', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
+  'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
   'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
@@ -14511,11 +14539,13 @@ function seqOfferNow() {
   const keep = seqOffer && seqOffer.from === homePhrase.join(' ') ? seqOffer : null;
   seqOffer = null;
   if (state.seqOn === false || state.builderMode) return;
-  const was = homePhrase.slice();
+  const was = homePhrase.slice(), prevWas = arrPrev;
   let moved = false;
-  try { moved = arrangeLast(); } catch (e) {}
+  // the whole message, a word at a time, as if each had just been added: so the order is offered again whenever a word
+  // is added - whether or not the last offer was taken ("strawberries" + eat + some -> "eat some strawberries")
+  try { let cur = []; was.forEach(w => { homePhrase = cur.concat([w]); arrPrev = cur.slice(); if (arrangeLast()) moved = true; cur = homePhrase.slice(); }); } catch (e) {}
   let arrMoved = homePhrase.slice();
-  homePhrase = was;
+  homePhrase = was; arrPrev = prevWas;
   let dropped = null; try { dropped = dropExtra(arrMoved); } catch (e) {}      // (and a word that is not needed, taken out)
   if (dropped) { arrMoved = dropped; moved = true; }
   seqOffer = moved && arrMoved.join(' ') !== was.join(' ') ? { from: was.join(' '), to: arrMoved } : keep;
@@ -15713,6 +15743,7 @@ function gameTargets() { const ws = practiceGroupWords((game && game.mode) || 's
 // starting: which practice (sight words or writing practice), then how many turns
 // the folders the ready targets are in (folders only, not the groups inside them), for choosing which to practise: each with its targets, most first
 const gamePick = {};
+const gameSkip = {};
 function gameTargetSets(words) {
   const sets = new Map();
   const add = (key, label, w) => { if (!sets.has(key)) sets.set(key, { key, label, words: [] }); const x = sets.get(key); if (!x.words.includes(w)) x.words.push(w); };
@@ -15793,7 +15824,8 @@ function gameChooseCount(preMode) {
       const all = mode === 'write' ? write : mode === 'tiles' ? tiles : mode === 'sound' ? sound : sight;
       // which targets: every ready one, or only those in the folders / groups ticked (Characters, Movies, Trucks ...)
       const sets = gameTargetSets(all), pick = gamePick[mode] = (gamePick[mode] || []).filter(k => sets.some(x => x.key === k));
-      const chosen = () => pick.length ? all.filter(w => sets.some(x => pick.includes(x.key) && x.words.includes(w))) : all;
+      const skip = gameSkip[mode] = gameSkip[mode] || new Set();      // (single targets switched off inside a folder: double-tap the folder)
+      const chosen = () => (pick.length ? all.filter(w => sets.some(x => pick.includes(x.key) && x.words.includes(w))) : all).filter(w => !skip.has(w));
       const n = document.createElement('span'); n.className = 'gm-head-n';
       const chips = document.createElement('div'); chips.className = 'gm-chips';
       const row = document.createElement('div'); row.className = 'gm-counts';
@@ -15809,14 +15841,24 @@ function gameChooseCount(preMode) {
         row.querySelectorAll('.gm-count').forEach(b => b.classList.toggle('rec', Number(b.dataset.n) === rec));
         startNow = ws.length ? () => go(rec) : null;      // (Done starts the game with the suggested number of turns)
       };
+      // a folder double-tapped: its targets open under the folders, each to tick on or off for this game
+      const wp = document.createElement('div'); wp.className = 'gm-wordpick'; let wpKey = null, lastTap = { key: null, t: 0 };
+      const openWords = key => { wp.innerHTML = ''; wpKey = key; const x = sets.find(y => y.key === key); if (!x) { wp.style.display = 'none'; return; }
+        wp.style.display = ''; const h = document.createElement('div'); h.className = 'gm-wp-head'; h.textContent = x.label + ': tap a target to leave it out or put it back'; wp.appendChild(h);
+        x.words.forEach(w => { const b = document.createElement('button'); b.className = 'gm-chip gm-word'; const pt = () => { const on = !skip.has(w); b.classList.toggle('on', on); b.textContent = (on ? '\u2713 ' : '') + plainLabel(w); }; pt();
+          b.addEventListener('click', () => { buzz(8); if (skip.has(w)) skip.delete(w); else skip.add(w); pt(); paint(); }); wp.appendChild(b); });
+        const d = document.createElement('button'); d.className = 'gm-chip gm-wp-done'; d.textContent = 'Done'; d.addEventListener('click', () => { buzz(8); wp.style.display = 'none'; wpKey = null; }); wp.appendChild(d); };
+      wp.style.display = 'none';
       const chip = (key, label, k) => { const c = document.createElement('button'); c.className = 'gm-chip'; c.dataset.key = key; c.textContent = label + (k != null ? '  ' + k : '');
-        c.addEventListener('click', () => { buzz(8); if (key === '*') pick.length = 0; else { const i = pick.indexOf(key); if (i >= 0) pick.splice(i, 1); else pick.push(key); } paint(); }); chips.appendChild(c); };
+        c.addEventListener('click', () => { buzz(8); const now = Date.now(), dbl = key !== '*' && lastTap.key === key && now - lastTap.t < 400; lastTap = { key, t: now };
+          if (dbl) { if (!pick.includes(key)) pick.push(key); if (wpKey === key) { wp.style.display = 'none'; wpKey = null; } else openWords(key); paint(); return; }
+          if (key === '*') pick.length = 0; else { const i = pick.indexOf(key); if (i >= 0) pick.splice(i, 1); else pick.push(key); } paint(); }); chips.appendChild(c); };
       chip('*', 'All', all.length);
       sets.forEach(x => chip(x.key, x.label, x.words.length));
       { const c = document.createElement('button'); c.className = 'gm-chip gm-add'; c.textContent = '+ Add more';      // (words from the library: they go into this game's group, and into Unsorted on the targets page)
         c.addEventListener('click', () => { buzz(8); openGameAdd(mode); }); chips.appendChild(c); }
       const head = t => { const h = document.createElement('div'); h.className = 'gm-head'; h.textContent = t; count.appendChild(h); return h; };
-      const wh = head('Words'); wh.appendChild(n); count.appendChild(chips);
+      const wh = head('Words'); wh.appendChild(n); count.appendChild(chips); count.appendChild(wp);
       const th = head('Turns'); const tn = document.createElement('span'); tn.className = 'gm-head-n'; th.appendChild(tn);
       const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, pick.length ? ws : null); };
       [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.dataset.n = k; b.addEventListener('click', () => go(k)); row.appendChild(b); });
@@ -17374,6 +17416,7 @@ function renderSettings() {
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
   document.getElementById('toggleSuggestOn').classList.toggle('on', state.suggestOn !== false);
+  document.getElementById('toggleMagicCols').classList.toggle('on', state.magicCols !== false);
   document.getElementById('toggleChatMode').classList.toggle('on', !!state.chatMode);
   document.getElementById('toggleSoundOn').classList.toggle('on', state.soundOn !== false);
   document.getElementById('togglePlural').classList.toggle('on', state.pluralChip !== false);
@@ -17757,6 +17800,7 @@ document.getElementById('toggleMagic').addEventListener('click', () => {
   try { if (!state.magicType) hideMagic(); renderHome(true); } catch (e) {}
 });
 document.getElementById('toggleChatMode').addEventListener('click', () => { state.chatMode = !state.chatMode; save(); renderSettings(); try { renderHome(true); } catch (e) {} });
+document.getElementById('toggleMagicCols').addEventListener('click', () => { state.magicCols = state.magicCols === false; save(); renderSettings(); try { const h = document.getElementById('suggHost'); if (h) h.dataset.sig = ''; suggRender(); } catch (e) {} });
 document.getElementById('toggleSuggestOn').addEventListener('click', () => { state.suggestOn = state.suggestOn === false; save(); renderSettings(); try { renderTypeSuggest(); } catch (e) {} });
 document.getElementById('toggleSoundOn').addEventListener('click', () => { document.getElementById('homeSoundBtn').click(); renderSettings(); });
 document.getElementById('toggleSmallFold').addEventListener('click', () => {
