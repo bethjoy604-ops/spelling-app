@@ -3025,7 +3025,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 530 - 11 Oct';
+const BUILD = 'build 531 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16103,19 +16103,38 @@ document.getElementById('homeMagicBtn').addEventListener('click', () => {
     anim = requestAnimationFrame(step);
   };
   const active = () => document.getElementById('viewHome').classList.contains('magic-full');
-  hs.addEventListener('touchstart', e => { if (!active()) return; on = true; const t = e.touches[0]; x0 = fxl = t.clientX; fy0 = fyl = t.clientY; y0 = hs.scrollTop; cancelAnimationFrame(anim); hs.style.overflowY = ''; }, { passive: true });
-  hs.addEventListener('touchmove', e => { if (!on) return; const t = e.touches[0]; fxl = t.clientX; fyl = t.clientY; }, { passive: true });
+  // The page does not scroll itself under the finger here: the finger moves it (held between the pair before and the
+  // pair after, so it can never fly past one), and on letting go it settles on the next pair, the one before, or back.
+  // A pair taller than the screen is scrolled through freely, and moves on only from its end.
+  let ts0 = [], cur0 = 0, dir = null;
+  const pairAt = (ts, y) => { let k = 0; ts.forEach((t, i) => { if (t <= y + 4) k = i; }); return k; };
+  hs.addEventListener('touchstart', e => { if (!active()) return; on = true; dir = null; const t = e.touches[0]; x0 = fxl = t.clientX; fy0 = fyl = t.clientY; cancelAnimationFrame(anim); hs.style.overflowY = ''; y0 = hs.scrollTop; ts0 = tops(); cur0 = pairAt(ts0, y0); }, { passive: true });
+  hs.addEventListener('touchmove', e => {
+    if (!on) return; const t = e.touches[0]; fxl = t.clientX; fyl = t.clientY;
+    const ddy = fy0 - fyl, ddx = fxl - x0;
+    if (!dir && (Math.abs(ddy) > 8 || Math.abs(ddx) > 8)) dir = Math.abs(ddy) > Math.abs(ddx) ? 'v' : 'h';      // (sideways: a row slides as usual)
+    if (dir !== 'v' || !ts0.length) return;
+    e.preventDefault();
+    const max = hs.scrollHeight - hs.clientHeight, lo = cur0 > 0 ? ts0[cur0 - 1] : 0, hi = cur0 + 1 < ts0.length ? ts0[cur0 + 1] : max;
+    hs.scrollTop = Math.max(lo, Math.min(hi, y0 + ddy));
+  }, { passive: false });
   hs.addEventListener('touchend', () => {
     if (!on) return; on = false;
-    const dy = fy0 - fyl, dx = Math.abs(fxl - x0);
-    if (Math.abs(dy) < 12 || dx > Math.abs(dy)) return;      // a tap, or a sideways slide along a row
-    const ts = tops(); if (!ts.length) return;
-    const cur = ts.reduce((bi, t, i) => Math.abs(t - y0) < Math.abs(ts[bi] - y0) ? i : bi, 0);      // the pair it started on
+    if (dir !== 'v') return;      // a tap, or a sideways slide along a row
+    const dy = fy0 - fyl, ts = ts0; if (!ts.length) return;
+    const max = hs.scrollHeight - hs.clientHeight, cur = cur0, start = ts[cur], end = cur + 1 < ts.length ? ts[cur + 1] : max + hs.clientHeight;
+    if (end - start > hs.clientHeight * 1.3) {      // a pair much taller than the screen: free inside it
+      const lastIn = end - hs.clientHeight, now = hs.scrollTop;
+      if (dy > 40 && y0 >= lastIn - 4 && cur + 1 < ts.length) glide(ts[cur + 1]);
+      else if (dy < -40 && y0 <= start + 4 && cur > 0) glide(ts[cur - 1]);
+      else glide(Math.max(start, Math.min(now, lastIn)));
+      return;
+    }
     let to = cur;
     if (dy > 40) to = Math.min(ts.length - 1, cur + 1); else if (dy < -40) to = Math.max(0, cur - 1);
     glide(ts[to]);
   }, { passive: true });
-  hs.addEventListener('touchcancel', () => { on = false; }, { passive: true }); }
+  hs.addEventListener('touchcancel', () => { if (on && dir === 'v' && ts0.length) glide(ts0[cur0]); on = false; }, { passive: true }); }
 // a mouse wheel or trackpad over the bands: one band per scroll, like a swipe
 { const hs = document.getElementById('suggHost'); let lock = 0;
   hs.addEventListener('wheel', e => {
