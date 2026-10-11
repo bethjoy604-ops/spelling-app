@@ -2998,7 +2998,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 521 - 11 Oct';
+const BUILD = 'build 522 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15644,6 +15644,7 @@ function picSay(box, word) {
   box.querySelectorAll('.say-waves').forEach(x => x.remove());
   const w = document.createElement('span'); w.className = 'say-waves'; w.setAttribute('aria-hidden', 'true');
   w.innerHTML = '<i></i><i></i><i></i>'; box.appendChild(w);
+  box.classList.remove('gm-in');      // (the picture's arrival animation is over: without this it would play again when the bounce ends)
   box.classList.remove('saying'); void box.offsetWidth; box.classList.add('saying');
   setTimeout(() => { w.remove(); box.classList.remove('saying'); }, 1500);
 }
