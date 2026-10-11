@@ -1372,7 +1372,7 @@
   .home-row:not(.icons-open) #homeSettingsBtn, .home-row:not(.icons-open) #homeTargetBtn,
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
   .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn,
-  .home-row:not(.icons-open) #homeMagicBtn, .home-row:not(.icons-open) #homePicBtn, .home-row:not(.icons-open) #homeIconsClose { display: none !important; }
+  .home-row:not(.icons-open) #homeMagicBtn, .home-row:not(.icons-open) #homePicBtn, .home-row:not(.icons-open) #homeIconsClose, .home-row:not(.icons-open) #homeMoreBtn { display: none !important; }
   #homePicBtn.off { filter: grayscale(1); opacity: 0.4; }
   /* ---- Picture writing ---- */
   /* tiles with a picture show the picture; tiles still without one are faded, with a small camera to add it */
@@ -1516,8 +1516,14 @@
   .cat-tile.menu-peek { min-width: 0; width: 34px; padding-left: 0; padding-right: 0; font-size: 24px; line-height: 1; color: rgba(0,0,0,0.32) !important; background: none !important; box-shadow: none !important; }
   #homeIconsToggle { font-size: 21px; font-weight: 900; line-height: 1; color: rgba(0,0,0,0.5); background: rgba(255,255,255,0.82); box-shadow: none; }
   /* while a message is being built the gear steps out of the way */
-  .view-home:not(.menu-open):has(.phrase-bar.has-text) #homeIconsToggle { visibility: hidden; }
-  .view-home.at-root:not(.menu-open) .home-row:not(.icons-open) #homeIconsToggle { visibility: hidden; }      /* the + comes and goes with the folder menu */
+  /* (the pop-out's button is always there on the home page) */
+  /* big, simple icons for little fingers: the pop-out and its button */
+  .home-row .ctl.icon.pop, #homeIconsToggle { width: 68px; height: 68px; border-radius: 20px; font-size: 34px; }
+  #homeIconsToggle { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .home-row .ctl.icon.retired { display: none !important; }
+  .home-row:not(.more-open) .ctl.icon.more { display: none !important; }
+  .home-row.more-open #homeMoreBtn { background: rgba(255,255,255,0.6); }
+  .ctl.targets-exit { flex: none; flex-direction: row; align-items: center; min-height: 60px; border-radius: 18px; padding: 0 20px; font-size: 20px; font-weight: 900; background: #fff; color: #c0392b; margin-right: 8px; white-space: nowrap; }
   /* the one green tab keeps its size when the switches pop out beside it */
   .home-row.tools .folder-strip-row .cat-tile:only-child { padding: 0 18px; }
   .home-row.icons-open #homeIconsToggle { color: rgba(0,0,0,0.7); background: rgba(255,255,255,0.8); }
@@ -2218,6 +2224,7 @@
   </div>
 
   <div class="controls-row home-row">
+    <button class="ctl targets-exit" id="targetsExitBtn" aria-label="Leave the targets page" style="display:none">&#10005;&nbsp; Exit targets</button>
     <button class="ctl icon" id="homeModesToggle" aria-label="Show options">
       <span class="chevron" id="homeChevron">&#9660;</span>
     </button>
@@ -2228,20 +2235,23 @@
     <button class="ctl icon" id="builderBackBtn" aria-label="Back" style="display:none">&#8249;</button>
     <button class="ctl icon" id="builderAddBtn" aria-label="Add an option" style="display:none">+</button>
     <div class="spacer"></div>
-    <button class="ctl icon help" id="homeHelpBtn" aria-label="SOS help mode" style="display:none">&#127384;</button>
+    <button class="ctl icon help retired" id="homeHelpBtn" aria-label="SOS help mode" style="display:none">&#127384;</button>
     <button class="ctl icon" id="homeRootBtn" aria-label="All folders" style="display:none">&#127968;</button>
-    <button class="ctl icon" id="homeSettingsBtn" aria-label="Settings">&#9881;</button>
-    <button class="ctl icon" id="homeTargetBtn" aria-label="Target words" aria-pressed="false">&#127919;</button>
-    <button class="ctl icon" id="railToggle" aria-label="Folder menu">&#9776;</button>
-    <button class="ctl icon" id="homeChatBtn" aria-label="Chat mode" aria-pressed="false">&#128172;</button>
-    <button class="ctl icon" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
-    <button class="ctl icon" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
-    <button class="ctl icon" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
-    <button class="ctl icon" id="homeMagicBtn" aria-label="Magic suggestions" aria-pressed="true">&#129668;</button>
-    <button class="ctl icon" id="homePicBtn" aria-label="Picture game" aria-pressed="false">&#128444;&#65039;</button>
-    <button class="ctl icon" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
-    <button class="ctl icon" id="homeIconsClose" aria-label="Close the switches">&times;</button>
-    <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false">&#128736;&#65039;</button>
+    <!-- the pop-out, left to right: menu mode, chat, speak, games, then the plus that opens settings and targets -->
+    <button class="ctl icon pop" id="railToggle" aria-label="Menu mode">&#9776;</button>
+    <button class="ctl icon pop" id="homeChatBtn" aria-label="Chat mode" aria-pressed="false">&#128172;</button>
+    <button class="ctl icon pop" id="homeSpeakBtn" aria-label="Speak mode" aria-pressed="false">&#128483;&#65039;</button>
+    <button class="ctl icon pop" id="homePicBtn" aria-label="Games" aria-pressed="false">&#127918;</button>
+    <button class="ctl icon pop" id="homeMoreBtn" aria-label="More: settings and targets" aria-expanded="false">&#10133;</button>
+    <button class="ctl icon pop more" id="homeSettingsBtn" aria-label="Settings">&#9881;&#65039;</button>
+    <button class="ctl icon pop more" id="homeTargetBtn" aria-label="Target words" aria-pressed="false">&#127919;</button>
+    <!-- (no longer in the pop-out: builder is a choice under games; magic, matching words and sound are in settings; SOS is in the prompting settings) -->
+    <button class="ctl icon retired" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
+    <button class="ctl icon retired" id="homeSoundBtn" aria-label="Sound" aria-pressed="true">&#128266;</button>
+    <button class="ctl icon retired" id="homeMagicBtn" aria-label="Magic suggestions" aria-pressed="true">&#129668;</button>
+    <button class="ctl icon retired" id="homeSearchBtn" aria-label="Find a word">&#128269;</button>
+    <button class="ctl icon pop" id="homeIconsClose" aria-label="Close the switches">&times;</button>
+    <button class="ctl icon" id="homeIconsToggle" aria-label="Show the mode switches" aria-expanded="false"><svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><rect x="3" y="3" width="15" height="15" rx="5" fill="#ff8a3d"/><rect x="22" y="3" width="15" height="15" rx="5" fill="#2f8bff"/><rect x="3" y="22" width="15" height="15" rx="5" fill="#34c759"/><rect x="22" y="22" width="15" height="15" rx="5" fill="#ffc93c"/></svg></button>
   </div>
 
   <div class="magic-box" id="magicBox">
@@ -2803,6 +2813,7 @@
         <div class="sublabel" style="margin-top:0">Magic on or off</div>
         <div class="settings-list">
           <div class="setting-row"><span>&#10024; Magic suggestions after each tile</span><div class="toggle on" id="toggleMagic"></div></div>
+          <div class="setting-row"><span>&#128269; Matching words while typing</span><div class="toggle on" id="toggleSuggestOn"></div></div>
         </div>
         <div id="bandSettings"></div>
         <div class="sublabel">In the message bar</div>
@@ -2945,6 +2956,9 @@
         <span class="sg-chev">▾</span>
       </button>
       <div class="sgroup-body">
+        <div class="settings-list" style="margin-bottom:10px">
+          <div class="setting-row"><span>&#128266; Sound on</span><div class="toggle on" id="toggleSoundOn"></div></div>
+        </div>
         <div class="sublabel">Voice (English US only)</div>
         <select class="voice-picker" id="voicePicker"></select>
         <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">&#9654; Test this voice</button>
@@ -2998,7 +3012,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 522 - 11 Oct';
+const BUILD = 'build 523 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9606,6 +9620,7 @@ function buildTypeKeys(kb, put, space, onDelete, onEnter) {
   document.getElementById('chatClear').addEventListener('click', () => { buzz(8); if (chatPrefix) chatPrefix = chatPrefix.slice(0, -1); else chatReply.pop(); renderChat(); });
 })();
 document.getElementById('homeChatBtn').addEventListener('click', () => {
+  leaveTargets();
   state.chatMode = !state.chatMode;
   buzz(10);
   save(); renderHome(true);
@@ -9633,6 +9648,7 @@ function renderSpeakBtn() {
 document.getElementById('homeSpeakBtn').addEventListener('click', () => {
   state.speakMode = !state.speakMode;
   buzz(10);
+  if (leaveTargets()) renderHome(true);
   save(); renderSpeakBtn();
 });
 // The X takes away one thing at a time: what is being typed first, then the last word in the bar
@@ -9674,6 +9690,7 @@ let rootMenuUntil = 0, rootMenuWas = -1, rootMenuTimer = null;
 // The one green tab steps through the menu - Popular, Chat, Categories, My Stuff, Popular ... - a tap
 // at a time; a quick second tap goes straight back to Popular. The small arrow beside it opens the
 // whole menu out as a row for three seconds.
+let iconsMore = false;      // the pop-out's plus is open: settings and targets show beside it
 let menuCollapsed = false, menuPeekUntil = 0, menuPeekTimer = null, menuStepAt = 0;
 // (a tap that lands on the tab just after a tile or small word was chosen is a slip of the hand, not a choice)
 let pageTapAt = 0;
@@ -10038,7 +10055,10 @@ function renderHome(reset) {
     { const mb = document.getElementById('homeMagicBtn'); mb.classList.toggle('off', !state.magicType); mb.setAttribute('aria-pressed', state.magicType ? 'true' : 'false'); }
     try { picBtnSync(); } catch (e) {}
     { const sb2 = document.getElementById('homeSearchBtn'); sb2.classList.toggle('off', state.suggestOn === false); sb2.setAttribute('aria-pressed', state.suggestOn === false ? 'false' : 'true'); sb2.setAttribute('aria-label', 'Matching words while typing'); }
-    { const it = document.getElementById('homeIconsToggle'); it.textContent = '\uD83D\uDEE0\uFE0F'; it.style.display = (!state.builderMode && homePath.length && Date.now() >= menuPeekUntil && !state.iconsOpen) ? 'none' : ''; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }
+    { const it = document.getElementById('homeIconsToggle'); it.style.display = ''; it.setAttribute('aria-expanded', state.iconsOpen ? 'true' : 'false'); }      // (always there on the home page)
+    document.querySelector('.home-row').classList.toggle('more-open', !!(state.iconsOpen && iconsMore));
+    { const mb = document.getElementById('homeMoreBtn'); mb.textContent = iconsMore ? '\u2796' : '\u2795'; mb.setAttribute('aria-expanded', iconsMore ? 'true' : 'false'); }
+    document.getElementById('targetsExitBtn').style.display = onTargetsPage() ? '' : 'none';
     document.getElementById('railToggle').style.display = '';
     document.getElementById('railToggle').classList.toggle('off', !(state.railOpen && !state.builderMode));
     if (state.builderMode) {
@@ -15360,9 +15380,10 @@ document.getElementById('homeGrid').addEventListener('scroll', e => {
 document.getElementById('railToggle').addEventListener('click', () => {
   // the sandwich flips between the two layouts: from the builder back to the folder menu,
   // and from the folder menu over to the builder
+  // menu mode: the folder menu (from the builder, back to it); tapped again, the menu folds away
+  leaveTargets();
   if (state.builderMode) { state.builderMode = false; builderPath = []; state.railOpen = true; }
-  else if (!state.railOpen) state.railOpen = true;      // the menu was folded away: show it first
-  else { state.builderMode = true; builderPath = []; }
+  else state.railOpen = !state.railOpen;
   buzz(10);
   save(); renderHome(true);
 });
@@ -15375,8 +15396,14 @@ document.getElementById('homeTargetBtn').addEventListener('click', () => {
   homePath = there ? [] : [t.id];
   buzz(10); save(); renderHome(true);
 });
+// the plus in the pop-out shows (or tucks away) settings and targets beside it (iconsMore)
+document.getElementById('homeMoreBtn').addEventListener('click', e => { e.stopPropagation(); iconsMore = !iconsMore; buzz(10); renderHome(true); armIcons(); });
+// leaving the targets page: its own Exit button, or choosing another mode in the pop-out
+function leaveTargets() { if (!onTargetsPage()) return false; homePath = []; return true; }
+document.getElementById('targetsExitBtn').addEventListener('click', () => { leaveTargets(); buzz(10); save(); renderHome(true); });
 document.getElementById('homeIconsToggle').addEventListener('click', () => {
   state.iconsOpen = !state.iconsOpen;      // shows or hides the mode switches on the right
+  if (!state.iconsOpen) iconsMore = false;
   buzz(10); renderHome(true);
   armIcons();
 });
@@ -15390,7 +15417,7 @@ function closeIcons() {
   if (!state.iconsOpen) return;
   { const m = document.getElementById('settingsMenu'); if (m.classList.contains('show') && m.classList.contains('page')) { armIcons(); return; } }      // settings is open as a page under them
   if (onTargetsPage()) return;
-  state.iconsOpen = false;
+  state.iconsOpen = false; iconsMore = false;
   const g = document.getElementById('homeGrid'); const top = g.scrollTop;
   renderHome(true);
   g.scrollTop = top;
@@ -15399,7 +15426,7 @@ function closeIcons() {
 function closeIconsNow() {
   clearTimeout(iconsTimer); iconsTimer = null;
   if (!state.iconsOpen) return;
-  state.iconsOpen = false; buzz(10);
+  state.iconsOpen = false; iconsMore = false; buzz(10);
   const g = document.getElementById('homeGrid'); const top = g.scrollTop;
   renderHome(true); g.scrollTop = top;
 }
@@ -15556,7 +15583,7 @@ function gameChooseCount() {
   try { ensureTargets(); } catch (e) {}
   const sight = practiceGroupWords('sight'), write = practiceGroupWords('write'), tiles = practiceGroupWords('tiles');
   openWordSheet(body => {
-    sheetTitle(body, 'Practice');
+    sheetTitle(body, 'Games');
     const acts = document.createElement('div'); acts.className = 'gm-acts'; body.appendChild(acts);
     const count = document.createElement('div'); body.appendChild(count);
     let mode = null;
@@ -15589,6 +15616,10 @@ function gameChooseCount() {
       b.addEventListener('click', () => { if (!ws.length) { alert('Add targets to the "' + nm + '" group on the targets page, and give them pictures (the camera at the end of each target).'); return; } buzz(8); mode = m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b)); pickCount(); });
       acts.appendChild(b);
     });
+    { const b = document.createElement('button'); b.className = 'gm-act';
+      b.innerHTML = '<span class="ga-ic">\uD83E\uDDF1</span><span class="ga-t">Sentence builder</span><span class="ga-s">Build a message one step at a time</span>';
+      b.addEventListener('click', () => { buzz(8); closeWordSheet(); gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); });
+      acts.appendChild(b); }
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); gameOff(); }));
   });
 }
@@ -15648,7 +15679,7 @@ function picSay(box, word) {
   box.classList.remove('saying'); void box.offsetWidth; box.classList.add('saying');
   setTimeout(() => { w.remove(); box.classList.remove('saying'); }, 1500);
 }
-function picBtnSync() { const b = document.getElementById('homePicBtn'); if (b) { b.classList.toggle('off', !state.picMode); b.setAttribute('aria-pressed', state.picMode ? 'true' : 'false'); } }
+function picBtnSync() { const b = document.getElementById('homePicBtn'); if (b) { const on = !!state.picMode || !!state.builderMode; b.classList.toggle('off', !on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); } }
 function gameView() {
   let v = document.getElementById('gameView'); if (v) v.remove();
   v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '');
@@ -15950,7 +15981,9 @@ async function picImportData(pics) {
   }
   picDecorate();
 }
-document.getElementById('homePicBtn').addEventListener('click', () => { buzz(10); if (game || state.picMode) gameOff(); else gameChooseCount(); });
+document.getElementById('homePicBtn').addEventListener('click', () => { buzz(10); if (leaveTargets()) renderHome(true);
+  if (state.builderMode) { state.builderMode = false; builderPath = []; save(); renderHome(true); picBtnSync(); return; }      // (the builder is one of the games: tapped again, it ends)
+  if (game || state.picMode) gameOff(); else gameChooseCount(); });
 setTimeout(picLoadAll, 300);
 document.getElementById('homeMagicBtn').addEventListener('click', () => {
   state.magicType = !state.magicType; buzz(10);
@@ -16936,6 +16969,8 @@ function renderSettings() {
   document.getElementById('toggleHelpBtn').classList.toggle('on', state.showHelpBtn);
   document.getElementById('toggleHome').classList.toggle('on', state.homeEnabled);
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
+  document.getElementById('toggleSuggestOn').classList.toggle('on', state.suggestOn !== false);
+  document.getElementById('toggleSoundOn').classList.toggle('on', state.soundOn !== false);
   document.getElementById('togglePlural').classList.toggle('on', state.pluralChip !== false);
   document.getElementById('toggleSmallRows').classList.toggle('on', state.smallRowsOn !== false);
   { const box = document.getElementById('bandSettings'), cfg = bandCfg(); box.innerHTML = '';
@@ -17314,7 +17349,10 @@ document.getElementById('toggleSeq').addEventListener('click', () => { state.seq
 document.getElementById('togglePlural').addEventListener('click', () => { state.pluralChip = state.pluralChip === false; save(); renderSettings(); try { renderPhraseBar(); } catch (e) {} });
 document.getElementById('toggleMagic').addEventListener('click', () => {
   state.magicType = !state.magicType; save(); renderSettings();
+  try { if (!state.magicType) hideMagic(); renderHome(true); } catch (e) {}
 });
+document.getElementById('toggleSuggestOn').addEventListener('click', () => { state.suggestOn = state.suggestOn === false; save(); renderSettings(); try { renderTypeSuggest(); } catch (e) {} });
+document.getElementById('toggleSoundOn').addEventListener('click', () => { document.getElementById('homeSoundBtn').click(); renderSettings(); });
 document.getElementById('toggleSmallFold').addEventListener('click', () => {
   state.smallRowsFold = state.smallRowsFold === false; save(); renderSettings();
 });
