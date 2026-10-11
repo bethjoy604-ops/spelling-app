@@ -1481,6 +1481,13 @@
   .snd1-sp { font-weight: 900; font-size: clamp(110px, 20vmin, 220px); line-height: 1; color: var(--ink); }
   .snd1-card.saying { animation: sayBounce 0.6s ease 1; }
   .tune-row { flex-wrap: wrap; }
+  .tune-sps { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 4px 0 2px 80px; }
+  .tune-sps-h { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .tune-sp-w { display: inline-flex; }
+  .tune-sp { display: inline-flex; align-items: baseline; gap: 5px; border: 0; background: #e8ebf0; border-radius: 10px 0 0 10px; padding: 5px 9px; font-family: inherit; color: var(--ink); }
+  .tune-sp b { font-size: 16px; } .tune-sp em { font-style: normal; font-size: 12px; color: var(--muted); }
+  .tune-sp.own { background: #fff3c4; }
+  .tune-sp-ed { border: 0; background: #dfe2e7; border-radius: 0 10px 10px 0; padding: 5px 8px; font-size: 13px; color: var(--muted); }
   .tune-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 200px; }
   .tune-chip { border: 2px solid #dfe2e7; background: #fff; border-radius: 999px; padding: 8px 14px; font-family: inherit; font-weight: 800; font-size: 17px; color: var(--ink); }
   .tune-chip.on { background: #ebfaee; border-color: var(--green); }
@@ -3144,7 +3151,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 554 - 11 Oct';
+const BUILD = 'build 555 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16750,7 +16757,7 @@ function openSoundTuner() {
   openWordSheet(body => {
     sheetTitle(body, 'The iPad voice for each sound');
     const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px';
-    n.textContent = 'Tap a way of writing the sound to hear it - the one you tap is kept (green). Pick whichever sounds most like the sound itself. A sound with its own audio file (🔊) plays that file instead. The voice is the one chosen in Settings > Voice; a Premium or Enhanced voice sounds much better.';
+    n.textContent = 'Every keyboard spelling plays its sound: ay, ai and a-e all play the long a, so setting the sound sets them all. A spelling can still be given its own way of being said with its \u270E. Tap a way of writing the sound to hear it - the one you tap is kept (green). Pick whichever sounds most like the sound itself. A sound with its own audio file (🔊) plays that file instead. The voice is the one chosen in Settings > Voice; a Premium or Enhanced voice sounds much better.';
     body.appendChild(n);
     const list = document.createElement('div'); list.className = 'sm-list'; body.appendChild(list);
     soundAllIds().forEach(id => {
@@ -16758,6 +16765,18 @@ function openSoundTuner() {
       const r = document.createElement('div'); r.className = 'sm-snd tune-row';
       const l = document.createElement('div'); l.className = 'sm-lab ' + (soundIsVowel(id) ? 'v' : 'c'); l.innerHTML = '<b></b><em></em>'; l.firstChild.textContent = K.label; l.lastChild.textContent = (K.ex || '') + (SM.a.has(id) ? ' 🔊' : ''); r.appendChild(l);
       const ch = document.createElement('div'); ch.className = 'tune-chips'; r.appendChild(ch);
+      // the keyboard spellings with this sound: each plays it; one can be given its own way of being said (\u270E)
+      const sps = []; Object.keys(SOUND_TILES).forEach(l => SOUND_TILES[l].forEach(([tid, sp, ex]) => { if (tid === id && !sps.some(x => x.sp === sp)) sps.push({ sp, ex }); }));
+      const spRow = document.createElement('div'); spRow.className = 'tune-sps';
+      const drawSps = () => { spRow.innerHTML = ''; const t = document.createElement('span'); t.className = 'tune-sps-h'; t.textContent = 'Keyboard spellings:'; spRow.appendChild(t);
+        sps.forEach(({ sp, ex }) => { const own = (state.soundSpeak || {})[id + '|' + sp]; const b = document.createElement('button'); b.className = 'tune-sp' + (own ? ' own' : '');
+          b.innerHTML = '<b></b><em></em>'; b.firstChild.textContent = soundSpShow(sp); b.lastChild.textContent = own ? '\u201C' + own + '\u201D' : ex;
+          b.addEventListener('click', e => { e.stopPropagation(); soundSay(id, sp); });
+          const ed = document.createElement('button'); ed.className = 'tune-sp-ed'; ed.textContent = '\u270E'; ed.setAttribute('aria-label', 'How to say ' + sp);
+          ed.addEventListener('click', e => { e.stopPropagation(); const v = prompt('How the iPad should say the spelling "' + sp + '" (as in ' + ex + ').\nLeave it empty to use the sound above.', own || ''); if (v === null) return;
+            const m = Object.assign({}, state.soundSpeak || {}); if (v.trim()) m[id + '|' + sp] = v.trim(); else delete m[id + '|' + sp]; state.soundSpeak = m; save(); soundSay(id, sp); drawSps(); });
+          const w = document.createElement('span'); w.className = 'tune-sp-w'; w.appendChild(b); w.appendChild(ed); spRow.appendChild(w); }); };
+      if (sps.length) { drawSps(); r.appendChild(spRow); }
       const paint = () => { ch.innerHTML = ''; const cur = soundSpeakOf(id), opts = (SOUND_SPEAK_OPTS[id] || []).slice(); if (!opts.includes(cur)) opts.push(cur);
         opts.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip' + (t === cur ? ' on' : ''); b.textContent = t;
           b.addEventListener('click', e => { e.stopPropagation(); state.soundSpeak = Object.assign({}, state.soundSpeak || {}, { [id]: t }); save(); soundSpeakNow(t); paint(); }); ch.appendChild(b); });
@@ -16769,7 +16788,9 @@ function openSoundTuner() {
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); try { openSoundMedia(); } catch (e) {} }));
   });
 }
-function soundSay(id) {
+function soundSay(id, sp) {
+  const ownSp = sp && (state.soundSpeak || {})[id + '|' + sp];      // (a spelling given its own way of being said)
+  if (ownSp) { soundSpeakNow(ownSp); return; }
   if (smPlay(id)) return;
   try { warmSpeech(); sayAnyway = true;
     if (id.length === 1) { const L = id.toUpperCase(); if (recordings.letterSound && recordings.letterSound[L] && !(state.soundSpeak || {})[id] && playClip(recordings.letterSound[L])) return; }
@@ -16971,7 +16992,7 @@ function soundKbTap(l) {
   const opts = soundOpts(l); if (!opts.length) return;
   if (opts.length === 1) { soundEnter(opts[0].id, opts[0].sp); return; }
   const slots = soundSlots(l); soundOpen = l; soundSwap = {}; opts.slice(1).forEach((t, i) => { if (slots[i]) soundSwap[slots[i]] = t; }); buzz(8); soundKbPaint();
-  try { soundSay(opts[0].id); } catch (e) {}
+  try { soundSay(opts[0].id, opts[0].sp); } catch (e) {}
 }
 function gameSoundTrial() {
   const g = game, s = g.seq[g.i], tile = s.w, parts = soundSplit(tile), pic = picRandomFor(tile, picOn(tile));
@@ -16995,8 +17016,8 @@ function gameSoundTrial() {
 }
 function soundEnter(id, sp) {
   const g = game; if (!g || g.busy) return; const c = g.cur, want = c.parts[c.k]; if (!want) return;
-  soundSay(id);
   if (sp == null) sp = want.alt.includes(id) ? want.sp : (SOUND_K[id] ? SOUND_K[id].label : id);
+  soundSay(id, sp);
   if ((game.mode === 'hear' || game.mode === 'match') ? snd1Ok(id, sp, want) : soundTileOk({ id, sp }, want)) {
     if (c.prompted) c.anyPrompt = true;
     c.lets.push(want.sp + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
@@ -17029,7 +17050,7 @@ function gameSoundDone() {
   const step = () => {
     cells.forEach(x => x.classList.remove('lit'));
     if (game !== g) return;
-    if (k < cells.length) { cells[k].classList.add('lit'); soundWordMark(k); soundSay(c.parts[k].id); k++; setTimeout(step, 700); return; }
+    if (k < cells.length) { cells[k].classList.add('lit'); soundWordMark(k); soundSay(c.parts[k].id, c.parts[k].sp); k++; setTimeout(step, 700); return; }
     soundWordMark(-1);
     document.getElementById('gmCells').classList.add('gm-word-done');
     try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; }
