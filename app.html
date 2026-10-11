@@ -2989,7 +2989,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 516 - 11 Oct';
+const BUILD = 'build 517 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -11360,6 +11360,7 @@ function renderBuilder(grid) {
           body.appendChild(sheetBtn('Edit what comes next', '', () => openBuilderAddTo(builderWordNode(w, true), 'After "' + bankLabel(w) + '"')));
           body.appendChild(builderEditBtn());
           deleteWordBtns(body, w, c);
+          picMenuBtns(body, w);
           body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
         }));
       count++;
@@ -11803,6 +11804,7 @@ function openFolderEdit(c, extra) {
       body.appendChild(db);
     }
     if (extra) extra(body);
+    picMenuBtns(body, normaliseWord(c.name));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -12016,6 +12018,7 @@ function openBuilderTile(parent, node) {
       parent.kids = parent.kids.filter(k => k !== node);
       save(); closeWordSheet(); renderHome(true);
     }));
+    picMenuBtns(body, normaliseWord(node.label));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -12433,6 +12436,7 @@ function openGroupHead(cat, group) {
       cat.groups = groups.filter(g => g !== group);
       save(); closeWordSheet(); renderHome(true);
     }));
+    picMenuBtns(body, normaliseWord(group.name));
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -12794,6 +12798,7 @@ function openTitleActions(word, cat, extra) {
       if (!categoriesOf(word).length) deleteWordEverywhere(word);     // it is not kept anywhere else
       save(); closeWordSheet(); renderHome(true);
     }));
+    picMenuBtns(body, word);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -14835,6 +14840,7 @@ function openTargetWord(word, cat) {
       if (!categoriesOf(word).length) deleteWordEverywhere(word);
       save(); closeWordSheet(); renderHome(true);
     }));
+    picMenuBtns(body, word);
     body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
   });
 }
@@ -15383,7 +15389,7 @@ function picChoose(word, done) {
 // a tile's pictures: tap one to switch it on or off for practice, add more (up to 7), or remove one
 function openPicSheet(word) {
   openWordSheet(body => {
-    sheetTitle(body, 'Pictures: ' + plainLabel(word));
+    sheetTitle(body, 'Pictures: ' + bankLabel(word));
     const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px';
     n.textContent = 'Up to ' + PIC_MAX + ' pictures. Tap a picture to use it in practice or not (a tick: used). Practice picks one of the ticked pictures at random each time.';
     body.appendChild(n);
@@ -15413,8 +15419,9 @@ function openPicSheet(word) {
   });
 }
 function picMenuBtns(body, word) {
+  if (!word) return;      // (a name with no letters, like an emoji folder, has nowhere to keep pictures)
   const k = (picURL[word] || []).length;
-  body.appendChild(sheetBtn('📷  ' + (k ? 'Pictures (' + k + ')' : 'Add pictures (picture writing)'), '', () => { closeWordSheet(); setTimeout(() => openPicSheet(word), 30); }));
+  body.appendChild(sheetBtn('📷  ' + (k ? 'Pictures (' + k + ')' : 'Add pictures'), '', () => { closeWordSheet(); setTimeout(() => openPicSheet(word), 30); }));
 }
 // the tiles on the page: one of its pictures for each that has one; faded with a camera for those that do not; a tick when picked
 function picDecorate() {
