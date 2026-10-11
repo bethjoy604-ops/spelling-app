@@ -3019,7 +3019,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 525 - 11 Oct';
+const BUILD = 'build 526 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15573,7 +15573,7 @@ function picBarSync() {}
 let game = null;
 function gameTargets() { const ws = practiceGroupWords((game && game.mode) || 'sight'); return game && game.only ? ws.filter(w => game.only.includes(w)) : ws; }
 // starting: which practice (sight words or writing practice), then how many turns
-// the folders and groups the ready targets are in, for choosing which to practise: each with its targets, most first
+// the folders the ready targets are in (folders only, not the groups inside them), for choosing which to practise: each with its targets, most first
 const gamePick = {};
 function gameTargetSets(words) {
   const sets = new Map();
@@ -15581,7 +15581,6 @@ function gameTargetSets(words) {
   words.forEach(w => {
     categoriesOf(w).filter(c => !c.target && !c.small && !c.smallSec && /[A-Za-z0-9]/.test(c.name || '')).forEach(c => {
       add('f' + c.id, c.name, w);
-      (c.groups || []).forEach(g => { if ((g.words || []).includes(w) && g.name) add('g' + c.id + ':' + g.id, g.name, w); });
     });
   });
   return [...sets.values()].sort((a, b) => b.words.length - a.words.length || a.label.localeCompare(b.label));
