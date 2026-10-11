@@ -2989,7 +2989,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 517 - 11 Oct';
+const BUILD = 'build 518 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10273,7 +10273,7 @@ function smallWordBtn(word) {
       if (chat) chat.words = (chat.words || []).filter(w => w !== word);
     }
     save(); paint(); renderHome(false);
-    document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+    sheetChanged();
   });
   const paint = () => {
     const on = isSmallWord(word);
@@ -12187,7 +12187,7 @@ function listGroups(cat) {
   const inCat = cat.words || [];
   const seen = new Set();
   // (on the targets page, a word can be in the sight words or writing practice group as well as a typing group)
-  const practice = g => cat.target && isPracticeGroup(g);
+  const practice = g => !!cat.target;      // (on the targets page every group keeps its own list: a target can be in several)
   cat.groups.forEach(g => { if (practice(g)) { const own = new Set(); g.words = (g.words || []).filter(w => inCat.includes(w) && !own.has(w) && (own.add(w), true)); return; }
     g.words = (g.words || []).filter(w => inCat.includes(w) && !seen.has(w) && (seen.add(w), true)); });
   // a title or target under no heading simply stays unsorted, listed above the groups
@@ -12201,8 +12201,9 @@ function addTitleTo(cat, group, typed) {
   if (!state.wordHistory[key]) state.wordHistory[key] = { n: 0, t: 0 };
   if (key.includes(' ')) { state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[key] = true; }
   rememberCase(typed, key);
-  listGroups(cat).forEach(g => { g.words = g.words.filter(w => w !== key); });
-  if (group) group.words.push(key);       // no group: it stays ungrouped
+  if (!cat.target) listGroups(cat).forEach(g => { g.words = g.words.filter(w => w !== key); });      // (a target can be in several groups)
+  else listGroups(cat);
+  if (group && !group.words.includes(key)) group.words.push(key);       // no group: it stays ungrouped
   return true;
 }
 // Spelling: the common slips the app knows, checked whenever a tile or name is typed in. It offers
@@ -12592,7 +12593,6 @@ function openGroupAdd(cat, group) {
     const inG = w => (group.words || []).includes(w);
     const put = w => {
       if (!(cat.words || []).includes(w)) { addTitleTo(cat, null, sentenceLabel(w)); delete state.hiddenWords[w]; }
-      if (!isPracticeGroup(group)) listGroups(cat).forEach(g => { if (g !== group && !isPracticeGroup(g)) g.words = (g.words || []).filter(y => y !== w); });
       if (!inG(w)) group.words.push(w);
     };
     const take = w => { group.words = (group.words || []).filter(y => y !== w); };
@@ -12620,7 +12620,7 @@ function targetPauseBtn(word) {
     state.targetOff = state.targetOff || {};
     if (state.targetOff[word]) delete state.targetOff[word]; else state.targetOff[word] = true;
     save(); paintP(); renderHome(false);
-    document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+    sheetChanged();
   });
   const paintP = () => {
     const on = !(state.targetOff || {})[word];
@@ -12749,7 +12749,7 @@ function openTitleActions(word, cat, extra) {
     if (groups.length) {
       const h = document.createElement('div');
       h.className = 'help-note'; h.style.margin = '14px 0 6px';
-      h.textContent = 'Add to a group';
+      h.textContent = cat.target ? 'Groups \u00B7 tick every group it belongs in' : 'Add to a group';
       body.appendChild(h);
       const list = document.createElement('div');
       list.className = 'pick-list';
@@ -12767,10 +12767,12 @@ function openTitleActions(word, cat, extra) {
         const r = document.createElement('button');
         r.className = 'pick-row';
         r.addEventListener('click', () => {
-          groups.forEach(x => { x.words = x.words.filter(w => w !== word); });
-          if (g) g.words.push(word);
+          // on the targets page a target can be in as many groups as wanted: each group is ticked on or off by itself
+          // ("No group" takes it out of all of them); elsewhere a title is in one group at a time
+          if (cat.target && g) { if (g.words.includes(word)) g.words = g.words.filter(w => w !== word); else g.words.push(word); }
+          else { groups.forEach(x => { x.words = x.words.filter(w => w !== word); }); if (g) g.words.push(word); }
           save(); paint(); renderHome(false);
-          document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+          sheetChanged();
         });
         list.appendChild(r);
       });
@@ -14713,6 +14715,13 @@ function lightenSheet(body) {
     }
   }
 }
+// something in the menu was changed: Cancel no longer fits - the green Done is there already, so Cancel goes
+// (a menu with no green Done: Cancel becomes Done)
+function sheetChanged() {
+  const body = document.getElementById('wordSheetBody'); if (!body) return;
+  const done = body.querySelector('button.confirm');
+  body.querySelectorAll('button').forEach(x => { if (x.textContent === 'Cancel') { if (done && done !== x) x.style.display = 'none'; else x.textContent = 'Done'; } });
+}
 // A setting that is simply on or off: one slim row with a switch. It takes effect as it is flipped.
 function sheetSwitch(label, on, fn) {
   const b = document.createElement('button');
@@ -14805,7 +14814,7 @@ function openTargetWord(word, cat) {
         state.targetState = state.targetState || {};
         state.targetState[word] = id;
         save(); paint.forEach(f => f()); renderHome(false);
-        document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+        sheetChanged();
       });
       paint.push(() => {
         const on = targetStateOf(word) === id;
@@ -14822,7 +14831,7 @@ function openTargetWord(word, cat) {
         state.targetOff = state.targetOff || {};
         if (state.targetOff[word]) delete state.targetOff[word]; else state.targetOff[word] = true;
         save(); paintP(); renderHome(false);
-        document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+        sheetChanged();
       });
       const paintP = () => {
         const on = !(state.targetOff || {})[word];
@@ -15029,7 +15038,7 @@ function newListBtn(word) {
     else nf.words.push(word);
     save(); paint(); renderHome(false);
     // the change is already made, so the button underneath now confirms and closes rather than cancels
-    document.querySelectorAll('#wordSheetBody button').forEach(x => { if (x.textContent === 'Cancel') x.textContent = 'Done'; });
+    sheetChanged();
   });
   const paint = () => {
     const on = nf.words.includes(word);
