@@ -1452,6 +1452,10 @@
   .gm-act.on { border-color: var(--green); background: #ebfaee; }
   .gm-act.empty { opacity: 0.55; }
   .view-keyboard.pic-on .pic-progress.gm-bar { height: 18px; gap: 5px; }
+  .gm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+  .gm-chip { border: 3px solid transparent; border-radius: 999px; background: #eef0f3; font-family: inherit; font-weight: 800; font-size: 17px; padding: 9px 16px; color: var(--ink); }
+  .gm-chip.on { background: #ebfaee; border-color: var(--green); }
+  .gm-count:disabled { opacity: 0.4; }
   .gm-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
   .gm-count { border: none; border-radius: 18px; background: #eef0f3; font-family: inherit; font-weight: 900; font-size: 30px; padding: 22px 6px; color: var(--ink); }
   .gm-count:active { background: var(--green); color: #fff; }
@@ -2989,7 +2993,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 518 - 11 Oct';
+const BUILD = 'build 519 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15463,8 +15467,21 @@ function picBarSync() {}
 // right tile was shown (pulsing): yellow. A wrong tile: a buzz and "try again", and the same tiles change places; a second
 // wrong tile and the right one pulses. A target got wrong comes back one or two turns later. At the end: play again, or all done.
 let game = null;
-function gameTargets() { return practiceGroupWords((game && game.mode) || 'sight'); }
+function gameTargets() { const ws = practiceGroupWords((game && game.mode) || 'sight'); return game && game.only ? ws.filter(w => game.only.includes(w)) : ws; }
 // starting: which practice (sight words or writing practice), then how many turns
+// the folders and groups the ready targets are in, for choosing which to practise: each with its targets, most first
+const gamePick = {};
+function gameTargetSets(words) {
+  const sets = new Map();
+  const add = (key, label, w) => { if (!sets.has(key)) sets.set(key, { key, label, words: [] }); const x = sets.get(key); if (!x.words.includes(w)) x.words.push(w); };
+  words.forEach(w => {
+    categoriesOf(w).filter(c => !c.target && !c.small && !c.smallSec && /[A-Za-z0-9]/.test(c.name || '')).forEach(c => {
+      add('f' + c.id, c.name, w);
+      (c.groups || []).forEach(g => { if ((g.words || []).includes(w) && g.name) add('g' + c.id + ':' + g.id, g.name, w); });
+    });
+  });
+  return [...sets.values()].sort((a, b) => b.words.length - a.words.length || a.label.localeCompare(b.label));
+}
 function gameChooseCount() {
   try { ensureTargets(); } catch (e) {}
   const sight = practiceGroupWords('sight'), write = practiceGroupWords('write'), tiles = practiceGroupWords('tiles');
@@ -15474,13 +15491,28 @@ function gameChooseCount() {
     const count = document.createElement('div'); body.appendChild(count);
     let mode = null;
     const pickCount = () => { count.innerHTML = '';
-      const ws = mode === 'write' ? write : mode === 'tiles' ? tiles : sight;
-      const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '12px 0 10px';
-      n.textContent = ws.length + ' target' + (ws.length === 1 ? '' : 's') + ' ready. How many turns?'; count.appendChild(n);
+      const all = mode === 'write' ? write : mode === 'tiles' ? tiles : sight;
+      // which targets: every ready one, or only those in the folders / groups ticked (Characters, Movies, Trucks ...)
+      const sets = gameTargetSets(all), pick = gamePick[mode] = (gamePick[mode] || []).filter(k => sets.some(x => x.key === k));
+      const chosen = () => pick.length ? all.filter(w => sets.some(x => pick.includes(x.key) && x.words.includes(w))) : all;
+      const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '12px 0 8px';
+      const chips = document.createElement('div'); chips.className = 'gm-chips';
       const row = document.createElement('div'); row.className = 'gm-counts';
-      [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.addEventListener('click', () => { closeWordSheet(); gameStart(k, mode); }); row.appendChild(b); });
-      const c = document.createElement('button'); c.className = 'gm-count'; c.textContent = 'Other'; c.addEventListener('click', () => { const v = parseInt(prompt('How many turns?', '20'), 10); if (v > 0) { closeWordSheet(); gameStart(Math.min(100, v), mode); } }); row.appendChild(c);
-      count.appendChild(row); };
+      const paint = () => {
+        const ws = chosen();
+        n.textContent = (pick.length ? ws.length + ' of ' + all.length : 'All ' + all.length) + ' target' + (all.length === 1 ? '' : 's') + '. Tick folders or groups to practise only those, then pick how many turns.';
+        chips.querySelectorAll('.gm-chip').forEach(c => c.classList.toggle('on', c.dataset.key === '*' ? !pick.length : pick.includes(c.dataset.key)));
+        row.querySelectorAll('.gm-count').forEach(b => { b.disabled = !ws.length; });
+      };
+      const chip = (key, label, k) => { const c = document.createElement('button'); c.className = 'gm-chip'; c.dataset.key = key; c.textContent = label + (k != null ? '  ' + k : '');
+        c.addEventListener('click', () => { buzz(8); if (key === '*') pick.length = 0; else { const i = pick.indexOf(key); if (i >= 0) pick.splice(i, 1); else pick.push(key); } paint(); }); chips.appendChild(c); };
+      chip('*', 'All', all.length);
+      sets.forEach(x => chip(x.key, x.label, x.words.length));
+      count.appendChild(n); if (sets.length) count.appendChild(chips);
+      const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, pick.length ? ws : null); };
+      [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.addEventListener('click', () => go(k)); row.appendChild(b); });
+      const c = document.createElement('button'); c.className = 'gm-count'; c.textContent = 'Other'; c.addEventListener('click', () => { const v = parseInt(prompt('How many turns?', '20'), 10); if (v > 0) go(Math.min(100, v)); }); row.appendChild(c);
+      count.appendChild(row); paint(); };
     [['sight', '\uD83D\uDC40', 'Sight words', 'Match the picture to its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'Type the word for the picture', write], ['tiles', '\uD83D\uDD24', 'Spelling tiles', 'Pick the letters for the picture', tiles]].forEach(([m, ic, nm, sub, ws]) => {
       const b = document.createElement('button'); b.className = 'gm-act' + (ws.length ? '' : ' empty');
       b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : 'No targets with pictures in the "' + nm + '" group yet') + '</span>';
@@ -15490,12 +15522,12 @@ function gameChooseCount() {
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); gameOff(); }));
   });
 }
-function gameStart(n, mode) {
+function gameStart(n, mode, only) {
   mode = mode || (game && game.mode) || 'sight';
-  const ws = practiceGroupWords(mode); if (!ws.length) return;
+  const ready = practiceGroupWords(mode), ws = only ? ready.filter(w => only.includes(w)) : ready; if (!ws.length) return;
   const seq = []; let pool = [];
   while (seq.length < n) { if (!pool.length) pool = ws.slice().sort(() => Math.random() - 0.5); let k = pool.findIndex(w => w !== (seq[seq.length - 1] || {}).w); if (k < 0) k = 0; seq.push({ w: pool.splice(k, 1)[0] }); }
-  game = { n, seq, i: 0, res: [], mode };
+  game = { n, seq, i: 0, res: [], mode, only: only || null };
   state.picMode = true; picBtnSync();
   if (mode === 'write') { const v = document.getElementById('gameView'); if (v) v.remove(); gameTrial(); return; }
   gameView(); gameTrial();
@@ -15738,7 +15770,7 @@ function gameEnd() {
   const g = game, first = g.res.filter(r => r.res === 'first').length, second = g.res.filter(r => r.res === 'second').length, pr = g.res.filter(r => r.res === 'prompted').length;
   const v = document.getElementById('gameView') || document.body; const pop = document.createElement('div'); pop.className = 'gm-pop';
   pop.innerHTML = '<div class="gm-card"><div class="gm-big">🌟</div><div class="gm-done">All ' + g.res.length + ' done!</div><div class="gm-sum"><span class="g">' + first + ' first try</span><span class="b">' + second + ' second try</span><span class="y">' + pr + ' with help</span></div><button class="gm-again">▶ Play again</button><button class="gm-all">All done</button></div>';
-  pop.querySelector('.gm-again').addEventListener('click', () => { pop.remove(); gameStart(g.n, g.mode); });
+  pop.querySelector('.gm-again').addEventListener('click', () => { pop.remove(); gameStart(g.n, g.mode, g.only); });
   pop.querySelector('.gm-all').addEventListener('click', () => { gameOff(); showHome(); });
   v.appendChild(pop);
 }
