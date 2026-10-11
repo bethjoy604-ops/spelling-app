@@ -1480,6 +1480,11 @@
   .snd1-ear { font-size: clamp(90px, 16vmin, 170px); }
   .snd1-sp { font-weight: 900; font-size: clamp(110px, 20vmin, 220px); line-height: 1; color: var(--ink); }
   .snd1-card.saying { animation: sayBounce 0.6s ease 1; }
+  .tune-row { flex-wrap: wrap; }
+  .tune-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 200px; }
+  .tune-chip { border: 2px solid #dfe2e7; background: #fff; border-radius: 999px; padding: 8px 14px; font-family: inherit; font-weight: 800; font-size: 17px; color: var(--ink); }
+  .tune-chip.on { background: #ebfaee; border-color: var(--green); }
+  .tune-chip.own { color: var(--muted); }
   .rec-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 12px; border-radius: 22px; margin: 6px 0 10px; }
   .rec-card.v { background: #b9e6c0; color: #0f3d1a; } .rec-card.c { background: #d6d0f7; color: #2b2466; }
   .rec-card b { font-size: 96px; line-height: 1; } .rec-card em { font-style: normal; font-size: 22px; font-weight: 700; } .rec-card small { font-size: 15px; opacity: 0.85; text-align: center; }
@@ -3139,7 +3144,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 552 - 11 Oct';
+const BUILD = 'build 553 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3353,7 +3358,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3522,7 +3527,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4149,7 +4154,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -11386,7 +11391,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -16652,6 +16657,9 @@ function openSoundMedia() {
     const note = t => { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = t; body.appendChild(n); return n; };
     const head = t => { const h = document.createElement('div'); h.className = 'help-note chk-head'; h.textContent = t; body.appendChild(h); };
     const btn = (t, fn, cls) => { const b = document.createElement('button'); b.className = 'hf-btn' + (cls ? ' ' + cls : ''); b.textContent = t; b.addEventListener('click', e => { e.stopPropagation(); fn(b); }); return b; };
+    head('The iPad voice (free, nothing to set up)');
+    { const tr = document.createElement('div'); tr.className = 'sm-row'; tr.appendChild(btn('\uD83D\uDDE3\uFE0F Choose how the iPad says each sound', () => openSoundTuner(), 'primary')); body.appendChild(tr); }
+    note('Used for any sound without its own audio file. Best with a Premium voice: on the iPad, Settings > Accessibility > Spoken Content > Voices > English, download one marked Premium (e.g. Ava or Zoe), then pick it in this app\'s Voice setting.');
     head('Record them (you, or anyone with a clear voice)');
     { const rr = document.createElement('div'); rr.className = 'sm-row'; rr.appendChild(btn('\uD83C\uDF99\uFE0F Record the sounds, one by one', () => openSoundRecorder(soundAllIds().find(id => !SM.a.has(id))), 'primary')); body.appendChild(rr); }
     note('Goes through every sound with its example word: tap Record, say the sound, and go on to the next. About 15 minutes for all of them.');
@@ -16713,11 +16721,48 @@ function openSoundMedia() {
   });
   smLoad().then(draw);
 }
+// ===== The iPad's own voice for the sound games (when a sound has no audio file): what it is asked to say for each
+// sound. A few ways of writing each are offered to listen to; the one picked is kept (Settings > Games > Sounds).
+// Only the sound games use these - the ordinary keyboard keeps its own letter sounds.
+const SOUND_SPEAK_OPTS = {      // (the first is used until another is picked; a single letter on its own may be read as the letter's name)
+  a: ['ah', 'aah', 'æ', 'a'], e: ['eh', 'ehh', 'e'], i: ['ih', 'ihh', 'i'], o: ['aw', 'ah', 'ahh', 'o'], u: ['uh', 'uhh', 'u'],
+  b: ['buh', 'bh', 'b'], c: ['kuh', 'kh', 'k'], d: ['duh', 'dh', 'd'], f: ['fff', 'ff', 'f'], g: ['guh', 'gh', 'g'], h: ['huh', 'hh', 'h'], j: ['juh', 'jh', 'j'],
+  k: ['kuh', 'kh', 'k'], l: ['lll', 'll', 'l'], m: ['mmm', 'mm', 'm'], n: ['nnn', 'nn', 'n'], p: ['puh', 'ph', 'p'], q: ['kwuh', 'kw'], r: ['rrr', 'err', 'r'],
+  s: ['sss', 'ss', 's'], t: ['tuh', 'tt', 't'], v: ['vvv', 'vv', 'v'], w: ['wuh', 'ww', 'w'], x: ['ks', 'ex', 'x'], y: ['yuh', 'yy', 'y'], z: ['zzz', 'zz', 'z'],
+  ee: ['ee', 'eee', 'e'], er: ['er', 'ur', 'errr'], ear: ['ear', 'eer', 'ee-er'], schwa: ['uh', 'u', 'a'], th: ['th', 'thh', 'thhh'], dh: ['th', 'the', 'thh'],
+  oo: ['oo', 'ooo', 'ew'], uu: ['oo', 'uh', 'ou'], igh: ['eye', 'aye', 'i'], oa: ['oh', 'owe', 'o'], ow: ['ow', 'ou', 'au'], oi: ['oy', 'oi', 'oye'],
+  or: ['or', 'ore', 'aw'], ai: ['ay', 'ai', 'a'], aw: ['aw', 'ah', 'awe'], ar: ['ar', 'are', 'ahr'], air: ['air', 'are', 'ayer'],
+  sh: ['shh', 'sh', 'shhh'], zh: ['zh', 'zhh', 'jzh'], ch: ['ch', 'chuh', 'tch'], ng: ['ng', 'nng', 'ing'] };
+function soundSpeakOf(id) { const own = (state.soundSpeak || {})[id]; if (own) return own; const o = SOUND_SPEAK_OPTS[id]; return o ? o[0] : (SOUND_SAY[id] || id); }
+function soundSpeakNow(text) { try { warmSpeech(); sayAnyway = true; speak(text, 0.85); } catch (e) {} finally { sayAnyway = false; } }
+function openSoundTuner() {
+  openWordSheet(body => {
+    sheetTitle(body, 'The iPad voice for each sound');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px';
+    n.textContent = 'Tap a way of writing the sound to hear it - the one you tap is kept (green). Pick whichever sounds most like the sound itself. A sound with its own audio file (🔊) plays that file instead. The voice is the one chosen in Settings > Voice; a Premium or Enhanced voice sounds much better.';
+    body.appendChild(n);
+    const list = document.createElement('div'); list.className = 'sm-list'; body.appendChild(list);
+    soundAllIds().forEach(id => {
+      const K = SOUND_K[id]; if (!K) return;
+      const r = document.createElement('div'); r.className = 'sm-snd tune-row';
+      const l = document.createElement('div'); l.className = 'sm-lab ' + (soundIsVowel(id) ? 'v' : 'c'); l.innerHTML = '<b></b><em></em>'; l.firstChild.textContent = K.label; l.lastChild.textContent = (K.ex || '') + (SM.a.has(id) ? ' 🔊' : ''); r.appendChild(l);
+      const ch = document.createElement('div'); ch.className = 'tune-chips'; r.appendChild(ch);
+      const paint = () => { ch.innerHTML = ''; const cur = soundSpeakOf(id), opts = (SOUND_SPEAK_OPTS[id] || []).slice(); if (!opts.includes(cur)) opts.push(cur);
+        opts.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip' + (t === cur ? ' on' : ''); b.textContent = t;
+          b.addEventListener('click', e => { e.stopPropagation(); state.soundSpeak = Object.assign({}, state.soundSpeak || {}, { [id]: t }); save(); soundSpeakNow(t); paint(); }); ch.appendChild(b); });
+        const o = document.createElement('button'); o.className = 'tune-chip own'; o.textContent = '✎';
+        o.addEventListener('click', e => { e.stopPropagation(); const v = prompt('How the iPad should say "' + K.label + '" (as in ' + (K.ex || '') + ')', cur); if (v === null || !v.trim()) return;
+          state.soundSpeak = Object.assign({}, state.soundSpeak || {}, { [id]: v.trim() }); save(); soundSpeakNow(v.trim()); paint(); }); ch.appendChild(o); };
+      paint(); list.appendChild(r);
+    });
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); try { openSoundMedia(); } catch (e) {} }));
+  });
+}
 function soundSay(id) {
   if (smPlay(id)) return;
   try { warmSpeech(); sayAnyway = true;
-    if (id.length === 1) { const L = id.toUpperCase(); if (recordings.letterSound && recordings.letterSound[L] && playClip(recordings.letterSound[L])) return; speak(state.phonemes[L] || DEFAULT_PHONEMES[L] || id, 0.9); }
-    else speak(SOUND_SAY[id] || id, 0.85);
+    if (id.length === 1) { const L = id.toUpperCase(); if (recordings.letterSound && recordings.letterSound[L] && !(state.soundSpeak || {})[id] && playClip(recordings.letterSound[L])) return; }
+    speak(soundSpeakOf(id), 0.85);
   } catch (e) {} finally { sayAnyway = false; }
 }
 // sounds that count as the same in a word (c or k for /k/, either th, either oo)
