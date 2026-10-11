@@ -1466,6 +1466,9 @@
   .gm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
   .gm-chip { border: 3px solid transparent; border-radius: 999px; background: #eef0f3; font-family: inherit; font-weight: 800; font-size: 17px; padding: 9px 16px; color: var(--ink); }
   .gm-chip.on { background: #ebfaee; border-color: var(--green); }
+  .pick-row.no-pic:not(.on) { opacity: 0.6; }
+  .home-card.menu-tile { color: #fff !important; box-shadow: var(--shadow); }
+  .home-card.menu-tile .hw { font-size: clamp(36px, 6vmin, 72px) !important; color: #fff !important; background: none !important; }
   .gm-chip.gm-add { background: #fff; border: 3px dashed #c4c8cf; color: var(--muted); }
   .gm-count:disabled { opacity: 0.4; }
   .gm-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
@@ -3025,7 +3028,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 531 - 11 Oct';
+const BUILD = 'build 532 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9723,6 +9726,28 @@ function tintFor(cat, amount) {
 }
 let lastTabTap = { id: null, t: 0 };
 // One step back from the page that is open; all = straight to the first page (Popular / Recents)
+// Menu mode off: the first page is a big tile for each menu button (Popular, Chat, Categories, My Stuff) in its colour.
+// A tile does what the menu button does; the page it opens keeps one tab at the top that steps back, as always, and
+// stepping back from a top page comes back to these tiles.
+let tilesRootPop = false;      // Popular opened from its tile (Popular has no folder of its own: it is the first page)
+function menuTilesNow() { return !state.railOpen && !state.builderMode && homePath.length === 0 && !tilesRootPop && !foldersMode(); }
+function menuColour(c, i) { const nm = String(c.name || '').trim().toLowerCase(); return nm === 'chat' ? '#f08a24' : nm === 'categories' ? '#8e5bd6' : nm === 'my stuff' ? '#e0473c' : ['#f08a24', '#8e5bd6', '#e0473c', '#2f9bd8', '#d9a400'][i % 5]; }
+function renderMenuTiles(grid) {
+  homeRows = []; homeShown = 0;
+  grid.classList.remove('slot-grid'); grid.innerHTML = ''; grid.scrollTop = 0;
+  grid.style.gridTemplateRows = ''; grid.style.setProperty('grid-template-columns', 'repeat(2, minmax(0, 1fr))', 'important'); grid.style.setProperty('grid-auto-rows', 'auto', 'important'); grid.style.setProperty('display', 'grid', 'important'); grid.classList.add('menu-tiles-grid');
+  const tops = childrenOf(null).filter(c => !c.target && !c.hidden);
+  const items = [{ label: state.bankSort === 'used' ? 'Popular' : 'Recents', col: 'var(--green)', go: () => { tilesRootPop = true; } }]
+    .concat(tops.map((c, i) => ({ label: c.name, col: menuColour(c, tops.indexOf(c)), go: () => { homePath = [c.id]; tileGroup = null; menuPeekUntil = 0; } })));
+  const rows = Math.ceil(items.length / 2), h = Math.max(120, Math.floor((grid.clientHeight - 16 * (rows - 1)) / rows));
+  items.forEach(it => {
+    const b = document.createElement('button'); b.className = 'home-card menu-tile'; b.style.height = h + 'px';
+    b.style.setProperty('background', it.col, 'important');
+    const t = document.createElement('span'); t.className = 'hw'; t.textContent = it.label; b.appendChild(t);
+    b.addEventListener('click', () => { buzz(10); it.go(); save(); renderHome(true); });
+    grid.appendChild(b);
+  });
+}
 function homeStepBack(all) {
   const here = currentCat();
   if (all) { homePath = []; tileGroup = null; libraryOpen = null; return; }
@@ -9803,6 +9828,7 @@ function renderCatTiles(containerId, rerender) {
       // with suggested tiles standing in for the page, the first tap just brings the page back
       if (mine && magicUnstick()) { buzz(10); renderPhraseBar(); again(); return; }
       magicUnstick();
+      if (mine && !state.railOpen && homePath.length === 1 && !tileGroup && !libraryOpen) { homePath = []; tilesRootPop = false; again(); return; }      // (menu mode off: back to the page of tiles)
       if (mine && homePath.length === 1 && !tileGroup && !libraryOpen && menuCollapsed) { menuStep(); rootMenuWas = homePath.length; again(); return; }      // a top page: on to the next one
       if (mine) { homeStepBack(twice); again(); return; }
       tileGroup = null;
@@ -9818,6 +9844,15 @@ function renderCatTiles(containerId, rerender) {
   };
 
   // just the top level here — sub-folders live in the grid as coloured tiles
+  // menu mode off: no menu bar on the page of tiles; Popular opened from its tile keeps its own tab, which goes back
+  if (!state.railOpen && !state.builderMode && homePath.length === 0 && (!containerId || containerId === 'catTiles')) {
+    if (tilesRootPop) { const row = document.createElement('div'); row.className = 'folder-strip-row';
+      const b = document.createElement('button'); b.className = 'cat-tile plain selected'; b.textContent = state.bankSort === 'used' ? 'Popular' : 'Recents';
+      b.style.setProperty('background', 'var(--green)', 'important'); b.style.setProperty('color', '#fff', 'important');
+      b.addEventListener('click', () => { if (magicUnstick()) { buzz(10); renderPhraseBar(); again(); return; } buzz(10); tilesRootPop = false; again(); });
+      row.appendChild(b); host.appendChild(row); }
+    return;
+  }
   const levels = [null];
   levels.forEach((parentId, level) => {
     const kids = childrenOf(parentId);
@@ -9851,7 +9886,7 @@ function renderCatTiles(containerId, rerender) {
     kids.filter(c => rootShut ? false : folded ? (c.id === homePath[0] && !c.target) : !c.target).forEach(c => row.appendChild(makeTile(c, level)));     // targets open from their own icon
 
     // the small arrow beside the one tab: the whole menu, as a row, for three seconds
-    if (level === 0 && !state.builderMode && (rootShut || folded) && (!containerId || containerId === 'catTiles') && !onTargetsPage()) {
+    if (level === 0 && !state.builderMode && state.railOpen && (rootShut || folded) && (!containerId || containerId === 'catTiles') && !onTargetsPage()) {
       const pk = document.createElement('button');
       pk.className = 'cat-tile plain menu-peek'; pk.setAttribute('aria-label', 'Show the whole menu'); pk.textContent = '\u203A';
       pk.addEventListener('click', () => {
@@ -10134,7 +10169,8 @@ function renderHome(reset) {
     }
     // the folder menu shows while the sandwich is switched on
     const rail = document.getElementById('catTiles');
-    rail.className = 'folder-strip' + (state.railOpen ? ' open' : '');
+    // (menu mode off: the menu is the page of big tiles; once a page is open from it, just its own tab shows, to go back)
+    rail.className = 'folder-strip' + (state.railOpen || (!state.builderMode && (homePath.length > 0 || tilesRootPop)) ? ' open' : '');
     // the plus ends the menu bar while a folder is open: it makes a new folder inside it
     document.getElementById('homeAddFolderBtn').style.display =
       'none';     // retired: every page has its own grey tiles for adding
@@ -10142,6 +10178,8 @@ function renderHome(reset) {
     // the star is one of the switches in the pop-out: lit while help mode is on, grey while it is off
     { const hb = document.getElementById('homeHelpBtn'); hb.style.display = ''; hb.classList.toggle('off', !state.helpMode); hb.setAttribute('aria-pressed', state.helpMode ? 'true' : 'false'); hb.setAttribute('aria-label', 'Help mode: ' + (state.helpMode ? 'on' : 'off')); }
 
+    if (grid.classList.contains('menu-tiles-grid')) { grid.classList.remove('menu-tiles-grid'); ['grid-template-columns', 'grid-auto-rows', 'display'].forEach(k => grid.style.removeProperty(k)); }
+    if (menuTilesNow()) { renderMenuTiles(grid); return; }
     // Top level shows the words used most recently; a group shows all of its words
     homeRows = (cat ? categoryRows(cat) : bankRows())
       .filter(r => !state.hiddenWords[r.word] && (cat || (!state.recentsHidden[r.word] && (popularFeed() || !offPopular(r.word)))));      // the feed shows whatever was entered, small words and all
@@ -15429,6 +15467,7 @@ document.getElementById('railToggle').addEventListener('click', () => {
   leaveTargets();
   if (state.builderMode) { state.builderMode = false; builderPath = []; state.railOpen = true; }
   else state.railOpen = !state.railOpen;
+  tilesRootPop = false; if (!state.railOpen) { homePath = []; tileGroup = null; }      // (off: the page of menu tiles)
   buzz(10);
   save(); renderHome(true);
 });
@@ -15637,7 +15676,7 @@ function openGameAdd(mode) {
   openWordSheet(body => {
     sheetTitle(body, 'Add to ' + game.name);
     const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '4px 0 8px';
-    n.textContent = 'Tick words to practise in ' + game.name + '. They also go into the Unsorted group on the targets page. A word is ready once it has a picture (\uD83D\uDDBC\uFE0F) - add one from its menu or the targets page.';
+    n.textContent = 'Tick words to practise in ' + game.name + ' (they also go into the Unsorted group on the targets page). Every word needs a picture: a word with \uD83D\uDCF7 has none yet - tapping it asks for a picture first, and it is only added once it has one.';
     body.appendChild(n);
     const list = document.createElement('div'); list.className = 'pick-list pick-grid'; list.style.maxHeight = '56vh'; list.style.overflowY = 'auto'; body.appendChild(list);
     const put = w => {
@@ -15654,8 +15693,13 @@ function openGameAdd(mode) {
       const h = document.createElement('div'); h.className = 'help-note pick-head sort-head'; const sp = document.createElement('span'); sp.textContent = pathName(f); h.appendChild(sp); list.appendChild(h);
       ws.forEach(w => {
         const r = document.createElement('button'); r.className = 'pick-row';
-        const paint = () => { const on = inG(w); r.classList.toggle('on', on); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w) + (picHas(w) ? ' \uD83D\uDDBC\uFE0F' : ''); };
-        r.addEventListener('click', () => { if (inG(w)) take(w); else put(w); save(); buzz(8); paint(); });
+        const paint = () => { const on = inG(w); r.classList.toggle('on', on); r.classList.toggle('no-pic', !picHas(w)); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w) + (picHas(w) ? ' \uD83D\uDDBC\uFE0F' : ' \uD83D\uDCF7'); };
+        r.addEventListener('click', () => {
+          if (inG(w)) { take(w); save(); buzz(8); paint(); return; }
+          if (picHas(w)) { put(w); save(); buzz(8); paint(); return; }
+          // no picture yet: choose one first; the word goes in only once it has one
+          picChoose(w, () => { if (picHas(w)) { put(w); save(); } paint(); });
+        });
         paint(); list.appendChild(r);
       });
     });
