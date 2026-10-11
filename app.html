@@ -947,6 +947,8 @@
   .view-home.keys-open .sugg-host { display: none; }
   .target-banner.no-text .tletter.pending, .target-banner.no-text .tletter.next, .target-banner .tletter.gone { color: transparent !important; }
   .target-banner .tletter.gone:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
+  .target-banner .tletter.boosted:not(.next) { color: var(--ink) !important; box-shadow: none !important; }
+  .target-banner .tletter.boosted.next { box-shadow: none !important; }
   .target-banner.no-text .tletter.pending:not(.tspace) { box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); border-radius: 0; }
   .type-layer { display: none; position: fixed; inset: 0; z-index: 40; flex-direction: column; gap: 12px; background: #aeb0b5; padding: calc(22px + env(safe-area-inset-top, 0px)) 26px 8px; }
   .type-layer.open { display: flex; animation: tlUp 0.18s ease both; }
@@ -1563,7 +1565,10 @@
     80% { transform: scale(1.08) rotate(-2deg); }
   }
 
+  .kzone { position: absolute; border-radius: 50%; pointer-events: none; z-index: 20; box-sizing: border-box; background: rgba(255,201,60,0.22); border: 7px solid rgba(255,165,0,0.85); }
+  @keyframes kzoneIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .keyboard {
+    position: relative;
     flex: 1;
     display: flex; flex-direction: column;
     gap: clamp(14px, 2.8vmin, 32px);
@@ -2993,7 +2998,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 520 - 11 Oct';
+const BUILD = 'build 521 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5687,16 +5692,28 @@ function getOrInitWordData(word) {
   if (!state.wordTrialCounters[word]) state.wordTrialCounters[word] = { successes: 0, abandons: 0 };
   return state.wordTrialCounters[word];
 }
-// The prompt fades in a set order, a step at a time: first on the keyboard - the colour grows lighter
-// (1, 2) and goes (3), then the jiggle (4), then the magnifying (5) - and last of all the prompt in
-// the word bar above (6: that letter is on its own).
 // Fading, one step at a time for each letter. The keyboard's prompts go first, then the target word's:
 //  0 everything on · 1-2 the key's colour lighter · 3 key colour gone (pulse, bigger key) · 4 pulse gone (bigger key)
 //  5 the keyboard has no prompt - the word still colours, pulses and enlarges the letter · 6 the word only enlarges it
 //  7 the letter is plain in the word (no prompt at all) · 8 the letter is gone from the word: typed from memory
 // In the word's steps (5 to 8) the letters go from the first to the last, once every letter's keyboard prompts are gone.
 const FADE_MAX = 8, FADE_KB = 5, FADE_PLAIN = 7;
+// The level a letter is shown at. Whatever the letters have reached (counted by word or by letter), the word's prompts
+// only start to fade once the keyboard has nothing left for every letter of the word, and then from the first letter on:
+// a letter is never further on in the word's steps than the letters before it.
 function fadeLevelAt(index) {
+  const raw = fadeRawAt(index); if (raw <= FADE_KB) return raw;
+  const t = state.currentTarget || '';
+  let lv = raw;
+  for (let k = 0; k < t.length; k++) {
+    if (k === index || t[k] === ' ' || !/[A-Za-z0-9]/.test(t[k])) continue;
+    const r = fadeRawAt(k);
+    if (r < FADE_KB) return FADE_KB;      // (a letter still has keyboard prompts: the word keeps all of its own)
+    if (k < index) lv = Math.min(lv, r);  // (the first letters go first)
+  }
+  return lv;
+}
+function fadeRawAt(index) {
   if (!state.currentTarget) return 0;
   // counted by letter: a letter carries its fading with it into every word that has it
   if (state.fadeCount === 'letter') { const L = String(state.currentTarget[index] || '').toUpperCase(); return Math.min(FADE_MAX, (state.letterFade || {})[L] || 0); }
@@ -5761,7 +5778,7 @@ function selectTargetWord(w, speakIt) {
   if (kbSearch) closeLetterSearch();     // a target means the bar is for typing
   phraseAuto = null;
   state.currentTarget = w;
-  trialErrors = 0; trialAt = [];
+  trialErrors = 0; trialAt = []; boost = { key: '', i: -1, n: 0 };
   state.phraseWords = [];
   state.targetIndex = 0;
   state.targetProgress = [];
@@ -5836,7 +5853,7 @@ function selectPhrase(words, quiet, auto) {
   if (kbSearch) closeLetterSearch();
   state.phraseWords = words.slice();
   phraseAuto = Array.isArray(auto) && auto.some(Boolean) ? auto : null;
-  trialErrors = 0; trialAt = [];
+  trialErrors = 0; trialAt = []; boost = { key: '', i: -1, n: 0 };
   state.currentTarget = words.join(' ');
   state.targetIndex = 0;
   state.targetProgress = [];
@@ -6020,6 +6037,7 @@ function isLetterPrompted(letter) {
   if (!anyPromptEnabled()) return false;
   const expected = nextExpectedLetter();
   if (expected && expected === letter && promptsShowing()) return true;
+  if (expected && expected === letter && boostLevel(state.targetIndex) >= 1) return true;
   return false;
 }
 
@@ -6071,18 +6089,17 @@ function render() {
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex &&
-               ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead)) {
-        const fl = fadeLevelAt(i);      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
-        if ((pOn('promptTextColorOn') || helpLead) && fl < 6) {
-          s.classList.add('next');
-        } else {
-          s.classList.add('pending');
-        }
-        if (pOn('promptTileOn') && fl < FADE_PLAIN) s.classList.add('magnify', 'tmag-' + state.promptTileSize);
-        if (pOn('promptTextPulseOn') && fl < 6) s.classList.add('pulse');
+               ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1)) {
+        const fl = fadeLevelAt(i), E = boostLevel(i), on = showing && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
+        const sh = (lim, step) => (showing && fl < lim) || E >= step;
+        if (E >= 1) s.classList.add('boosted');      // (errors in a row: the letter shows again in the word)
+        if ((pOn('promptTextColorOn') && sh(6, 4)) || helpLead) s.classList.add('next');
+        else s.classList.add('pending');
+        if (pOn('promptTileOn') && sh(FADE_PLAIN, 6)) s.classList.add('magnify', 'tmag-' + state.promptTileSize);
+        if (pOn('promptTextPulseOn') && sh(6, 3)) s.classList.add('pulse');
       }
       else s.classList.add('pending');
-      if (i >= state.targetIndex && ch !== ' ' && fadeLevelAt(i) >= FADE_MAX) s.classList.add('gone');      // (faded right out: typed from memory)
+      if (i >= state.targetIndex && ch !== ' ' && fadeLevelAt(i) >= FADE_MAX && !boostLevel(i)) s.classList.add('gone');      // (faded right out: typed from memory)
       s.textContent = (ch === ' ') ? '\u2423' : displayLetterAt(ch, i);
       tw.appendChild(s);
     });
@@ -6194,11 +6211,23 @@ function render() {
   if (expected === ' ' && kbShow) promptKey(spaceKey);
   r.appendChild(spaceKey);
   const enterKey = makeSpecialKey('⏎', 'enter', 'wide enter');
+  requestAnimationFrame(kzoneSync);
   if (isWordComplete()) enterKey.classList.add('enter-ready');
   r.appendChild(enterKey);
   kb.appendChild(r);
 }
 
+// errors in a row (step 2 on): a soft ring round the part of the keyboard the letter is in
+function kzoneSync() {
+  const kb = document.getElementById('keyboard'); if (!kb) return;
+  kb.querySelectorAll('.kzone').forEach(x => x.remove());
+  const key = kb.querySelector('.key.kzone-key'); if (!key) return;
+  const a = kb.getBoundingClientRect(), r = key.getBoundingClientRect();
+  const d = Math.max(r.width, r.height) * 3.1, z = document.createElement('div'); z.className = 'kzone';
+  z.style.width = z.style.height = d + 'px';
+  z.style.left = (r.left - a.left + r.width / 2 - d / 2) + 'px'; z.style.top = (r.top - a.top + r.height / 2 - d / 2) + 'px';
+  kb.appendChild(z);
+}
 function makeLetterKey(letter, expected) {
   const k = document.createElement('button');
   k.className = 'key letter';
@@ -6206,17 +6235,20 @@ function makeLetterKey(letter, expected) {
   const lvl = state.keyLevels[letter];
   if (lvl) k.classList.add('level-' + lvl);
   if (state.hiddenKeys[letter]) k.classList.add('hidden');
-  if (expected && letter === expected && kbPromptsShowing()) {
-    const fl = fadeLevelAt(state.targetIndex);
+  const E = expected && letter === expected ? boostLevel(state.targetIndex) : 0;
+  if (expected && letter === expected && (kbPromptsShowing() || E >= 2)) {
+    const fl = fadeLevelAt(state.targetIndex), show = kbPromptsShowing();
+    const sh = (lim, step) => (show && fl < lim) || E >= step;
     k.classList.add('prompting'); // exempt from the other-key treatments
-    if (pOn('promptColorOn') && fl < 3) {
+    if (pOn('promptColorOn') && sh(3, 5)) {
       k.classList.add('prompt-color');
-      if (fl > 0) k.classList.add('fade-' + fl);
+      if (fl > 0 && E < 5) k.classList.add('fade-' + fl);
     }
-    if (pOn('promptPulseOn') && fl < 4) k.classList.add('prompt-pulse');
-    if (pOn('promptSizeOn') && fl < 5) {
+    if (pOn('promptPulseOn') && sh(4, 3)) k.classList.add('prompt-pulse');
+    if (pOn('promptSizeOn') && sh(5, 6)) {
       k.classList.add('prompt-size', 'boost-' + state.promptSize);
     }
+    if (E >= 2) k.classList.add('kzone-key');
   }
   k.textContent = displayLetter(letter);
   attachKeyHandlers(k, letter);
@@ -6467,7 +6499,7 @@ function typeChar(letter) {
   if (state.currentTarget) {
     const expected = state.currentTarget[state.targetIndex];
     if (expected && !isWrong) {
-      { const i = state.targetIndex, a = trialAt[i] || { w: 0 }; a.L = String(expected).toUpperCase(); a.p = !!prompted; a.f = fadeLevelAt(i); trialAt[i] = a; }
+      { const i = state.targetIndex, a = trialAt[i] || { w: 0 }; a.L = String(expected).toUpperCase(); a.p = !!prompted; a.f = boostLevel(i) >= BOOST_MAX ? 0 : Math.max(fadeLevelAt(i), boostLevel(i) ? 1 : 0); trialAt[i] = a; }
       state.targetIndex++;
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
@@ -6593,10 +6625,28 @@ function playErrorPhrase() {
   if (t) speak(t, 1.0);
 }
 let fadeStreak = 0, trialErrors = 0;
+// Prompting back up after errors in a row on a faded letter (this try only): from the third wrong key in a row the
+// prompts come back one step for each further wrong key -
+//  1 the letter shows in the target word · 2 the keyboard area around the key is ringed · 3 the letter pulses in the
+//  word and on its key · 4 the letter is coloured in the word · 5 the key is coloured · 6 the letter and the key grow
+//  (every prompt: the most there is). A right key ends it; the next letter starts again from its own faded level.
+const BOOST_AFTER = 2, BOOST_MAX = 6;
+let boost = { key: '', i: -1, n: 0 };
+function boostLevel(i) {
+  if (!state.currentTarget || boost.key !== state.currentTarget || boost.i !== i) return 0;
+  return Math.min(BOOST_MAX, Math.max(0, boost.n - BOOST_AFTER));
+}
+function boostNote() {
+  const w = state.currentTarget, i = state.targetIndex;
+  if (!w || !pOn('fadeMode') || fadeRawAt(i) <= 0 || !missTargetAt(i)) return;
+  if (boost.key !== w || boost.i !== i) boost = { key: w, i, n: 0 };
+  boost.n++;
+}
 // each letter of the word being typed: prompted or not, how faded its prompt was, wrong keys before it (for the progress summary)
 let trialAt = [];
 function handleError(expectedLetter, typedLetter) {
   fadeStreak = 0; trialErrors++;
+  try { boostNote(); } catch (e) {}
   if (state.currentTarget) { const i = state.targetIndex; trialAt[i] = trialAt[i] || { w: 0 }; trialAt[i].w = (trialAt[i].w || 0) + 1; }
   try { missNote('wrong key', typedLetter); } catch (e) {}
   if (state.fadeCount === 'letter' && expectedLetter) { state.letterStreak = state.letterStreak || {}; state.letterStreak[String(expectedLetter).toUpperCase()] = 0; }
