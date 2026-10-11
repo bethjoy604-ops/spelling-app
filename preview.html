@@ -1453,6 +1453,7 @@
   .gm-act .ga-s { font-weight: 700; font-size: 15px; color: var(--muted); }
   .gm-act.on { border-color: var(--green); background: #ebfaee; }
   .gm-act.empty { opacity: 0.55; }
+  .gm-act.off { opacity: 0.4; filter: grayscale(1); cursor: default; }
   .view-keyboard.pic-on .pic-progress.gm-bar { height: 18px; gap: 5px; }
   .gm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
   .gm-chip { border: 3px solid transparent; border-radius: 999px; background: #eef0f3; font-family: inherit; font-weight: 800; font-size: 17px; padding: 9px 16px; color: var(--ink); }
@@ -2792,14 +2793,17 @@
     <div class="sgroup" data-group="pictures">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">&#128444;&#65039;</span>
-        <span class="sg-title">Picture game</span>
+        <span class="sg-title">Games</span>
         <span class="sg-sum" id="sumPictures"></span>
         <span class="sg-chev">&#9662;</span>
       </button>
       <div class="sgroup-body">
-        <div class="sublabel" style="margin-top:0">The other tiles in the row</div>
+        <div class="sublabel" style="margin-top:0">In the Games menu</div>
+        <div class="settings-list" id="gamesOnList"></div>
+        <div class="help-note" style="margin:6px 4px 12px">A game switched off stays in the Games menu greyed out, and cannot be started.</div>
+        <div class="sublabel">The other tiles in the row (Sight words)</div>
         <div class="seg-row" id="segPicLevel"></div>
-        <div class="help-note">Pictures are added on the targets page: tap the camera at the end of a target (up to 7 pictures each, switched on or off, each with its own spelling if needed, like "strawberries"). The picture button in the tools starts the game: choose how many turns, then match each picture to its tile. Green in the bar: right first time; blue: right on the second go; yellow: after the right tile was shown. A target got wrong comes back a turn or two later.</div>
+        <div class="help-note">Pictures are added on the targets page: tap the camera at the end of a target (up to 7 pictures each, switched on or off, each with its own spelling if needed, like "strawberries"). The games button (&#127918;) in the pop-out starts a game: choose the game, the folders and how many turns. Green in the bar: right first time; blue: right on the second go; yellow: after the right tile was shown. A target got wrong comes back a turn or two later.</div>
       </div>
     </div>
     <div class="sgroup" data-group="magic">
@@ -3012,7 +3016,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 523 - 11 Oct';
+const BUILD = 'build 524 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3222,7 +3226,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', gamesOn: { sight: true, write: true, tiles: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3391,7 +3395,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', gamesOn: Object.assign({ sight: true, write: true, tiles: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4004,7 +4008,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -11110,7 +11114,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -15579,6 +15583,9 @@ function gameTargetSets(words) {
   });
   return [...sets.values()].sort((a, b) => b.words.length - a.words.length || a.label.localeCompare(b.label));
 }
+// the games in the Games menu, and which are switched on (in settings, under Games)
+const GAME_LIST = [['sight', '\uD83D\uDC40', 'Sight words'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Spelling tiles'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
+function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, builder: false }, state.gamesOn || {}); }
 function gameChooseCount() {
   try { ensureTargets(); } catch (e) {}
   const sight = practiceGroupWords('sight'), write = practiceGroupWords('write'), tiles = practiceGroupWords('tiles');
@@ -15611,14 +15618,14 @@ function gameChooseCount() {
       const c = document.createElement('button'); c.className = 'gm-count'; c.textContent = 'Other'; c.addEventListener('click', () => { const v = parseInt(prompt('How many turns?', '20'), 10); if (v > 0) go(Math.min(100, v)); }); row.appendChild(c);
       count.appendChild(row); paint(); };
     [['sight', '\uD83D\uDC40', 'Sight words', 'Match the picture to its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'Type the word for the picture', write], ['tiles', '\uD83D\uDD24', 'Spelling tiles', 'Pick the letters for the picture', tiles]].forEach(([m, ic, nm, sub, ws]) => {
-      const b = document.createElement('button'); b.className = 'gm-act' + (ws.length ? '' : ' empty');
-      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : 'No targets with pictures in the "' + nm + '" group yet') + '</span>';
-      b.addEventListener('click', () => { if (!ws.length) { alert('Add targets to the "' + nm + '" group on the targets page, and give them pictures (the camera at the end of each target).'); return; } buzz(8); mode = m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b)); pickCount(); });
+      const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
+      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : 'No targets with pictures in the "' + nm + '" group yet') + '</span>';
+      b.addEventListener('click', () => { if (off) { buzz(8); return; } if (!ws.length) { alert('Add targets to the "' + nm + '" group on the targets page, and give them pictures (the camera at the end of each target).'); return; } buzz(8); mode = m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b)); pickCount(); });
       acts.appendChild(b);
     });
-    { const b = document.createElement('button'); b.className = 'gm-act';
-      b.innerHTML = '<span class="ga-ic">\uD83E\uDDF1</span><span class="ga-t">Sentence builder</span><span class="ga-s">Build a message one step at a time</span>';
-      b.addEventListener('click', () => { buzz(8); closeWordSheet(); gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); });
+    { const b = document.createElement('button'); const off = !gamesOn().builder; b.className = 'gm-act' + (off ? ' off' : '');
+      b.innerHTML = '<span class="ga-ic">\uD83E\uDDF1</span><span class="ga-t">Sentence builder</span><span class="ga-s">' + (off ? 'Switched off in settings' : 'Build a message one step at a time') + '</span>';
+      b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); closeWordSheet(); gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); });
       acts.appendChild(b); }
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); gameOff(); }));
   });
@@ -16887,6 +16894,9 @@ function openSettingsSheet() {
 
 function renderSettings() {
   document.getElementById('buildStamp').textContent = BUILD;
+  { const box = document.getElementById('gamesOnList'); if (box) { box.innerHTML = ''; const on = gamesOn();
+    GAME_LIST.forEach(([k, ic, nm]) => { const r = document.createElement('div'); r.className = 'setting-row'; const t = document.createElement('span'); t.textContent = ic + '  ' + nm; r.appendChild(t);
+      const x = document.createElement('div'); x.className = 'toggle' + (on[k] ? ' on' : ''); x.addEventListener('click', () => { state.gamesOn = Object.assign({}, gamesOn(), { [k]: !on[k] }); save(); renderSettings(); }); r.appendChild(x); box.appendChild(r); }); } }
   buildSeg('segPicLevel', [{ value: 'easy', label: 'Easy: very different words' }, { value: 'hard', label: 'Hard: words that look alike' }], state.picLevel || 'easy', v => { state.picLevel = v; save(); renderSettings(); });
   { const sp = document.getElementById('sumPictures');
     if (sp) sp.textContent = state.picLevel === 'hard' ? 'Hard' : 'Easy'; }
