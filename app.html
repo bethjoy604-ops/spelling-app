@@ -3032,7 +3032,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 534 - 11 Oct';
+const BUILD = 'build 535 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15711,6 +15711,20 @@ function openGameAdd(mode) {
     body.appendChild(sheetBtn('Done', 'primary', () => { save(); gameChooseCount(mode); }));
   });
 }
+// a target's pictures in a random rotation: each of its ticked pictures comes up once (in a random order) before any
+// comes again, and never the same picture twice in a row
+const picBags = {};
+function picRandomFor(word, pics) {
+  if (!pics || !pics.length) return null; if (pics.length === 1) return pics[0];
+  let bag = picBags[word]; const ids = pics.map(p => p.id);
+  if (!bag || !bag.left.length || bag.left.some(id => !ids.includes(id))) {
+    const left = ids.slice().sort(() => Math.random() - 0.5);
+    if (bag && left[0] === bag.last) left.push(left.shift());
+    bag = picBags[word] = { left, last: bag ? bag.last : null };
+  }
+  const id = bag.left.shift(); bag.last = id;
+  return pics.find(p => p.id === id) || pics[0];
+}
 function gameChooseCount(preMode) {
   try { ensureTargets(); } catch (e) {}
   const sight = practiceGroupWords('sight'), write = practiceGroupWords('write'), tiles = practiceGroupWords('tiles');
@@ -15774,7 +15788,11 @@ function gameStart(n, mode, only) {
   mode = mode || (game && game.mode) || 'sight';
   const ready = practiceGroupWords(mode), ws = only ? ready.filter(w => only.includes(w)) : ready; if (!ws.length) return;
   const seq = []; let pool = [];
-  while (seq.length < n) { if (!pool.length) pool = ws.slice().sort(() => Math.random() - 0.5); let k = pool.findIndex(w => w !== (seq[seq.length - 1] || {}).w); if (k < 0) k = 0; seq.push({ w: pool.splice(k, 1)[0] }); }
+  // the turns: every chosen target about the same number of times, all mixed up at random (not one round of each
+  // before the next), and never the same target twice in a row when there is more than one
+  const bag = []; while (bag.length < n) bag.push(...ws); bag.length = n; const mixed = bag.sort(() => Math.random() - 0.5);
+  mixed.forEach(w => seq.push({ w }));
+  for (let i = 1; i < seq.length; i++) if (seq[i].w === seq[i - 1].w) { const j = seq.findIndex((x, k) => k > i && x.w !== seq[i].w && (k + 1 >= seq.length || seq[k + 1].w !== seq[i].w) && seq[k - 1].w !== seq[i].w); if (j > 0) { const t = seq[i]; seq[i] = seq[j]; seq[j] = t; } }
   game = { n, seq, i: 0, res: [], mode, only: only || null };
   state.picMode = true; picBtnSync();
   if (mode === 'write') { const v = document.getElementById('gameView'); if (v) v.remove(); gameTrial(); return; }
@@ -15789,7 +15807,7 @@ function gameOff() {
 }
 // writing practice: the picture large above the writing lines and keyboard; the bar at the top fills in its colours
 function gameWriteTrial() {
-  const g = game, s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = pics[Math.floor(Math.random() * pics.length)];
+  const g = game, s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile;
   g.cur = { word, tile };
   picSession = { game: true, word };
@@ -15849,7 +15867,7 @@ function gameTrial() {
   const g = game; if (!g) return;
   if (g.mode === 'write') { gameWriteTrial(); return; }
   if (g.mode === 'tiles') { gameTilesTrial(); return; }
-  const s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = pics[Math.floor(Math.random() * pics.length)];
+  const s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile;
   g.cur = { word, tile, tries: 0, prompted: false };
   const box = document.getElementById('gmPic'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
@@ -15905,7 +15923,7 @@ function gameLetterChoices(ch, level, skip) {
   return (fresh.length >= 5 ? fresh : pick).slice(0, 5);
 }
 function gameTilesTrial() {
-  const g = game, s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = pics[Math.floor(Math.random() * pics.length)];
+  const g = game, s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = String((pic && pic.label) || tile).toLowerCase();
   g.cur = { word, tile, k: -1, tries: 0, prompted: false, wrongs: 0, anyPrompt: false, lets: [] };
   const box = document.getElementById('gmPic'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
@@ -16033,7 +16051,7 @@ function picStart(words) {
 }
 function picShow() {
   const s = picSession; if (!s) return;
-  const tile = s.queue[s.done], pics = picOn(tile), pic = pics[Math.floor(Math.random() * pics.length)];
+  const tile = s.queue[s.done], pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile; s.word = word;      // (a picture can have its own spelling: strawberries)
   const box = document.getElementById('picBox'); box.innerHTML = '';
   const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
