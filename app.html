@@ -3144,7 +3144,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 553 - 11 Oct';
+const BUILD = 'build 554 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10278,7 +10278,8 @@ function commitTypedWord() {
   return true;
 }
 
-function renderHome(reset) {
+function renderHome(reset) { try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} } }
+function renderHomeCore(reset) {
   try { renderChatPane(); } catch (e) {}
   linkWordCache = null;
   const grid = document.getElementById('homeGrid');
@@ -12083,6 +12084,15 @@ function renderHiddenFolders() {
   });
 }
 // Rename, move or hide any folder, the default ones included
+// A folder whose tiles show in capitals (Uppercase letters): set in the folder's menu; a folder named Uppercase or
+// Capitals is in capitals unless switched off. Only how the tiles look on its page changes.
+function catCaps(c) { return !!c && (c.caps === true || (c.caps !== false && /^(upper ?case|capitals?|capital letters|uppercase letters)$/i.test(String(c.name || '').trim()))); }
+function capsPass() {
+  const cat = currentCat(); if (!cat || state.builderMode || !catCaps(cat)) return;
+  const grid = document.getElementById('homeGrid'); if (!grid) return;
+  grid.querySelectorAll('.home-card:not(.add-folder):not(.ghost-tile) .hw').forEach(el => {
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) n.nodeValue = n.nodeValue.toUpperCase(); });
+}
 function halfBtn(c) {
   return sheetSwitch('Word pair grid (smaller tiles)', !!c.half, on => { if (on) c.half = true; else delete c.half; });
 }
@@ -12142,6 +12152,7 @@ function openFolderEdit(c, extra) {
     }));
     if (usesGroups(c) && !c.target) body.appendChild(layoutSwitchBtn(c));
     if (!state.builderMode && !c.target && !catAllowsPhrases(c)) body.appendChild(halfBtn(c));
+    if (!state.builderMode && !c.target) body.appendChild(sheetSwitch('Tiles in capitals (A B C)', catCaps(c), on => { c.caps = on; }));
     // a folder of folders can open as one custom page of tiles picked from them (menu mode)
     if (!state.builderMode && feedHost(c)) body.appendChild(sheetBtn((c.feed || []).length ? '\u2B50  Custom page: choose its tiles' : '\u2B50  Make a custom page', '', () => openFeedPicker(c)));
     // made already: it can be switched off (the folder opens as its plain folders) and on again; the picks are kept
