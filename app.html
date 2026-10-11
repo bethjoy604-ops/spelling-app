@@ -3082,7 +3082,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 545 - 11 Oct';
+const BUILD = 'build 546 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16185,7 +16185,7 @@ const SOUND_SAME = { c: ['c', 'k'], k: ['k', 'c'], th: ['th', 'dh'], dh: ['dh', 
 // in the word's menu on the targets page) when the spelling does not say it plainly.
 function soundSplit(word) {
   const own = (state.soundSplits || {})[word]; if (Array.isArray(own) && own.length) { const lw = String(word || '').toLowerCase().replace(/[^a-z]/g, ''); let p = 0;
-    return own.map(id => { const lab = (SOUND_K[id] ? SOUND_K[id].label : id); const k = lw.indexOf(lab, p); let at = []; if (k >= 0 && /^[a-z]+$/.test(lab)) { at = lab.split('').map((_, j) => k + j); p = k + lab.length; } return { id, alt: SOUND_SAME[id] || [id], at }; }); }
+    return soundSpell(lw, own.map(id => { const lab = (SOUND_K[id] ? SOUND_K[id].label : id); const k = lw.indexOf(lab, p); let at = []; if (k >= 0 && /^[a-z]+$/.test(lab)) { at = lab.split('').map((_, j) => k + j); p = k + lab.length; } return { id, alt: SOUND_SAME[id] || [id], at }; })); }
   const w = String(word || '').toLowerCase().replace(/[^a-z]/g, ''); if (!w) return [];
   const out = [], add = (id, alt, at) => out.push({ id, alt: alt || SOUND_SAME[id] || [id], at: at || [] });      // (at: the letters of the word it is spelled with)
   const V = 'aeiou', isC = ch => ch && !V.includes(ch);
@@ -16194,11 +16194,15 @@ function soundSplit(word) {
     const r = w.slice(i), at = (str) => r.startsWith(str), last = i === w.length - 1;
     // vowel, consonant, then a final e: the long vowel (cake, bike, home, cute, these)
     if (V.includes(w[i]) && isC(w[i + 1]) && w[i + 2] === 'e' && i + 3 === w.length && !(w[i] === 'e' && w[i + 1] === 'r')) {
-      const lv = { a: 'ai', i: 'igh', o: 'oa', u: 'oo', e: 'ee' }[w[i]]; add(lv, undefined, [i, i + 2]); const c = w[i + 1]; add(c === 'c' ? 's' : c, c === 'c' ? ['s'] : undefined, [i + 1]); i += 3; continue; }
+      const lv = { a: 'ai', i: 'igh', o: 'oa', u: 'oo', e: 'ee' }[w[i]]; add(lv, undefined, [i, i + 2]); const c = w[i + 1]; add(c === 'c' ? 's' : c === 'g' ? 'j' : c, c === 'c' ? ['s'] : c === 'g' ? ['j'] : undefined, [i + 1]); i += 3; continue; }
+    if (i === 0 && (at('kn') || at('wr'))) { add(at('kn') ? 'n' : 'r', undefined, [0, 1]); i += 2; continue; }      // knot, write
+    if (at('mb') && i + 2 === w.length) { add('m', undefined, [i, i + 1]); i += 2; continue; }      // lamb
+    if (at('tion')) { add('sh', undefined, [i, i + 1]); i += 2; continue; }      // station
+    if (w[i] === 'n' && w[i + 1] === 'k') { add('ng', undefined, [i]); i++; continue; }      // pink, ankle
     const rules = [['igh', 'igh'], ['air', 'air'], ['are', 'air', 'end'], ['ear', 'ear'], ['eer', 'ear'], ['tch', 'ch'], ['dge', 'j'], ['ore', 'or', 'end'],
       ['sh', 'sh'], ['ch', 'ch'], ['th', 'th'], ['ng', 'ng'], ['ck', 'k'], ['ph', 'f'], ['wh', 'w'], ['ee', 'ee'], ['ea', 'ee'], ['oo', 'oo'], ['oa', 'oa'],
       ['ow', 'ow', null, ['ow', 'oa']], ['ou', 'ow'], ['oi', 'oi'], ['oy', 'oi'], ['ai', 'ai'], ['ay', 'ai'], ['aw', 'aw'], ['au', 'aw'], ['ar', 'ar'], ['or', 'or'],
-      ['er', 'er'], ['ir', 'er'], ['ur', 'er'], ['ie', 'igh', 'end']];
+      ['er', 'er'], ['ir', 'er'], ['ur', 'er'], ['ie', 'igh', 'end'], ['ew', 'oo'], ['ue', 'oo', 'end'], ['ey', 'ee', 'end'], ['oe', 'oa', 'end'], ['ge', 'j', 'end']];
     const hit = rules.find(([sp, , where]) => at(sp) && (where !== 'end' || i + sp.length === w.length));
     if (hit) { const [sp, id, , alt] = hit; add(id, alt, sp.split('').map((_, k) => i + k)); i += sp.length; continue; }
     if (at('qu')) { add('k', undefined, [i]); add('w', undefined, [i + 1]); i += 2; continue; }
@@ -16207,25 +16211,78 @@ function soundSplit(word) {
     if (ch === 'e' && last && i > 0) { if (out.length) out[out.length - 1].at.push(i); i++; continue; }                             // a silent final e
     if (ch === 'y' && last && i > 0) { add(i <= 2 ? 'igh' : 'ee', i <= 2 ? ['igh'] : ['ee'], [i]); i++; continue; }      // my - happy
     if (ch === 'c' && 'eiy'.includes(w[i + 1] || '')) { add('s', ['s'], [i]); i++; continue; }      // a soft c (city)
+    if (ch === 'g' && 'eiy'.includes(w[i + 1] || '') && !/^(get|giv|girl|gift|gig|gees|gear|gild|gill|forg|toget|begi|tiger|finger|hung|angr|together)/.test(w)) { add('j', ['j'], [i]); i++; continue; }      // a soft g (gem, giraffe)
     add(ch, undefined, [i]); i++;
   }
+  return soundSpell(w, out);
+}
+// each sound's own letters in the word: duck -> d, u, ck; cake -> c, a-e, k; bell -> b, e, ll
+function soundSpell(w, out) {
+  out.forEach(p => { const at = (p.at || []).slice().sort((a, b) => a - b);
+    if (!at.length) { p.sp = SOUND_K[p.id] ? SOUND_K[p.id].label : p.id; return; }
+    let sp = w[at[0]]; for (let j = 1; j < at.length; j++) sp += (at[j] === at[j - 1] + 1 ? '' : '-') + w[at[j]];
+    if (/^(.)\1e$/.test(sp)) sp = sp.slice(0, 2);      // giraffe: ff (the final e is silent)
+    p.sp = sp; });
   return out;
 }
 function soundShown(id) { const k = SOUND_K[id]; return !!k && k.stage <= (state.soundStage || 3); }
 function soundKids(l) { return SOUND_K[l] && soundShown(l) ? (SOUND_KIDS[l] || []).filter(soundShown) : []; }
 function soundSlots(l) { const p = SOUND_POS[l]; return SOUND_LETTERS.filter(o => o !== l).map((o, i) => ({ o, i, d: Math.hypot(SOUND_POS[o].x - p.x, SOUND_POS[o].r - p.r) })).sort((a, b) => a.d - b.d || a.i - b.i).map(x => x.o); }
 let soundOpen = null, soundSwap = {};
+// The spellings of the sounds, key by key (the first is the key's own). Tapping a key with more than one opens them on the
+// keys around it, each with an example word; the one the word uses is tapped. From the consonant chart (and the vowel teams).
+const SOUND_TILES = {
+  b: [['b', 'b', 'bat'], ['b', 'bb', 'bubble']], c: [['c', 'c', 'cat'], ['k', 'ck', 'duck'], ['k', 'k', 'kit'], ['ch', 'ch', 'chin'], ['ch', 'tch', 'stitch'], ['s', 'c', 'city']],
+  d: [['d', 'd', 'dog'], ['d', 'dd', 'puddle']], f: [['f', 'f', 'fan'], ['f', 'ff', 'cliff'], ['f', 'ph', 'phone'], ['f', 'gh', 'laugh']],
+  g: [['g', 'g', 'go'], ['g', 'gg', 'egg']], h: [['h', 'h', 'hat']], j: [['j', 'j', 'jam'], ['j', 'g', 'gem'], ['j', 'dge', 'fridge'], ['j', 'ge', 'cage']],
+  k: [['k', 'k', 'kit'], ['c', 'c', 'cat'], ['k', 'ck', 'duck'], ['k', 'ch', 'school'], ['k', 'q', 'queen']],
+  l: [['l', 'l', 'leg'], ['l', 'll', 'bell'], ['l', 'le', 'little']], m: [['m', 'm', 'man'], ['m', 'mm', 'hammer'], ['m', 'mb', 'lamb']],
+  n: [['n', 'n', 'net'], ['n', 'nn', 'dinner'], ['n', 'kn', 'knot'], ['ng', 'ng', 'ring'], ['ng', 'n', 'pink']], p: [['p', 'p', 'pin'], ['p', 'pp', 'puppet']],
+  q: [['k', 'q', 'queen']], r: [['r', 'r', 'run'], ['r', 'rr', 'carrot'], ['r', 'wr', 'write']],
+  s: [['s', 's', 'sun'], ['s', 'ss', 'kiss'], ['s', 'ce', 'ice'], ['s', 'se', 'mouse'], ['s', 'c', 'city'], ['s', 'sc', 'science'], ['sh', 'sh', 'ship'], ['sh', 'ch', 'chef'], ['sh', 'ti', 'station'], ['sh', 'si', 'mansion']],
+  t: [['t', 't', 'top'], ['t', 'tt', 'kitten'], ['th', 'th', 'thin'], ['dh', 'th', 'this']], v: [['v', 'v', 'van'], ['v', 've', 'have']],
+  w: [['w', 'w', 'web'], ['w', 'wh', 'whale'], ['w', 'u', 'queen']], x: [['x', 'x', 'fox']], y: [['y', 'y', 'yes']],
+  z: [['z', 'z', 'zip'], ['z', 'zz', 'buzz'], ['z', 'ze', 'freeze'], ['z', 's', 'is'], ['z', 'se', 'please'], ['zh', 's', 'treasure'], ['zh', 'si', 'vision']],
+  a: [['a', 'a', 'at'], ['ai', 'ai', 'rain'], ['ai', 'ay', 'play'], ['ai', 'a-e', 'cake'], ['ai', 'a', 'baby'], ['aw', 'aw', 'saw'], ['aw', 'au', 'sauce'], ['ar', 'ar', 'car'], ['air', 'air', 'chair'], ['air', 'are', 'care'], ['air', 'ear', 'bear']],
+  e: [['e', 'e', 'egg'], ['e', 'ea', 'head'], ['ee', 'ee', 'feet'], ['ee', 'ea', 'eat'], ['ee', 'e-e', 'these'], ['ee', 'y', 'happy'], ['ee', 'ey', 'key'], ['ee', 'e', 'me'], ['er', 'er', 'her'], ['er', 'ir', 'bird'], ['er', 'ur', 'fur'], ['ear', 'ear', 'hear'], ['ear', 'eer', 'deer']],
+  i: [['i', 'i', 'in'], ['igh', 'igh', 'night'], ['igh', 'i-e', 'bike'], ['igh', 'ie', 'pie'], ['igh', 'y', 'my'], ['igh', 'i', 'find']],
+  o: [['o', 'o', 'on'], ['oa', 'oa', 'boat'], ['oa', 'ow', 'snow'], ['oa', 'o-e', 'home'], ['oa', 'oe', 'toe'], ['oa', 'o', 'go'], ['ow', 'ow', 'cow'], ['ow', 'ou', 'out'], ['oi', 'oi', 'coin'], ['oi', 'oy', 'boy'], ['or', 'or', 'fork'], ['or', 'ore', 'more']],
+  u: [['u', 'u', 'up'], ['oo', 'oo', 'moon'], ['oo', 'ew', 'new'], ['oo', 'ue', 'blue'], ['oo', 'u-e', 'cute'], ['uu', 'oo', 'book'], ['uu', 'u', 'put']] };
+// a spelling's stage: the plain one with its sound; one letter or a double (ss, ll, ck) from the second; the rest the third
+function soundTileStage(t) { const k = SOUND_K[t.id]; if (!k) return 3; const st = k.stage || 2; if (t.sp === k.label) return st; return Math.max(st, t.sp.length === 1 || /^(.)\1$/.test(t.sp) || t.sp === 'ck' ? 2 : 3); }
+const soundTileOk = (t, want) => !!want && !!t && want.alt.includes(t.id) && t.sp === want.sp;
+// the key a sound of the word is found on (where its spelling is, else its sound's own key)
+function soundHome(want) {
+  if (!want) return null;
+  const k = Object.keys(SOUND_TILES).find(l => SOUND_TILES[l].some(([id, sp]) => soundTileOk({ id, sp }, want))); if (k) return k;
+  const K = SOUND_K[want.id]; return (K && K.parent) || (SOUND_POS[want.id] ? want.id : null) || (SOUND_POS[(want.sp || '')[0]] ? want.sp[0] : 'u');
+}
+// a key's spellings for this stage - and always the one the word needs, on its key, so every word can be built
+function soundOpts(l) {
+  const c = game && game.cur, want = c && c.parts ? c.parts[c.k] : null, stage = state.soundStage || 3;
+  const out = (SOUND_TILES[l] || []).map(([id, sp, ex]) => ({ id, sp, ex })).filter(t => (soundShown(t.id) && soundTileStage(t) <= stage) || (soundTileOk(t, want) && soundHome(want) === l));
+  if (want && soundHome(want) === l && !out.some(t => soundTileOk(t, want))) out.push({ id: want.alt[0] || want.id, sp: want.sp, ex: String(c.word || '').toLowerCase() });
+  return out;
+}
+const soundSpShow = sp => String(sp || '').replace(/-/g, '‑');      // (a-e with a dash that does not break)
+
 function soundKbPaint() {
   const kb = document.getElementById('gmSoundKb'); if (!kb) return;
-  const g = game, c = g && g.cur, want = c && c.parts[c.k] ? c.parts[c.k].id : null;
-  // the pulse (after misses): the key with the sound - or, while its group is shut, the letter that opens it
-  const pulseKey = c && c.prompted && want ? (SOUND_K[want].parent ? (soundOpen === SOUND_K[want].parent ? Object.keys(soundSwap).find(k => soundSwap[k] === want) : SOUND_K[want].parent) : want) : null;
+  const g = game, c = g && g.cur, want = c && c.parts ? c.parts[c.k] : null;
+  // the pulse (after misses): the key with the spelling - or, while its key is shut, the key that opens it
+  let pulseKey = null;
+  if (c && c.prompted && want) { const home = soundHome(want);
+    if (soundOpen === home) { const own = soundOpts(home)[0]; pulseKey = own && soundTileOk(own, want) ? home : (Object.keys(soundSwap).find(k => soundTileOk(soundSwap[k], want)) || home); }
+    else pulseKey = home; }
   kb.querySelectorAll('.sk').forEach(el => {
     const l = el.dataset.l, alt = soundSwap[l];
     el.className = 'sk'; el.disabled = false;
-    if (alt) { const k = SOUND_K[alt]; el.classList.add('opt', k.g === 'C' ? 'c' : 'v'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = k.label; el.lastChild.textContent = k.ex; }
-    else { const n = soundKids(l).length; el.classList.add(SOUND_K[l].vowel ? 'v' : 'c'); if (soundOpen === l) el.classList.add('parent'); else if (soundOpen) el.classList.add('dim');
-      el.disabled = !soundShown(l); el.innerHTML = ''; el.appendChild(document.createTextNode(l)); if (n && !soundOpen) { const t = document.createElement('i'); t.textContent = '+' + n; el.appendChild(t); } }
+    if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp); el.lastChild.textContent = alt.ex; }
+    else { const opts = soundOpts(l), n = opts.length - 1; el.classList.add(SOUND_K[l].vowel ? 'v' : 'c');
+      if (soundOpen === l) el.classList.add('parent'); else if (soundOpen) el.classList.add('dim');
+      el.disabled = !opts.length; el.innerHTML = '';
+      if (soundOpen === l && opts[0]) { el.classList.add('opt'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(opts[0].sp); el.lastChild.textContent = opts[0].ex; }
+      else { el.appendChild(document.createTextNode(l)); if (n > 0 && !soundOpen) { const t = document.createElement('i'); t.textContent = '+' + n; el.appendChild(t); } } }
     if (l === pulseKey) el.classList.add('gm-pulse');
   });
 }
@@ -16238,11 +16295,11 @@ function soundKbBuild(host) {
 }
 function soundKbTap(l) {
   if (!game || game.busy) return;
-  if (soundOpen) { const id = soundSwap[l] || (l === soundOpen ? l : null); soundOpen = null; soundSwap = {}; soundKbPaint(); if (id) soundEnter(id); return; }
-  if (!soundShown(l)) return;
-  const kids = soundKids(l);
-  if (kids.length) { const slots = soundSlots(l); soundOpen = l; soundSwap = {}; (SOUND_KIDS[l] || []).forEach((id, i) => { if (soundShown(id)) soundSwap[slots[i]] = id; }); buzz(8); soundKbPaint(); return; }
-  soundEnter(l);
+  if (soundOpen) { const t = soundSwap[l] || (l === soundOpen ? soundOpts(l)[0] : null); soundOpen = null; soundSwap = {}; soundKbPaint(); if (t) soundEnter(t.id, t.sp); return; }
+  const opts = soundOpts(l); if (!opts.length) return;
+  if (opts.length === 1) { soundEnter(opts[0].id, opts[0].sp); return; }
+  const slots = soundSlots(l); soundOpen = l; soundSwap = {}; opts.slice(1).forEach((t, i) => { if (slots[i]) soundSwap[slots[i]] = t; }); buzz(8); soundKbPaint();
+  try { soundSay(opts[0].id); } catch (e) {}
 }
 function gameSoundTrial() {
   const g = game, s = g.seq[g.i], tile = s.w, parts = soundSplit(tile), pic = picRandomFor(tile, picOn(tile));
@@ -16264,13 +16321,14 @@ function gameSoundTrial() {
   try { warmSpeech(); sayAnyway = true; speakWord(tile, 0.9); } catch (e) {} finally { sayAnyway = false; }
   gameBar();
 }
-function soundEnter(id) {
+function soundEnter(id, sp) {
   const g = game; if (!g || g.busy) return; const c = g.cur, want = c.parts[c.k]; if (!want) return;
   soundSay(id);
-  if (want.alt.includes(id)) {
+  if (sp == null) sp = want.alt.includes(id) ? want.sp : (SOUND_K[id] ? SOUND_K[id].label : id);
+  if (soundTileOk({ id, sp }, want)) {
     if (c.prompted) c.anyPrompt = true;
-    c.lets.push((SOUND_K[want.id] ? SOUND_K[want.id].label : want.id) + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
-    const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (cell) { cell.textContent = SOUND_K[want.id] ? SOUND_K[want.id].label : want.id; cell.classList.add('filled'); cell.classList.remove('next'); }
+    c.lets.push(want.sp + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
+    const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (cell) { cell.textContent = soundSpShow(want.sp); cell.classList.add('filled'); cell.classList.remove('next'); }
     c.k++; c.tries = 0; c.prompted = false; buzz(15);
     const nx = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (nx) nx.classList.add('next');
     soundWordMark(c.k);
@@ -16280,7 +16338,7 @@ function soundEnter(id) {
   }
   c.tries++; c.wrongs++; buzz([60, 40, 60]); gameBuzz();
   const v = document.getElementById('gameView'); v.classList.remove('gm-shake'); void v.offsetWidth; v.classList.add('gm-shake');
-  const msg = document.getElementById('gmMsg'); msg.textContent = 'Try again'; msg.classList.remove('show'); void msg.offsetWidth; msg.classList.add('show');
+  const msg = document.getElementById('gmMsg'); msg.textContent = want.alt.includes(id) ? 'Right sound - other spelling' : 'Try again'; msg.classList.remove('show'); void msg.offsetWidth; msg.classList.add('show');
   if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true)) c.prompted = true;
   soundKbPaint();
 }
