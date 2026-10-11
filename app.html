@@ -2993,7 +2993,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 519 - 11 Oct';
+const BUILD = 'build 520 - 11 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9003,6 +9003,7 @@ function endingChip(box, i, w, to, label) {
     e.stopPropagation();
     if (homePhrase[i] !== w) return;
     homePhrase[i] = to; buzz(10);
+    if (arrPrev[i] === w) arrPrev[i] = to;      // (the word with its new ending is still the word that was put in: the next word is still put in order after it)
     try { tileAdd = null; } catch (er) {}
     renderPhraseBar();
   });
@@ -10352,8 +10353,23 @@ function kindOfCat(cat) {
   }
   return '';
 }
+// a word made with an ending (strawberries, playing, played) that is in no folder itself: the word it comes from,
+// when that one is in a folder - so it is still known as a thing or a doing word
+function wordBase(w) {
+  w = String(w || '').toUpperCase(); if (!/^[A-Z]{3,}$/.test(w)) return '';
+  const has = x => x && x !== w && x.length >= 2 && categoriesOf(x).some(c => !c.target);
+  const c = [];
+  if (w.endsWith('IES')) c.push(w.slice(0, -3) + 'Y');
+  if (w.endsWith('ES')) c.push(w.slice(0, -2));
+  if (w.endsWith('S')) c.push(w.slice(0, -1));
+  if (w.endsWith('ING')) { const s = w.slice(0, -3); c.push(s, s + 'E'); if (/(.)\1$/.test(s)) c.push(s.slice(0, -1)); }
+  if (w.endsWith('ED')) { const s = w.slice(0, -2); c.push(s, w.slice(0, -1)); if (/(.)\1$/.test(s)) c.push(s.slice(0, -1)); if (s.endsWith('I')) c.push(s.slice(0, -1) + 'Y'); }
+  return c.find(has) || '';
+}
 function kindOfWord(w) {
-  const kinds = categoriesOf(w).filter(c => !c.target && !c.hidden).map(kindOfCat).filter(Boolean);
+  let cs = categoriesOf(w).filter(c => !c.target && !c.hidden);
+  if (!cs.length) { const b = wordBase(w); if (b) cs = categoriesOf(b).filter(c => !c.target && !c.hidden); }
+  const kinds = cs.map(kindOfCat).filter(Boolean);
   return kinds.includes('action') ? 'action' : (kinds.find(k => k !== 'title') || kinds[0] || '');
 }
 // A direction word chosen first ("up") wants its doing word in front of it: go up, pick up, turn up
@@ -10373,9 +10389,10 @@ function leadIns(last) {
 function kindOfWordG(w) {
   const k = kindOfWord(w);
   if (k && k !== 'title') return k;
+  const b = categoriesOf(w).some(c => !c.target) ? '' : wordBase(w);      // (strawberries: filed as strawberry)
   for (const c of state.categories) {
     if (c.target || c.hidden) continue;
-    const g = (c.groups || []).find(x => (x.words || []).includes(w));
+    const g = (c.groups || []).find(x => (x.words || []).includes(w) || (b && (x.words || []).includes(b)));
     const hit = g && KIND_NAMES.find(kn => kn[0].test(String(g.name || '').trim().toLowerCase()));
     if (hit) return hit[1];
   }
@@ -14219,7 +14236,8 @@ function setBlue(open) {
 let arrPrev = [];
 function arrangeLast() {
   const n = homePhrase.length, prev = arrPrev;
-  if (n < 2 || prev.length !== n - 1 || prev.some((w, i) => w !== homePhrase[i])) return false;
+  const same = (a, b) => a === b || wordBase(a) === b || wordBase(b) === a;      // (strawberry made strawberries is still the word that was there)
+  if (n < 2 || prev.length !== n - 1 || prev.some((w, i) => !same(w, homePhrase[i]))) return false;
   const w = homePhrase[n - 1], rest = homePhrase.slice(0, n - 1);
   const HELLO = ['HI', 'HELLO', 'HEY', 'BYE', 'PLEASE', 'YES', 'NO', 'OK'];
   const SUBJ = ['I', 'WE', 'YOU', 'HE', 'SHE', 'THEY'], NEG = ["DON'T", "CAN'T", 'DONT', 'CANT'], DET = ['THE', 'A', 'AN', 'MY', 'YOUR', 'MORE', 'SOME'];
@@ -14250,7 +14268,8 @@ function magicTilesSync() { try { if (!magicInHome && !state.builderMode) { magi
 let seqOffer = null;      // { from: 'PARK GO', to: [...] }
 // the doing words that go with a thing (a drink -> drink, a food -> eat, a show -> watch ...)
 function verbsFor(w) {
-  let k = ''; try { k = magicKind(w); } catch (e) {}
+  let k = ''; try { k = magicKind(w) || (wordBase(w) ? magicKind(wordBase(w)) : ''); } catch (e) {}
+  { const b = wordBase(w); if (b && !categoriesOf(w).some(c => !c.target)) w = b; }      // (strawberries: what goes with strawberry)
   const bev = state.categories.some(c => (c.groups || []).some(g => /^(beverages|drinks)$/i.test(String(g.name || '').trim()) && (g.words || []).includes(w)));
   const F = { watch: ['WATCH', 'PLAY', 'SEE'], music: ['LISTEN', 'PLAY', 'SING', 'DANCE', 'REPEAT'], book: ['READ', 'OPEN', 'GET'], game: ['PLAY', 'OPEN', 'GET'],
     food: bev ? ['DRINK', 'OPEN', 'GET', 'SIP', 'POUR'] : ['EAT', 'CUT', 'OPEN', 'MAKE', 'COOK', 'BITE', 'PEEL', 'GET'], place: ['GO', 'WALK', 'SEE', 'COME'], person: ['HUG', 'HELP', 'SEE', 'CALL', 'TELL', 'ASK'] };
@@ -14267,6 +14286,7 @@ function dropExtra(ph) {
   for (let i = 0; i < out.length - 1; i++) {
     const a = out[i], b = out[i + 1];
     if (!act(a) || !act(b) || LEADS.includes(a) || MAGIC_WANTS.includes(a)) continue;
+    if (['MORE', 'SOME', 'THE', 'A', 'AN', 'MY', 'YOUR'].includes(b)) continue;      // (eat more strawberries: "more" belongs to the thing, not a second doing word)
     const thing = out.slice(i + 2).find(w => !isSmallWord(w) && !isPunct(w) && !act(w));
     let drop = i;      // (no thing to decide by: the earlier one goes)
     if (thing) { const fit = verbsFor(thing); if (fit.includes(a) && !fit.includes(b)) drop = i + 1; }
