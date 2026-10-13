@@ -3164,7 +3164,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 562 - 13 Oct';
+const BUILD = 'build 563 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16632,13 +16632,13 @@ const TTS_STOP = { p: 'p\u02B0', t: 't\u02B0', k: 'k\u02B0', c: 'k\u02B0', ch: '
 // A short sound cut from the start of a word (b from "bat"): Google says the word, and the first moment of it is kept -
 // the way a stop sound (b, t, p, k, d, g, j, ch) can be had without an "uh" after it. Asked for as cut:word:milliseconds.
 async function ttsCut(word, ms, voice, thr) {
-  const blob = await ttsFetch(null, voice, word);
+  const blob = await ttsFetch(null, voice, word, 0.5);      // (the word said slowly: its first sound lasts longer, so more of it is kept)
   const AC = window.AudioContext || window.webkitAudioContext; const ac = new AC();
   try {
     const buf = await new Promise((res, rej) => { blob.arrayBuffer().then(ab => { const p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }, rej); });
     const d = buf.getChannelData(0), sr = buf.sampleRate; let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
-    let a = 0; const th = peak * (thr || 0.06); while (a < d.length && Math.abs(d[a]) < th) a++;
-    a = Math.max(0, a - Math.round(sr * 0.01)); const n = Math.min(d.length - a, Math.round(sr * ms / 1000)), fade = Math.round(sr * Math.min(0.03, ms / 3000)), gain = Math.min(4, 0.89 / (peak || 1));
+    let a = 0; const th = peak * Math.min(thr || 0.04, 0.04); while (a < d.length && Math.abs(d[a]) < th) a++;
+    a = Math.max(0, a - Math.round(sr * 0.025)); const n = Math.min(d.length - a, Math.round(sr * ms / 1000)), fade = Math.round(sr * Math.min(0.03, ms / 3000)), gain = Math.min(4, 0.89 / (peak || 1));
     const out = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
     w(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
     out.setUint32(24, sr, true); out.setUint32(28, sr * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); w(36, 'data'); out.setUint32(40, n * 2, true);
@@ -16646,14 +16646,14 @@ async function ttsCut(word, ms, voice, thr) {
     return new Blob([out.buffer], { type: 'audio/wav' });
   } finally { try { ac.close(); } catch (e) {} }
 }
-async function ttsFetch(id, voice, try1) {
+async function ttsFetch(id, voice, try1, rate) {
   const key = ttsKey(); if (!key) throw new Error('no key');
   { let own = try1 !== undefined ? try1 : (id ? ttsSayAs()[id] : '');
     if (id && !own && TTS_CUT[id]) own = ttsCutDefault(id);      // (a consonant: cut from the start of its word unless another version was chosen)
     const m = /^cut:([a-z]+):(\d+)(?::(\d+))?$/.exec(String(own || '')); if (m) return ttsCut(m[1], Number(m[2]), voice || ttsVoice(), m[3] ? Number(m[3]) / 1000 : 0); }
   voice = voice || ttsVoice(); const lang = voice.split('-').slice(0, 2).join('-') || 'en-US';
   const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(key), { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: { ssml: ttsSsml(id, voice, try1) }, voice: { languageCode: lang, name: voice }, audioConfig: { audioEncoding: 'MP3', speakingRate: 0.85 } }) });
+    body: JSON.stringify({ input: { ssml: ttsSsml(id, voice, try1) }, voice: { languageCode: lang, name: voice }, audioConfig: { audioEncoding: 'MP3', speakingRate: rate || 0.85 } }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.audioContent) throw new Error((j.error && j.error.message) || ('error ' + r.status));
   const bin = atob(j.audioContent), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -16665,12 +16665,12 @@ const TTS_TRY = { t: ['/t\u02B0/', '/t/', '/t\u0259/', '/t\u02B0\u028C/', 'tuh']
   j: ['/d\u0292/', '/d\u0292\u0259/', '/d\u0292\u028C/', 'juh'], ch: ['/t\u0283\u02B0/', '/t\u0283/', '/t\u0283\u0259/', 'chuh'], h: ['/h/', '/h\u0259/', 'huh'],
   w: ['/w/', '/w\u0259/', 'wuh'], y: ['/j/', '/j\u0259/', 'yuh'], q: ['/k\u02B0w/', '/kw\u0259/', 'kwuh'], x: ['/ks/', '/ks\u02D0/', 'ks'] };
 // (a quiet sound - f, s, th, h - starts softly, so the start of the word is looked for more closely: the last number)
-const TTS_CUT = { b: ['bat', 90], d: ['dog', 90], g: ['go', 90], p: ['pin', 110], t: ['top', 110], k: ['kit', 110], c: ['cat', 110], j: ['jam', 130], ch: ['chin', 150], h: ['hat', 140, 10], w: ['web', 140], y: ['yes', 130], q: ['queen', 170],
-  f: ['fan', 190, 8], s: ['sun', 220, 8], sh: ['ship', 230, 8], th: ['thin', 190, 8], dh: ['this', 140, 10], v: ['van', 170, 10], z: ['zoo', 220, 10], m: ['man', 200, 15], n: ['net', 190, 15], l: ['leg', 170, 15], r: ['run', 160, 15] };
+const TTS_CUT = { b: ['bat', 170], d: ['dog', 170], g: ['go', 170], p: ['pin', 200], t: ['top', 200], k: ['kit', 200], c: ['cat', 200], j: ['jam', 240], ch: ['chin', 270], h: ['hat', 250, 10], w: ['web', 250], y: ['yes', 240], q: ['queen', 310],
+  f: ['fan', 340, 8], s: ['sun', 380, 8], sh: ['ship', 400, 8], th: ['thin', 340, 8], dh: ['this', 260, 10], v: ['van', 310, 10], z: ['zoo', 380, 10], m: ['man', 340, 15], n: ['net', 330, 15], l: ['leg', 300, 15], r: ['run', 290, 15] };
 function ttsCutDefault(id) { const c = TTS_CUT[id]; return c ? 'cut:' + c[0] + ':' + c[1] + (c[2] ? ':' + c[2] : '') : ''; }
 function ttsVariants(id) {
   const ipa = (/^en-(GB|AU|IN)/.test(ttsVoice()) ? SOUND_IPA_UK : SOUND_IPA_US)[id] || '';
-  const cut = TTS_CUT[id] ? [0.7, 1, 1.4].map(f => 'cut:' + TTS_CUT[id][0] + ':' + Math.round(TTS_CUT[id][1] * f) + (TTS_CUT[id][2] ? ':' + TTS_CUT[id][2] : '')) : [];
+  const cut = TTS_CUT[id] ? [0.75, 1, 1.35, 1.75].map(f => 'cut:' + TTS_CUT[id][0] + ':' + Math.round(TTS_CUT[id][1] * f) + (TTS_CUT[id][2] ? ':' + TTS_CUT[id][2] : '')) : [];
   const list = (cut.length ? cut : ['']).concat(TTS_TRY[id] || ['/' + ipa + '/', '/' + ipa + '\u02D0/'].concat(SOUND_SPEAK_OPTS[id] || []));
   return list.filter((v, i, a) => a.indexOf(v) === i);
 }
@@ -16683,7 +16683,7 @@ function openTtsTry(id, back) {
     const blobs = {};
     vs.forEach((v, i) => {
       const r = document.createElement('div'); r.className = 'sm-snd';
-      const cm = /^cut:([a-z]+):(\d+)(?::\d+)?$/.exec(v), lab = cm ? 'Cut from \u201C' + cm[1] + '\u201D (' + (i === 0 ? 'shortest' : i === 1 ? 'short' : 'a little longer') + ')' : 'Version ' + (i + 1);
+      const cm = /^cut:([a-z]+):(\d+)(?::\d+)?$/.exec(v), lab = cm ? 'Cut from \u201C' + cm[1] + '\u201D, said slowly (' + (['shorter', 'usual', 'longer', 'longest'][i] || 'longer') + ')' : 'Version ' + (i + 1);
       const inUse = v === cur || (!cur && (v === '' || v === ttsCutDefault(id)));
       const l = document.createElement('span'); l.className = 'sm-st'; l.textContent = lab + (inUse ? '  \u2713 in use' : ''); r.appendChild(l);
       const play = document.createElement('button'); play.className = 'hf-btn'; play.textContent = '\u25B6';
