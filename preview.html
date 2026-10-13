@@ -3207,7 +3207,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 570 - 13 Oct';
+const BUILD = 'build 571 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3477,6 +3477,7 @@ let verbalSpokenFor = -1;
 let shiftOn = false;          // the up arrow: the next letter is a capital
 let kbNumbers = false;       // the 123 page of the keyboard is showing
 const freeCaps = new Set();  // positions typed as capitals when there is no target word
+let soundWrongNow = false;      // (the sound keyboard: the letters are right but the sound is not - counted as a wrong key)
 let echoSkipped = false;      // the typed letter was not voiced because the prompt had just said it
 
 let availableVoices = [];
@@ -6776,7 +6777,7 @@ function typeChar(letter) {
   // With "require the up arrow" on, the right letter in the wrong case is an error
   const caseWrong = !!state.currentTarget && state.requireCaps && usesShift() &&
                     /[A-Z]/.test(letter) && shiftOn !== targetCapAt(state.targetIndex);
-  const isWrong = !!state.currentTarget &&
+  const isWrong = (soundWrongNow && !!state.currentTarget) || !!state.currentTarget &&
                   (!expectedNow || letter !== expectedNow.toUpperCase() || caseWrong);
 
   // "Clear instantly" never puts the wrong letter in the bar at all
@@ -17418,6 +17419,13 @@ function soundKbBuild(host, put) {
 // typing with the sound keyboard (no game): the spelling's letters go into the message and its sound is said
 function soundTypeEnter(id, sp) {
   const letters = String(sp || '').replace(/-.*$/, '').toUpperCase();      // (a-e: the a goes in; the e comes with the end of the word)
+  // practising a word: the spelling has to be the word's own sound as well as its letters (the o in go, not the o in on)
+  const want = (() => { try { return soundPracticeWant(); } catch (e) { return null; } })();
+  if (want && !soundTileOk({ id, sp }, want)) {
+    const was = state.letterSpeech; state.letterSpeech = false; soundWrongNow = true;
+    try { typeLetter(letters[0] || '?'); } finally { soundWrongNow = false; state.letterSpeech = was; }
+    try { soundSay(id, sp); } catch (e) {} buzz(8); try { render(); } catch (e) {} return;
+  }
   const was = state.letterSpeech; state.letterSpeech = false;
   try { [...letters].forEach(ch => typeLetter(ch)); } finally { state.letterSpeech = was; }
   try { soundSay(id, sp); } catch (e) {}
