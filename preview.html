@@ -1508,7 +1508,16 @@
   .keyboard.kb-sounds .sk { height: auto; }
   .keyboard.kb-sounds > .row { flex: 1 1 0; }
   .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #e8e2fb; color: #2b2466; }
-  .key.sndtoggle b { font-size: 20px; } .key.sndtoggle small { font-size: 12px; font-weight: 700; opacity: 0.8; }
+  .key.sndtoggle svg { width: clamp(30px, 4.6vmin, 44px); height: auto; } .key.sndtoggle small { font-size: clamp(11px, 1.6vmin, 14px); font-weight: 700; opacity: 0.8; margin-top: 2px; }
+  .key.letter.sk { flex: 1; height: auto; border: 2px solid transparent; border-radius: 16px; font-weight: 600; font-size: clamp(24px, 5vmin, 46px); box-shadow: var(--shadow); }
+  .key.letter.sk.opt { font-size: clamp(20px, 3.6vmin, 36px); font-weight: 800; }
+  .key.letter.sk i { font-size: clamp(11px, 1.5vmin, 14px); }
+  .key.letter.sk.opt, .key.letter.sk.parent { box-shadow: 0 0 0 2px #1f5fd6; }
+  .key.letter.sk.parent { border-color: #1f5fd6; } .key.letter.sk.opt.v { border-color: #4fa863; } .key.letter.sk.opt.c { border-color: #8777dc; }
+  .key.letter.sk.gm-pulse { box-shadow: 0 0 0 6px #ffc93c; }
+  .keyboard .key.letter.sk.prompt-color { background: var(--prompt); color: var(--prompt-ink); border-color: transparent; }
+  .keyboard .key.letter.sk.prompt-color.fade-1 { background: var(--prompt-f1); }
+  .keyboard .key.letter.sk.prompt-color.fade-2 { background: var(--prompt-f2); color: var(--ink); }
   .key.sndtoggle.on { background: #dff3e3; color: #1d6b31; }
   .sm-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
   .sm-input { flex: 1 1 180px; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #c9ced8; }
@@ -3198,7 +3207,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 569 - 13 Oct';
+const BUILD = 'build 570 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3451,10 +3460,14 @@ function groupPromptNow() {
     if (typeof game !== 'undefined' && game && game.mode) { const re = practiceRe(game.mode), g = t.groups.find(x => re.test(String(x.name || '').trim())); return g && g.prompt || null; }
     if (!state.currentTarget) return null;
     const w = normaliseWord(state.currentTarget);
-    const g = t.groups.find(x => !isPracticeGroup(x) && (x.words || []).includes(w));
+    // the sound keyboard: a word in the Decoding group has that group's prompting; otherwise the word's own, as on the letters
+    const snd = (() => { try { return soundPracticeNow(); } catch (e) { return false; } })();
+    if (snd) { const d = t.groups.find(x => DECODE_RE.test(String(x.name || '').trim()) && (x.words || []).includes(w)); if (d) return d.prompt || null; }
+    const g = t.groups.find(x => !isPracticeGroup(x) && !DECODE_RE.test(String(x.name || '').trim()) && (x.words || []).includes(w));
     return g && g.prompt || null;
   } catch (e) { return null; }
 }
+const DECODE_RE = /^decod/i;      // the Decoding group: words practised with the sound keyboard, with prompting of their own
 const PRACTICE_RE = { sight: /^sight/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles)/i, sound: /^sound/i, hear: /^hear/i, match: /^match/i, any: /^(sight|spell|writ|letter tiles|sound|hear|match)/i };
 // the practice group for a game mode: sight (picture to word tiles), write (picture to keyboard), tiles (picture to letter tiles)
 function practiceRe(mode) { return mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
@@ -5589,6 +5602,7 @@ function spokenText(text) {
 
 let kbSearch = false, searchPrefix = '';
 function setView(name) {
+  try { soundCloseAll(); } catch (e) {}
   if (name !== 'keyboard' && typeof picSession !== 'undefined' && picSession) { picSession = null; const vk = document.getElementById('viewKeyboard'); if (vk) vk.classList.remove('pic-on', 'pic-choose'); }
   if (name !== 'keyboard') wordDone = null;
   if (name !== 'keyboard' && typeof game !== 'undefined' && game && game.mode === 'write' && !document.querySelector('.gm-pop')) { game = null; state.picMode = false; try { picBtnSync(); } catch (e) {} }
@@ -6235,8 +6249,41 @@ function promptStepUp(word, idx) {
   return any;
 }
 // Called whenever the expected letter changes, or after an error that restarts the wait
+// ===== Practising a word with the sound keyboard: the word is said, then 2 s later the sound of its first spelling; each
+// spelling put in is said as it lands, and 2 s later the sound of the next one. A finished word is said slowly, then as usual.
+function soundPracticeNow() { try { return !!state.soundKeysOn && !game && !!state.currentTarget && !kbSearch && document.getElementById('viewKeyboard').classList.contains('active'); } catch (e) { return false; } }
+// the sound of the word's spelling that starts at this letter of the target (null part-way through a spelling, or a silent letter)
+function soundPartAt(target, idx) {
+  const t = String(target || ''); if (!t[idx] || t[idx] === ' ') return null;
+  let a = idx; while (a > 0 && t[a - 1] !== ' ') a--; let z = idx; while (z < t.length && t[z] !== ' ') z++;
+  const word = t.slice(a, z); let li = -1, n = 0;
+  for (let k = 0; k < word.length; k++) if (/[a-z]/i.test(word[k])) { if (a + k === idx) li = n; n++; }
+  if (li < 0) return null;
+  return soundSplit(word).find(p => (p.at || [])[0] === li) || null;
+}
+let soundPromptTimer = null;
+function soundPromptArm(ms) { clearTimeout(soundPromptTimer); soundPromptTimer = null; if (!soundPracticeNow() || isWordComplete()) return; soundPromptTimer = setTimeout(() => { soundPromptTimer = null; soundPromptSay(); }, ms); }
+function soundPracticeWant() { return soundPracticeNow() && !isWordComplete() ? soundPartAt(state.currentTarget, state.targetIndex) : null; }
+// the word's own prompting on the sound keyboard: the key with the next spelling (or, open, the spelling itself) gets the
+// same prompts as its letter would on the letter keyboard - colour, pulse, size - at the same fading level
+function soundKbPromptPaint() {
+  if (!soundPracticeNow() || !kbPromptsShowing()) return;
+  const want = soundPracticeWant(); if (!want) return;
+  const home = soundHome(want); let key = home;
+  if (soundOpen) { if (soundOpen === home) { const own = soundOpts(home)[0]; key = own && soundTileOk(own, want) ? home : Object.keys(soundSwap).find(k => soundTileOk(soundSwap[k], want)); } else key = null; }
+  if (!key) return;
+  const el = document.querySelector('#keyboard .sk[data-l="' + key + '"]'); if (!el) return;
+  const fl = fadeLevelAt(state.targetIndex);
+  el.classList.add('prompting');
+  if (pOn('promptColorOn') && fl < 3) { el.classList.add('prompt-color'); if (fl > 0) el.classList.add('fade-' + fl); }
+  if (pOn('promptPulseOn') && fl < 4) el.classList.add('prompt-pulse');
+  if (pOn('promptSizeOn') && fl < 5) el.classList.add('prompt-size', 'boost-' + state.promptSize);
+}
+function soundPromptSay() { if (!soundPracticeNow() || isWordComplete()) return; const p = soundPartAt(state.currentTarget, state.targetIndex); if (p) soundSay(p.id, p.sp); }
 function armPrompt(force) {
   clearPromptTimer();
+  if (soundPracticeNow()) { const fresh = state.targetIndex === 0 && !(state.text || '');      // (after the word is said: about its length, then 2 s - after a spelling's sound: 2 s)
+    soundPromptArm(fresh ? 2000 + (state.targetSpeech ? 500 + 110 * String(state.currentTarget).length : 0) : 2700); } else { clearTimeout(soundPromptTimer); soundPromptTimer = null; }
   try { spellHintArm(); } catch (e) {}
   try { missArm(); } catch (e) {}
   verbalSpokenFor = -1;
@@ -6270,6 +6317,7 @@ function revealPromptNow(speakIt) {
   else verbalSpokenFor = state.targetIndex; // already said aloud by the error feedback
 }
 function speakVerbalPrompt(force) {
+  if (soundPracticeNow()) { if (force) soundPromptSay(); return; }      // (the sound keyboard: the sound of the next spelling, on its own timer)
   if (!pOn('promptVerbalOn')) return;
   if (!promptsShowing()) return;
   const L = nextExpectedLetter();
@@ -6427,8 +6475,7 @@ function render() {
   const layout = kbNumbers ? NUM_LAYOUT : LAYOUT;
   const soundKeys = !!state.soundKeysOn && !kbNumbers && !kbSearch;      // (the keyboard of sounds and spellings, switched on from the bottom row)
   kb.classList.toggle('kb-sounds', soundKeys);
-  if (soundKeys) { const host = document.createElement('div'); host.className = 'kb-sound-host'; kb.appendChild(host); soundKbBuild(host); }
-  if (!soundKeys) layout.forEach((row, ri) => {
+  layout.forEach((row, ri) => {
     const r = document.createElement('div');
     r.className = 'row';
     if (ri === 2) {
@@ -6439,6 +6486,7 @@ function render() {
       shiftKey.innerHTML = '<svg viewBox="0 0 24 24" width="1.25em" height="1.25em" aria-hidden="true">' +
         '<polygon points="12,2.5 22.5,13 16,13 16,21.5 8,21.5 8,13 1.5,13" fill="currentColor"/></svg>';
       if (kbNumbers) shiftKey.classList.add('hidden');
+      else if (soundKeys) shiftKey.classList.add('disabled');
       else {
         if (!usesShift()) shiftKey.classList.add('disabled');
         if (shiftOn) shiftKey.classList.add('on');
@@ -6446,7 +6494,7 @@ function render() {
       }
       r.appendChild(shiftKey);
     }
-    row.forEach(letter => r.appendChild(makeLetterKey(letter, keyTarget)));
+    row.forEach(letter => r.appendChild(soundKeys ? soundKeyEl(letter) : makeLetterKey(letter, keyTarget)));
     if (ri === 2) {
       const bk = makeSpecialKey('', 'backspace', 'side backspace');
       bk.setAttribute('aria-label', 'Delete');
@@ -6455,19 +6503,19 @@ function render() {
     }
     kb.appendChild(r);
   });
+  if (soundKeys) soundKbPaint();
   const r = document.createElement('div');
   r.className = 'row';
   const numKey = makeSpecialKey(kbNumbers ? 'ABC' : '123', 'numbers', 'wide numkey');
   if (needsSwitch) promptKey(numKey);
   r.appendChild(numKey);
   { const t = document.createElement('button'); t.className = 'key wide sndtoggle' + (soundKeys ? ' on' : ''); t.setAttribute('aria-label', soundKeys ? 'Letter keyboard' : 'Sound keyboard');
-    t.innerHTML = soundKeys ? '<b>abc</b><small>letters</small>' : '<b>sh\u00B7ai</b><small>sounds</small>';
+    t.innerHTML = sndToggleHtml(soundKeys);
     t.addEventListener('click', () => { warmSpeech(); buzz(10); state.soundKeysOn = !state.soundKeysOn; kbNumbers = false; shiftOn = false; save(); render(); try { typeKeysSync(); } catch (e) {} });
     r.appendChild(t); }
   const spaceKey = makeSpecialKey('', 'space', 'space space-blank');
   if (expected === ' ' && kbShow) promptKey(spaceKey);
   r.appendChild(spaceKey);
-  if (soundKeys) { const bk = makeSpecialKey('', 'backspace', 'wide backspace sndbk'); bk.setAttribute('aria-label', 'Delete'); bk.textContent = '\u232B'; r.appendChild(bk); }
   const enterKey = makeSpecialKey('⏎', 'enter', 'wide enter');
   requestAnimationFrame(kzoneSync);
   if (isWordComplete()) enterKey.classList.add('enter-ready');
@@ -7012,6 +7060,7 @@ let readBackTimer = null;
 function readBack(words, target, force) {
   // a chat message that went through spelling practice first: finished, it joins the conversation
   try { if (chatAfterPractice && state.chatMode && !state.builderMode) { const k = words.map(w => bareWord(String(w))).join(' ').toUpperCase(); if (k === chatAfterPractice.toUpperCase()) { chatLogAdd(words); chatPaneSig = ''; } chatAfterPractice = null; } } catch (e) { chatAfterPractice = null; }
+  const slowFirst = !!target && soundPracticeNow();      // (spelled with the sound keyboard: said slowly first, then as usual)
   try { homeKeysClose(); } catch (e) {}
   clearTimeout(readBackTimer);
   const old = document.getElementById('readBack'); if (old) old.remove();
@@ -7027,13 +7076,14 @@ function readBack(words, target, force) {
   f.addEventListener('click', done);
   document.body.appendChild(f);
   let i = 0;
+  const seq = words.map((w, k) => [w, k, 0.95]); if (slowFirst) seq.unshift(...words.map((w, k) => [w, k, 0.45]));
   const step = () => {
-    chips.forEach((c, k) => c.classList.toggle('on', k === i));
-    if (i >= words.length) { readBackTimer = setTimeout(done, 700); return; }
-    const w = words[i];
-    if (!isPunct(w)) { sayAnyway = true; try { speakWord(w, 0.95); } finally { sayAnyway = false; } }
+    chips.forEach((c, k) => c.classList.toggle('on', i < seq.length && k === seq[i][1]));
+    if (i >= seq.length) { readBackTimer = setTimeout(done, 700); return; }
+    const [w, , rate] = seq[i];
+    if (!isPunct(w)) { sayAnyway = true; try { speakWord(w, rate); } finally { sayAnyway = false; } }
     i++;
-    readBackTimer = setTimeout(step, isPunct(w) ? 250 : 520 + 75 * String(w).length);
+    readBackTimer = setTimeout(step, isPunct(w) ? 250 : rate < 0.6 ? 1100 + 190 * String(w).length : 520 + 75 * String(w).length);
   };
   readBackTimer = setTimeout(step, 350);
 }
@@ -9871,13 +9921,13 @@ function buildTypeKeys(kb, put, space, onDelete, onEnter) {
   const draw = () => {
     kb.querySelectorAll(':scope > .row, :scope > .kb-sound-host').forEach(r => r.remove());
     const before = kb.querySelector('.hk-close');
-    const snd = !!state.soundKeysOn && !nums;      // (the keyboard of sounds and spellings, the same switch as the practice keyboard's)
+    const snd = !!state.soundKeysOn && !nums;      // (the keyboard of sounds and spellings, the same switch as the practice keyboard's - laid out as the letters)
     kb.classList.toggle('kb-sounds', snd);
-    if (snd) { const host = document.createElement('div'); host.className = 'kb-sound-host'; kb.insertBefore(host, before); soundKbBuild(host, ch => put(ch)); }
-    if (!snd) (nums ? NUM_LAYOUT : LAYOUT).forEach((letters, ri) => {
+    if (snd) soundCloseAll();
+    (nums ? NUM_LAYOUT : LAYOUT).forEach((letters, ri) => {
       const row = document.createElement('div'); row.className = 'row';
-      if (!nums && ri === 2) { const sh = key('\u2B06', 'side shift' + (shift ? ' on' : ''), () => { shift = !shift; draw(); }); sh.setAttribute('aria-label', 'Capital letter'); row.appendChild(sh); }
-      letters.forEach(L => { const ch = nums ? L : (shift ? L : L.toLowerCase()); row.appendChild(key(ch, 'letter', () => { put(ch); if (shift) { shift = false; draw(); } })); });
+      if (!nums && ri === 2) { const sh = key('\u2B06', 'side shift' + (shift && !snd ? ' on' : '') + (snd ? ' disabled' : ''), () => { if (snd) return; shift = !shift; draw(); }); sh.setAttribute('aria-label', 'Capital letter'); row.appendChild(sh); }
+      letters.forEach(L => { if (snd) { row.appendChild(soundKeyEl(L, c => put(c))); return; } const ch = nums ? L : (shift ? L : L.toLowerCase()); row.appendChild(key(ch, 'letter', () => { put(ch); if (shift) { shift = false; draw(); } })); });
       if (ri === 2) {      // the red delete key ends the bottom letter row, as on the typing page
         const bk = key('', 'side backspace', onDelete); bk.setAttribute('aria-label', 'Delete');
         bk.innerHTML = '<svg viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2H23a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H9.5a3 3 0 0 1-2.3-1.1L1.5 11l5.7-7.9A3 3 0 0 1 9.5 2z"/><path d="M12.5 7.5l7 7M19.5 7.5l-7 7"/></svg>';
@@ -9888,13 +9938,13 @@ function buildTypeKeys(kb, put, space, onDelete, onEnter) {
     const last = document.createElement('div'); last.className = 'row';
     last.appendChild(key(nums ? 'ABC' : '123', 'wide numkey', () => { nums = !nums; shift = false; draw(); }));
     { const t = key('', 'wide sndtoggle' + (snd ? ' on' : ''), () => { warmSpeech(); state.soundKeysOn = !state.soundKeysOn; nums = false; shift = false; save(); draw(); });
-      t.setAttribute('aria-label', snd ? 'Letter keyboard' : 'Sound keyboard'); t.innerHTML = snd ? '<b>abc</b><small>letters</small>' : '<b>sh\u00B7ai</b><small>sounds</small>'; last.appendChild(t); }
+      t.setAttribute('aria-label', snd ? 'Letter keyboard' : 'Sound keyboard'); t.innerHTML = sndToggleHtml(snd); last.appendChild(t); }
     const sp = key('', 'space space-blank', space); sp.setAttribute('aria-label', 'Space'); last.appendChild(sp);
-    if (snd) { const bk = key('\u232B', 'wide backspace sndbk', onDelete); bk.setAttribute('aria-label', 'Delete'); last.appendChild(bk); }
     // the right end balances the 123 key: the key that puts the keyboard away, or the same room left empty
     { const en = key('\u23CE', 'wide enter', onEnter); en.setAttribute('aria-label', 'Enter'); last.appendChild(en); }
     kb.insertBefore(last, before);
     kb._snd = !!state.soundKeysOn;
+    if (snd) soundKbPaint();
   };
   kb._draw = draw;
   draw();
@@ -15397,9 +15447,11 @@ function ensureTargets() {
   if (!Array.isArray(t.groups)) t.groups = [];
   // (the old names change once: Current Targets is now Typing, Writing practice is now Spelling)
   t.groups.forEach(g => { const nm = String(g.name || '').trim(); if (/^current targets?$/i.test(nm)) g.name = 'Typing'; else if (/^writing practice$/i.test(nm)) g.name = 'Spelling'; });
-  [['Typing', /^typing$/i], ['Sight words', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Spelling tiles', PRACTICE_RE.tiles], ['Sound it out', PRACTICE_RE.sound], ['Hear the sound', PRACTICE_RE.hear], ['Match the spelling', PRACTICE_RE.match]].forEach(([nm, re]) => {
+  [['Typing', /^typing$/i], ['Decoding', DECODE_RE], ['Sight words', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Spelling tiles', PRACTICE_RE.tiles], ['Sound it out', PRACTICE_RE.sound], ['Hear the sound', PRACTICE_RE.hear], ['Match the spelling', PRACTICE_RE.match]].forEach(([nm, re]) => {
     if (!t.groups.some(g => re.test(String(g.name || '').trim()))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^(hear|match)/i.test(nm) ? { tiles: [] } : {}));
   });
+  { const di = t.groups.findIndex(g => DECODE_RE.test(String(g.name || '').trim())), ti = t.groups.findIndex(g => /^typing$/i.test(String(g.name || '').trim()));      // (Decoding sits just after Typing)
+    if (di > ti + 1 && ti >= 0 && !t.groups[di].moved) { const [d] = t.groups.splice(di, 1); d.moved = true; t.groups.splice(ti + 1, 0, d); } }
 }
 // the targets in a practice group (sight words or writing practice) that are switched on and have a picture
 function practiceGroupWords(kind) {
@@ -17176,6 +17228,7 @@ function soundSplit(word) {
     if (at('qu')) { add('k', undefined, [i]); add('w', undefined, [i + 1]); i += 2; continue; }
     const ch = w[i];
     if (i > 0 && ch === w[i - 1] && isC(ch)) { if (out.length) out[out.length - 1].at.push(i); i++; continue; }                    // a doubled letter is one sound (bell, kiss)
+    if (last && i > 0 && w.length <= 3 && 'oe'.includes(ch) && isC(w[i - 1]) && w !== 'the') { const id = /^(do|to|who)$/.test(w) ? 'oo' : ch === 'o' ? 'oa' : 'ee'; add(id, [id], [i]); i++; continue; }      // go, no, me, she - do, to
     if (ch === 'e' && last && i > 0) { if (out.length) out[out.length - 1].at.push(i); i++; continue; }                             // a silent final e
     if (ch === 'y' && last && i > 0) { add(i <= 2 ? 'igh' : 'ee', i <= 2 ? ['igh'] : ['ee'], [i]); i++; continue; }      // my - happy
     if (ch === 'c' && 'eiy'.includes(w[i + 1] || '')) { add('s', ['s'], [i]); i++; continue; }      // a soft c (city)
@@ -17196,7 +17249,8 @@ function soundSpell(w, out) {
 function soundShown(id) { const k = SOUND_K[id]; return !!k && k.stage <= (state.soundStage || 3); }
 function soundKids(l) { return SOUND_K[l] && soundShown(l) ? (SOUND_KIDS[l] || []).filter(soundShown) : []; }
 function soundSlots(l) { const p = SOUND_POS[l]; return SOUND_LETTERS.filter(o => o !== l).map((o, i) => ({ o, i, d: Math.hypot(SOUND_POS[o].x - p.x, SOUND_POS[o].r - p.r) })).sort((a, b) => a.d - b.d || a.i - b.i).map(x => x.o); }
-let soundOpen = null, soundSwap = {};
+let soundOpen = null, soundSwap = {}, soundOpenTimer = null;
+function soundCloseAll() { clearTimeout(soundOpenTimer); soundOpen = null; soundSwap = {}; }
 // The spellings of the sounds, key by key (the first is the key's own). Tapping a key with more than one opens them on the
 // keys around it, each with an example word; the one the word uses is tapped. From the consonant chart (and the vowel teams).
 const SOUND_TILES = {
@@ -17227,9 +17281,9 @@ function soundHome(want) {
 }
 // a key's spellings for this stage - and always the one the word needs, on its key, so every word can be built
 function soundOpts(l) {
-  const c = game && game.cur, want = c && c.parts ? c.parts[c.k] : null, stage = state.soundStage || 3;
+  const c = game && game.cur, want = c && c.parts ? c.parts[c.k] : soundPracticeWant(), stage = state.soundStage || 3;
   const out = (SOUND_TILES[l] || []).map(([id, sp, ex]) => ({ id, sp, ex })).filter(t => (soundShown(t.id) && soundTileStage(t) <= stage) || (soundTileOk(t, want) && soundHome(want) === l));
-  if (want && soundHome(want) === l && !out.some(t => soundTileOk(t, want))) out.push({ id: want.alt[0] || want.id, sp: want.sp, ex: String(c.word || '').toLowerCase() });
+  if (want && soundHome(want) === l && !out.some(t => soundTileOk(t, want))) out.push({ id: want.alt[0] || want.id, sp: want.sp, ex: String((c ? c.word : state.currentTarget) || '').toLowerCase() });
   return out;
 }
 const soundSpShow = sp => String(sp || '').replace(/-/g, '‑');      // (a-e with a dash that does not break)
@@ -17322,16 +17376,16 @@ function soundColor(id) { return SC[SOUND_COLOR[id] || (soundIsVowel(id) ? 'gree
 const SOUND_FAMILY_COLOURS = false;      // (waiting for the choice between OG colours and colours by sound)
 function soundTint(el, id) { if (!SOUND_FAMILY_COLOURS) return; const c = soundColor(id); el.style.background = c[0]; el.style.color = c[1]; el.style.borderColor = c[2]; }
 function soundKbPaint() {
-  const kbs = document.querySelectorAll('.sound-kb'); if (!kbs.length) return;
+  const kbs = document.querySelectorAll('.sk[data-l]'); if (!kbs.length) return;
   const g = game, c = g && g.cur, want = c && c.parts ? c.parts[c.k] : null;
   // the pulse (after misses): the key with the spelling - or, while its key is shut, the key that opens it
   let pulseKey = null;
   if (c && c.prompted && want) { const home = soundHome(want);
     if (soundOpen === home) { const own = soundOpts(home)[0]; pulseKey = own && soundTileOk(own, want) ? home : (Object.keys(soundSwap).find(k => soundTileOk(soundSwap[k], want)) || home); }
     else pulseKey = home; }
-  document.querySelectorAll('.sound-kb .sk').forEach(el => {
+  document.querySelectorAll('.sk[data-l]').forEach(el => {
     const l = el.dataset.l, alt = soundSwap[l];
-    el.className = 'sk'; el.disabled = false; el.style.background = el.style.color = el.style.borderColor = '';
+    el.className = el.dataset.base || 'sk'; el.disabled = false; el.style.background = el.style.color = el.style.borderColor = '';
     if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp); el.lastChild.textContent = alt.ex; soundTint(el, alt.id); }
     else { const opts = soundOpts(l), n = opts.length - 1; el.classList.add(SOUND_K[l].vowel ? 'v' : 'c');
       if (soundOpen === l) el.classList.add('parent'); else if (soundOpen) el.classList.add('dim');
@@ -17340,11 +17394,24 @@ function soundKbPaint() {
       else { el.appendChild(document.createTextNode(l)); if (n > 0 && !soundOpen) { const t = document.createElement('i'); t.textContent = '+' + n; el.appendChild(t); } } }
     if (l === pulseKey) el.classList.add('gm-pulse');
   });
+  try { soundKbPromptPaint(); } catch (e) {}
+}
+// the sounds / letters switch: a picture of sound for the sound keyboard, a keyboard for the letters (no letters on it)
+function sndToggleHtml(on) {
+  return on ? '<svg viewBox="0 0 32 24" aria-hidden="true"><rect x="2" y="4" width="28" height="16" rx="3.5" fill="none" stroke="currentColor" stroke-width="2.2"/><g fill="currentColor"><rect x="6" y="8" width="3" height="3" rx="0.8"/><rect x="11" y="8" width="3" height="3" rx="0.8"/><rect x="16" y="8" width="3" height="3" rx="0.8"/><rect x="21" y="8" width="3" height="3" rx="0.8"/><rect x="9" y="14" width="14" height="2.6" rx="1.2"/></g></svg><small>letters</small>'
+    : '<svg viewBox="0 0 32 24" aria-hidden="true"><path d="M3 9h5l6-5v16l-6-5H3z" fill="currentColor"/><path d="M18.5 8.5a5 5 0 0 1 0 7M22 5.5a9.5 9.5 0 0 1 0 13M25.5 2.5a14 14 0 0 1 0 19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><small>sounds</small>';
+}
+// one key of the sound keyboard laid out as the letter keyboard: the same place and size as its letter
+function soundKeyEl(L, put) {
+  const l = String(L).toLowerCase(), b = document.createElement('button');
+  b.className = b.dataset.base = 'key letter sk'; b.dataset.l = l;
+  b.addEventListener('click', e => { e.stopPropagation(); soundKbTap(l, put); });
+  return b;
 }
 function soundKbBuild(host, put) {
   const kb = document.createElement('div'); if (!put) kb.id = 'gmSoundKb'; kb.className = 'sound-kb';
   SOUND_ROWS.forEach(([ls, off]) => { const row = document.createElement('div'); row.className = 'sk-row'; row.style.paddingLeft = (off * 10) + '%';
-    ls.split('').forEach(l => { const b = document.createElement('button'); b.className = 'sk'; b.dataset.l = l; b.addEventListener('click', e => { e.stopPropagation(); soundKbTap(l, put); }); row.appendChild(b); });
+    ls.split('').forEach(l => { const b = document.createElement('button'); b.className = b.dataset.base = 'sk'; b.dataset.l = l; b.addEventListener('click', e => { e.stopPropagation(); soundKbTap(l, put); }); row.appendChild(b); });
     kb.appendChild(row); });
   host.appendChild(kb); soundOpen = null; soundSwap = {}; soundKbPaint();
 }
@@ -17361,11 +17428,13 @@ function soundKbTap(l, put) {
   if (!typing && (!game || game.busy)) return;
   // (a message keyboard - the one from the bar at the top, or the chat's - puts the spelling's letters in itself)
   const enter = (id, sp) => put ? (() => { [...String(sp || '').replace(/-.*$/, '').toLowerCase()].forEach(ch => put(ch)); try { soundSay(id, sp); } catch (e) {} buzz(10); })() : typing ? soundTypeEnter(id, sp) : soundEnter(id, sp);
+  clearTimeout(soundOpenTimer);
   if (soundOpen) { const t = soundSwap[l] || (l === soundOpen ? soundOpts(l)[0] : null); soundOpen = null; soundSwap = {}; soundKbPaint(); if (t) enter(t.id, t.sp); return; }
   const opts = soundOpts(l); if (!opts.length) return;
   if (opts.length === 1) { enter(opts[0].id, opts[0].sp); return; }
-  const slots = soundSlots(l); soundOpen = l; soundSwap = {}; opts.slice(1).forEach((t, i) => { if (slots[i]) soundSwap[slots[i]] = t; }); buzz(8); soundKbPaint();
-  try { soundSay(opts[0].id, opts[0].sp); } catch (e) {}
+  const slots = soundSlots(l); soundOpen = l; soundSwap = {}; opts.slice(1).forEach((t, i) => { if (slots[i]) soundSwap[slots[i]] = t; }); buzz(8); soundKbPaint();      // (opening a key is quiet: the sound is said once a spelling goes in)
+  soundOpenTimer = setTimeout(() => { if (soundOpen !== l) return; soundOpen = null; soundSwap = {}; soundKbPaint(); }, 10000);      // (the spellings stay open 10 s for a choice to be made)
+  try { homeKeysIdle(); } catch (e) {}
 }
 function gameSoundTrial() {
   const g = game, s = g.seq[g.i], tile = s.w, parts = soundSplit(tile), pic = picRandomFor(tile, picOn(tile));
