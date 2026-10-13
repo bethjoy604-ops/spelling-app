@@ -3164,7 +3164,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 556 - 11 Oct';
+const BUILD = 'build 557 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16634,7 +16634,7 @@ async function ttsFetch(id, voice) {
   const bin = atob(j.audioContent), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return new Blob([u8], { type: 'audio/mpeg' });
 }
-async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); try { smMarkOwn('a', id); } catch (e) {} }
+async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); try { smMarkOwn('a', id); smCreditSet(id, null); } catch (e) {} }
 // a few sounds one after another in a voice, to compare voices before making them all (nothing is kept)
 async function ttsTest(voice, status) {
   const ids = ['m', 'a', 's', 'sh', 'ee', 't'];
@@ -16697,6 +16697,7 @@ async function smExportZip() {
     files.push({ name: id + (kind === 'v' ? '.video' : '') + '.' + ext, data: new Uint8Array(await blob.arrayBuffer()) });
   }
   if (!files.length) { alert('There are no sound files on this device yet.'); return; }
+  { const cr = smCredits(), lines = Object.keys(cr).filter(id => SM.a.has(id)).map(id => id + ': ' + cr[id]); if (lines.length) files.push({ name: 'credits.txt', data: new TextEncoder().encode(lines.join('\n') + '\n') }); }
   const url = URL.createObjectURL(zipStore(files)), a = document.createElement('a');
   a.href = url; a.download = 'sounds-' + new Date().toISOString().slice(0, 10) + '.zip'; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
@@ -16776,7 +16777,7 @@ function openSoundRecorder(startId) {
       try { await sndRecOpen(); } catch (e) { st.textContent = 'The microphone could not be used. Allow it for this page in the iPad settings (Settings > Safari > Microphone) and try again.'; return; }
       x.classList.add('on'); x.textContent = '■ Stop'; st.textContent = 'Recording… say "' + K.label + '" now.';
       rec = sndRecRecord(2600, () => {}); const raw = await rec.done; rec = null; x.classList.remove('on'); x.textContent = '● Record';
-      st.textContent = 'Saving…'; const clip = await sndRecTrim(raw); await smPut('a', id, clip); smMarkOwn('a', id); st.textContent = 'Recorded ✓ - listen:'; soundSay(id);
+      st.textContent = 'Saving…'; const clip = await sndRecTrim(raw); await smPut('a', id, clip); smMarkOwn('a', id); smCreditSet(id, null); st.textContent = 'Recorded ✓ - listen:'; soundSay(id);
     });
     b('▶ Play', '', () => soundSay(id));
     b('▶', 'nav', () => { end(); if (i < ids.length - 1) i++; else { closeWordSheet(); try { openSoundMedia(); } catch (e) {} return; } draw(); });
@@ -16786,13 +16787,67 @@ function openSoundRecorder(startId) {
   });
   smLoad().then(draw);
 }
+// ===== Free recordings from Wikipedia (Wikimedia Commons): the sound charts' recording of each speech sound, fetched
+// by the iPad itself. Sounds of two vowels (ay, eye, oh, ow, oy) and the vowels with r have no recording there: those
+// keep the iPad voice (or a recording of their own). Each file is listed with its page for the credit.
+const WIKI_SOUNDS = {
+  a: ['Near-open_front_unrounded_vowel.ogg'], e: ['Open-mid_front_unrounded_vowel.ogg'], i: ['Near-close_near-front_unrounded_vowel.ogg'],
+  o: ['Open_back_unrounded_vowel.ogg'], u: ['Open-mid_back_unrounded_vowel.ogg'], uu: ['Near-close_near-back_rounded_vowel.ogg'], schwa: ['Mid-central_vowel.ogg'],
+  ee: ['Close_front_unrounded_vowel.ogg'], oo: ['Close_back_rounded_vowel.ogg'], aw: ['Open-mid_back_rounded_vowel.ogg'], er: ['Open-mid_central_unrounded_vowel.ogg'],
+  b: ['Voiced_bilabial_plosive.ogg'], p: ['Voiceless_bilabial_plosive.ogg'], t: ['Voiceless_alveolar_plosive.ogg'], d: ['Voiced_alveolar_plosive.ogg'],
+  k: ['Voiceless_velar_plosive.ogg'], c: ['Voiceless_velar_plosive.ogg'], g: ['Voiced_velar_plosive_02.ogg', 'Voiced_velar_plosive.ogg'],
+  f: ['Voiceless_labiodental_fricative.ogg'], v: ['Voiced_labiodental_fricative.ogg'], th: ['Voiceless_dental_fricative.ogg'], dh: ['Voiced_dental_fricative.ogg'],
+  s: ['Voiceless_alveolar_sibilant.ogg'], z: ['Voiced_alveolar_sibilant.ogg'], sh: ['Voiceless_palato-alveolar_sibilant.ogg'], zh: ['Voiced_palato-alveolar_sibilant.ogg'],
+  h: ['Voiceless_glottal_fricative.ogg'], m: ['Bilabial_nasal.ogg'], n: ['Alveolar_nasal.ogg'], ng: ['Velar_nasal.ogg'],
+  l: ['Alveolar_lateral_approximant.ogg'], r: ['Alveolar_approximant.ogg'], y: ['Palatal_approximant.ogg'], w: ['Voiced_labio-velar_approximant.ogg'],
+  ch: ['Voiceless_palato-alveolar_affricate.ogg'], j: ['Voiced_palato-alveolar_affricate.ogg'] };
+function smCredits() { try { return JSON.parse(localStorage.getItem('kbd-sm-credits') || '{}'); } catch (e) { return {}; } }
+function smCreditSet(id, v) { const m = smCredits(); if (v) m[id] = v; else delete m[id]; try { localStorage.setItem('kbd-sm-credits', JSON.stringify(m)); } catch (e) {} }
+// which files exist and where their MP3 copies are (Commons makes an MP3 of every sound file)
+async function wikiLookup(names) {
+  const out = {};
+  for (let i = 0; i < names.length; i += 40) {
+    const part = names.slice(i, i + 40);
+    const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=videoinfo|imageinfo&viprop=url|derivatives&iiprop=url&titles=' + encodeURIComponent(part.map(n => 'File:' + n).join('|'));
+    const r = await fetch(u); if (!r.ok) throw new Error('Wikipedia did not answer (' + r.status + ')');
+    const j = await r.json(), norm = {}; ((j.query || {}).normalized || []).forEach(x => { norm[x.to] = x.from; });
+    Object.values((j.query || {}).pages || {}).forEach(pg => {
+      if (pg.missing !== undefined) return;
+      const vi = (pg.videoinfo || [])[0] || {}, ii = (pg.imageinfo || [])[0] || {};
+      const mp3 = (vi.derivatives || []).find(d => /audio\/mpeg|\.mp3$/i.test(d.type || d.src || ''));
+      const key = String(norm[pg.title] || pg.title).replace(/^File:/, '').replace(/ /g, '_');
+      out[key] = { src: mp3 ? mp3.src : (vi.url || ii.url), page: 'https://commons.wikimedia.org/wiki/' + encodeURIComponent(String(pg.title).replace(/ /g, '_')) };
+    });
+  }
+  return out;
+}
+async function wikiGetAll(status, keepOwn) {
+  await smLoad();
+  const all = [...new Set([].concat(...Object.values(WIKI_SOUNDS)))];
+  status.textContent = 'Asking Wikipedia for ' + all.length + ' recordings…';
+  const found = await wikiLookup(all), b = smBuiltin(); let got = 0; const none = [];
+  for (const [id, names] of Object.entries(WIKI_SOUNDS)) {
+    if (keepOwn && SM.a.has(id) && !b.has('a|' + id) && !smCredits()[id]) continue;      // (a recording made on this iPad is kept)
+    const nm = names.find(n => found[n]); if (!nm) { none.push(SOUND_K[id].label); continue; }
+    status.textContent = 'Getting ' + SOUND_K[id].label + ' (' + (got + 1) + ')…';
+    try { const r = await fetch(found[nm].src); if (!r.ok) throw 0; const blob = await r.blob();
+      await smPut('a', id, blob); smMarkOwn('a', id); smCreditSet(id, nm.replace(/_/g, ' ') + ' – Wikimedia Commons ' + found[nm].page); got++; } catch (e) { none.push(SOUND_K[id].label); }
+  }
+  status.textContent = got + ' recordings added from Wikipedia.' + (none.length ? ' Not found: ' + none.join(', ') + '.' : '') + ' The sounds of two vowels (ay, eye, oh, ow, oy) and the vowels with r keep the iPad voice. Play each one below and remove any that do not suit.';
+}
 // Settings > Games > Sounds: every sound with its audio and video, the Google voice, and a set of files at once
 function openSoundMedia() {
+  let drawCredits = () => {};
   const draw = () => openWordSheet(body => {
     sheetTitle(body, 'Sounds: audio and video');
     const note = t => { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = t; body.appendChild(n); return n; };
     const head = t => { const h = document.createElement('div'); h.className = 'help-note chk-head'; h.textContent = t; body.appendChild(h); };
     const btn = (t, fn, cls) => { const b = document.createElement('button'); b.className = 'hf-btn' + (cls ? ' ' + cls : ''); b.textContent = t; b.addEventListener('click', e => { e.stopPropagation(); fn(b); }); return b; };
+    head('Free recordings from Wikipedia');
+    { const wr = document.createElement('div'); wr.className = 'sm-row'; const ws = document.createElement('div'); ws.className = 'help-note';
+      wr.appendChild(btn('\uD83C\uDF10 Get the Wikipedia recordings', async b => { b.disabled = true; try { await wikiGetAll(ws, true); } catch (e) { ws.textContent = 'Could not reach Wikipedia: ' + (e.message || e); } b.disabled = false; drawList(); drawCredits(); }, 'primary'));
+      body.appendChild(wr); body.appendChild(ws); }
+    note('Real recordings of each speech sound from Wikipedia\'s sound charts (free to use, with credit - listed at the bottom). Recordings made on this iPad are kept.');
     head('The iPad voice (free, nothing to set up)');
     { const tr = document.createElement('div'); tr.className = 'sm-row'; tr.appendChild(btn('\uD83D\uDDE3\uFE0F Choose how the iPad says each sound', () => openSoundTuner(), 'primary')); body.appendChild(tr); }
     note('Used for any sound without its own audio file. Best with a Premium voice: on the iPad, Settings > Accessibility > Spoken Content > Voices > English, download one marked Premium (e.g. Ava or Zoe), then pick it in this app\'s Voice setting.');
@@ -16846,13 +16901,18 @@ function openSoundMedia() {
         if (ttsKey()) { r.appendChild(btn('\u21BB', async b => { b.disabled = true; try { await ttsMake(id); drawList(); soundSay(id); } catch (e) { alert('Could not make it: ' + (e.message || e)); } b.disabled = false; }));
           r.appendChild(btn('\u270E', () => { const cur = ttsSayAs()[id] || ''; const v = prompt('How the Google voice should say "' + K.label + '" (as in ' + (K.ex || '') + ').\n\nIPA between slashes, e.g. /s\u02D0/, or plain words, e.g. sss or ah. Leave it empty for the usual sound.', cur);
             if (v === null) return; ttsSayAsSet(id, v.trim()); ttsMake(id).then(() => { drawList(); soundSay(id); }).catch(e => alert('Could not make it: ' + (e.message || e))); })); }
-        r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); smMarkOwn('a', id); drawList(); soundSay(id); })));
+        r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); smMarkOwn('a', id); smCreditSet(id, null); drawList(); soundSay(id); })));
         r.appendChild(btn(SM.v.has(id) ? 'Video ✓' : 'Video', () => smPick('video/*', async f => { await smPut('v', id, f); smMarkOwn('v', id); drawList(); })));
-        if (SM.a.has(id) || SM.v.has(id)) r.appendChild(btn('✕', async () => { if (!confirm('Remove the audio and video for ' + K.label + '?')) return; await smDel('a', id); await smDel('v', id); drawList(); }, 'danger'));
+        if (SM.a.has(id) || SM.v.has(id)) r.appendChild(btn('✕', async () => { if (!confirm('Remove the audio and video for ' + K.label + '?')) return; await smDel('a', id); await smDel('v', id); smCreditSet(id, null); drawList(); }, 'danger'));
         list.appendChild(r);
       });
     };
     drawList();
+    const credBox = document.createElement('div'); body.appendChild(credBox);
+    drawCredits = () => { credBox.innerHTML = ''; const cr = smCredits(), ks = Object.keys(cr).filter(id => SM.a.has(id)); if (!ks.length) return;
+      const h = document.createElement('div'); h.className = 'help-note chk-head'; h.textContent = 'Credits'; credBox.appendChild(h);
+      const c = document.createElement('div'); c.className = 'help-note sm-credits'; c.textContent = 'Sound recordings from Wikimedia Commons (IPA chart recordings): ' + ks.map(id => SOUND_K[id].label + ' \u2013 ' + cr[id]).join('; ') + '. Each is used under the licence on its page.'; credBox.appendChild(c); };
+    drawCredits();
     body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
   });
   smLoad().then(draw);
