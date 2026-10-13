@@ -1500,6 +1500,16 @@
   .rec-btn { flex: 1 1 0; min-height: 64px; border: 0; border-radius: 16px; background: #eef0f3; font-family: inherit; font-weight: 800; font-size: 20px; color: var(--ink); }
   .rec-btn.nav { flex: 0 0 64px; font-size: 22px; }
   .rec-btn.rec { background: #ffe1e1; color: #c62828; } .rec-btn.rec.on { background: #e53935; color: #fff; animation: gmPulse 1s ease-in-out infinite; }
+  #keyboard .kb-sound-host { width: 100%; margin-bottom: 8px; }
+  #keyboard .kb-sound-host .sound-kb { gap: 8px; }
+  #keyboard.kb-sounds .kb-sound-host { flex: 4 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+  #keyboard.kb-sounds .sound-kb { height: 100%; }
+  #keyboard.kb-sounds .sk-row { flex: 1 1 0; min-height: 0; }
+  #keyboard.kb-sounds .sk { height: auto; }
+  #keyboard.kb-sounds > .row { flex: 1 1 0; }
+  .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #e8e2fb; color: #2b2466; }
+  .key.sndtoggle b { font-size: 20px; } .key.sndtoggle small { font-size: 12px; font-weight: 700; opacity: 0.8; }
+  .key.sndtoggle.on { background: #dff3e3; color: #1d6b31; }
   .sm-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
   .sm-input { flex: 1 1 180px; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #c9ced8; }
   .sm-voice { flex: 0 1 190px; }
@@ -3184,7 +3194,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 566 - 13 Oct';
+const BUILD = 'build 567 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3398,7 +3408,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], soundKeysOn: false, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3567,7 +3577,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], soundKeysOn: !!saved.soundKeysOn, soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4194,7 +4204,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -6410,7 +6420,10 @@ function render() {
                      !shiftOn && targetCapAt(state.targetIndex);
   const keyTarget = (needsSwitch || needsShift) ? null : expected;
   const layout = kbNumbers ? NUM_LAYOUT : LAYOUT;
-  layout.forEach((row, ri) => {
+  const soundKeys = !!state.soundKeysOn && !kbNumbers && !kbSearch;      // (the keyboard of sounds and spellings, switched on from the bottom row)
+  kb.classList.toggle('kb-sounds', soundKeys);
+  if (soundKeys) { const host = document.createElement('div'); host.className = 'kb-sound-host'; kb.appendChild(host); soundKbBuild(host); }
+  if (!soundKeys) layout.forEach((row, ri) => {
     const r = document.createElement('div');
     r.className = 'row';
     if (ri === 2) {
@@ -6442,9 +6455,14 @@ function render() {
   const numKey = makeSpecialKey(kbNumbers ? 'ABC' : '123', 'numbers', 'wide numkey');
   if (needsSwitch) promptKey(numKey);
   r.appendChild(numKey);
+  { const t = document.createElement('button'); t.className = 'key wide sndtoggle' + (soundKeys ? ' on' : ''); t.setAttribute('aria-label', soundKeys ? 'Letter keyboard' : 'Sound keyboard');
+    t.innerHTML = soundKeys ? '<b>abc</b><small>letters</small>' : '<b>sh\u00B7ai</b><small>sounds</small>';
+    t.addEventListener('click', () => { warmSpeech(); buzz(10); state.soundKeysOn = !state.soundKeysOn; kbNumbers = false; shiftOn = false; save(); render(); });
+    r.appendChild(t); }
   const spaceKey = makeSpecialKey('', 'space', 'space space-blank');
   if (expected === ' ' && kbShow) promptKey(spaceKey);
   r.appendChild(spaceKey);
+  if (soundKeys) { const bk = makeSpecialKey('', 'backspace', 'wide backspace sndbk'); bk.setAttribute('aria-label', 'Delete'); bk.textContent = '\u232B'; r.appendChild(bk); }
   const enterKey = makeSpecialKey('⏎', 'enter', 'wide enter');
   requestAnimationFrame(kzoneSync);
   if (isWordComplete()) enterKey.classList.add('enter-ready');
@@ -17296,11 +17314,21 @@ function soundKbBuild(host) {
     kb.appendChild(row); });
   host.appendChild(kb); soundOpen = null; soundSwap = {}; soundKbPaint();
 }
+// typing with the sound keyboard (no game): the spelling's letters go into the message and its sound is said
+function soundTypeEnter(id, sp) {
+  const letters = String(sp || '').replace(/-.*$/, '').toUpperCase();      // (a-e: the a goes in; the e comes with the end of the word)
+  const was = state.letterSpeech; state.letterSpeech = false;
+  try { [...letters].forEach(ch => typeLetter(ch)); } finally { state.letterSpeech = was; }
+  try { soundSay(id, sp); } catch (e) {}
+  buzz(10); try { render(); } catch (e) {}
+}
 function soundKbTap(l) {
-  if (!game || game.busy) return;
-  if (soundOpen) { const t = soundSwap[l] || (l === soundOpen ? soundOpts(l)[0] : null); soundOpen = null; soundSwap = {}; soundKbPaint(); if (t) soundEnter(t.id, t.sp); return; }
+  const typing = !game && !!state.soundKeysOn;
+  if (!typing && (!game || game.busy)) return;
+  const enter = (id, sp) => typing ? soundTypeEnter(id, sp) : soundEnter(id, sp);
+  if (soundOpen) { const t = soundSwap[l] || (l === soundOpen ? soundOpts(l)[0] : null); soundOpen = null; soundSwap = {}; soundKbPaint(); if (t) enter(t.id, t.sp); return; }
   const opts = soundOpts(l); if (!opts.length) return;
-  if (opts.length === 1) { soundEnter(opts[0].id, opts[0].sp); return; }
+  if (opts.length === 1) { enter(opts[0].id, opts[0].sp); return; }
   const slots = soundSlots(l); soundOpen = l; soundSwap = {}; opts.slice(1).forEach((t, i) => { if (slots[i]) soundSwap[slots[i]] = t; }); buzz(8); soundKbPaint();
   try { soundSay(opts[0].id, opts[0].sp); } catch (e) {}
 }
