@@ -3164,7 +3164,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 557 - 13 Oct';
+const BUILD = 'build 558 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -17137,6 +17137,17 @@ function gameSnd1Done(sp) {
   setTimeout(next, wait);
 }
 
+// The spellings on an open key are coloured by their sound: every spelling of the long a (a in baby, ai, ay, a-e) has
+// the long a's colour, so the "a" in baby does not look like the "a" in at. Short vowels green and most consonants purple,
+// as on the keys; every other sound its own colour, different from the others on the same key.
+const SC = { green: ['#b9e6c0', '#0f3d1a', '#4fa863'], purple: ['#d6d0f7', '#2b2466', '#8777dc'], yellow: ['#ffe9a8', '#5c4300', '#d9a800'], blue: ['#c7dcff', '#123a7a', '#4f86e0'],
+  pink: ['#ffd0e0', '#6b0f35', '#e0608f'], orange: ['#ffd8b5', '#6b3300', '#e08a3c'], teal: ['#bfeee9', '#0d4d47', '#2fa89c'], lime: ['#e1f5b8', '#3b5200', '#8cbf26'],
+  red: ['#ffc9c4', '#6e1410', '#e0584d'], grey: ['#e2e5ea', '#2f3640', '#8a94a3'], brown: ['#ead7c3', '#4a2f14', '#a87b4f'] };
+const SOUND_COLOR = { a: 'green', e: 'green', i: 'green', o: 'green', u: 'green',
+  ai: 'yellow', ee: 'blue', igh: 'pink', oa: 'orange', oo: 'teal', uu: 'brown', schwa: 'grey', aw: 'grey', ar: 'orange', air: 'pink', er: 'lime', ear: 'red',
+  ow: 'blue', oi: 'lime', or: 'teal', s: 'blue', sh: 'red', ch: 'orange', zh: 'pink', th: 'teal', dh: 'lime', ng: 'yellow' };
+function soundColor(id) { return SC[SOUND_COLOR[id] || (soundIsVowel(id) ? 'green' : 'purple')]; }
+function soundTint(el, id) { const c = soundColor(id); el.style.background = c[0]; el.style.color = c[1]; el.style.borderColor = c[2]; }
 function soundKbPaint() {
   const kb = document.getElementById('gmSoundKb'); if (!kb) return;
   const g = game, c = g && g.cur, want = c && c.parts ? c.parts[c.k] : null;
@@ -17147,12 +17158,12 @@ function soundKbPaint() {
     else pulseKey = home; }
   kb.querySelectorAll('.sk').forEach(el => {
     const l = el.dataset.l, alt = soundSwap[l];
-    el.className = 'sk'; el.disabled = false;
-    if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp); el.lastChild.textContent = alt.ex; }
+    el.className = 'sk'; el.disabled = false; el.style.background = el.style.color = el.style.borderColor = '';
+    if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp); el.lastChild.textContent = alt.ex; soundTint(el, alt.id); }
     else { const opts = soundOpts(l), n = opts.length - 1; el.classList.add(SOUND_K[l].vowel ? 'v' : 'c');
       if (soundOpen === l) el.classList.add('parent'); else if (soundOpen) el.classList.add('dim');
       el.disabled = !opts.length; el.innerHTML = '';
-      if (soundOpen === l && opts[0]) { el.classList.add('opt'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(opts[0].sp); el.lastChild.textContent = opts[0].ex; }
+      if (soundOpen === l && opts[0]) { el.classList.add('opt'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(opts[0].sp); el.lastChild.textContent = opts[0].ex; soundTint(el, opts[0].id); }
       else { el.appendChild(document.createTextNode(l)); if (n > 0 && !soundOpen) { const t = document.createElement('i'); t.textContent = '+' + n; el.appendChild(t); } } }
     if (l === pulseKey) el.classList.add('gm-pulse');
   });
