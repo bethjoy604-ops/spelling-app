@@ -1,4 +1,103 @@
 {
-  "version": 0,
-  "files": {}
+ "version": 1,
+ "credits": [
+  {
+   "name": "The Connett Connection",
+   "what": "Letter sounds",
+   "logo": "sounds/connett/logo.png",
+   "link": "https://www.teacherspayteachers.com/Product/Letter-Sounds-Audio-Clips-Sound-Files-for-Digital-Activities-5931129"
+  }
+ ],
+ "files": {
+  "a": {
+   "a": "sounds/connett/a.mp3"
+  },
+  "ai": {
+   "a": "sounds/connett/ai.mp3"
+  },
+  "b": {
+   "a": "sounds/connett/b.mp3"
+  },
+  "c": {
+   "a": "sounds/connett/c.mp3"
+  },
+  "d": {
+   "a": "sounds/connett/d.mp3"
+  },
+  "e": {
+   "a": "sounds/connett/e.mp3"
+  },
+  "ee": {
+   "a": "sounds/connett/ee.mp3"
+  },
+  "f": {
+   "a": "sounds/connett/f.mp3"
+  },
+  "g": {
+   "a": "sounds/connett/g.mp3"
+  },
+  "h": {
+   "a": "sounds/connett/h.mp3"
+  },
+  "i": {
+   "a": "sounds/connett/i.mp3"
+  },
+  "igh": {
+   "a": "sounds/connett/igh.mp3"
+  },
+  "j": {
+   "a": "sounds/connett/j.mp3"
+  },
+  "k": {
+   "a": "sounds/connett/k.mp3"
+  },
+  "l": {
+   "a": "sounds/connett/l.mp3"
+  },
+  "m": {
+   "a": "sounds/connett/m.mp3"
+  },
+  "n": {
+   "a": "sounds/connett/n.mp3"
+  },
+  "o": {
+   "a": "sounds/connett/o.mp3"
+  },
+  "oa": {
+   "a": "sounds/connett/oa.mp3"
+  },
+  "p": {
+   "a": "sounds/connett/p.mp3"
+  },
+  "q": {
+   "a": "sounds/connett/q.mp3"
+  },
+  "r": {
+   "a": "sounds/connett/r.mp3"
+  },
+  "s": {
+   "a": "sounds/connett/s.mp3"
+  },
+  "t": {
+   "a": "sounds/connett/t.mp3"
+  },
+  "u": {
+   "a": "sounds/connett/u.mp3"
+  },
+  "v": {
+   "a": "sounds/connett/v.mp3"
+  },
+  "w": {
+   "a": "sounds/connett/w.mp3"
+  },
+  "x": {
+   "a": "sounds/connett/x.mp3"
+  },
+  "y": {
+   "a": "sounds/connett/y.mp3"
+  },
+  "z": {
+   "a": "sounds/connett/z.mp3"
+  }
+ }
 }
