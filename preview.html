@@ -1005,6 +1005,9 @@
   .rb-words { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.2vmin 1.6vmin; font-size: clamp(44px, 11vmin, 120px); font-weight: 900; line-height: 1.1; color: var(--ink); }
   .rb-word { padding: 0.08em 0.22em; border-radius: 0.2em; transition: background 0.15s ease, transform 0.15s ease; }
   .rb-word.on { background: var(--prompt); color: var(--prompt-ink); transform: scale(1.06); }
+  .rb-word { position: relative; }
+  .rb-line { position: absolute; left: 0.22em; bottom: -0.28em; height: 0.11em; width: 0; max-width: calc(100% - 0.44em); border-radius: 99px; background: #2f7df6; }
+  .rb-line.slow { background: #f0a020; }
   /* spelling practice: one bar. The target word is the typing bar - each letter typed turns green in
      place and the next one takes the highlight - so the separate typing bar steps aside and this one is larger */
   .view-keyboard:has(#targetBanner.active) #display { display: none; }
@@ -3207,7 +3210,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 571 - 13 Oct';
+const BUILD = 'build 572 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7069,7 +7072,7 @@ function readBack(words, target, force) {
   const card = document.createElement('div'); card.className = 'rb-card'; card.id = 'readBackCard';
   const line = document.createElement('div'); line.className = 'rb-words';
   const shown = sentenceWords(words);
-  const chips = shown.map(t => { const c = document.createElement('span'); c.className = 'rb-word'; c.textContent = t; line.appendChild(c); return c; });
+  const chips = shown.map(t => { const c = document.createElement('span'); c.className = 'rb-word'; c.textContent = t; const ln = document.createElement('i'); ln.className = 'rb-line'; c.appendChild(ln); line.appendChild(c); return c; });
   card.appendChild(line); f.appendChild(card);
   // when it is done the home page is already there underneath: nothing else shows in between
   let ending = false;
@@ -7081,10 +7084,14 @@ function readBack(words, target, force) {
   const step = () => {
     chips.forEach((c, k) => c.classList.toggle('on', i < seq.length && k === seq[i][1]));
     if (i >= seq.length) { readBackTimer = setTimeout(done, 700); return; }
-    const [w, , rate] = seq[i];
+    const [w, k, rate] = seq[i];
+    const dur = isPunct(w) ? 250 : rate < 0.6 ? 1100 + 190 * String(w).length : 520 + 75 * String(w).length;
+    // a line runs under the word as it is said: slowly (amber) for the slow saying, quickly (blue) for the usual one
+    if (slowFirst && i === words.length) chips.forEach(c => { const l = c.querySelector('.rb-line'); if (l) { l.style.transition = 'none'; l.style.width = '0'; } });
+    { const l = chips[k] && chips[k].querySelector('.rb-line'); if (l && !isPunct(w)) { l.classList.toggle('slow', rate < 0.6); l.style.transition = 'none'; l.style.width = '0'; void l.offsetWidth; l.style.transition = 'width ' + Math.round(dur * 0.85) + 'ms linear'; l.style.width = 'calc(100% - 0.44em)'; } }
     if (!isPunct(w)) { sayAnyway = true; try { speakWord(w, rate); } finally { sayAnyway = false; } }
     i++;
-    readBackTimer = setTimeout(step, isPunct(w) ? 250 : rate < 0.6 ? 1100 + 190 * String(w).length : 520 + 75 * String(w).length);
+    readBackTimer = setTimeout(step, dur);
   };
   readBackTimer = setTimeout(step, 350);
 }
@@ -9405,6 +9412,7 @@ function endingChip(box, i, w, to, label) {
     if (arrPrev[i] === w) arrPrev[i] = to;      // (the word with its new ending is still the word that was put in: the next word is still put in order after it)
     try { tileAdd = null; } catch (er) {}
     renderPhraseBar();
+    try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; }      // (the word is said again with its new ending)
   });
   box.appendChild(b);
 }
