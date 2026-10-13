@@ -3164,7 +3164,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 559 - 13 Oct';
+const BUILD = 'build 561 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16615,8 +16615,9 @@ const SOUND_HOLD = new Set(['f', 'l', 'm', 'n', 'r', 's', 'v', 'z', 'sh', 'zh', 
 function ttsSayAs() { try { return JSON.parse(localStorage.getItem('kbd-tts-say') || '{}'); } catch (e) { return {}; } }
 function ttsSayAsSet(id, v) { const m = ttsSayAs(); if (v) m[id] = v; else delete m[id]; try { localStorage.setItem('kbd-tts-say', JSON.stringify(m)); } catch (e) {} }
 // the request for one sound: its own "say as" (IPA between slashes, or plain words), else the sound in IPA
-function ttsSsml(id, voice) {
-  const lang = voice.split('-').slice(0, 2).join('-') || 'en-US', own = ttsSayAs()[id];
+function ttsSsml(id, voice, try1) {
+  if (!id) return '<speak>' + String(try1 || '').replace(/[<>&"]/g, '') + '</speak>';
+  const lang = voice.split('-').slice(0, 2).join('-') || 'en-US', own = try1 !== undefined ? try1 : ttsSayAs()[id];
   // (the words inside are what the voice falls back on if it will not say the sound alone: "tuh", never the letter's name "tee")
   const text = (SOUND_SPEAK_OPTS[id] || [])[0] || (SOUND_K[id] ? SOUND_K[id].label : id);
   const esc = t => String(t).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
@@ -16628,15 +16629,69 @@ function ttsSsml(id, voice) {
   return '<speak><phoneme alphabet="ipa" ph="' + esc(ipa) + '">' + esc(text) + '</phoneme></speak>';
 }
 const TTS_STOP = { p: 'p\u02B0', t: 't\u02B0', k: 'k\u02B0', c: 'k\u02B0', ch: 't\u0283\u02B0', q: 'k\u02B0w', x: 'ks\u02D0' };
-async function ttsFetch(id, voice) {
+// A short sound cut from the start of a word (b from "bat"): Google says the word, and the first moment of it is kept -
+// the way a stop sound (b, t, p, k, d, g, j, ch) can be had without an "uh" after it. Asked for as cut:word:milliseconds.
+async function ttsCut(word, ms, voice) {
+  const blob = await ttsFetch(null, voice, word);
+  const AC = window.AudioContext || window.webkitAudioContext; const ac = new AC();
+  try {
+    const buf = await new Promise((res, rej) => { blob.arrayBuffer().then(ab => { const p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }, rej); });
+    const d = buf.getChannelData(0), sr = buf.sampleRate; let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    let a = 0; const th = peak * 0.06; while (a < d.length && Math.abs(d[a]) < th) a++;
+    a = Math.max(0, a - Math.round(sr * 0.01)); const n = Math.min(d.length - a, Math.round(sr * ms / 1000)), fade = Math.round(sr * Math.min(0.03, ms / 3000)), gain = Math.min(4, 0.89 / (peak || 1));
+    const out = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
+    w(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+    out.setUint32(24, sr, true); out.setUint32(28, sr * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); w(36, 'data'); out.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) { let v = d[a + i] * gain; if (n - i < fade) v *= (n - i) / fade; out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, v)) * 0x7FFF, true); }
+    return new Blob([out.buffer], { type: 'audio/wav' });
+  } finally { try { ac.close(); } catch (e) {} }
+}
+async function ttsFetch(id, voice, try1) {
   const key = ttsKey(); if (!key) throw new Error('no key');
+  { const own = try1 !== undefined ? try1 : (id ? ttsSayAs()[id] : ''); const m = /^cut:([a-z]+):(\d+)$/.exec(String(own || '')); if (m) return ttsCut(m[1], Number(m[2]), voice || ttsVoice()); }
   voice = voice || ttsVoice(); const lang = voice.split('-').slice(0, 2).join('-') || 'en-US';
   const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(key), { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: { ssml: ttsSsml(id, voice) }, voice: { languageCode: lang, name: voice }, audioConfig: { audioEncoding: 'MP3', speakingRate: 0.85 } }) });
+    body: JSON.stringify({ input: { ssml: ttsSsml(id, voice, try1) }, voice: { languageCode: lang, name: voice }, audioConfig: { audioEncoding: 'MP3', speakingRate: 0.85 } }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.audioContent) throw new Error((j.error && j.error.message) || ('error ' + r.status));
   const bin = atob(j.audioContent), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return new Blob([u8], { type: 'audio/mpeg' });
+}
+// Other ways of asking Google for a sound that came out wrong: each is tried and heard, and the best one kept
+const TTS_TRY = { t: ['/t\u02B0/', '/t/', '/t\u0259/', '/t\u02B0\u028C/', 'tuh'], p: ['/p\u02B0/', '/p/', '/p\u0259/', 'puh'], k: ['/k\u02B0/', '/k/', '/k\u0259/', 'kuh'], c: ['/k\u02B0/', '/k/', '/k\u0259/', 'kuh'],
+  b: ['/b/', '/b\u0259/', '/b\u028C/', 'buh'], d: ['/d/', '/d\u0259/', '/d\u028C/', 'duh'], g: ['/\u0261/', '/\u0261\u0259/', '/\u0261\u028C/', 'guh'],
+  j: ['/d\u0292/', '/d\u0292\u0259/', '/d\u0292\u028C/', 'juh'], ch: ['/t\u0283\u02B0/', '/t\u0283/', '/t\u0283\u0259/', 'chuh'], h: ['/h/', '/h\u0259/', 'huh'],
+  w: ['/w/', '/w\u0259/', 'wuh'], y: ['/j/', '/j\u0259/', 'yuh'], q: ['/k\u02B0w/', '/kw\u0259/', 'kwuh'], x: ['/ks/', '/ks\u02D0/', 'ks'] };
+const TTS_CUT = { b: ['bat', 90], d: ['dog', 90], g: ['go', 90], p: ['pin', 110], t: ['top', 110], k: ['kit', 110], c: ['cat', 110], j: ['jam', 130], ch: ['chin', 150], h: ['hat', 140], w: ['web', 140], y: ['yes', 130], q: ['queen', 170] };
+function ttsVariants(id) {
+  const ipa = (/^en-(GB|AU|IN)/.test(ttsVoice()) ? SOUND_IPA_UK : SOUND_IPA_US)[id] || '';
+  const cut = TTS_CUT[id] ? [0.7, 1, 1.4].map(f => 'cut:' + TTS_CUT[id][0] + ':' + Math.round(TTS_CUT[id][1] * f)) : [];
+  const list = cut.concat([''], TTS_TRY[id] || ['/' + ipa + '/', '/' + ipa + '\u02D0/'].concat(SOUND_SPEAK_OPTS[id] || []));
+  return list.filter((v, i, a) => a.indexOf(v) === i);
+}
+function openTtsTry(id, back) {
+  const K = SOUND_K[id], vs = ttsVariants(id), cur = ttsSayAs()[id] || '';
+  openWordSheet(body => {
+    sheetTitle(body, 'Try other versions of ' + K.label + ' (as in ' + (K.ex || '') + ')');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px'; n.textContent = 'Each version asks Google for the sound a different way. Tap \u25B6 to hear one; tap Use this on the best. Nothing changes until you choose.'; body.appendChild(n);
+    const st = document.createElement('div'); st.className = 'help-note'; body.appendChild(st);
+    const blobs = {};
+    vs.forEach((v, i) => {
+      const r = document.createElement('div'); r.className = 'sm-snd';
+      const cm = /^cut:([a-z]+):(\d+)$/.exec(v), lab = cm ? 'Cut from \u201C' + cm[1] + '\u201D (' + (i === 0 ? 'shortest' : i === 1 ? 'short' : 'a little longer') + ')' : 'Version ' + (i + 1);
+      const l = document.createElement('span'); l.className = 'sm-st'; l.textContent = lab + (v === cur ? '  \u2713 in use' : ''); r.appendChild(l);
+      const play = document.createElement('button'); play.className = 'hf-btn'; play.textContent = '\u25B6';
+      play.addEventListener('click', async () => { play.disabled = true; st.textContent = '';
+        try { if (!blobs[i]) blobs[i] = await ttsFetch(id, ttsVoice(), v); const u = URL.createObjectURL(blobs[i]); const a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); await a.play(); }
+        catch (e) { st.textContent = 'Could not make that version: ' + (e.message || e); } play.disabled = false; });
+      const use = document.createElement('button'); use.className = 'hf-btn primary'; use.textContent = 'Use this';
+      use.addEventListener('click', async () => { use.disabled = true;
+        try { if (!blobs[i]) blobs[i] = await ttsFetch(id, ttsVoice(), v); ttsSayAsSet(id, v); await smPut('a', id, blobs[i]); smMarkOwn('a', id); smCreditSet(id, null); soundSay(id); openTtsTry(id, back); }
+        catch (e) { st.textContent = 'Could not make that version: ' + (e.message || e); use.disabled = false; } });
+      r.appendChild(play); r.appendChild(use); body.appendChild(r);
+    });
+    body.appendChild(sheetBtn('Done', 'primary', () => { if (back) back(); else closeWordSheet(); }));
+  });
 }
 async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); try { smMarkOwn('a', id); smCreditSet(id, null); } catch (e) {} }
 // a few sounds one after another in a voice, to compare voices before making them all (nothing is kept)
@@ -16884,7 +16939,7 @@ function openSoundMedia() {
       b.disabled = true; try { await ttsTest(vi.value, status); } catch (e) { status.textContent = 'Could not make the test: ' + (e.message || e); } b.disabled = false; }));
     mk.appendChild(btn('Make the missing sounds', b => run(false, b), 'primary')); mk.appendChild(btn('Remake every sound', b => { if (confirm('Replace every sound file (including your own) with the Google voice?')) run(true, b); }));
     body.appendChild(mk); body.appendChild(status);
-    note('A Google Cloud key with the Text-to-Speech API turned on (it stays on this device only). Test a voice first; a UK voice uses British vowels. Each sound below can then be remade (\u21BB) or told how to sound (\u270E). These sounds are used only by the sound keyboard games - the ordinary keyboard keeps its letters.');
+    note('A Google Cloud key with the Text-to-Speech API turned on (it stays on this device only). Test a voice first; a UK voice uses British vowels. Each sound below can then be remade (\u21BB), or tried in other versions to pick the best (Try versions). These sounds are used only by the sound keyboard games - the ordinary keyboard keeps its letters.');
     head('A set of files at once');
     const zr = document.createElement('div'); zr.className = 'sm-row';
     zr.appendChild(btn('Share these sounds (.zip for everyone)', () => smExportZip()));
@@ -16903,7 +16958,8 @@ function openSoundMedia() {
         r.appendChild(btn('\uD83C\uDF99\uFE0F', () => openSoundRecorder(id)));
         r.appendChild(btn('▶', () => { if (SM.v.has(id)) { const box = document.createElement('div'); box.className = 'sm-vidpop'; box.addEventListener('click', () => box.remove()); document.body.appendChild(box); smVideoInto(box, id).then(v => { if (v) v.addEventListener('ended', () => setTimeout(() => box.remove(), 600)); }); } else soundSay(id); }));
         if (ttsKey()) { r.appendChild(btn('\u21BB', async b => { b.disabled = true; try { await ttsMake(id); drawList(); soundSay(id); } catch (e) { alert('Could not make it: ' + (e.message || e)); } b.disabled = false; }));
-          r.appendChild(btn('\u270E', () => { const cur = ttsSayAs()[id] || ''; const v = prompt('How the Google voice should say "' + K.label + '" (as in ' + (K.ex || '') + ').\n\nIPA between slashes, e.g. /s\u02D0/, or plain words, e.g. sss or ah. Leave it empty for the usual sound.', cur);
+          r.appendChild(btn('Try versions', () => openTtsTry(id, () => openSoundMedia())));
+          if (false) r.appendChild(btn('\u270E', () => { const cur = ttsSayAs()[id] || ''; const v = prompt('How the Google voice should say "' + K.label + '" (as in ' + (K.ex || '') + ').\n\nIPA between slashes, e.g. /s\u02D0/, or plain words, e.g. sss or ah. Leave it empty for the usual sound.', cur);
             if (v === null) return; ttsSayAsSet(id, v.trim()); ttsMake(id).then(() => { drawList(); soundSay(id); }).catch(e => alert('Could not make it: ' + (e.message || e))); })); }
         r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); smMarkOwn('a', id); smCreditSet(id, null); drawList(); soundSay(id); })));
         r.appendChild(btn(SM.v.has(id) ? 'Video ✓' : 'Video', () => smPick('video/*', async f => { await smPut('v', id, f); smMarkOwn('v', id); drawList(); })));
