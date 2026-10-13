@@ -3184,7 +3184,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 565 - 13 Oct';
+const BUILD = 'build 566 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16712,12 +16712,13 @@ const TTS_TRY = { t: ['/t\u02B0/', '/t/', '/t\u0259/', '/t\u02B0\u028C/', 'tuh']
   w: ['/w/', '/w\u0259/', 'wuh'], y: ['/j/', '/j\u0259/', 'yuh'], q: ['/k\u02B0w/', '/kw\u0259/', 'kwuh'], x: ['/ks/', '/ks\u02D0/', 'ks'] };
 // (a quiet sound - f, s, th, h - starts softly, so the start of the word is looked for more closely: the last number)
 const TTS_CUT = { b: ['bat', 170], d: ['dog', 170], g: ['gate', 170], p: ['pin', 200], t: ['top', 200], k: ['kit', 200], c: ['cat', 200], j: ['jam', 240], ch: ['chin', 270], h: ['hat', 250, 10], w: ['web', 250], y: ['yes', 240], q: ['queen', 310],
-  f: ['fan', 340, 8], s: ['sun', 380, 8], sh: ['ship', 400, 8], th: ['thin', 340, 8], dh: ['this', 260, 10], v: ['van', 310, 10], z: ['zoo', 380, 10], m: ['man', 340, 15], n: ['net', 330, 15], l: ['leg', 300, 15], r: ['run', 290, 15] };
+  f: ['fan', 340, 8], s: ['sun', 380, 8], sh: ['ship', 400, 8], th: ['thin', 340, 8], dh: ['this', 260, 10], v: ['van', 310, 10], z: ['zoo', 380, 10],  n: ['net', 330, 15], l: ['leg', 300, 15], r: ['run', 290, 15] };
 const TTS_END = { x: ['box', 300, 8] };
 TTS_CUT.schwa = ['along', 170, 10];      // (the weak uh: the start of "along")
-const TTS_CUT2 = { g: ['go', 170], b: ['bus', 170], d: ['dish', 170], j: ['jet', 240], t: ['ten', 200], k: ['kite', 200], c: ['cup', 200], p: ['pet', 200] };
-const TTS_WORD = { ar: 'are', or: 'or', air: 'air', ear: 'ear', er: 'err' };
-const TTS_WORD_TRY = { ar: ['are', 'ar', 'ahr', '/\u0251\u0279/'], or: ['or', 'ore', '/\u0254\u0279/'], air: ['air', 'are', '/\u025B\u0279/'], ear: ['ear', 'eer', '/\u026A\u0279/'], er: ['err', 'er', 'ur', '/\u025D/'], schwa: ['uh', '/\u0259/'], x: ['/ks/', 'ks'] };
+const TTS_CUT2 = { m: ['man', 340, 15], g: ['go', 170], b: ['bus', 170], d: ['dish', 170], j: ['jet', 240], t: ['ten', 200], k: ['kite', 200], c: ['cup', 200], p: ['pet', 200] };
+const TTS_WORD = { m: 'mmm', ar: 'are', or: 'or', air: 'air', ear: 'ear', er: 'err' };
+const TTS_WORD_TRY = { m: ['mmm', 'mm', 'hmm', '/m\u02D0\u02D0/'], n: ['nnn', '/n\u02D0\u02D0/'], s: ['sss', 'ss', '/s\u02D0\u02D0/'], z: ['zzz', '/z\u02D0\u02D0/'], f: ['fff', '/f\u02D0\u02D0/'], v: ['vvv', '/v\u02D0\u02D0/'],
+  l: ['lll', '/l\u02D0\u02D0/'], r: ['rrr', 'err', '/\u0279\u02D0/'], sh: ['shh', 'shhh', '/\u0283\u02D0\u02D0/'], th: ['/\u03B8\u02D0\u02D0/', 'thhh'], dh: ['/\u00F0\u02D0/'], ng: ['/\u014B\u02D0/', 'ng'], ar: ['are', 'ar', 'ahr', '/\u0251\u0279/'], or: ['or', 'ore', '/\u0254\u0279/'], air: ['air', 'are', '/\u025B\u0279/'], ear: ['ear', 'eer', '/\u026A\u0279/'], er: ['err', 'er', 'ur', '/\u025D/'], schwa: ['uh', '/\u0259/'], x: ['/ks/', 'ks'] };
 function ttsCutDefault(id) { const c = TTS_CUT[id], e = TTS_END[id]; if (e) return 'end:' + e[0] + ':' + e[1] + (e[2] ? ':' + e[2] : ''); return c ? 'cut:' + c[0] + ':' + c[1] + (c[2] ? ':' + c[2] : '') : ''; }
 function ttsVariants(id) {
   const ipa = (/^en-(GB|AU|IN)/.test(ttsVoice()) ? SOUND_IPA_UK : SOUND_IPA_US)[id] || '';
