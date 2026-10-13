@@ -2289,6 +2289,9 @@
   .chk-box { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 3px solid rgba(0,0,0,0.28); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: #fff; background: #fff; }
   .chk-row.on .chk-box { background: var(--green); border-color: var(--green); }
   .chk-x { flex: none; border: 0; border-radius: 14px; padding: 0 14px; background: rgba(220,60,60,0.12); color: #b22; font: inherit; font-size: 15px; font-weight: 900; cursor: pointer; }
+.snd-credit{display:flex;align-items:center;gap:12px;margin:10px 4px;padding:10px 12px;border-radius:14px;background:var(--card,#fff);border:1px solid rgba(0,0,0,.1);text-decoration:none;color:inherit}
+.snd-credit img{width:52px;height:52px;object-fit:contain;border-radius:10px;flex:none}
+.snd-credit span{display:flex;flex-direction:column;gap:2px}.snd-credit b{font-size:15px}.snd-credit small{font-size:13px;opacity:.7}
 </style>
 </head>
 <body>
@@ -3126,6 +3129,7 @@
         </div>
         <div class="sublabel">Which sounds the keys offer</div>
         <div class="seg-row" id="segSoundStage"></div>
+        <div id="soundCreditsBox"></div>
         <div class="help-note" style="margin:6px 4px 12px">First stage: m s a t n i f p. Second: all the letters, and sh ch th ng. Third: every vowel sound, vowel + r, the weak vowel and zh. A word's sounds are worked out from its spelling; change them from the word's menu on the targets page (Sounds).</div>
       </div>
     </div>
@@ -3194,7 +3198,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 567 - 13 Oct';
+const BUILD = 'build 568 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16772,7 +16776,7 @@ function openTtsTry(id, back) {
     body.appendChild(sheetBtn('Done', 'primary', () => { if (back) back(); else closeWordSheet(); }));
   });
 }
-async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); try { smMarkOwn('a', id); smCreditSet(id, null); } catch (e) {} }
+async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); try { smMarkOwn('a', id); smMarkHuman('a', id, false); smCreditSet(id, null); } catch (e) {} }
 // a few sounds one after another in a voice, to compare voices before making them all (nothing is kept)
 async function ttsTest(voice, status) {
   const ids = ['m', 'a', 's', 'sh', 'ee', 't'];
@@ -16793,8 +16797,8 @@ async function smAddZip(file) {
     const id = SOUND_K[nm] && !SOUND_K[nm].label.includes('ə') ? nm : (SOUND_BY_LABEL[nm] || null); if (!id) continue;
     const data = await e.get();
     const isV = /\.video$/i.test(m[1]) || !!VID[ext] && !AUDIO_TYPES[ext] || (ext === 'webm' && /\.video$/i.test(m[1]));
-    if (!isV && AUDIO_TYPES[ext]) { await smPut('a', id, new Blob([data], { type: AUDIO_TYPES[ext] })); smMarkOwn('a', id); n++; }
-    else if (VID[ext]) { await smPut('v', id, new Blob([data], { type: VID[ext] })); smMarkOwn('v', id); n++; }
+    if (!isV && AUDIO_TYPES[ext]) { await smPut('a', id, new Blob([data], { type: AUDIO_TYPES[ext] })); smMarkOwn('a', id); smMarkHuman('a', id, true); n++; }
+    else if (VID[ext]) { await smPut('v', id, new Blob([data], { type: VID[ext] })); smMarkOwn('v', id); smMarkHuman('v', id, true); n++; }
   }
   return n;
 }
@@ -16827,7 +16831,9 @@ const MEDIA_EXT = { 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/mp4': 'm4a',
 async function smExportZip() {
   await smLoad();
   const files = [];
+  const bIn = smBuiltin();
   for (const kind of ['a', 'v']) for (const id of SM[kind]) {
+    if (bIn.has(kind + '|' + id)) continue;      // (the built-in sounds are licensed to this app: not passed on)
     const blob = await smTx('readonly', st => st.get(kind + '|' + id)); if (!blob) continue;
     const ext = MEDIA_EXT[blob.type] || (kind === 'v' ? 'mp4' : 'mp3');
     files.push({ name: id + (kind === 'v' ? '.video' : '') + '.' + ext, data: new Uint8Array(await blob.arrayBuffer()) });
@@ -16844,18 +16850,34 @@ async function smExportZip() {
 function smBuiltin() { try { return new Set(JSON.parse(localStorage.getItem('kbd-sm-builtin') || '[]')); } catch (e) { return new Set(); } }
 function smBuiltinSave(s) { try { localStorage.setItem('kbd-sm-builtin', JSON.stringify([...s])); } catch (e) {} }
 function smMarkOwn(kind, id) { const b = smBuiltin(); if (b.delete(kind + '|' + id)) smBuiltinSave(b); }
+// which of this device's own sounds a person made (recorded or loaded from a file) - those are never replaced by the
+// built-in set; a computer-made one (Google voice, Wikipedia) is
+function smHuman() { try { return new Set(JSON.parse(localStorage.getItem('kbd-sm-human') || '[]')); } catch (e) { return new Set(); } }
+function smMarkHuman(kind, id, on) { const h = smHuman(), k = kind + '|' + id; if (on) h.add(k); else h.delete(k); try { localStorage.setItem('kbd-sm-human', JSON.stringify([...h])); } catch (e) {} }
+function smBuiltinCredits() { try { return JSON.parse(localStorage.getItem('kbd-sm-bcredits') || '[]'); } catch (e) { return []; } }
+// the credit for the built-in sounds: the maker's logo with a link to their store (as their licence asks)
+function soundCreditsInto(host) {
+  if (!host) return; host.querySelectorAll('.snd-credit').forEach(x => x.remove());
+  smBuiltinCredits().forEach(c => { if (!c || !c.name) return;
+    const a = document.createElement('a'); a.className = 'snd-credit'; a.target = '_blank'; a.rel = 'noopener'; if (c.link) a.href = c.link;
+    if (c.logo) { const im = document.createElement('img'); im.src = c.logo; im.alt = c.name; a.appendChild(im); }
+    const t = document.createElement('span'); t.innerHTML = '<b></b><small></small>'; t.querySelector('b').textContent = (c.what || 'Sounds') + ' by ' + c.name; t.querySelector('small').textContent = c.link ? 'Visit their store \u2197' : ''; a.appendChild(t);
+    host.appendChild(a); });
+}
 async function smBuiltinLoad() {
   try {
     const r = await fetch('sounds/manifest.json', { cache: 'no-cache' }); if (!r.ok) return;
     const m = await r.json(); const ver = Number(m.version || 0); let have = 0; try { have = Number(localStorage.getItem('kbd-sm-ver') || 0); } catch (e) {}
     if (!ver || ver <= have) return;
-    await smLoad(); const b = smBuiltin();
+    await smLoad(); const b = smBuiltin(), hu = smHuman();
     for (const [id, f] of Object.entries(m.files || {})) for (const kind of ['a', 'v']) {
       const path = f[kind]; if (!path || !SOUND_K[id]) continue;
-      const key = kind + '|' + id; if (SM[kind].has(id) && !b.has(key)) continue;      // (this device's own: kept)
+      const key = kind + '|' + id; if (SM[kind].has(id) && hu.has(key) && !b.has(key)) continue;      // (made by a person on this device: kept)
       const res = await fetch(path, { cache: 'no-cache' }); if (!res.ok) continue;
-      await smPut(kind, id, await res.blob()); b.add(key);
+      await smPut(kind, id, await res.blob()); b.add(key); if (kind === 'a') smCreditSet(id, null);
     }
+    try { localStorage.setItem('kbd-sm-bcredits', JSON.stringify(m.credits || [])); } catch (e) {}
+    try { if (typeof SMA !== 'undefined' && SMA && SMA.buf) SMA.buf = {}; } catch (e) {}
     smBuiltinSave(b); try { localStorage.setItem('kbd-sm-ver', String(ver)); } catch (e) {}
   } catch (e) {}
 }
@@ -16914,7 +16936,7 @@ function openSoundRecorder(startId) {
       try { await sndRecOpen(); } catch (e) { st.textContent = 'The microphone could not be used. Allow it for this page in the iPad settings (Settings > Safari > Microphone) and try again.'; return; }
       x.classList.add('on'); x.textContent = '■ Stop'; st.textContent = 'Recording… say "' + K.label + '" now.';
       rec = sndRecRecord(2600, () => {}); const raw = await rec.done; rec = null; x.classList.remove('on'); x.textContent = '● Record';
-      st.textContent = 'Saving…'; const clip = await sndRecTrim(raw); await smPut('a', id, clip); smMarkOwn('a', id); smCreditSet(id, null); st.textContent = 'Recorded ✓ - listen:'; soundSay(id);
+      st.textContent = 'Saving…'; const clip = await sndRecTrim(raw); await smPut('a', id, clip); smMarkOwn('a', id); smMarkHuman('a', id, true); smCreditSet(id, null); st.textContent = 'Recorded ✓ - listen:'; soundSay(id);
     });
     b('▶ Play', '', () => soundSay(id));
     b('▶', 'nav', () => { end(); if (i < ids.length - 1) i++; else { closeWordSheet(); try { openSoundMedia(); } catch (e) {} return; } draw(); });
@@ -17005,7 +17027,7 @@ function openSoundMedia() {
     const run = async (all, b) => {
       try { localStorage.setItem('kbd-tts-key', ki.value.trim()); } catch (e) {} ttsVoiceSet(vi.value);
       if (!ttsKey()) { status.textContent = 'Paste the API key first.'; return; }
-      const ids = soundAllIds().filter(id => all || !SM.a.has(id)); let ok = 0, bad = '';
+      const bI = smBuiltin(), hI = smHuman(); const ids = soundAllIds().filter(id => !SM.a.has(id) || (all && !bI.has('a|' + id) && !hI.has('a|' + id))); let ok = 0, bad = '';
       b.disabled = true;
       for (const id of ids) { status.textContent = 'Making ' + (SOUND_K[id] ? SOUND_K[id].label : id) + ' (' + (ok + 1) + ' of ' + ids.length + ')…';
         try { await ttsMake(id); ok++; } catch (e) { bad = e.message || String(e); if (/key|permission|denied|disabled|billing|403|400/i.test(bad)) break; } }
@@ -17015,7 +17037,7 @@ function openSoundMedia() {
     };
     mk.appendChild(btn('Test this voice', async b => { try { localStorage.setItem('kbd-tts-key', ki.value.trim()); } catch (e) {} ttsVoiceSet(vi.value); if (!ttsKey()) { status.textContent = 'Paste the API key first.'; return; }
       b.disabled = true; try { await ttsTest(vi.value, status); } catch (e) { status.textContent = 'Could not make the test: ' + (e.message || e); } b.disabled = false; }));
-    mk.appendChild(btn('Make the missing sounds', b => run(false, b), 'primary')); mk.appendChild(btn('Remake every sound', b => { if (confirm('Replace every sound file (including your own) with the Google voice?')) run(true, b); }));
+    mk.appendChild(btn('Make the missing sounds', b => run(false, b), 'primary')); mk.appendChild(btn('Remake every sound', b => { if (confirm('Remake every Google-voice sound? The built-in sounds and any you recorded or added stay as they are.')) run(true, b); }));
     body.appendChild(mk); body.appendChild(status);
     note('A Google Cloud key with the Text-to-Speech API turned on (it stays on this device only). Test a voice first; a UK voice uses British vowels. Each sound below can then be remade (\u21BB), or tried in other versions to pick the best (Try versions). These sounds are used only by the sound keyboard games - the ordinary keyboard keeps its letters.');
     head('A set of files at once');
@@ -17039,15 +17061,15 @@ function openSoundMedia() {
           r.appendChild(btn('Try versions', () => openTtsTry(id, () => openSoundMedia())));
           if (false) r.appendChild(btn('\u270E', () => { const cur = ttsSayAs()[id] || ''; const v = prompt('How the Google voice should say "' + K.label + '" (as in ' + (K.ex || '') + ').\n\nIPA between slashes, e.g. /s\u02D0/, or plain words, e.g. sss or ah. Leave it empty for the usual sound.', cur);
             if (v === null) return; ttsSayAsSet(id, v.trim()); ttsMake(id).then(() => { drawList(); soundSay(id); }).catch(e => alert('Could not make it: ' + (e.message || e))); })); }
-        r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); smMarkOwn('a', id); smCreditSet(id, null); drawList(); soundSay(id); })));
-        r.appendChild(btn(SM.v.has(id) ? 'Video ✓' : 'Video', () => smPick('video/*', async f => { await smPut('v', id, f); smMarkOwn('v', id); drawList(); })));
-        if (SM.a.has(id) || SM.v.has(id)) r.appendChild(btn('✕', async () => { if (!confirm('Remove the audio and video for ' + K.label + '?')) return; await smDel('a', id); await smDel('v', id); smCreditSet(id, null); drawList(); }, 'danger'));
+        r.appendChild(btn(SM.a.has(id) ? 'Audio ✓' : 'Audio', () => smPick('audio/*', async f => { await smPut('a', id, f); smMarkOwn('a', id); smMarkHuman('a', id, true); smCreditSet(id, null); drawList(); soundSay(id); })));
+        r.appendChild(btn(SM.v.has(id) ? 'Video ✓' : 'Video', () => smPick('video/*', async f => { await smPut('v', id, f); smMarkOwn('v', id); smMarkHuman('v', id, true); drawList(); })));
+        if (SM.a.has(id) || SM.v.has(id)) r.appendChild(btn('✕', async () => { if (!confirm('Remove the audio and video for ' + K.label + '?')) return; await smDel('a', id); await smDel('v', id); smMarkHuman('a', id, false); smMarkHuman('v', id, false); smCreditSet(id, null); drawList(); }, 'danger'));
         list.appendChild(r);
       });
     };
     drawList();
     const credBox = document.createElement('div'); body.appendChild(credBox);
-    drawCredits = () => { credBox.innerHTML = ''; const cr = smCredits(), ks = Object.keys(cr).filter(id => SM.a.has(id)); if (!ks.length) return;
+    drawCredits = () => { credBox.innerHTML = ''; soundCreditsInto(credBox); const cr = smCredits(), ks = Object.keys(cr).filter(id => SM.a.has(id)); if (!ks.length) return;
       const h = document.createElement('div'); h.className = 'help-note chk-head'; h.textContent = 'Credits'; credBox.appendChild(h);
       const c = document.createElement('div'); c.className = 'help-note sm-credits'; c.textContent = 'Sound recordings from Wikimedia Commons (IPA chart recordings): ' + ks.map(id => SOUND_K[id].label + ' \u2013 ' + cr[id]).join('; ') + '. Each is used under the licence on its page.'; credBox.appendChild(c); };
     drawCredits();
@@ -18512,6 +18534,7 @@ function renderSettings() {
     GAME_LIST.forEach(([k, ic, nm]) => { const r = document.createElement('div'); r.className = 'setting-row'; const t = document.createElement('span'); t.textContent = ic + '  ' + nm; r.appendChild(t);
       const x = document.createElement('div'); x.className = 'toggle' + (on[k] ? ' on' : ''); x.addEventListener('click', () => { state.gamesOn = Object.assign({}, gamesOn(), { [k]: !on[k] }); save(); renderSettings(); }); r.appendChild(x); box.appendChild(r); }); } }
   { const r = document.getElementById('soundMediaRow'); if (r && !r.dataset.on) { r.dataset.on = '1'; r.addEventListener('click', () => openSoundMedia()); } }
+  try { soundCreditsInto(document.getElementById('soundCreditsBox')); } catch (e) {}
   { const r = document.getElementById('soundTunerRow'); if (r && !r.dataset.on) { r.dataset.on = '1'; r.addEventListener('click', () => openSoundTuner()); } }
   { const sp = document.getElementById('sumPhonics'); if (sp) { const n = (typeof SM !== 'undefined') ? SM.a.size : 0; sp.textContent = ['First', 'Second', 'Third'][(state.soundStage || 3) - 1] + ' stage' + (n ? ' \u00B7 ' + n + ' sound files' : ''); } }
   buildSeg('segSoundStage', [{ value: 1, label: 'First stage' }, { value: 2, label: 'Second stage' }, { value: 3, label: 'Third stage' }], state.soundStage || 3, v => { state.soundStage = v; save(); renderSettings(); });
