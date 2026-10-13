@@ -3164,7 +3164,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 558 - 13 Oct';
+const BUILD = 'build 559 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16616,14 +16616,18 @@ function ttsSayAs() { try { return JSON.parse(localStorage.getItem('kbd-tts-say'
 function ttsSayAsSet(id, v) { const m = ttsSayAs(); if (v) m[id] = v; else delete m[id]; try { localStorage.setItem('kbd-tts-say', JSON.stringify(m)); } catch (e) {} }
 // the request for one sound: its own "say as" (IPA between slashes, or plain words), else the sound in IPA
 function ttsSsml(id, voice) {
-  const lang = voice.split('-').slice(0, 2).join('-') || 'en-US', own = ttsSayAs()[id], text = SOUND_K[id] ? SOUND_K[id].label : id;
+  const lang = voice.split('-').slice(0, 2).join('-') || 'en-US', own = ttsSayAs()[id];
+  // (the words inside are what the voice falls back on if it will not say the sound alone: "tuh", never the letter's name "tee")
+  const text = (SOUND_SPEAK_OPTS[id] || [])[0] || (SOUND_K[id] ? SOUND_K[id].label : id);
   const esc = t => String(t).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
   if (own && !/^\/.*\/$/.test(own.trim())) return '<speak>' + esc(own) + '</speak>';
   let ipa = own ? own.trim().slice(1, -1) : (/^en-(GB|AU|IN)/.test(lang) ? SOUND_IPA_UK : SOUND_IPA_US)[id];
   if (!ipa) throw new Error('no sound');
   if (!own && SOUND_HOLD.has(id) && !/ː/.test(ipa)) ipa += 'ː';
+  if (!own && TTS_STOP[id]) ipa = TTS_STOP[id];      // (a sound that cannot be held: said with its puff of air, the way phonics teaches it)
   return '<speak><phoneme alphabet="ipa" ph="' + esc(ipa) + '">' + esc(text) + '</phoneme></speak>';
 }
+const TTS_STOP = { p: 'p\u02B0', t: 't\u02B0', k: 'k\u02B0', c: 'k\u02B0', ch: 't\u0283\u02B0', q: 'k\u02B0w', x: 'ks\u02D0' };
 async function ttsFetch(id, voice) {
   const key = ttsKey(); if (!key) throw new Error('no key');
   voice = voice || ttsVoice(); const lang = voice.split('-').slice(0, 2).join('-') || 'en-US';
@@ -17147,7 +17151,8 @@ const SOUND_COLOR = { a: 'green', e: 'green', i: 'green', o: 'green', u: 'green'
   ai: 'yellow', ee: 'blue', igh: 'pink', oa: 'orange', oo: 'teal', uu: 'brown', schwa: 'grey', aw: 'grey', ar: 'orange', air: 'pink', er: 'lime', ear: 'red',
   ow: 'blue', oi: 'lime', or: 'teal', s: 'blue', sh: 'red', ch: 'orange', zh: 'pink', th: 'teal', dh: 'lime', ng: 'yellow' };
 function soundColor(id) { return SC[SOUND_COLOR[id] || (soundIsVowel(id) ? 'green' : 'purple')]; }
-function soundTint(el, id) { const c = soundColor(id); el.style.background = c[0]; el.style.color = c[1]; el.style.borderColor = c[2]; }
+const SOUND_FAMILY_COLOURS = false;      // (waiting for the choice between OG colours and colours by sound)
+function soundTint(el, id) { if (!SOUND_FAMILY_COLOURS) return; const c = soundColor(id); el.style.background = c[0]; el.style.color = c[1]; el.style.borderColor = c[2]; }
 function soundKbPaint() {
   const kb = document.getElementById('gmSoundKb'); if (!kb) return;
   const g = game, c = g && g.cur, want = c && c.parts ? c.parts[c.k] : null;
