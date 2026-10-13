@@ -1805,6 +1805,11 @@
   }
   .overlay.show { display: flex; }
   /* settings opened from the home page's switches: a page under them, not a small window */
+  .set-top { position: sticky; top: -22px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -22px -28px 10px; padding: 16px 22px 12px 28px; background: var(--surface); border-bottom: 1px solid #ece8de; }
+  .set-top h3 { margin: 0; }
+  .set-done { border: 0; border-radius: 999px; background: var(--ink, #1c1c1c); color: #fff; font-family: inherit; font-weight: 800; font-size: 16px; padding: 10px 22px; }
+  .set-section { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 18px 6px 8px; }
+  .set-top + .set-section { margin-top: 4px; }
   #settingsMenu.page { top: var(--set-top, 120px); background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; align-items: stretch; padding: 0 16px 16px; z-index: 45; }
   #settingsMenu.page .sheet { width: 100%; max-width: none; max-height: none; height: 100%; box-sizing: border-box; border-radius: 22px; animation: none; padding: 22px 28px; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -2692,8 +2697,7 @@
 <!-- Settings -->
 <div class="overlay" id="settingsMenu">
   <div class="sheet">
-    <h3>Settings</h3>
-    <div class="key-preview" style="font-size: 28px;">⚙</div>
+    <div class="set-top"><h3>Settings</h3><button class="set-done" data-action="cancel">Done</button></div>
 
     <!-- ============ PROMPTS ============ -->
     <div class="sgroup" data-group="prompts">
@@ -2940,10 +2944,6 @@
         <div class="sublabel" style="margin-top:0">In the Games menu</div>
         <div class="settings-list" id="gamesOnList"></div>
         <div class="help-note" style="margin:6px 4px 12px">A game switched off stays in the Games menu greyed out, and cannot be started.</div>
-        <div class="sublabel">Sound it out: the sound keyboard</div>
-        <div class="seg-row" id="segSoundStage"></div>
-        <div class="settings-list"><div class="setting-row" id="soundMediaRow" style="cursor:pointer"><span>&#128264;  Sounds: audio and video files</span><span class="hf-btn">Open</span></div></div>
-        <div class="help-note" style="margin:6px 4px 12px">First stage: m s a t n i f p. Second: all the letters, and sh ch th ng. Third: every vowel sound, vowel + r, the weak vowel and zh. A word's sounds are worked out from its spelling; change them from the word's menu on the targets page (Sounds).</div>
         <div class="sublabel">The other tiles in the row (Sight words)</div>
         <div class="seg-row" id="segPicLevel"></div>
         <div class="help-note">Pictures are added on the targets page: tap the camera at the end of a target (up to 7 pictures each, switched on or off, each with its own spelling if needed, like "strawberries"). The games button (&#127918;) in the pop-out starts a game: choose the game, the folders and how many turns. Green in the bar: right first time; blue: right on the second go; yellow: after the right tile was shown. A target got wrong comes back a turn or two later.</div>
@@ -3100,10 +3100,30 @@
       </div>
     </div>
 
+    <div class="sgroup" data-group="phonics">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#128483;&#65039;</span>
+        <span class="sg-title">Sound keyboard (phonics)</span>
+        <span class="sg-sum" id="sumPhonics"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="help-note" style="margin:0 4px 10px">The keyboard of sounds and spellings used by Sound it out, Hear the sound and Match the spelling. Its sounds are its own - the ordinary keyboard keeps its letters and its voice.</div>
+        <div class="sublabel" style="margin-top:0">Its sounds</div>
+        <div class="settings-list">
+          <div class="setting-row" id="soundMediaRow" style="cursor:pointer"><span>&#128264;  Sound files: Google voice, recordings, sharing</span><span class="hf-btn">Open</span></div>
+          <div class="setting-row" id="soundTunerRow" style="cursor:pointer"><span>&#128483;&#65039;  How the iPad voice says each sound</span><span class="hf-btn">Open</span></div>
+        </div>
+        <div class="sublabel">Which sounds the keys offer</div>
+        <div class="seg-row" id="segSoundStage"></div>
+        <div class="help-note" style="margin:6px 4px 12px">First stage: m s a t n i f p. Second: all the letters, and sh ch th ng. Third: every vowel sound, vowel + r, the weak vowel and zh. A word's sounds are worked out from its spelling; change them from the word's menu on the targets page (Sounds).</div>
+      </div>
+    </div>
+
     <div class="sgroup" data-group="voice">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">🔊</span>
-        <span class="sg-title">Voice</span>
+        <span class="sg-title">Keyboard voice</span>
         <span class="sg-sum" id="sumVoice"></span>
         <span class="sg-chev">▾</span>
       </button>
@@ -3164,7 +3184,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 563 - 13 Oct';
+const BUILD = 'build 564 - 13 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16576,16 +16596,39 @@ async function smLoad() {
   try { const keys = await smTx('readonly', st => st.getAllKeys()); SM.a = new Set(); SM.v = new Set();
     (keys || []).forEach(k => { const [kind, id] = String(k).split('|'); if (kind === 'a') SM.a.add(id); else if (kind === 'v') SM.v.add(id); }); } catch (e) {}
 }
-async function smPut(kind, id, blob) { await smTx('readwrite', st => st.put(blob, kind + '|' + id)); SM[kind].add(id); if (SM.urls[kind + '|' + id]) { URL.revokeObjectURL(SM.urls[kind + '|' + id]); delete SM.urls[kind + '|' + id]; } }
+async function smPut(kind, id, blob) { await smTx('readwrite', st => st.put(blob, kind + '|' + id)); SM[kind].add(id); if (kind === 'a' && typeof SMA !== 'undefined') delete SMA.buf[id]; if (SM.urls[kind + '|' + id]) { URL.revokeObjectURL(SM.urls[kind + '|' + id]); delete SM.urls[kind + '|' + id]; } }
 async function smDel(kind, id) { await smTx('readwrite', st => st.delete(kind + '|' + id)); SM[kind].delete(id); delete SM.urls[kind + '|' + id]; }
 async function smUrl(kind, id) {
   const key = kind + '|' + id; if (SM.urls[key]) return SM.urls[key];
   const blob = await smTx('readonly', st => st.get(key)); if (!blob) return null;
   return (SM.urls[key] = URL.createObjectURL(blob));
 }
+// Sounds are played through the device's sound engine (not an audio player), which starts them at once: an iPad's
+// audio player can swallow the first moment of a very short sound, which is all a b or a t is.
+const SMA = { ctx: null, buf: {}, src: null };
+function smCtx() { if (!SMA.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) SMA.ctx = new AC(); } if (SMA.ctx && SMA.ctx.state === 'suspended') SMA.ctx.resume().catch(() => {}); return SMA.ctx; }
+async function smBuffer(id) {
+  if (SMA.buf[id]) return SMA.buf[id];
+  const blob = await smTx('readonly', st => st.get('a|' + id)); if (!blob || !blob.arrayBuffer) return null;
+  const ctx = smCtx(), ab = await blob.arrayBuffer();
+  const b = await new Promise((res, rej) => { const p = ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+  return (SMA.buf[id] = b);
+}
+async function smPlayBlob(blob) {
+  try { const ctx = smCtx(); const ab = await blob.arrayBuffer(); const b = await new Promise((res, rej) => { const p = ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+    try { if (SMA.src) SMA.src.stop(); } catch (e) {} const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); SMA.src = src;
+    await new Promise(r => { src.onended = r; setTimeout(r, (b.duration + 0.5) * 1000); }); }
+  catch (e) { const u = URL.createObjectURL(blob); await new Promise(res => { const a = new Audio(u); a.onended = res; a.onerror = res; a.play().catch(res); setTimeout(res, 3000); }); URL.revokeObjectURL(u); }
+}
 function smPlay(id) {
   if (!SM.a.has(id)) return false;
-  smUrl('a', id).then(u => { if (!u) return; try { if (currentAudio) currentAudio.pause(); } catch (e) {} const a = new Audio(u); try { currentAudio = a; } catch (e) {} a.play().catch(() => {}); }).catch(() => {});
+  const viaPlayer = () => smUrl('a', id).then(u => { if (!u) return; try { if (currentAudio) currentAudio.pause(); } catch (e) {} const a = new Audio(u); try { currentAudio = a; } catch (e) {} a.play().catch(() => {}); }).catch(() => {});
+  try {
+    const ctx = smCtx(); if (!ctx) { viaPlayer(); return true; }
+    smBuffer(id).then(b => { if (!b) { viaPlayer(); return; }
+      try { if (SMA.src) SMA.src.stop(); } catch (e) {} try { if (currentAudio) currentAudio.pause(); } catch (e) {}
+      const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); SMA.src = src; }).catch(viaPlayer);
+  } catch (e) { viaPlayer(); }
   return true;
 }
 setTimeout(smLoad, 300);
@@ -16638,11 +16681,12 @@ async function ttsCut(word, ms, voice, thr) {
     const buf = await new Promise((res, rej) => { blob.arrayBuffer().then(ab => { const p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }, rej); });
     const d = buf.getChannelData(0), sr = buf.sampleRate; let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
     let a = 0; const th = peak * Math.min(thr || 0.04, 0.04); while (a < d.length && Math.abs(d[a]) < th) a++;
-    a = Math.max(0, a - Math.round(sr * 0.025)); const n = Math.min(d.length - a, Math.round(sr * ms / 1000)), fade = Math.round(sr * Math.min(0.03, ms / 3000)), gain = Math.min(4, 0.89 / (peak || 1));
+    a = Math.max(0, a - Math.round(sr * 0.025)); const n0 = Math.min(d.length - a, Math.round(sr * ms / 1000)), fade = Math.round(sr * Math.min(0.03, ms / 3000)), gain = Math.min(4, 0.89 / (peak || 1));
+    const pre = Math.round(sr * 0.12), post = Math.round(sr * 0.08), n = pre + n0 + post;      // (a little quiet before and after, so nothing is lost when it starts)
     const out = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
     w(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
     out.setUint32(24, sr, true); out.setUint32(28, sr * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); w(36, 'data'); out.setUint32(40, n * 2, true);
-    for (let i = 0; i < n; i++) { let v = d[a + i] * gain; if (n - i < fade) v *= (n - i) / fade; out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, v)) * 0x7FFF, true); }
+    for (let i = 0; i < n0; i++) { let v = d[a + i] * gain; if (n0 - i < fade) v *= (n0 - i) / fade; out.setInt16(44 + (pre + i) * 2, Math.max(-1, Math.min(1, v)) * 0x7FFF, true); }
     return new Blob([out.buffer], { type: 'audio/wav' });
   } finally { try { ac.close(); } catch (e) {} }
 }
@@ -16688,7 +16732,7 @@ function openTtsTry(id, back) {
       const l = document.createElement('span'); l.className = 'sm-st'; l.textContent = lab + (inUse ? '  \u2713 in use' : ''); r.appendChild(l);
       const play = document.createElement('button'); play.className = 'hf-btn'; play.textContent = '\u25B6';
       play.addEventListener('click', async () => { play.disabled = true; st.textContent = '';
-        try { if (!blobs[i]) blobs[i] = await ttsFetch(id, ttsVoice(), v); const u = URL.createObjectURL(blobs[i]); const a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); await a.play(); }
+        try { smCtx(); if (!blobs[i]) blobs[i] = await ttsFetch(id, ttsVoice(), v); await smPlayBlob(blobs[i]); }
         catch (e) { st.textContent = 'Could not make that version: ' + (e.message || e); } play.disabled = false; });
       const use = document.createElement('button'); use.className = 'hf-btn primary'; use.textContent = 'Use this';
       use.addEventListener('click', async () => { use.disabled = true;
@@ -16704,9 +16748,7 @@ async function ttsMake(id) { await smPut('a', id, await ttsFetch(id)); try { smM
 async function ttsTest(voice, status) {
   const ids = ['m', 'a', 's', 'sh', 'ee', 't'];
   for (const id of ids) { if (status) status.textContent = voice + ': ' + SOUND_K[id].label + '…';
-    const blob = await ttsFetch(id, voice); const u = URL.createObjectURL(blob);
-    await new Promise(res => { const a = new Audio(u); a.onended = res; a.onerror = res; a.play().catch(res); setTimeout(res, 3000); });
-    URL.revokeObjectURL(u); await new Promise(r => setTimeout(r, 250)); }
+    const blob = await ttsFetch(id, voice); await smPlayBlob(blob); await new Promise(r => setTimeout(r, 250)); }
   if (status) status.textContent = 'That was m, a, s, sh, ee, t in ' + voice + '.';
 }
 const TTS_VOICES = ['en-US-Neural2-F', 'en-US-Neural2-D', 'en-US-Wavenet-F', 'en-US-Standard-C', 'en-GB-Neural2-A', 'en-GB-Wavenet-A', 'en-AU-Neural2-A'];
@@ -17622,7 +17664,8 @@ document.getElementById('homeSettingsBtn').addEventListener('click', () => {
   const m = document.getElementById('settingsMenu');
   if (m.classList.contains('show')) { m.querySelector('[data-action="cancel"]') ? m.querySelector('[data-action="cancel"]').click() : (closeAllMenus(), save(), render(), showHome()); return; }
   const row = document.querySelector('#viewHome .home-row');
-  m.style.setProperty('--set-top', Math.round(row.getBoundingClientRect().bottom + 8) + 'px');
+  m.style.setProperty('--set-top', 'calc(env(safe-area-inset-top, 0px) + 12px)');      // (from the top of the screen: the whole page for settings, with Done always at its top)
+  void row;
   m.classList.add('page');
   openSettingsSheet();
   document.getElementById('homeSettingsBtn').classList.remove('off');
@@ -18324,6 +18367,7 @@ const SETUP_STEPS = [
 function openSettingsAt(groupKey) {
   refreshVoiceList();
   renderSettings();
+  arrangeSettings();
   document.querySelectorAll('#settingsMenu .sgroup').forEach(g => {
     g.classList.toggle('open', g.dataset.group === groupKey);
   });
@@ -18398,11 +18442,25 @@ function addSectionMovers() {
 }
 
 // Every group folded away, so the sheet opens calm
+// The settings in sections: the two keyboards and their voices first, then prompting, games, the pages, the files
+const SETTINGS_SECTIONS = [['Keyboards and voices', ['voice', 'phonics']], ['Prompting and learning', ['prompts', 'practice', 'errors', 'data']], ['Games', ['pictures']],
+  ['Pages and display', ['sizes', 'keys', 'bank', 'magic']], ['Files and backup', ['layout', 'sync']]];
+function arrangeSettings() {
+  const sheet = document.querySelector('#settingsMenu .sheet'); if (!sheet) return;
+  const anchor = Array.from(sheet.children).find(el => el.classList.contains('full-row')) || null;
+  sheet.querySelectorAll('.set-section').forEach(x => x.remove());
+  const byKey = {}; settingsSections().forEach(g => { byKey[g.dataset.group] = g; g.querySelectorAll('.sg-move').forEach(m => m.remove()); });
+  SETTINGS_SECTIONS.forEach(([title, keys]) => {
+    const shown = keys.filter(k => byKey[k] && byKey[k].style.display !== 'none'); if (!shown.length) return;
+    const h = document.createElement('div'); h.className = 'set-section'; h.textContent = title; sheet.insertBefore(h, anchor);
+    keys.forEach(k => { if (byKey[k]) sheet.insertBefore(byKey[k], anchor); delete byKey[k]; });
+  });
+  Object.values(byKey).forEach(g => sheet.insertBefore(g, anchor));
+}
 function openSettingsSheet() {
   refreshVoiceList();
   renderSettings();
-  applySettingsOrder();
-  addSectionMovers();
+  arrangeSettings();
   document.querySelectorAll('#settingsMenu .sgroup').forEach(g => g.classList.remove('open'));
   document.getElementById('settingsMenu').classList.add('show');
   document.querySelector('#settingsMenu .sheet').scrollTop = 0;
@@ -18414,6 +18472,8 @@ function renderSettings() {
     GAME_LIST.forEach(([k, ic, nm]) => { const r = document.createElement('div'); r.className = 'setting-row'; const t = document.createElement('span'); t.textContent = ic + '  ' + nm; r.appendChild(t);
       const x = document.createElement('div'); x.className = 'toggle' + (on[k] ? ' on' : ''); x.addEventListener('click', () => { state.gamesOn = Object.assign({}, gamesOn(), { [k]: !on[k] }); save(); renderSettings(); }); r.appendChild(x); box.appendChild(r); }); } }
   { const r = document.getElementById('soundMediaRow'); if (r && !r.dataset.on) { r.dataset.on = '1'; r.addEventListener('click', () => openSoundMedia()); } }
+  { const r = document.getElementById('soundTunerRow'); if (r && !r.dataset.on) { r.dataset.on = '1'; r.addEventListener('click', () => openSoundTuner()); } }
+  { const sp = document.getElementById('sumPhonics'); if (sp) { const n = (typeof SM !== 'undefined') ? SM.a.size : 0; sp.textContent = ['First', 'Second', 'Third'][(state.soundStage || 3) - 1] + ' stage' + (n ? ' \u00B7 ' + n + ' sound files' : ''); } }
   buildSeg('segSoundStage', [{ value: 1, label: 'First stage' }, { value: 2, label: 'Second stage' }, { value: 3, label: 'Third stage' }], state.soundStage || 3, v => { state.soundStage = v; save(); renderSettings(); });
   buildSeg('segPicLevel', [{ value: 'easy', label: 'Easy: very different words' }, { value: 'hard', label: 'Hard: words that look alike' }], state.picLevel || 'easy', v => { state.picLevel = v; save(); renderSettings(); });
   { const sp = document.getElementById('sumPictures');
