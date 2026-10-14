@@ -3258,7 +3258,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 595 - 14 Oct';
+const BUILD = 'build 596 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6361,6 +6361,15 @@ function restartTargetTyping() {
 }
 function soundPracticeNow() { try { return !!state.soundKeysOn && !game && !!state.currentTarget && !kbSearch && document.getElementById('viewKeyboard').classList.contains('active'); } catch (e) { return false; } }
 // the sound of the word's spelling that starts at this letter of the target (null part-way through a spelling, or a silent letter)
+// the sound a letter of the target is part of (the k of "ck" as well as the c)
+function soundPartCovering(target, idx) {
+  const t = String(target || ''); if (!t[idx] || t[idx] === ' ') return null;
+  let a = idx; while (a > 0 && t[a - 1] !== ' ') a--; let z = idx; while (z < t.length && t[z] !== ' ') z++;
+  const word = t.slice(a, z); let li = -1, n = 0;
+  for (let k = 0; k < word.length; k++) if (/[a-z]/i.test(word[k])) { if (a + k === idx) li = n; n++; }
+  if (li < 0) return null;
+  return soundSplit(word.toUpperCase()).find(p => (p.at || []).includes(li)) || null;
+}
 function soundPartAt(target, idx) {
   const t = String(target || ''); if (!t[idx] || t[idx] === ' ') return null;
   let a = idx; while (a > 0 && t[a - 1] !== ' ') a--; let z = idx; while (z < t.length && t[z] !== ' ') z++;
@@ -16859,6 +16868,9 @@ function gameTilesTrial() {
     slots.appendChild(el);
   });
   slots.dataset.n = letters;
+  // the box waiting to be filled, tapped: the sound its letter makes in this word (a prompt)
+  if (!slots._tapSay) { slots._tapSay = true; slots.addEventListener('click', e => { const el = e.target.closest('.gm-slot'); const gg = game; if (!el || !gg || !gg.cur || el.classList.contains('filled')) return;
+    const p = soundPartCovering(gg.cur.word, Number(el.dataset.k)); if (p) { buzz(8); try { soundSay(p.id, p.sp); } catch (er) {} } }); }
   gameLetterNext(); gameBar();
 }
 function gameLetterNext() {
@@ -16893,6 +16905,7 @@ function gameLetterTap(x, b) {
     c.lets.push(x.toUpperCase() + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
     const slot = document.querySelector('#gmSlots .gm-slot[data-k="' + c.k + '"]');
     if (slot) { slot.textContent = x; slot.classList.add('filled'); slot.classList.remove('next'); }
+    { const p = soundPartAt(String(c.word).toUpperCase(), c.k); if (p) try { soundSay(p.id, p.sp); } catch (e) {} }      // (the letter's sound in this word - said where its sound starts: the c of "ck" says /k/, the k after it nothing)
     setTimeout(() => { g.busy = false; if (game === g) gameLetterNext(); }, 450);
     return;
   }
@@ -16908,12 +16921,15 @@ function gameTilesDone() {
   const res = c.anyPrompt ? 'prompted' : c.wrongs ? 'second' : 'first';
   g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
   const slots = document.getElementById('gmSlots'); slots.classList.add('gm-word-done');
-  try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.95); } catch (e) {} finally { sayAnyway = false; }
   buzz([20, 80, 40]); gameStars(slots);
+  // read back: slowly from the sounds' recordings, then the word said by the voice (as in Elkonin Boxes)
+  const parts = [].concat(...String(c.word).split(/\s+/).filter(Boolean).map(w => soundSplit(w.toUpperCase())));
+  const sayWord = () => { try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.95); } catch (e) {} finally { sayAnyway = false; } };
+  const doneP = new Promise(res => afterSpeech(async () => { if (game !== g) return res(); if (parts.length) { try { await soundBlend(parts, false); } catch (e) {} } setTimeout(() => { if (game === g) sayWord(); setTimeout(res, 900 + 60 * String(c.word).length); }, parts.length ? 1000 : 0); }, 600));
   state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: 'tiles', level: groupOpt(gameGroup(), 'picLevel', state.picLevel || 'easy') }]).slice(-3000);
   if (c.wrongs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
   save(); gameBar();
-  setTimeout(() => { slots.classList.remove('gm-word-done'); g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 1500);
+  doneP.then(() => { slots.classList.remove('gm-word-done'); g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); });
 }
 // ===== Sound it out: the clustered sound keyboard =====
 // A plain keyboard (vowels green, consonants purple) until a letter with extra sounds (a "+n" in its corner) is tapped:
