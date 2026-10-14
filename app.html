@@ -1592,6 +1592,7 @@
   .snd-cell.reveal, .snd-cell.reveal.v { background: #f8c3b3; border-color: #e07a5f; color: #5c1f10; border-style: solid; animation: sndReveal 3s ease both; }
   .snd-cell.reveal.c { background: #ffffff; border-color: #1f2328; color: var(--ink); }
   @keyframes sndReveal { 0% { opacity: 0; transform: scale(0.9); } 8% { opacity: 1; transform: scale(1.08); } 15% { transform: none; } 85% { opacity: 1; } 100% { opacity: 0.4; } }
+  .cp-empty { color: rgba(0,0,0,0.45); font-weight: 700; font-size: 15px; padding: 10px 6px; text-align: center; }
   .tgt-subhead { grid-column: 1 / -1; font-weight: 800; color: #4a5568; padding: 14px 8px 4px; letter-spacing: 0.02em; }
   .gm-start { display: block; width: 100%; margin: 14px 0 4px; border: none; border-radius: 18px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; padding: 18px 12px; cursor: pointer; }
   .gm-start:disabled { background: #e6e9ef; color: #9aa3b5; }
@@ -3245,7 +3246,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 588 - 14 Oct';
+const BUILD = 'build 589 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9889,19 +9890,21 @@ function renderChatPane(force) {
   pane.classList.toggle('shut', shut);
   pane.classList.toggle('big', chatPaneBig && !shut);
   if (!on) { pane.innerHTML = ''; chatPaneSig = ''; return; }
-  const list = showing.length && !chatPaneHeld ? showing : (state.chatLog || []);      // (opened by hand: the whole history, even after "clear")
-  const sig = shut + '|' + list.length + '|' + (list[list.length - 1].t) + '|' + list.map(m => (m.replies || []).length).join(',');
+  const list = showing;      // (after "clear" the screen stays clear - every message is still kept, under "history")
+  const sig = shut + '|' + list.length + '|' + (list.length ? list[list.length - 1].t : 0) + '|' + list.map(m => (m.replies || []).length).join(',');
   if (!force && sig === chatPaneSig && pane.firstChild) return;
   chatPaneSig = sig;
   pane.innerHTML = '';
   const th = document.createElement('div'); th.className = 'cp-thread';
   list.slice(-60).forEach(m => chatBubbles(m).forEach(d => th.appendChild(d)));
+  if (!list.length) { const n = document.createElement('div'); n.className = 'cp-empty'; n.textContent = 'Cleared. Earlier messages are under history.'; th.appendChild(n); }
   pane.appendChild(th);
   const bar = document.createElement('div'); bar.className = 'cp-bar'; bar.setAttribute('role', 'button');
   const mb = (text, label, fn) => { const b = document.createElement('button'); b.className = 'chat-mini'; b.textContent = text; b.setAttribute('aria-label', label); b.addEventListener('click', e => { e.stopPropagation(); fn(); }); bar.appendChild(b); };
-  if (!shut) mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); chatPaneHeld = false; chatPaneAway = true; state.chatPaneShut = false; buzz(10); renderChatPane(true); });
+  if (!shut && list.length) mb('clear', 'Clear the chat from the screen', () => { chatShownFrom = Date.now(); chatPaneHeld = false; chatPaneAway = true; chatPaneBig = false; state.chatPaneShut = false; buzz(10); renderChatPane(true); try { renderHome(true); } catch (e) {} });
+  if (!shut) mb('history', 'The whole conversation', () => { try { openChatHistory(); } catch (e) {} });
   bar.setAttribute('aria-label', shut ? 'Show the conversation' : 'Hide the conversation');
-  if (shut) { const lb = document.createElement('span'); lb.className = 'chat-mini cp-label'; lb.textContent = '\uD83D\uDCAC chat (' + (state.chatLog || []).length + ')'; bar.appendChild(lb); }      // folded: still plain to find
+  if (shut) { const lb = document.createElement('span'); lb.className = 'chat-mini cp-label'; lb.textContent = '\uD83D\uDCAC chat' + (list.length ? ' (' + list.length + ')' : ''); bar.appendChild(lb); }      // folded: still plain to find
   // one tap folds it away (or opens it); a double tap while it is open gives the big view, and another goes back
   bar.addEventListener('click', () => {
     const now = Date.now();
