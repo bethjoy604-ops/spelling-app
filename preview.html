@@ -1487,7 +1487,7 @@
   .sk.opt.v.vl, .keyboard .key.letter.sk.opt.v.vl { background: linear-gradient(#e0457b 0 9px, #fff 9px); }      /* long vowel: the same ring, and the bar of a long-vowel mark along the top */
   .sk.opt.v.vo, .keyboard .key.letter.sk.opt.v.vo { color: #9c2a52; box-shadow: inset 0 0 0 3px #f5b3c8, 0 2px 4px rgba(0,0,0,0.12); }      /* other vowel sounds (with r, ow, oi, aw, oo): a lighter ring */
   .sk.opt.c { background: #ffffff; border-color: #8a94a3; }
-  .sk.tall { z-index: 3; }
+  .sk.same-long b { font-size: 1.15em; }
   .sk.opt em { font-style: normal; font-weight: 600; font-size: clamp(10px, 1.6vmin, 15px); opacity: 0.85; }
   .snd1-card { display: flex; align-items: center; justify-content: center; width: min(62vmin, 520px); height: clamp(100px, 20vh, 260px); border-radius: 26px; background: #f4f5f8; cursor: pointer; overflow: hidden; margin-bottom: clamp(12px, 2.5vh, 28px); }
   .snd1-ear { font-size: clamp(70px, 11vh, 150px) !important; }
@@ -3258,7 +3258,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 596 - 14 Oct';
+const BUILD = 'build 597 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -17711,7 +17711,7 @@ function soundKbPaint() {
     el.className = el.dataset.base || 'sk'; el.disabled = false; el.style.background = el.style.color = el.style.borderColor = '';
     el.style.height = el.style.marginBottom = el.style.alignSelf = el.style.visibility = '';
     if (alt && alt.cover) { el.classList.add('opt'); el.innerHTML = ''; el.style.visibility = 'hidden'; }      // (under a tall spelling from the key above)
-    else if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); const vg = soundVowelGroup(alt.id); if (vg) el.classList.add(vg); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp); el.lastChild.textContent = alt.ex; soundTint(el, alt.id); if (alt.tallOver) el.classList.add('tall'); }
+    else if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); const vg = soundVowelGroup(alt.id); if (vg) el.classList.add(vg); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp) + (soundTallTile(alt, soundOpen) ? '\u0304' : ''); el.lastChild.textContent = alt.ex; soundTint(el, alt.id); if (soundTallTile(alt, soundOpen)) el.classList.add('same-long'); }      // (o in go: ō)
     else { const opts = soundOpts(l), n = opts.length - 1; el.classList.add(SOUND_K[l].vowel ? 'v' : 'c');
       if (soundOpen === l) el.classList.add('parent'); else if (soundOpen) el.classList.add('dim');
       el.disabled = !opts.length; el.innerHTML = '';
@@ -17782,7 +17782,7 @@ function soundKbTap(l, put) {
     const below = k => { const e = vis(k); if (!e) return null; const box = e.closest('.sound-kb, .keyboard'); const r = e.getBoundingClientRect(), cx = r.left + r.width / 2; let best = null, bd = 1e9;
       box.querySelectorAll('.sk[data-l]').forEach(o => { const q = o.getBoundingClientRect(); if (q.top < r.bottom - 2 || q.top > r.bottom + r.height) return; const d = Math.abs(q.left + q.width / 2 - cx); if (d < q.width * 0.6 && d < bd) { bd = d; best = o.dataset.l; } }); return best; };
     const used = new Set([l]);
-    opts.slice(1).forEach(t => { const tall = soundTallTile(t, l);
+    opts.slice(1).forEach(t => { const tall = false;      // (two-key tiles retired: the keys are staggered, so a tile two keys tall covered its neighbours)
       let sl = tall ? slots.find(x => !used.has(x) && below(x) && !used.has(below(x))) : null; if (!sl) sl = slots.find(x => !used.has(x)); if (!sl) return;
       used.add(sl); soundSwap[sl] = t;
       if (tall) { const b = below(sl); if (b && !used.has(b)) { used.add(b); soundSwap[sl] = Object.assign({}, t, { tallOver: b }); soundSwap[b] = { cover: sl }; } } }); }
