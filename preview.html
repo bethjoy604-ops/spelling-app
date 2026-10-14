@@ -3246,7 +3246,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 589 - 14 Oct';
+const BUILD = 'build 590 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10137,6 +10137,9 @@ function menuTilesNow() { return !state.railOpen && !state.builderMode && homePa
 function menuColour(c, i) { const nm = String(c.name || '').trim().toLowerCase(); return nm === 'chat' ? '#f08a24' : nm === 'categories' ? '#8e5bd6' : nm === 'my stuff' ? '#e0473c' : ['#f08a24', '#8e5bd6', '#e0473c', '#2f9bd8', '#d9a400'][i % 5]; }
 function renderMenuTiles(grid) {
   homeRows = []; homeShown = 0;
+  // the page of big menu tiles has no small-words row: one left from a folder (Chat, Categories ...) goes, and the page is the first page again
+  try { stripKey = null; stripFull = null; smallHostSet(null); } catch (e) {}
+  { const vh = document.getElementById('viewHome'); vh.classList.add('at-root', 'menu-open'); vh.classList.remove('sm-open'); }
   grid.classList.remove('slot-grid'); grid.innerHTML = ''; grid.scrollTop = 0;
   grid.style.gridTemplateRows = ''; grid.style.setProperty('grid-template-columns', 'repeat(2, minmax(0, 1fr))', 'important'); grid.style.setProperty('grid-auto-rows', 'auto', 'important'); grid.style.setProperty('display', 'grid', 'important'); grid.classList.add('menu-tiles-grid');
   const tops = childrenOf(null).filter(c => !c.target && !c.hidden);
