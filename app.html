@@ -3447,7 +3447,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 621 - 14 Oct';
+const BUILD = 'build 622 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -14539,6 +14539,8 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         holdTap(row, () => openQaEdit(g, it, () => renderHome(true)), () => openGroupHead(cat, g)); put(mark(row, -2)); });
       const add = makeListRow('', rowH, base); add.classList.add('add-row'); add.removeAttribute('data-word'); add.querySelector('.hw').textContent = '+ question';
       add.addEventListener('click', () => openQaEdit(g, null, () => renderHome(true))); put(mark(add, -2));
+      if (qaStartersLeft(g)) { const rm = makeListRow('', rowH, base); rm.classList.add('add-row'); rm.removeAttribute('data-word'); rm.querySelector('.hw').textContent = '\u2715 remove the example questions';
+        rm.addEventListener('click', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); renderHome(true); }); put(mark(rm, -2)); }
       return;
     }
     if (isTileGroup(g)) {      // (Hear the sound / Match the spelling: its spellings, each says its sound; hold for the group's menu)
@@ -17670,11 +17672,14 @@ function openQaEdit(g, it, after) {
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
   });
 }
+function qaStartersLeft(g) { const qs = QA_STARTERS.map(x => x.q); return (g.items || []).filter(it => qs.includes(it.q)).length; }
+function qaRemoveStarters(g) { const qs = QA_STARTERS.map(x => x.q); g.items = (g.items || []).filter(it => !qs.includes(it.q)); save(); }
 function openQaList(g, back) {
   openWordSheet(body => {
     sheetTitle(body, 'Questions');
     (g.items || []).forEach(it => body.appendChild(sheetBtn(it.q + '  \u2192  ' + String(it.a || '').toLowerCase(), '', () => openQaEdit(g, it, () => openQaList(g, back)))));
     body.appendChild(sheetBtn('+ A new question', '', () => openQaEdit(g, null, () => openQaList(g, back))));
+    if (qaStartersLeft(g)) body.appendChild(sheetBtn('Remove the example questions', 'danger', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); openQaList(g, back); }));
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); if (back) back(); }));
   });
 }
