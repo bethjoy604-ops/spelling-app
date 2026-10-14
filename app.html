@@ -551,6 +551,7 @@
   .no-word-hl .sugg-hl, .no-word-hl .cat-hl, .no-word-hl .word-in-folder { background: transparent !important; }
   .lad-hint { border-color: #cfd3da !important; color: #8a909b !important; pointer-events: none; }
   .lad-lv.on { background: #e8f0ff !important; color: #1e4f9e !important; }
+  .howto-steps { margin: 6px 4px 8px 26px; padding: 0; font-weight: 700; font-size: 17px; line-height: 1.4; } .howto-steps li { margin-bottom: 8px; }
   .home-card.gr-play { background: #e8f0ff; } .home-card.gr-play .hw { color: #1e4f9e; }
   .home-card.gr-say { animation: cueGlow 0.6s ease-out; }
   .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -1396,7 +1397,8 @@
   /* a target whose prompting is switched off */
   .home-card.list-row.paused .hw { opacity: 0.35; }
   .home-card.list-row.paused::after { content: 'off'; margin-left: auto; font-weight: 800; font-size: 16px; color: rgba(0,0,0,0.4); }
-  .home-row:not(.icons-open) #homeSettingsBtn, .home-row:not(.icons-open) #homeTargetBtn,
+  #homeEditBtn:not(.on) { filter: grayscale(1); opacity: 0.55; } #homeEditBtn.on { background: #ffe9a8 !important; }
+  .home-row:not(.icons-open) #homeSettingsBtn, .home-row:not(.icons-open) #homeTargetBtn, .home-row:not(.icons-open) #homeEditBtn,
   .home-row:not(.icons-open) #railToggle, .home-row:not(.icons-open) #homeChatBtn, .home-row:not(.icons-open) #homeSpeakBtn,
   .home-row:not(.icons-open) #homeHelpBtn, .home-row:not(.icons-open) #homeBuilderBtn, .home-row:not(.icons-open) #homeSoundBtn, .home-row:not(.icons-open) #homeSearchBtn,
   .home-row:not(.icons-open) #homeMagicBtn, .home-row:not(.icons-open) #homePicBtn, .home-row:not(.icons-open) #homeIconsClose, .home-row:not(.icons-open) #homeMoreBtn { display: none !important; }
@@ -2679,6 +2681,7 @@
     <button class="ctl icon pop" id="homeMoreBtn" aria-label="More: settings and targets" aria-expanded="false">&#10133;</button>
     <button class="ctl icon pop more" id="homeSettingsBtn" aria-label="Settings">&#9881;&#65039;</button>
     <button class="ctl icon pop more" id="homeTargetBtn" aria-label="Target words" aria-pressed="false">&#127919;</button>
+    <button class="ctl icon pop more" id="homeEditBtn" aria-label="Edit tiles: add pictures, sounds and videos" aria-pressed="false">&#9999;&#65039;</button>
     <!-- (no longer in the pop-out: builder is a choice under games; magic, matching words and sound are in settings; SOS is in the prompting settings) -->
     <button class="ctl icon retired" id="homeBuilderBtn" aria-label="Sentence builder" aria-pressed="false">&#129521;</button>
     <button class="ctl icon retired" id="homeChatBtn" aria-label="Chat mode" aria-pressed="false">&#128172;</button>
@@ -3263,8 +3266,7 @@
         <div class="settings-list"><div class="setting-row"><span>How they show they are new</span><div class="seg" id="segTileCue"></div></div></div>
         <div class="settings-list"><div class="setting-row"><span>Colour behind each kind of word (green, grey, purple)</span><div class="toggle" id="toggleWordHl"></div></div></div>
         <div class="help-note" style="margin:6px 4px 12px">Off: the suggested tiles keep their rows and columns by kind of word, without the coloured highlight behind the words. Folders keep their grey.</div>
-        <div class="sublabel">＋ on tiles with nothing added yet (pictures, sounds, videos)</div>
-        <div class="settings-list"><div class="setting-row"><span>Show the ＋ on</span><div class="seg" id="segTilePlus"></div></div></div>
+
         <div class="sublabel">Tags: tiles and folders that go together</div>
         <div class="settings-list"><div class="setting-row" id="tagsRow" style="cursor:pointer"><span>&#127991;&#65039; Tags</span><span id="tagsSum" style="color:var(--muted);font-weight:800">&#8250;</span></div></div>
         <div class="help-note" style="margin:6px 4px 0">Give tiles and folders the same tag and they come up together in the suggestions (tag park and the Forests folder "outside": after park, the forest tiles are offered). Hold a tile or folder to tag it too.</div>
@@ -3490,7 +3492,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 639 - 14 Oct';
+const BUILD = 'build 640 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -17169,6 +17171,10 @@ document.getElementById('railToggle').addEventListener('click', () => {
   save(); renderHome(true);
 });
 // the dart-board opens the page of target words (and closes it again)
+// edit tiles: a + on every tile to add pictures, sounds and videos (only while this is on, so a learner does not meet them)
+var tileEditOn = false;
+document.getElementById('homeEditBtn').addEventListener('click', () => { tileEditOn = !tileEditOn; buzz(10); const b = document.getElementById('homeEditBtn'); b.classList.toggle('on', tileEditOn); b.setAttribute('aria-pressed', tileEditOn ? 'true' : 'false');
+  try { picDecorate(); } catch (e) {} if (tileEditOn) { try { moveNote('\u270F\uFE0F Edit tiles on: tap + on a tile to add pictures, sounds or a video'); } catch (e) {} } });
 document.getElementById('homeTargetBtn').addEventListener('click', () => {
   const t = newFolder();
   if (!t) return;
@@ -17363,7 +17369,7 @@ function tilePlusWanted(w) { const m = state.tilePlus || 'all'; if (m === 'off' 
 function tileBadges(card, w) {
   const noTap = el => ['pointerdown', 'touchstart', 'mousedown'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
   let pl = card.querySelector(':scope > .tile-plus'), vd = card.querySelector(':scope > .tile-vid');
-  const wantP = !state.builderMode && !pageEditOn() && tilePlusWanted(w) && !tileHasMedia(w) && !card.classList.contains('add-folder');
+  const wantP = !!tileEditOn && !state.builderMode && !pageEditOn() && !!w && !/^\u25B8/.test(w) && !card.classList.contains('add-folder');
   if (wantP && !pl) { pl = document.createElement('button'); pl.className = 'tile-plus'; pl.textContent = '+'; pl.setAttribute('aria-label', 'Add a picture, sound or video'); noTap(pl);
     pl.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); try { suppressTileClick = false; } catch (er) {} buzz(8); openTileAdd2(card.dataset.word); }); card.appendChild(pl); }
   else if (!wantP && pl) pl.remove();
@@ -17383,6 +17389,17 @@ function tileVideoPlay(w) {
 }
 async function tilePicAddBlob(w, blob) { const list = await picGet(w); if (list.length >= PIC_MAX) { alert('This tile already has ' + PIC_MAX + ' pictures. Remove one to add another.'); return false; }
   list.push({ id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), blob: await picShrink(blob), on: true }); await picPut(w, list); picDecorate(true); return true; }
+// the steps for finding a picture or a video online, before Safari opens; the add page then waits for the paste
+function tileHowTo(w, kind) { const name = plainLabel(w), q = encodeURIComponent(name), pic = kind === 'pic';
+  openWordSheet(body => {
+    sheetTitle(body, pic ? 'Find a picture online' : 'Find a video online', w);
+    const steps = pic ? ['Tap Open Safari below - a picture search for "' + name + '" opens.', 'Find a picture you like. Hold your finger on it, then tap Copy. (Or tap Save to Photos.)', 'Come back to this app (swipe up from the bottom and tap it, or use the app switcher).', 'The add page will be waiting: tap \uD83D\uDCCB Paste the picture you copied. (If you saved it, tap Choose from your photos.)']
+      : ['Tap Open YouTube below - a video search for "' + name + '" opens.', 'Open the video you want, tap Share, then Copy link.', 'Come back to this app (swipe up from the bottom and tap it, or use the app switcher).', 'The add page will be waiting: tap \uD83D\uDCCB Paste the video link you copied.'];
+    const ol = document.createElement('ol'); ol.className = 'howto-steps'; steps.forEach(t => { const li = document.createElement('li'); li.textContent = t; ol.appendChild(li); }); body.appendChild(ol);
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '4px 4px 10px'; n.textContent = pic ? 'Pictures you add stay on this iPad only. Movie posters and characters belong to their studios, so keep them for this learner\u2019s own use.' : 'The video plays inside the app from the tile\u2019s small \u25B6.'; body.appendChild(n);
+    body.appendChild(sheetBtn(pic ? '\uD83E\uDDED  Open Safari' : '\u25B6\uFE0F  Open YouTube', 'primary', () => { window.open(pic ? 'https://www.google.com/search?tbm=isch&q=' + q : 'https://www.youtube.com/results?search_query=' + q, '_blank'); openTileAdd2(w); }));
+    body.appendChild(sheetBtn('Back', '', () => openTileAdd2(w)));
+  }); }
 function openTileAdd2(w) {
   if (!w) return; const name = plainLabel(w), q = encodeURIComponent(name);
   openWordSheet(body => {
@@ -17392,7 +17409,7 @@ function openTileAdd2(w) {
     const k = (picURL[w] || []).length;
     sec('Pictures' + (k ? ' · ' + k + ' added' : ''));
     body.appendChild(sheetBtn('🖼️  Choose from your photos', '', () => picChoose(w, () => openTileAdd2(w))));
-    body.appendChild(sheetBtn('🔎  Find a picture online', '', () => window.open('https://www.google.com/search?tbm=isch&q=' + q, '_blank')));
+    body.appendChild(sheetBtn('🔎  Find a picture online', '', () => tileHowTo(w, 'pic')));
     body.appendChild(sheetBtn('📋  Paste the picture you copied', '', async () => {
       try { if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('none');
         const items = await navigator.clipboard.read(); let blob = null;
@@ -17400,7 +17417,7 @@ function openTileAdd2(w) {
         if (!blob) { alert('No picture was copied. In Safari, hold the picture and tap Copy, then come back and paste.'); return; }
         if (await tilePicAddBlob(w, blob)) { buzz(10); openTileAdd2(w); }
       } catch (e) { alert('The copied picture could not be read here. Hold the picture in Safari and tap "Save to Photos", then use "Choose from your photos".'); } }));
-    note('Find a picture: Safari opens a search for "' + name + '". Hold the picture you want and tap Copy (or Save to Photos), come back here and tap Paste (or Choose from your photos). Pictures you add stay on this iPad.');
+    note('Pictures you add stay on this iPad.');
     if (k) body.appendChild(sheetBtn('See and arrange the pictures', '', () => openPicSheet(w)));
     const rec = (recordings.word || {})[w];
     sec('Sound' + (rec ? ' · added' : ''));
@@ -17416,13 +17433,13 @@ function openTileAdd2(w) {
     note('The tile plays this sound in place of the voice saying its name.');
     const vid = (state.tileVideo || {})[w];
     sec('Video' + (vid ? ' · added' : ''));
-    body.appendChild(sheetBtn('🎬  Find a video online', '', () => window.open('https://www.youtube.com/results?search_query=' + q, '_blank')));
+    body.appendChild(sheetBtn('🎬  Find a video online', '', () => tileHowTo(w, 'vid')));
     body.appendChild(sheetBtn('📋  Paste the video link you copied', '', async () => {
       let t = ''; try { t = await navigator.clipboard.readText(); } catch (e) {}
       if (!/^https?:\/\//.test(String(t).trim())) t = prompt('Paste the video\'s link here (in YouTube: Share, then Copy link).', '') || '';
       t = String(t).trim(); if (!/^https?:\/\//.test(t)) return; state.tileVideo = state.tileVideo || {}; state.tileVideo[w] = t; save(); buzz(10); try { renderHome(true); } catch (e) {} openTileAdd2(w); }));
     if (vid) { body.appendChild(sheetBtn('▶  Watch it', '', () => tileVideoPlay(w))); body.appendChild(sheetBtn('Take the video off', 'danger', () => { delete state.tileVideo[w]; save(); try { renderHome(true); } catch (e) {} openTileAdd2(w); })); }
-    note('In YouTube, tap Share then Copy link, come back and paste. The tile gets a small ▶ to play it.');
+    note('The tile gets a small ▶ to play it.');
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); try { renderHome(true); } catch (e) {} }));
   });
 }
@@ -20795,7 +20812,6 @@ function renderSettings() {
   try { buildSeg('segPromptStep', [3, 5, 7, 10, 15].map(v => ({ value: v, label: v + ' s' })), Math.max(3, Math.min(15, Number(state.promptStepSec) || 7)), v => { state.promptStepSec = v; save(); renderSettings(); }); } catch (e) {}
   try { const t = document.getElementById('toggleWordHl'); if (t) { t.classList.toggle('on', state.wordHl !== false); if (!t.dataset.wired) { t.dataset.wired = '1'; t.addEventListener('click', () => { state.wordHl = state.wordHl === false; save(); wordHlApply(); renderSettings(); }); } } } catch (e) {}
   try { const L = ladCfg(), e = document.getElementById('ladderSum'); if (e) e.textContent = L.on ? 'Level ' + L.level + ': ' + LADDER[L.level - 1].name + ' \u203A' : 'Off \u203A'; } catch (e) {}
-  try { buildSeg('segTilePlus', [{ value: 'all', label: 'All tiles' }, { value: 'stuff', label: 'My Stuff' }, { value: 'off', label: 'Off' }], state.tilePlus || 'all', v => { state.tilePlus = v; save(); renderSettings(); try { picDecorate(); } catch (e) {} }); } catch (e) {}
   try { buildSeg('segTileCue', [{ value: 'fade', label: 'Fade' }, { value: 'rise', label: 'Rise' }, { value: 'glow', label: 'Glow' }, { value: 'flip', label: 'Turn' }, { value: 'off', label: 'Off' }], ['fade', 'rise', 'glow', 'flip', 'off'].includes(state.tileCue) ? state.tileCue : 'fade', v => { state.tileCue = v; save(); renderSettings(); }); } catch (e) {}
   { const ts = document.getElementById('tagsSum'); if (ts) { const n = Object.keys(state.tags || {}).length; ts.textContent = (n ? n + ' tag' + (n === 1 ? '' : 's') + ' ' : '') + '\u203A'; } }
   document.getElementById('toggleChatMode').classList.toggle('on', !!state.chatMode);
