@@ -3477,7 +3477,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 635 - 14 Oct';
+const BUILD = 'build 636 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -10263,6 +10263,7 @@ function pbFit() {
 }
 // ---- Folders opened from a menu page (Food > Drinks) are noted in the key bar in grey, in their place among the words.
 // They are not part of the message: tapping one puts it in (and says it); the green enter leaves the grey ones out.
+var barTook = new Set(), lastBarTook = new Set();      // words that went into the message by taking a suggestion offered in the bar (not chosen on their own: kept off Popular)
 var barNotes = [], notePathSeen = [], noteGroupSeen = '', notesTaken = new Set(), notesAfter = new Set(), withGroupNote = null;      // { at: the word it sits before, w: the word }
 // a fresh page: the grey folder names in the bar go (after a game, a message, the games page opening)
 function barNotesClear() { try { if (!barNotes.length) return; barNotes = []; notesTaken.clear(); notesAfter.clear(); notePathSeen = (typeof homePath !== 'undefined' ? homePath : []).slice(); renderPhraseBar(); } catch (e) {} }
@@ -10302,7 +10303,7 @@ function phraseOrderChip(box) {
   opts.forEach(to => {
     const b = document.createElement('button'); b.className = 'pb-plural pb-seq'; b.textContent = '⇄ ' + to.join(' ').toLowerCase(); b.setAttribute('aria-label', 'Put it in this order');
     b.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[n - 1] !== q || homePhrase[n - 2] !== P) return;
-      const all = to.join(' '); homePhrase.splice(n - 2, 2, all); state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[all] = true;
+      const all = to.join(' '); homePhrase.splice(n - 2, 2, all); barTook.add(all); state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[all] = true;
       try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {} buzz(10); renderPhraseBar();
       try { warmSpeech(); sayAnyway = true; speakWord(all, 0.95); } catch (er) {} finally { sayAnyway = false; } });
     box.appendChild(b);
@@ -10314,7 +10315,7 @@ function folderPhraseChip(box) {
     if (k > 0) { const a = homePhrase[k - 1], nm = homePhrase[k], to = (a + ' ' + folderSingular(nm)).trim();
       const btn = document.createElement('button'); btn.className = 'pb-plural pb-seq'; btn.textContent = '\u21BB ' + to.toLowerCase(); btn.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
       btn.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[k - 1] !== a || homePhrase[k] !== nm) return;
-        homePhrase.splice(k - 1, 2, to); notesTaken.delete(nm); notesAfter.delete(nm); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
+        homePhrase.splice(k - 1, 2, to); barTook.add(to); notesTaken.delete(nm); notesAfter.delete(nm); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
         state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; state.compoundOf = state.compoundOf || {}; state.compoundOf[to] = a; try { magicKnow(to); } catch (er) {} save(); buzz(10);
         renderPhraseBar(); try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } });
       box.appendChild(btn); return; } }
@@ -10323,7 +10324,7 @@ function folderPhraseChip(box) {
   const a = homePhrase[j], b = homePhrase[j + 1], to = (folderSingular(a) + ' ' + b).trim(); if (!b || to === a + ' ' + b && folderSingular(a) === a && false) return;
   const btn = document.createElement('button'); btn.className = 'pb-plural pb-seq'; btn.textContent = '↻ ' + to.toLowerCase(); btn.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
   btn.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[j] !== a || homePhrase[j + 1] !== b) return;
-    homePhrase.splice(j, 2, to); notesTaken.delete(a); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
+    homePhrase.splice(j, 2, to); barTook.add(to); notesTaken.delete(a); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
     state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; try { magicKnow(to); } catch (er) {} save(); buzz(10);
     renderPhraseBar(); try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } });
   box.appendChild(btn);
@@ -10331,7 +10332,7 @@ function folderPhraseChip(box) {
 function barNoteTake(n) {
   const k = barNotes.indexOf(n); if (k < 0) return;
   const at = Math.min(n.at, homePhrase.length);
-  homePhrase.splice(at, 0, n.w); if (!n.noChip) notesTaken.add(n.w); if (n.after) notesAfter.add(n.w);
+  homePhrase.splice(at, 0, n.w); barTook.add(n.w); if (!n.noChip) notesTaken.add(n.w); if (n.after) notesAfter.add(n.w);
   barNotes.splice(k, 1); barNotes.slice(k).forEach(x => { if (x.at >= at) x.at++; });      // (the noted folders after it move along with the words)
   try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (e) {}
   buzz(10); try { magicKnow(n.w); } catch (e) {}
@@ -10511,7 +10512,9 @@ function homeEnter() {
   // every tile entered with the green button joins the last thirty that Popular is drawn from
   // (folder names, choice-board and menu words that went into the message are words of the library too)
   if (homePhrase.length && !state.builderMode) homePhrase.filter(w => !isPunct(w)).forEach(magicKnow);
-  if (homePhrase.length && !state.builderMode) { state.recentTiles = (state.recentTiles || []).concat(homePhrase.filter(w => !isPunct(w))).slice(-30); save(); }
+  lastBarTook = new Set(barTook); barTook.clear();      // (this message's taken suggestions, for the counts made once it is sent)
+  const ownWords = homePhrase.filter(w => !isPunct(w) && !lastBarTook.has(w));      // (a suggestion taken from the bar - a folder's name, from k pop demon hunters, drink bottle - is not counted as chosen)
+  if (ownWords.length && !state.builderMode) { state.recentTiles = (state.recentTiles || []).concat(ownWords).slice(-30); save(); }
   if (homePhrase.length > 1) coUseNote(homePhrase);
   // menu mode: the sentence is done, so a sub-folder steps back up to the page of folders it came from
   if (!state.builderMode && homePhrase.length && homePath.length > 1) homePath = homePath.slice(0, -1);
@@ -10543,7 +10546,7 @@ function homeEnter() {
   readBack(homePhrase.slice(), null, true);      // speak mode: the message fills the screen and is read out, word by word
   // saying a word counts as using it, so Recents / Popular keep up
   const now = Date.now();
-  homePhrase.forEach(w => {
+  homePhrase.forEach(w => { if (lastBarTook.has(w)) return;
     const h = state.wordHistory[w] || { n: 0, t: 0 };
     h.n++; h.t = now;
     state.wordHistory[w] = h;
@@ -10573,7 +10576,7 @@ function openChatWith(words) {
   const text = sentenceWords(words).join(' ');
   // sending counts as using the words, the same as saying them
   const now = Date.now();
-  words.forEach(w => { const h = state.wordHistory[w] || { n: 0, t: 0 }; h.n++; h.t = now; state.wordHistory[w] = h; });
+  words.forEach(w => { if (lastBarTook.has(w)) return; const h = state.wordHistory[w] || { n: 0, t: 0 }; h.n++; h.t = now; state.wordHistory[w] = h; });
   homePhrase = [];
   hideMagic();
   chatNow = { text, replies: [], t: now };
@@ -10652,7 +10655,7 @@ function chatPost(words) {
   try { homeKeysClose(); } catch (e) {}
   const text = sentenceWords(words).join(' ');
   const now = Date.now();
-  words.forEach(w => { const h = state.wordHistory[w] || { n: 0, t: 0 }; h.n++; h.t = now; state.wordHistory[w] = h; });
+  words.forEach(w => { if (lastBarTook.has(w)) return; const h = state.wordHistory[w] || { n: 0, t: 0 }; h.n++; h.t = now; state.wordHistory[w] = h; });
   homePhrase = [];
   try { hideMagic(); } catch (e) {}
   state.chatLog = (state.chatLog || []).concat([{ text, replies: [], t: now }]).slice(-5000);
@@ -11120,7 +11123,7 @@ function bankRows() {
     // Popular is a fresh feed: the tiles in the last thirty entered with the green button, the ones
     // entered most often first (small words count like any other), newest first among equals
     const smallSet = state.smallRowsOn !== false ? new Set(allSmallWords()) : new Set();      // every word the blue row can show stays out of the grid: no doubles
-    const log = (state.recentTiles || []).filter(w => state.words.includes(w) && !isSmallWord(w) && !smallSet.has(w) && !homePhrase.includes(w));      // small words live in the blue row; a word already in the message is not offered again
+    const log = (state.recentTiles || []).filter(w => state.words.includes(w) && !(/^FROM /.test(w) && !categoriesOf(w).length) && !isSmallWord(w) && !smallSet.has(w) && !homePhrase.includes(w));      // small words live in the blue row; a word already in the message is not offered again
     if (log.length) {
       const n = {}, at = {};
       log.forEach((w, i) => { n[w] = (n[w] || 0) + 1; at[w] = i; });
