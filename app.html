@@ -1683,6 +1683,16 @@
   .gm-keys .row { display: flex; gap: clamp(6px, 1vw, 12px); justify-content: center; }
   .gm-keys .key { flex: 0 0 calc((100% - 9 * clamp(6px, 1vw, 12px)) / 10); height: clamp(56px, 9vh, 96px); font-size: clamp(26px, 4.4vmin, 44px); }
   .gm-keys .key.gm-wrong { background: #ffd9d4; }
+  .gl-pop { z-index: 80; }
+  .gl-card { gap: 16px; }
+  .gl-ic { font-size: 64px; line-height: 1; }
+  .gl-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 3px solid transparent !important; padding: 20px 18px !important; }
+  .gl-btn b { font-size: 30px; font-weight: 900; }
+  .gl-btn small { font-size: 17px; font-weight: 700; opacity: 0.85; }
+  .gl-easy { background: #e3f7e6; color: #1f6d2c; }
+  .gl-hard { background: #fff1d6; color: #8a4b00; }
+  .gl-btn.last { border-color: rgba(0,0,0,0.18) !important; }
+  .gm-hard { font-weight: 900; font-size: 18px; color: #b25e00; background: #fff1d6; border-radius: 12px; padding: 6px 14px; }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -3419,7 +3429,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 619 - 14 Oct';
+const BUILD = 'build 620 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -17243,7 +17253,6 @@ function ghPaint() {
   // one kind of game: easy or hard, its saved games, then a new one
   const m = L, nm = gameName(m);
   ttl.innerHTML = '<span></span>'; ttl.firstChild.textContent = gameIcon(m) + ' ' + nm;
-  host.appendChild(gpLevelRow(m, () => { host.dataset.sig = ''; renderHome(true); }));
   presets().filter(p => p.mode === m).forEach(p => {
     const n = presetPlayable(p).length, done = presetMastered(p).length;
     const t = tile('', p.name, n + ' target' + (n === 1 ? '' : 's') + ' · ' + (p.turns || 0) + ' turns', () => presetPlay(p));
@@ -17388,7 +17397,6 @@ function gameChooseCount(preMode) {
         const c = document.createElement('button'); c.className = 'gm-chip gm-add'; c.textContent = '+ Add more'; c.addEventListener('click', () => { buzz(8); openGameAdd(mode); }); chips.appendChild(c);
         paint(); };
       const head = t => { const h = document.createElement('div'); h.className = 'gm-head'; h.textContent = t; count.appendChild(h); return h; };
-      head('Level'); count.appendChild(gpLevelRow(mode));
       const wh = head('Targets'); wh.appendChild(n); count.appendChild(chips);
       const th = head('Turns'); tn = document.createElement('span'); tn.className = 'gm-head-n'; th.appendChild(tn);
       const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, (allMode() && !skip.size) ? null : ws); };
@@ -17639,8 +17647,28 @@ function gameTypeDone() {
   buzz([20, 80, 40]); gameStars(bx || document.getElementById('gmPic'));
   setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 2000);
 }
-function gameStart(n, mode, only, presetId) {
+// Easy or hard, asked as a game starts: easy - most to least (all the help first); hard - least to most, and double tokens
+function gameLevelAsk(mode, then) {
+  try { closeWordSheet(); } catch (e) {}
+  document.querySelectorAll('.gl-pop').forEach(x => x.remove());
+  const pop = document.createElement('div'); pop.className = 'gm-pop gl-pop';
+  pop.innerHTML = '<div class="gm-card gl-card"><div class="gl-ic"></div><div class="gm-done gl-title"></div>'
+    + '<button class="gl-btn gl-easy"><b>😊 Easy</b><small>All the help first, less as it gets right</small></button>'
+    + '<button class="gl-btn gl-hard"><b>🔥 Hard</b><small>A little help only when it is needed · double tokens ⭐⭐</small></button>'
+    + '<button class="gm-all gl-cancel">Not now</button></div>';
+  pop.querySelector('.gl-ic').textContent = gameIcon(mode); pop.querySelector('.gl-title').textContent = gameName(mode);
+  const last = gameLevelOf(mode); pop.querySelector(last === 'hard' ? '.gl-hard' : '.gl-easy').classList.add('last');
+  const pick = lv => { buzz(10); pop.remove(); then(lv); };
+  pop.querySelector('.gl-easy').addEventListener('click', () => pick('easy'));
+  pop.querySelector('.gl-hard').addEventListener('click', () => pick('hard'));
+  pop.querySelector('.gl-cancel').addEventListener('click', () => { buzz(8); pop.remove(); });
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+}
+function gameStart(n, mode, only, presetId, level) {
   mode = mode || (game && game.mode) || 'sight';
+  if (level !== 'easy' && level !== 'hard') { gameLevelAsk(mode, lv => gameStart(n, mode, only, presetId, lv)); return; }      // (easy or hard is chosen as each game starts)
+  state.gameLevel = Object.assign({}, state.gameLevel || {}, { [mode]: level });
   const pr = presetId ? presetById(presetId) : null;
   const ready = pr ? [...new Set(practiceGroupWords(mode).concat(presetPlayable(pr)))] : practiceGroupWords(mode), ws = only ? ready.filter(w => only.includes(w)) : ready; if (!ws.length) return;
   const seq = []; let pool = [];
@@ -17649,7 +17677,7 @@ function gameStart(n, mode, only, presetId) {
   const bag = []; while (bag.length < n) bag.push(...ws); bag.length = n; const mixed = bag.sort(() => Math.random() - 0.5);
   mixed.forEach(w => seq.push({ w }));
   for (let i = 1; i < seq.length; i++) if (seq[i].w === seq[i - 1].w) { const j = seq.findIndex((x, k) => k > i && x.w !== seq[i].w && (k + 1 >= seq.length || seq[k + 1].w !== seq[i].w) && seq[k - 1].w !== seq[i].w); if (j > 0) { const t = seq[i]; seq[i] = seq[j]; seq[j] = t; } }
-  game = { n, seq, i: 0, res: [], mode, only: only || null, preset: pr ? pr.id : null, pmode: gameLevelOf(mode) };
+  game = { n, seq, i: 0, res: [], mode, only: only || null, preset: pr ? pr.id : null, pmode: level };
   state.picMode = true; picBtnSync();
   if (mode === 'write') { const v = document.getElementById('gameView'); if (v) v.remove(); gameTrial(); return; }
   gameView(); gameTrial();
@@ -18947,11 +18975,11 @@ function gameEnd() {
   try { masteryEvalAll(); save(); } catch (e) {}
   const g = game, first = g.res.filter(r => r.res === 'first').length, second = g.res.filter(r => r.res === 'second').length, pr = g.res.filter(r => r.res === 'prompted').length;
   const v = document.getElementById('gameView') || document.body; const pop = document.createElement('div'); pop.className = 'gm-pop';
-  const had = Math.max(0, +state.tokens || 0), kinds = g.res.map(r => r.res === 'first' ? 'g' : r.res === 'second' ? 'b' : 'y');
+  const had = Math.max(0, +state.tokens || 0), kinds0 = g.res.map(r => r.res === 'first' ? 'g' : r.res === 'second' ? 'b' : 'y'), kinds = g.pmode === 'hard' ? [].concat(...kinds0.map(k => [k, k])) : kinds0;      // (hard: double tokens - two for every turn)
   state.tokens = had + kinds.length;
   { const ts = state.tokenStats = state.tokenStats || {}; kinds.forEach(k => { ts[k] = (ts[k] || 0) + 1; }); ts.modes = ts.modes || {}; ts.modes[g.mode] = (ts.modes[g.mode] || 0) + kinds.length; ts.games = (ts.games || 0) + 1; }
   try { save(); } catch (e) {}
-  pop.innerHTML = '<div class="gm-card"><div class="gm-done">All ' + g.res.length + ' done!</div><div class="gm-tokens">' + kinds.map(k => '<span class="tok ' + k + '">\u2605</span>').join('') + '</div>'
+  pop.innerHTML = '<div class="gm-card"><div class="gm-done">All ' + g.res.length + ' done!</div>' + (g.pmode === 'hard' ? '<div class="gm-hard">\uD83D\uDD25 Hard mode: double tokens</div>' : '') + '<div class="gm-tokens">' + kinds.map(k => '<span class="tok ' + k + '">\u2605</span>').join('') + '</div>'
     + '<div class="gm-pile"><span class="stack"><span class="tok g">\u2605</span><span class="tok b">\u2605</span><span class="tok y">\u2605</span></span><span class="n">' + had + '</span><span class="lab">tokens</span></div>'
     + '<div class="gm-sum"><span class="g">' + first + ' first try</span><span class="b">' + second + ' second try</span><span class="y">' + pr + ' with help</span></div><button class="gm-again">▶ Play again</button><button class="gm-all">All done</button></div>';
   setTimeout(() => tokensPlay(pop, had), 250);
@@ -18962,7 +18990,7 @@ function gameEnd() {
     const card = pop.querySelector('.gm-card'); card.insertBefore(b, card.querySelector('.gm-again')); card.insertBefore(m, b);
     setTimeout(() => { if (pop.isConnected) b.click(); }, 900);
   }
-  [...pop.querySelectorAll('.gm-again')].filter(x => /Play again/.test(x.textContent)).forEach(x => x.addEventListener('click', () => { pop.remove(); if (psg && presetById(psg.id)) { const ws = presetPlayable(psg); if (presetMastered(psg).length || !ws.length) { gameOff(); presetPlay(psg); return; } gameStart(psg.turns || g.n, g.mode, ws, psg.id); } else gameStart(g.n, g.mode, g.only); }));
+  [...pop.querySelectorAll('.gm-again')].filter(x => /Play again/.test(x.textContent)).forEach(x => x.addEventListener('click', () => { pop.remove(); if (psg && presetById(psg.id)) { const ws = presetPlayable(psg); if (presetMastered(psg).length || !ws.length) { gameOff(); presetPlay(psg); return; } gameStart(psg.turns || g.n, g.mode, ws, psg.id, g.pmode); } else gameStart(g.n, g.mode, g.only, null, g.pmode); }));
   pop.querySelector('.gm-all').addEventListener('click', () => { if (!gamesHome) gamesHome = { layer: g.mode && GH_SHORT[g.mode] ? g.mode : 'types' }; gameOff(); showHome(); });
   v.appendChild(pop);
 }
