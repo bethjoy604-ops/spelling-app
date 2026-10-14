@@ -1513,7 +1513,7 @@
   .keyboard.kb-sounds .sk-row { flex: 1 1 0; min-height: 0; }
   .keyboard.kb-sounds .sk { height: auto; }
   .keyboard.kb-sounds > .row { flex: 1 1 0; }
-  .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #e8e2fb; color: #2b2466; }
+  .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #dff3e3; color: #1d6b31; }
   .key.sndtoggle svg { width: clamp(30px, 4.6vmin, 44px); height: auto; } .key.sndtoggle small { font-size: clamp(11px, 1.6vmin, 14px); font-weight: 700; opacity: 0.8; margin-top: 2px; }
   .key.letter.sk { flex: 1; height: auto; border: 2px solid transparent; border-radius: 16px; font-weight: 600; font-size: clamp(24px, 5vmin, 46px); box-shadow: var(--shadow); }
   .key.letter.sk.opt { font-size: clamp(20px, 3.6vmin, 36px); font-weight: 800; }
@@ -3238,7 +3238,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 584 - 14 Oct';
+const BUILD = 'build 585 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5939,6 +5939,13 @@ function getVoice() {
   return availableVoices.find(v => v.name === state.voiceName) || null;
 }
 let sayAnyway = false;      // the green enter: the message is said even with sound switched off
+// when whatever is being said now (a letter, a sound, a word) is over - so the next thing can wait its turn
+let speechBusyTill = 0;
+function speechQuietIn() { let t = Math.max(0, speechBusyTill - Date.now()); try { t = Math.max(t, soundBusyUntil()); } catch (e) {} return t; }
+// run fn once nothing has been said for at least gap ms (straight away if it has been quiet that long)
+function afterSpeech(fn, gap) { const g = gap == null ? 1000 : gap, busy = speechQuietIn(), since = Date.now() - speechLastEnd(); const wait = busy > 0 ? busy + g : Math.max(0, g - since); return setTimeout(fn, wait); }
+function speechLastEnd() { return Math.max(speechEndedAt, Math.min(Date.now(), speechBusyTill)); }
+let speechEndedAt = 0;
 function speak(text, rate = 1) {
   if (state.soundOn === false && !sayAnyway) return;           // sound is switched off: no word labels, no spoken prompts
   if (!text || !('speechSynthesis' in window)) return;
@@ -5946,6 +5953,8 @@ function speak(text, rate = 1) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = rate; u.pitch = 1; u.lang = 'en-US';
+    speechBusyTill = Math.max(speechBusyTill, Date.now() + Math.round((450 + 75 * String(text).length) / Math.max(0.3, rate)));      // (a guess until it is really done)
+    u.onend = () => { speechBusyTill = Math.min(speechBusyTill, Date.now()); };
     const v = getVoice();
     if (v) { u.voice = v; u.lang = v.lang; }
     window.speechSynthesis.speak(u);
@@ -7142,12 +7151,12 @@ function readBack(words, target, force) {
     if (i > 0 && seq[i - 1][2] !== kind) chips.forEach(c => { const l = c.querySelector('.rb-line'); if (l) { l.style.transition = 'none'; l.style.width = '0'; } });      // (each pass starts its lines again)
     i++;
     if (isPunct(w)) { readBackTimer = setTimeout(step, 250); return; }
-    if (kind !== 'say') { const parts = soundSplit(w); if (parts.length) { await soundBlend(parts, kind === 'fast', null, ms => { if (!ending) rbLine(k, ms, kind); }); if (ending) return; readBackTimer = setTimeout(step, 350); return; } }
+    if (kind !== 'say') { const parts = soundSplit(w); if (parts.length) { await soundBlend(parts, kind === 'fast', null, ms => { if (!ending) rbLine(k, ms, kind); }); if (ending) return; readBackTimer = setTimeout(step, 1000); return; } }
     const dur = 520 + 75 * String(w).length; rbLine(k, dur, 'say');
     sayAnyway = true; try { speakWord(w, 0.95); } finally { sayAnyway = false; }
     readBackTimer = setTimeout(step, dur);
   };
-  readBackTimer = setTimeout(step, 350);
+  readBackTimer = afterSpeech(step, 1000);      // (a second after the last key or word was said, so they do not run together)
 }
 function celebrate(word) {
   const display = document.getElementById('readBackCard') || (document.getElementById('display').offsetParent ? document.getElementById('display') : document.getElementById('targetBanner'));
@@ -9841,7 +9850,7 @@ function chatPost(words) {
   state.chatLog = (state.chatLog || []).concat([{ text, replies: [], t: now }]).slice(-5000);
   state.chatPaneShut = false; chatPaneShow();
   save(); buzz(15);
-  warmSpeech(); sayAnyway = state.soundOn !== false; try { speakWord(words.join(' '), 0.95); } finally { sayAnyway = false; }
+  warmSpeech(); { const say = words.join(' '); afterSpeech(() => { sayAnyway = state.soundOn !== false; try { speakWord(say, 0.95); } finally { sayAnyway = false; } }, 1000); }      // (a second after the last word was said)
   renderPhraseBar(); renderHome(true); renderChatPane(true);
 }
 let chatPaneSig = '', chatPaneBig = false, chatBarTap = 0, chatBarTimer = null;
@@ -16910,7 +16919,7 @@ function smPlay(id) {
     const ctx = smCtx(); if (!ctx) { viaPlayer(); return true; }
     smBuffer(id).then(b => { if (!b) { viaPlayer(); return; }
       try { if (SMA.src) SMA.src.stop(); } catch (e) {} try { if (currentAudio) currentAudio.pause(); } catch (e) {}
-      const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); src.startAt = ctx.currentTime + 0.03; SMA.src = src; }).catch(viaPlayer);
+      const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); src.startAt = ctx.currentTime + 0.03; SMA.src = src; try { speechBusyTill = Math.max(speechBusyTill, Date.now() + 30 + Math.round(b.duration * 1000)); } catch (e) {} }).catch(viaPlayer);
   } catch (e) { viaPlayer(); }
   return true;
 }
@@ -17410,13 +17419,13 @@ async function soundBlend(parts, fast, onEach, onStart) {
     if (onEach) setTimeout(() => onEach(k), at);
   });
   const total = Math.max(300, ms - Math.min(0, gap));
-  soundBlendEnd = Date.now() + total; if (onStart) try { onStart(total); } catch (e) {}
+  soundBlendEnd = Date.now() + total; try { speechBusyTill = Math.max(speechBusyTill, soundBlendEnd); } catch (e) {} if (onStart) try { onStart(total); } catch (e) {}
   // when the last recording has really finished (the engine's own clock, not a guess) - or the time worked out, if sooner
   if (lastSrc && !fast) await new Promise(res => { let done = false; const fin = () => { if (!done) { done = true; res(); } }; lastSrc.onended = fin; setTimeout(fin, total + 1500); });
   else await new Promise(r => setTimeout(r, total));
   return 0;
 }
-let soundBlendEnd = 0;
+let soundBlendEnd = 0;      // (soundBusyUntil, below, counts it as speaking)
 // how long until the sound playing now (a single sound, or a blend) is over (ms)
 function soundBusyUntil() { let t = Math.max(0, soundBlendEnd - Date.now()); try { if (SMA.src && SMA.src.buffer && SMA.ctx && SMA.src.startAt != null) t = Math.max(t, (SMA.src.startAt + SMA.src.buffer.duration - SMA.ctx.currentTime) * 1000); } catch (e) {} return Math.min(2500, t); }
 function soundSay(id, sp) {
