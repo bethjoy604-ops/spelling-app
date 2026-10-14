@@ -3238,7 +3238,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 582 - 14 Oct';
+const BUILD = 'build 583 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7142,7 +7142,7 @@ function readBack(words, target, force) {
     if (i > 0 && seq[i - 1][2] !== kind) chips.forEach(c => { const l = c.querySelector('.rb-line'); if (l) { l.style.transition = 'none'; l.style.width = '0'; } });      // (each pass starts its lines again)
     i++;
     if (isPunct(w)) { readBackTimer = setTimeout(step, 250); return; }
-    if (kind !== 'say') { const parts = soundSplit(w); if (parts.length) { const ms = await soundBlend(parts, kind === 'fast'); if (ending) return; rbLine(k, ms, kind); readBackTimer = setTimeout(step, ms + 300); return; } }
+    if (kind !== 'say') { const parts = soundSplit(w); if (parts.length) { await soundBlend(parts, kind === 'fast', null, ms => { if (!ending) rbLine(k, ms, kind); }); if (ending) return; readBackTimer = setTimeout(step, 350); return; } }
     const dur = 520 + 75 * String(w).length; rbLine(k, dur, 'say');
     sayAnyway = true; try { speakWord(w, 0.95); } finally { sayAnyway = false; }
     readBackTimer = setTimeout(step, dur);
@@ -16875,7 +16875,10 @@ function smTx(mode, fn) { return smDB().then(db => new Promise((res, rej) => { c
 async function smLoad() {
   try { const keys = await smTx('readonly', st => st.getAllKeys()); SM.a = new Set(); SM.v = new Set();
     (keys || []).forEach(k => { const [kind, id] = String(k).split('|'); if (kind === 'a') SM.a.add(id); else if (kind === 'v') SM.v.add(id); }); } catch (e) {}
+  SM.loaded = true;
 }
+// (which sounds have recordings, known from the start: until then a prompt would fall back to the iPad voice)
+setTimeout(() => { smLoad().catch(() => {}); }, 0);
 async function smPut(kind, id, blob) { await smTx('readwrite', st => st.put(blob, kind + '|' + id)); SM[kind].add(id); if (kind === 'a' && typeof SMA !== 'undefined') delete SMA.buf[id]; if (SM.urls[kind + '|' + id]) { URL.revokeObjectURL(SM.urls[kind + '|' + id]); delete SM.urls[kind + '|' + id]; } }
 async function smDel(kind, id) { await smTx('readwrite', st => st.delete(kind + '|' + id)); SM[kind].delete(id); delete SM.urls[kind + '|' + id]; }
 async function smUrl(kind, id) {
@@ -16907,7 +16910,7 @@ function smPlay(id) {
     const ctx = smCtx(); if (!ctx) { viaPlayer(); return true; }
     smBuffer(id).then(b => { if (!b) { viaPlayer(); return; }
       try { if (SMA.src) SMA.src.stop(); } catch (e) {} try { if (currentAudio) currentAudio.pause(); } catch (e) {}
-      const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); SMA.src = src; }).catch(viaPlayer);
+      const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); src.startAt = ctx.currentTime + 0.03; SMA.src = src; }).catch(viaPlayer);
   } catch (e) { viaPlayer(); }
   return true;
 }
@@ -17387,11 +17390,14 @@ function openSoundTuner() {
 // A word put together from its sounds' own recordings: slow blending (each sound, a gap after it) or fast blending
 // (the sounds run on into each other - the quiet at the ends of the clips overlaps). A sound with no recording is said
 // by the iPad voice in its turn. onEach(k) as each sound starts; resolves with how long it all takes (ms).
-async function soundBlend(parts, fast, onEach) {
+async function soundBlend(parts, fast, onEach, onStart) {
   const ctx = smCtx(); try { await smLoad(); } catch (e) {}
   const bufs = await Promise.all(parts.map(p => (ctx && SM.a.has(p.id)) ? smBuffer(p.id).catch(() => null) : Promise.resolve(null)));
-  const gap = fast ? -150 : 380, t0 = ctx ? ctx.currentTime + 0.06 : 0; let ms = 60;
-  try { if (SMA.src) SMA.src.stop(); } catch (e) {}
+  // the iPad can hold its sound engine paused until it is woken: woken first, so the timing below is the real timing
+  if (ctx && ctx.state !== 'running') { try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 400))]); } catch (e) {} }
+  // a sound still playing (the last spelling put in) is let finish first
+  const busyUntil = soundBusyUntil(); if (busyUntil > 0) await new Promise(r => setTimeout(r, busyUntil));
+  const gap = fast ? -150 : 380, t0 = ctx ? ctx.currentTime + 0.06 : 0; let ms = 60, lastSrc = null;
   parts.forEach((p, k) => {
     const b = bufs[k], at = ms;
     if (b && ctx && fast) {      // (fast: just the heart of each sound - the quiet before it skipped, a long sound cut short and faded - one into the next)
@@ -17399,13 +17405,22 @@ async function soundBlend(parts, fast, onEach) {
       src.buffer = b; src.connect(gn); gn.connect(ctx.destination); const w = t0 + at / 1000;
       gn.gain.setValueAtTime(1, w); gn.gain.setValueAtTime(1, w + len - 0.05); gn.gain.linearRampToValueAtTime(0.0001, w + len);
       src.start(w, off, len); ms += len * 1000 - 25; }
-    else if (b && ctx) { const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(t0 + at / 1000); ms += b.duration * 1000 + gap; }
+    else if (b && ctx) { const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(t0 + at / 1000); lastSrc = src; ms += b.duration * 1000 + gap; }
     else { setTimeout(() => { try { soundSay(p.id, p.sp); } catch (e) {} }, at); ms += (fast ? 380 : 520) + Math.max(0, gap); }
     if (onEach) setTimeout(() => onEach(k), at);
   });
-  return Math.max(300, ms - Math.min(0, gap));
+  const total = Math.max(300, ms - Math.min(0, gap));
+  soundBlendEnd = Date.now() + total; if (onStart) try { onStart(total); } catch (e) {}
+  // when the last recording has really finished (the engine's own clock, not a guess) - or the time worked out, if sooner
+  if (lastSrc && !fast) await new Promise(res => { let done = false; const fin = () => { if (!done) { done = true; res(); } }; lastSrc.onended = fin; setTimeout(fin, total + 1500); });
+  else await new Promise(r => setTimeout(r, total));
+  return 0;
 }
+let soundBlendEnd = 0;
+// how long until the sound playing now (a single sound, or a blend) is over (ms)
+function soundBusyUntil() { let t = Math.max(0, soundBlendEnd - Date.now()); try { if (SMA.src && SMA.src.buffer && SMA.ctx && SMA.src.startAt != null) t = Math.max(t, (SMA.src.startAt + SMA.src.buffer.duration - SMA.ctx.currentTime) * 1000); } catch (e) {} return Math.min(2500, t); }
 function soundSay(id, sp) {
+  if (!SM.loaded) { smLoad().then(() => soundSay(id, sp)).catch(() => {}); return; }      // (the list of recordings first, so a recorded sound is never said by the voice instead)
   const ownSp = sp && (state.soundSpeak || {})[id + '|' + sp];      // (a spelling given its own way of being said)
   if (ownSp) { soundSpeakNow(ownSp); return; }
   if (smPlay(id)) return;
