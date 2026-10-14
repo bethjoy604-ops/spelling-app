@@ -1560,12 +1560,33 @@
   .sugg-row.cols-grid > .sugg-card { width: auto !important; min-width: 0 !important; flex: none !important; margin: 0 !important; }
   .sugg-row.cols-grid > .sugg-gap { visibility: hidden; }
   .sugg-band.band-cols { margin-bottom: 14px; }
+  /* the end of a game: a token for each word (green first try, blue second, gold with help), then into the pile */
+  .gm-tokens { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: min(560px, 80vw); min-height: 64px; }
+  .tok { width: 58px; height: 58px; border-radius: 50%; position: relative; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 28px; line-height: 1;
+    background: radial-gradient(circle at 34% 30%, rgba(255,255,255,0.75) 0 10%, rgba(255,255,255,0) 32%), var(--tc); box-shadow: inset 0 -5px 0 rgba(0,0,0,0.16), inset 0 0 0 4px rgba(255,255,255,0.35), 0 3px 8px rgba(0,0,0,0.18); text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .tok.g { --tc: #4cc764; } .tok.b { --tc: #4d8df7; } .tok.y { --tc: #f4b52a; }
+  .gm-tokens .tok { transform: scale(0); opacity: 0; }
+  .gm-tokens .tok.in { animation: tokIn 0.45s cubic-bezier(.34,1.56,.64,1) forwards; }
+  @keyframes tokIn { 0% { transform: scale(0) rotate(-90deg); opacity: 0; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+  .tok.fly { position: fixed; margin: 0; z-index: 7; transition: transform 0.6s cubic-bezier(.5,-0.2,.6,1), opacity 0.6s ease; pointer-events: none; }
+  .gm-pile { display: flex; align-items: center; gap: 14px; background: #fbf7ec; border-radius: 22px; padding: 10px 22px 10px 12px; }
+  .gm-pile .stack { position: relative; width: 84px; height: 56px; }
+  .gm-pile .stack .tok { position: absolute; width: 46px; height: 46px; font-size: 22px; top: 5px; }
+  .gm-pile .stack .tok.g { left: 0; } .gm-pile .stack .tok.b { left: 19px; } .gm-pile .stack .tok.y { left: 38px; }
+  .gm-plus { font-size: 34px; font-weight: 900; color: #e0a516; animation: tokIn 0.45s cubic-bezier(.34,1.56,.64,1) both; align-self: center; }
+  .gm-pile .n { font-size: 44px; font-weight: 900; color: var(--ink); min-width: 2ch; font-variant-numeric: tabular-nums; }
+  .gm-pile .lab { font-size: 15px; font-weight: 800; color: #9a8a62; text-transform: uppercase; letter-spacing: 0.06em; }
+  .gm-pile.bump .stack, .gm-pile.bump .n { animation: pileBump 0.32s ease; }
+  @keyframes pileBump { 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  .gm-pile.glow { box-shadow: 0 0 0 4px #ffe7a3, 0 0 24px #ffd66b; transition: box-shadow 0.4s; }
+  .gm-spark { position: fixed; z-index: 8; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; animation: spark 0.7s ease-out forwards; }
+  @keyframes spark { to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; } }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
   .gm-done { font-size: 40px; font-weight: 900; color: var(--ink); }
   .gm-sum { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-  .gm-sum span { font-weight: 800; font-size: 17px; border-radius: 12px; padding: 6px 12px; }
+  .gm-sum span { font-weight: 800; font-size: 15px; border-radius: 12px; padding: 5px 11px; }
   .gm-sum .g { background: #d4f5d8; } .gm-sum .b { background: #dbe9ff; } .gm-sum .y { background: #fff1c2; }
   .gm-card button { width: 100%; border: none; border-radius: 18px; padding: 18px; font-family: inherit; font-weight: 900; font-size: 24px; }
   .gm-again { background: var(--green); color: #fff; }
@@ -3258,7 +3279,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 599 - 14 Oct';
+const BUILD = 'build 600 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3474,7 +3495,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3651,7 +3672,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4308,7 +4329,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -17951,6 +17972,17 @@ function gameTap(w, b) {
   if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true)) c.prompted = true;
   g.busy = true; setTimeout(() => { g.busy = false; gameLay(); }, 650);
 }
+function picTile(im) {
+  if (!im || !im.naturalWidth || !im.isConnected) return;
+  im.style.background = '';
+  if (getComputedStyle(im).objectFit !== 'contain') return;      // (a picture set to fill, or the tiles game's cover: as it is)
+  const bw = im.clientWidth, bh = im.clientHeight; if (!bw || !bh) return;
+  const ir = im.naturalWidth / im.naturalHeight, br = bw / bh, url = 'url("' + String(im.currentSrc || im.src).replace(/"/g, '%22') + '")', veil = 'linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3))';
+  if (ir < br * 0.88) im.style.background = veil + ', ' + url + ' center / auto 100% repeat-x';
+  else if (ir > br / 0.88) im.style.background = veil + ', ' + url + ' center / 100% auto repeat-y';
+}
+document.addEventListener('load', e => { const t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.gm-pic, #picBox')) picTile(t); }, true);
+window.addEventListener('resize', () => { clearTimeout(picTile.t); picTile.t = setTimeout(() => document.querySelectorAll('.gm-pic img, #picBox img').forEach(picTile), 200); });
 function gameStars(b) {
   const r = b.getBoundingClientRect(), v = document.getElementById('gameView');
   ['⭐', '🌟', '✨', '🎉', '⭐', '✨', '💫', '🎊'].forEach((e, k) => {
@@ -17961,11 +17993,50 @@ function gameStars(b) {
     v.appendChild(s); setTimeout(() => s.remove(), 1200);
   });
 }
+// soft, gentle notes for the tokens (made here, no sound files): a little marimba-like plink, quiet
+function tokNote(f, t, vol) {
+  if (state.soundOn === false) return;
+  try { const ctx = smCtx(); if (!ctx) return; if (ctx.state !== 'running') ctx.resume();
+    const at = ctx.currentTime + (t || 0) + 0.02;
+    [[1, 1], [2.01, 0.18], [3.98, 0.05]].forEach(([m, g]) => { const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = 'sine'; o.frequency.value = f * m;
+      gn.gain.setValueAtTime(0.0001, at); gn.gain.linearRampToValueAtTime((vol || 0.11) * g, at + 0.012); gn.gain.exponentialRampToValueAtTime(0.0001, at + 0.75 / m + 0.15);
+      o.connect(gn); gn.connect(ctx.destination); o.start(at); o.stop(at + 1.2); });
+  } catch (e) {}
+}
+const TOK_SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5];      // (a pentatonic scale: any notes in it sound good together)
+// the tokens pop in one by one, then each flies into the pile and the count goes up
+function tokensPlay(pop, had) {
+  const toks = [...pop.querySelectorAll('.gm-tokens .tok')], pile = pop.querySelector('.gm-pile'), num = pile.querySelector('.n'), dest = pile.querySelector('.stack .tok.y');
+  const step = Math.max(90, Math.min(220, 1600 / Math.max(1, toks.length)));
+  toks.forEach((t, k) => setTimeout(() => { if (!pop.isConnected) return; t.classList.add('in'); tokNote(TOK_SCALE[k % TOK_SCALE.length], 0, 0.09); }, k * step));
+  let n = had;
+  const flyAt = toks.length * step + 650;
+  toks.forEach((t, k) => setTimeout(() => {
+    if (!pop.isConnected) return;
+    const r = t.getBoundingClientRect(), d = dest.getBoundingClientRect(), f = t.cloneNode(true);
+    f.classList.remove('in'); f.classList.add('fly'); f.style.left = r.left + 'px'; f.style.top = r.top + 'px'; f.style.width = r.width + 'px'; f.style.height = r.height + 'px';
+    document.body.appendChild(f); t.style.visibility = 'hidden';
+    requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transform = 'translate(' + (d.left + d.width / 2 - r.left - r.width / 2) + 'px,' + (d.top + d.height / 2 - r.top - r.height / 2) + 'px) scale(0.75)'; }));
+    setTimeout(() => { f.remove(); if (!pop.isConnected) return; n++; num.textContent = n; pile.classList.remove('bump'); void pile.offsetWidth; pile.classList.add('bump'); tokNote(392 * (1 + (k % 5) * 0.125), 0, 0.07);
+      if (k === toks.length - 1) setTimeout(() => { if (!pop.isConnected) return; pile.classList.add('glow'); { const row = pop.querySelector('.gm-tokens'); row.innerHTML = '<span class="gm-plus">+' + toks.length + ' token' + (toks.length === 1 ? '' : 's') + '!</span>'; } [523.25, 659.25, 783.99, 1046.5].forEach((fq, j) => tokNote(fq, j * 0.09, 0.07)); tokSparks(dest); }, 250); }, 620);
+  }, flyAt + k * Math.max(110, step * 0.8)));
+}
+function tokSparks(el) {
+  const r = el.getBoundingClientRect(), cols = ['#4cc764', '#4d8df7', '#f4b52a', '#ff8fb1', '#b48cff'];
+  for (let k = 0; k < 14; k++) { const s = document.createElement('span'); s.className = 'gm-spark'; const a = Math.PI * 2 * k / 14, d = 50 + Math.random() * 40;
+    s.style.left = (r.left + r.width / 2 - 5) + 'px'; s.style.top = (r.top + r.height / 2 - 5) + 'px'; s.style.background = cols[k % cols.length];
+    s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d + 'px'); document.body.appendChild(s); setTimeout(() => s.remove(), 800); }
+}
 function gameEnd() {
   try { masteryEvalAll(); save(); } catch (e) {}
   const g = game, first = g.res.filter(r => r.res === 'first').length, second = g.res.filter(r => r.res === 'second').length, pr = g.res.filter(r => r.res === 'prompted').length;
   const v = document.getElementById('gameView') || document.body; const pop = document.createElement('div'); pop.className = 'gm-pop';
-  pop.innerHTML = '<div class="gm-card"><div class="gm-big">🌟</div><div class="gm-done">All ' + g.res.length + ' done!</div><div class="gm-sum"><span class="g">' + first + ' first try</span><span class="b">' + second + ' second try</span><span class="y">' + pr + ' with help</span></div><button class="gm-again">▶ Play again</button><button class="gm-all">All done</button></div>';
+  const had = Math.max(0, +state.tokens || 0), kinds = g.res.map(r => r.res === 'first' ? 'g' : r.res === 'second' ? 'b' : 'y');
+  state.tokens = had + kinds.length; try { save(); } catch (e) {}
+  pop.innerHTML = '<div class="gm-card"><div class="gm-done">All ' + g.res.length + ' done!</div><div class="gm-tokens">' + kinds.map(k => '<span class="tok ' + k + '">\u2605</span>').join('') + '</div>'
+    + '<div class="gm-pile"><span class="stack"><span class="tok g">\u2605</span><span class="tok b">\u2605</span><span class="tok y">\u2605</span></span><span class="n">' + had + '</span><span class="lab">tokens</span></div>'
+    + '<div class="gm-sum"><span class="g">' + first + ' first try</span><span class="b">' + second + ' second try</span><span class="y">' + pr + ' with help</span></div><button class="gm-again">▶ Play again</button><button class="gm-all">All done</button></div>';
+  setTimeout(() => tokensPlay(pop, had), 250);
   const psg = g.preset ? presetById(g.preset) : null, newly = psg ? presetMastered(psg) : [];
   if (psg && newly.length) {      // (a saved game with a target newly mastered: it asks what to do with it)
     const m = document.createElement('div'); m.className = 'gm-mastered'; m.textContent = '\uD83C\uDF89 Mastered: ' + newly.map(targetName).join(', ');
