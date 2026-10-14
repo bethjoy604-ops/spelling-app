@@ -1693,6 +1693,23 @@
   .gl-hard { background: #fff1d6; color: #8a4b00; }
   .gl-btn.last { border-color: rgba(0,0,0,0.18) !important; }
   .gm-hard { font-weight: 900; font-size: 18px; color: #b25e00; background: #fff1d6; border-radius: 12px; padding: 6px 14px; }
+  /* response rate & cumulative record */
+  .rd-ctx { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 10px; }
+  .rd-ctx .lab { font-weight: 900; font-size: 15px; color: var(--muted); margin-right: 4px; }
+  .rd-range { display: flex; gap: 6px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .rd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .rd-stat { background: #f6f7f9; border-radius: 14px; padding: 10px 12px; }
+  .rd-stat b { display: block; font-size: 26px; font-weight: 900; color: #0b0b0b; font-variant-numeric: tabular-nums; }
+  .rd-stat span { font-size: 13px; font-weight: 800; color: #52514e; }
+  .rd-chart { position: relative; background: #fcfcfb; border-radius: 14px; padding: 8px 8px 4px; }
+  .rd-chart svg { display: block; width: 100%; height: auto; }
+  .rd-tip { position: absolute; pointer-events: none; background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.16); padding: 6px 10px; font-size: 13px; font-weight: 700; color: #0b0b0b; white-space: nowrap; display: none; }
+  .rd-legend { display: flex; gap: 16px; font-size: 14px; font-weight: 800; color: #52514e; margin: 6px 4px 0; }
+  .rd-legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .rd-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 6px; }
+  .rd-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #52514e; padding: 6px 6px; border-bottom: 1px solid #e6e7ea; }
+  .rd-table td { padding: 8px 6px; border-bottom: 1px solid #f0f1f3; font-weight: 700; color: #0b0b0b; font-variant-numeric: tabular-nums; }
+  .rd-table td.tr { font-weight: 900; white-space: nowrap; }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -3045,6 +3062,7 @@
       <div class="sgroup-body">
         <div class="settings-list">
           <div class="setting-row"><span>Collect data (prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+          <div class="setting-row" id="rateDataRow" style="cursor:pointer"><span>&#128200; Response rate &amp; cumulative record</span><span style="color:var(--muted);font-weight:800">&#8250;</span></div>
         </div>
         <div class="sublabel" style="font-size:15px;color:var(--ink)">Stimulus prompts (record which were in use)</div>
         <div class="sublabel">On the keyboard</div>
@@ -3429,7 +3447,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 620 - 14 Oct';
+const BUILD = 'build 621 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3645,7 +3663,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3823,7 +3841,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4480,7 +4498,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -6642,6 +6660,7 @@ function ltmKeyPaint(k) {
 }
 function armPrompt(force) {
   clearPromptTimer();
+  { const k = (state.currentTarget || '') + '|' + state.targetIndex; if (k !== letterTurnKey) { letterTurnKey = k; letterTurnAt = Date.now(); } }      // (each letter's turn: when it began, for how long the answer took)
   clearTimeout(ltmTimer); ltmTimer = null;
   if (ltmNow()) { clearTimeout(soundPromptTimer); soundPromptTimer = null; verbalSpokenFor = -1; if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; } ltmStart(); return; }
   if (soundPracticeNow()) { const fresh = state.targetIndex === 0 && !(state.text || '');      // (after the word is said: about its length, then 2 s - after a spelling's sound: 2 s)
@@ -7180,6 +7199,7 @@ function typeChar(letter) {
   if (state.currentTarget) {
     const expected = state.currentTarget[state.targetIndex];
     if (expected && !isWrong) {
+      try { respNote({ k: 'letter', w: String(expected).toUpperCase(), src: (typeof game !== 'undefined' && game && game.mode === 'write') ? 'game:write' : 'spell', p: prompted ? 1 : 0, lat: letterLatency() }); } catch (e) {}
       { const i = state.targetIndex, a = trialAt[i] || { w: 0 }; a.L = String(expected).toUpperCase(); a.p = !!prompted; if (ltmNow()) a.ltm = Math.max(a.ltm || 1, ltmLevel()); a.f = boostLevel(i) >= BOOST_MAX ? 0 : Math.max(fadeLevelAt(i), boostLevel(i) ? 1 : 0); trialAt[i] = a; }
       state.targetIndex++;
       state.targetProgress.push(true);
@@ -7327,6 +7347,7 @@ function boostNote() {
 let trialAt = [];
 function handleError(expectedLetter, typedLetter) {
   fadeStreak = 0; trialErrors++;
+  try { respNote({ k: 'letter', w: String(expectedLetter || '').toUpperCase(), src: 'spell', ok: false, lat: letterLatency() }); } catch (e) {}
   try { boostNote(); } catch (e) {}
   if (state.currentTarget) { const i = state.targetIndex; trialAt[i] = trialAt[i] || { w: 0 }; trialAt[i].w = (trialAt[i].w || 0) + 1; }
   try { missNote('wrong key', typedLetter); } catch (e) {}
@@ -9277,6 +9298,125 @@ function openTagPicker(t) {
     body.appendChild(sheetBtn('Done', 'primary', () => openTagDetail(t)));
   });
 }
+// ===== Response rate, continuously (the cumulative record): every response with its time, prompted or not, and with whom
+// and where. Home tiles, typed words and messages are logged here as they happen; the practice keyboard's letters too
+// (with how long each took); the games' turns come from the games' own log.
+var letterTurnAt = 0, letterTurnKey = '', respTypedNext = null, respPhraseWas = [];
+function letterLatency() { return letterTurnAt ? Math.max(0, Date.now() - letterTurnAt) : null; }
+function respNote(ev) {
+  const c = state.dataCtx || {}; const e = Object.assign({ t: Date.now() }, ev); if (c.who) e.who = c.who; if (c.where) e.where = c.where;
+  const L = state.respLog = Array.isArray(state.respLog) ? state.respLog : []; L.push(e); if (L.length > 20000) L.splice(0, L.length - 20000);
+}
+// the words that have just gone into the message (in any place in it): each is a response - a tile, a suggested tile, or typed
+function respWordsSeen() {
+  const now = homePhrase.slice(), was = respPhraseWas; respPhraseWas = now.slice();
+  if (state.builderMode || now.length <= was.length) { respTypedNext = null; return; }
+  const left = {}; was.forEach(w => { left[w] = (left[w] || 0) + 1; });
+  const added = now.filter(w => { if (left[w]) { left[w]--; return false; } return true; }).filter(w => !isPunct(w));
+  const viaSugg = Date.now() - (typeof magicPickAt !== 'undefined' ? magicPickAt : 0) < 600;
+  added.forEach(w => respNote({ k: 'word', w, src: respTypedNext === w ? 'typed' : viaSugg ? 'suggested' : 'tile', p: 0 }));
+  respTypedNext = null;
+}
+const RD_CLASSES = [
+  ['tile', 'Words chosen (tiles)'], ['typed', 'Words typed'], ['message', 'Messages sent'], ['mand', 'Requests (mands)'], ['letter', 'Letters spelled (practice)'],
+  ['game:sight', 'Tact: picture → word'], ['game:write', 'Spelling: picture → keyboard'], ['game:tiles', 'Spelling: letter tiles'], ['game:sound', 'Sounds: Elkonin boxes'],
+  ['game:hear', 'Listener: sound match'], ['game:qa', 'Intraverbal: questions'], ['game:dict', 'Transcription: dictation']];
+// every response in the logs, as one list: { t, cls, ok (independent), lat, who, where }
+function rdAll() {
+  const out = [];
+  (state.respLog || []).forEach(e => {
+    if (e.k === 'word') out.push({ t: e.t, cls: e.src === 'typed' ? 'typed' : 'tile', ok: true, who: e.who, where: e.where });
+    else if (e.k === 'message') { out.push({ t: e.t, cls: 'message', ok: true, who: e.who, where: e.where }); if (e.mand) out.push({ t: e.t, cls: 'mand', ok: true, who: e.who, where: e.where, sub: true }); }
+    else if (e.k === 'letter' && e.ok !== false) out.push({ t: e.t, cls: 'letter', ok: !e.p, lat: e.lat, who: e.who, where: e.where });
+  });
+  (state.gameLog || []).forEach(r => { const m = r.mode || 'sight'; if (m === 'write') return;      // (Spelling's letters are logged one by one above)
+    out.push({ t: r.t, cls: 'game:' + m, ok: r.res === 'first' }); });
+  (state.gameLog || []).filter(r => r.mode === 'write').forEach(r => out.push({ t: r.t, cls: 'game:write', ok: r.res === 'first', word: true }));
+  return out.sort((a, b) => a.t - b.t);
+}
+// time actually spent: the gaps between responses, each counted up to two minutes (so time away does not count)
+function rdActive(evs) { let ms = 0; for (let i = 1; i < evs.length; i++) ms += Math.min(120000, evs[i].t - evs[i - 1].t); return evs.length ? ms + 30000 : 0; }
+let rdRange = 7;
+function openRateData() {
+  openWordSheet(body => {
+    sheetTitle(body, 'Response rate', 'the cumulative record');
+    // with whom and where: every response from now on is marked with them (for generalisation)
+    const ctx = state.dataCtx = state.dataCtx || { who: '', where: '' };
+    const people = state.dataPeople = state.dataPeople || [], places = state.dataPlaces = state.dataPlaces || [];
+    const ctxRow = (lab, list, key, ask) => { const r = document.createElement('div'); r.className = 'rd-ctx'; const l = document.createElement('span'); l.className = 'lab'; l.textContent = lab; r.appendChild(l);
+      if (ctx[key] && !list.includes(ctx[key])) list.push(ctx[key]);
+      ['(not set)'].concat(list).forEach(v => { const val = v === '(not set)' ? '' : v, b = document.createElement('button'); b.className = 'tune-chip' + (ctx[key] === val ? ' on' : ''); b.textContent = v;
+        b.addEventListener('click', () => { ctx[key] = val; save(); openRateData(); }); r.appendChild(b); });
+      const add = document.createElement('button'); add.className = 'tune-chip'; add.textContent = '+ add';
+      add.addEventListener('click', () => { const v = String(prompt(ask) || '').trim(); if (!v) return; if (!list.includes(v)) list.push(v); ctx[key] = v; save(); openRateData(); }); r.appendChild(add);
+      body.appendChild(r); };
+    ctxRow('With', people, 'who', 'Who is communicating with them? (Mom, Dad, teacher ...)');
+    ctxRow('Where', places, 'where', 'Where are they? (home, school, park ...)');
+    const rg = document.createElement('div'); rg.className = 'rd-range'; body.appendChild(rg);
+    [[1, 'Today'], [7, '7 days'], [30, '30 days'], [0, 'All']].forEach(([d, l]) => { const b = document.createElement('button'); b.className = 'tune-chip' + (rdRange === d ? ' on' : ''); b.textContent = l; b.addEventListener('click', () => { rdRange = d; openRateData(); }); rg.appendChild(b); });
+    const all = rdAll(), now = Date.now(), dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const from = rdRange === 1 ? dayStart.getTime() : rdRange ? now - rdRange * 864e5 : 0, span = rdRange === 1 ? 864e5 : rdRange * 864e5;
+    const evs = all.filter(e => e.t >= from), prev = rdRange ? all.filter(e => e.t >= from - span && e.t < from) : [];
+    const main = evs.filter(e => !e.sub), hrs = rdActive(main) / 36e5;
+    const ind = main.filter(e => e.ok).length, pr = main.length - ind;
+    const lats = evs.filter(e => e.cls === 'letter' && e.ok && e.lat != null).map(e => e.lat).sort((a, b) => a - b), med = lats.length ? lats[Math.floor(lats.length / 2)] : null;
+    const st = document.createElement('div'); st.className = 'rd-stats'; body.appendChild(st);
+    const stat = (v, l) => { const d = document.createElement('div'); d.className = 'rd-stat'; d.innerHTML = '<b></b><span></span>'; d.firstChild.textContent = v; d.lastChild.textContent = l; st.appendChild(d); };
+    stat(hrs ? Math.round(ind / hrs) : 0, 'independent per hour'); stat(hrs ? Math.round(pr / hrs) : 0, 'prompted per hour');
+    stat(main.length ? Math.round(100 * ind / main.length) + '%' : '–', 'independent'); stat(hrs >= 1 ? hrs.toFixed(1) + ' h' : Math.round(hrs * 60) + ' min', 'active time');
+    if (med != null) stat((med / 1000).toFixed(1) + ' s', 'typical time per letter');
+    // the cumulative record: responses counted up over active time (steeper = faster), independent and prompted
+    const box = document.createElement('div'); box.className = 'rd-chart'; body.appendChild(box);
+    if (main.length < 2) { const n = document.createElement('div'); n.className = 'help-note'; n.style.padding = '18px'; n.textContent = 'Not enough responses in this time yet. Every tile, typed word, message, practice letter and game turn from now on is counted.'; box.appendChild(n); }
+    else {
+      const W = 560, H = 230, L = 36, R = 92, T = 14, B = 28;
+      let x = 0; const pts = []; main.forEach((e, i) => { if (i) x += Math.min(120000, e.t - main[i - 1].t); pts.push({ x, e }); });
+      const X = Math.max(1, x), maxY = Math.max(ind, pr, 1);
+      let ci = 0, cp = 0; const pi = [], pp = [];
+      pts.forEach(q => { if (q.e.ok) ci++; else cp++; pi.push([q.x, ci]); pp.push([q.x, cp]); });
+      const sx = v => L + (W - L - R) * v / X, sy = v => T + (H - T - B) * (1 - v / maxY);
+      const path = arr => 'M' + arr.map(([a, b]) => sx(a).toFixed(1) + ',' + sy(b).toFixed(1)).join(' L');
+      const ticks = [0, Math.round(maxY / 2), maxY];
+      let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cumulative responses over active time">';
+      ticks.forEach(v => { svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + sy(v) + '" y2="' + sy(v) + '" stroke="#e6e7ea" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end" font-size="12" fill="#52514e">' + v + '</text>'; });
+      const mins = Math.round(X / 60000); svg += '<text x="' + L + '" y="' + (H - 8) + '" font-size="12" fill="#52514e">0</text><text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end" font-size="12" fill="#52514e">' + mins + ' active min</text>';
+      svg += '<path d="' + path(pp) + '" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round"/><path d="' + path(pi) + '" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round"/>';
+      svg += '<text x="' + (W - R + 6) + '" y="' + (sy(ci) + 4) + '" font-size="12" font-weight="800" fill="#0b0b0b">' + ci + ' indep.</text><text x="' + (W - R + 6) + '" y="' + (sy(cp) + 4 + (Math.abs(sy(cp) - sy(ci)) < 14 ? 14 : 0)) + '" font-size="12" font-weight="800" fill="#0b0b0b">' + cp + ' prompted</text>';
+      svg += '<line class="rd-x" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="#52514e" stroke-width="1" stroke-dasharray="3 3" style="display:none"/><rect x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - T - B) + '" fill="transparent" class="rd-hit"/></svg>';
+      box.innerHTML = svg;
+      const tip = document.createElement('div'); tip.className = 'rd-tip'; box.appendChild(tip);
+      const svgEl = box.querySelector('svg'), hit = box.querySelector('.rd-hit'), xl = box.querySelector('.rd-x');
+      const move = ev => { const r = svgEl.getBoundingClientRect(), vx = (ev.clientX - r.left) * W / r.width, v = Math.max(0, Math.min(X, (vx - L) * X / (W - L - R)));
+        let k = 0; pts.forEach((q, i) => { if (q.x <= v) k = i; }); const q = pts[k], d = new Date(q.e.t);
+        xl.setAttribute('x1', sx(q.x)); xl.setAttribute('x2', sx(q.x)); xl.style.display = '';
+        tip.textContent = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + ' · ' + pi[k][1] + ' independent · ' + pp[k][1] + ' prompted';
+        tip.style.display = 'block'; const bx = box.getBoundingClientRect(); tip.style.left = Math.min(bx.width - tip.offsetWidth - 6, Math.max(6, ev.clientX - bx.left + 10)) + 'px'; tip.style.top = '8px'; };
+      hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move); hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; xl.style.display = 'none'; });
+      const lg = document.createElement('div'); lg.className = 'rd-legend'; lg.innerHTML = '<span><i style="background:#2a78d6"></i>Independent</span><span><i style="background:#eb6834"></i>Prompted</span><span style="font-weight:700">steeper line = faster responding</span>'; body.appendChild(lg);
+    }
+    // each kind of response: how many, how fast, and whether it is growing against the time before
+    const sub = document.createElement('div'); sub.className = 'sublabel'; sub.textContent = 'Each kind of response' + (rdRange ? ' (against the ' + (rdRange === 1 ? 'day' : rdRange + ' days') + ' before)' : ''); body.appendChild(sub);
+    const tb = document.createElement('table'); tb.className = 'rd-table'; tb.innerHTML = '<thead><tr><th>Response</th><th>Indep.</th><th>Prompted</th><th>Indep./hr</th><th>Trend</th></tr></thead><tbody></tbody>'; body.appendChild(tb);
+    RD_CLASSES.forEach(([k, lab]) => { const a = evs.filter(e => e.cls === k), b = prev.filter(e => e.cls === k); if (!a.length && !b.length) return;
+      const ai = a.filter(e => e.ok).length, bi = b.filter(e => e.ok).length;
+      const trend = !rdRange ? '' : ai >= bi * 1.2 + 2 ? '↗ growing' : ai <= bi * 0.8 - 2 ? '↘ falling' : '→ flat';
+      const tr = document.createElement('tr'); [lab, ai, a.length - ai, hrs ? Math.round(ai / hrs) : 0, trend].forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i === 4) td.className = 'tr'; tr.appendChild(td); }); tb.tBodies[0].appendChild(tr); });
+    if (!tb.tBodies[0].children.length) tb.remove();
+    // generalisation: independent responses with each person and in each place
+    const gen = (key, title) => { const m = {}; evs.filter(e => !e.sub && e.ok && e[key]).forEach(e => { m[e[key]] = (m[e[key]] || 0) + 1; }); const ks = Object.keys(m); if (!ks.length) return;
+      const s2 = document.createElement('div'); s2.className = 'sublabel'; s2.textContent = title; body.appendChild(s2);
+      const t2 = document.createElement('table'); t2.className = 'rd-table'; t2.innerHTML = '<tbody></tbody>'; ks.sort((a, b) => m[b] - m[a]).forEach(k => { const tr = document.createElement('tr'); tr.innerHTML = '<td></td><td></td>'; tr.children[0].textContent = k; tr.children[1].textContent = m[k] + ' independent'; t2.tBodies[0].appendChild(tr); }); body.appendChild(t2); };
+    gen('who', 'With each person'); gen('where', 'In each place');
+    body.appendChild(sheetBtn('Export every response (spreadsheet)', '', () => {
+      const rows = [['time', 'kind', 'what', 'independent', 'seconds', 'with', 'where']].concat(all.map(e => [new Date(e.t).toISOString(), e.cls, '', e.ok ? 1 : 0, e.lat != null ? (e.lat / 1000).toFixed(2) : '', e.who || '', e.where || '']));
+      (state.respLog || []).forEach((e, i) => {});      // (what each response was is in the full log below)
+      const full = [['time', 'type', 'what', 'source', 'prompted', 'seconds', 'with', 'where']].concat((state.respLog || []).map(e => [new Date(e.t).toISOString(), e.k, e.w || '', e.src || '', e.p ? 1 : 0, e.lat != null ? (e.lat / 1000).toFixed(2) : '', e.who || '', e.where || '']));
+      const csv = a => a.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv(full) + '\n\n' + csv(rows)], { type: 'text/csv' }), u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = 'responses.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1000);
+    }));
+    body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
+  });
+}
 function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} try { suggFlip(); } catch (e) {} } }
 // new suggested tiles (after a tile is picked, or a folder opened): they turn over together, a cue that the grid has changed
 let suggFlipSig = null;
@@ -10148,6 +10288,7 @@ function barNoteTake(n) {
 }
 function renderPhraseBar() { try { return renderPhraseBar0(); } finally { try { pbFit(); } catch (e) {} } }
 function renderPhraseBar0() {
+  try { respWordsSeen(); } catch (e) {}
   renderSpeakBtn();
   refreshSmallStrips();
   // a tile was chosen: the pop-out of switches has done its job
@@ -10307,6 +10448,7 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
+  try { if (homePhrase.length && !state.builderMode) { const m = homePhrase.filter(w => !isPunct(w)).join(' '); respNote({ k: 'message', w: m, src: state.chatMode ? 'chat' : 'home', mand: /\b(WANT|NEED|MORE|HELP|PLEASE|CAN I|GIVE)\b/.test(m) ? 1 : 0 }); } } catch (e) {}
   barNotes = []; notesTaken.clear(); notesAfter.clear();      // (the folders noted in the bar were not chosen: they go with the message)
   try { if (homeKeysUp()) homeKeysClose(); } catch (e) {}
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
@@ -11094,7 +11236,7 @@ function commitTypedWord() {
   const typed = inp.value;
   const raw = normaliseWord(typed);
   if (!raw) return false;
-  rememberCase(typed, raw);
+  rememberCase(typed, raw); respTypedNext = raw;
   try { const fx = soundFixFor(typed); if (fx.length) soundFixes[raw] = fx; else delete soundFixes[raw]; } catch (e) {}
   inp.value = '';
   renderTypeSuggest();
@@ -17279,6 +17421,7 @@ function ghRewards(host) {
   for (let k = 0; k < g; k++) list.push('g'); for (let k = 0; k < b; k++) list.push('b'); for (let k = 0; k < y; k++) list.push('y');
   jar.innerHTML = list.slice(0, show).map((k, i) => '<span class="tok ' + k + '" style="animation-delay:' + Math.min(1.2, i * 0.012).toFixed(3) + 's">★</span>').join('') + (total > show ? '<span class="gh-sub" style="align-self:center;font-weight:900">+' + (total - show) + ' more</span>' : '');
   if (ts.modes && Object.keys(ts.modes).length) { const k = document.createElement('div'); k.className = 'gh-sub'; k.style.cssText = 'margin-top:10px;font-weight:800'; k.textContent = Object.keys(ts.modes).map(m => gameIcon(m) + ' ' + gameName(m) + ': ' + ts.modes[m]).join('   ·   '); p1.appendChild(k); }
+  { const rb = document.createElement('button'); rb.className = 'gh-back'; rb.style.alignSelf = 'flex-start'; rb.textContent = '\uD83D\uDCC8 Response rate & cumulative record'; rb.addEventListener('click', () => { buzz(8); openRateData(); }); host.appendChild(rb); }
   const sec = document.createElement('div'); sec.className = 'gh-sec'; sec.textContent = 'Targets mastered'; host.appendChild(sec);
   const p2 = document.createElement('div'); p2.className = 'gh-panel'; host.appendChild(p2);
   const groups = practiceGroups().filter(x => { const m = groupModeOf(x); return m && m !== 'typing' && gamesOn()[m] !== false; });
@@ -20557,6 +20700,7 @@ document.getElementById('toggleMagic').addEventListener('click', () => {
   try { if (!state.magicType) hideMagic(); renderHome(true); } catch (e) {}
 });
 document.getElementById('toggleChatMode').addEventListener('click', () => { state.chatMode = !state.chatMode; save(); renderSettings(); try { renderHome(true); } catch (e) {} });
+document.getElementById('rateDataRow').addEventListener('click', () => { buzz(8); openRateData(); });
 document.getElementById('tagsRow').addEventListener('click', () => { buzz(8); openTagsManager(); });
 document.getElementById('toggleMagicCols').addEventListener('click', () => { state.magicCols = state.magicCols === false; save(); renderSettings(); try { const h = document.getElementById('suggHost'); if (h) h.dataset.sig = ''; suggRender(); } catch (e) {} });
 document.getElementById('toggleSuggestOn').addEventListener('click', () => { state.suggestOn = state.suggestOn === false; save(); renderSettings(); try { renderTypeSuggest(); } catch (e) {} });
