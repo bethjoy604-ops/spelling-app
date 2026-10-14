@@ -1582,6 +1582,8 @@
   .pp-nav { flex: 0 0 72px; height: 64px; border: none; border-radius: 18px; background: #fff; font-size: 40px; font-weight: 900; box-shadow: var(--shadow); }
   .pp-nav:disabled { opacity: 0.35; }
   .pp-fit { flex: 1; justify-content: center; }
+  .snd-cell.reveal { background: #fff4cc; border-color: #f0b400; color: #7a5a00; animation: sndReveal 3s ease both; }
+  @keyframes sndReveal { 0% { opacity: 0; transform: scale(0.9); } 8% { opacity: 1; transform: scale(1.08); } 15% { transform: none; } 85% { opacity: 1; } 100% { opacity: 0.4; } }
   .tgt-subhead { grid-column: 1 / -1; font-weight: 800; color: #4a5568; padding: 14px 8px 4px; letter-spacing: 0.02em; }
   .gm-start { display: block; width: 100%; margin: 14px 0 4px; border: none; border-radius: 18px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; padding: 18px 12px; cursor: pointer; }
   .gm-start:disabled { background: #e6e9ef; color: #9aa3b5; }
@@ -3233,7 +3235,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 577 - 14 Oct';
+const BUILD = 'build 578 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6311,7 +6313,8 @@ function soundKbPromptPaint() {
   if (pOn('promptPulseOn') && fl < 4) el.classList.add('prompt-pulse');
   if (pOn('promptSizeOn') && fl < 5) el.classList.add('prompt-size', 'boost-' + state.promptSize);
 }
-function soundPromptSay() { if (!soundPracticeNow() || isWordComplete()) return; const p = soundPartAt(state.currentTarget, state.targetIndex); if (p) soundSay(p.id, p.sp); }
+let soundPromptLast = 0;
+function soundPromptSay() { if (!soundPracticeNow() || isWordComplete()) return; if (Date.now() - soundPromptLast < 900) return; const p = soundPartAt(state.currentTarget, state.targetIndex); if (p) { soundPromptLast = Date.now(); soundSay(p.id, p.sp); } }
 function armPrompt(force) {
   clearPromptTimer();
   if (soundPracticeNow()) { const fresh = state.targetIndex === 0 && !(state.text || '');      // (after the word is said: about its length, then 2 s - after a spelling's sound: 2 s)
@@ -17570,7 +17573,7 @@ function soundTypeEnter(id, sp) {
   if (want && !soundTileOk({ id, sp }, want)) {
     const was = state.letterSpeech; state.letterSpeech = false; soundWrongNow = true;
     try { typeLetter(letters[0] || '?'); } finally { soundWrongNow = false; state.letterSpeech = was; }
-    try { soundSay(id, sp); } catch (e) {} buzz(8); try { render(); } catch (e) {} return;
+    soundPromptArm(500); buzz(8); try { render(); } catch (e) {} return;      // (the wrong spelling is not said: the right sound is, a moment later)
   }
   const was = state.letterSpeech; state.letterSpeech = false;
   try { [...letters].forEach(ch => typeLetter(ch)); } finally { state.letterSpeech = was; }
@@ -17613,8 +17616,9 @@ function gameSoundTrial() {
 function soundEnter(id, sp) {
   const g = game; if (!g || g.busy) return; const c = g.cur, want = c.parts[c.k]; if (!want) return;
   if (sp == null) sp = want.alt.includes(id) ? want.sp : (SOUND_K[id] ? SOUND_K[id].label : id);
-  soundSay(id, sp);
-  if ((game.mode === 'hear' || game.mode === 'match') ? snd1Ok(id, sp, want) : soundTileOk({ id, sp }, want)) {
+  const ok = (game.mode === 'hear' || game.mode === 'match') ? snd1Ok(id, sp, want) : soundTileOk({ id, sp }, want);
+  if (ok) soundSay(id, sp);      // (a wrong key is not said: the right one is shown and said instead, below)
+  if (ok) {
     if (c.prompted) c.anyPrompt = true;
     c.lets.push(want.sp + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
     const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (cell) { cell.textContent = soundSpShow(game.mode === 'hear' ? sp : want.sp); cell.classList.add('filled'); cell.classList.remove('next'); }
@@ -17627,7 +17631,12 @@ function soundEnter(id, sp) {
   }
   c.tries++; c.wrongs++; buzz([60, 40, 60]); gameBuzz();
   const v = document.getElementById('gameView'); v.classList.remove('gm-shake'); void v.offsetWidth; v.classList.add('gm-shake');
-  const msg = document.getElementById('gmMsg'); msg.textContent = want.alt.includes(id) ? 'Right sound - other spelling' : 'Try again'; msg.classList.remove('show'); void msg.offsetWidth; msg.classList.add('show');
+  // error correction: the empty box shows the right spelling for 3 s while its sound plays; then it is empty again, to try
+  { const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]');
+    if (cell) { cell.textContent = soundSpShow(want.sp); cell.classList.add('reveal'); }
+    g.busy = true; soundCloseAll(); setTimeout(() => { try { soundSay(want.alt[0] || want.id, want.sp); } catch (e) {} }, 350);
+    setTimeout(() => { if (game !== g) return; if (cell && !cell.classList.contains('filled')) { cell.textContent = ''; cell.classList.remove('reveal'); } g.busy = false; soundKbPaint(); }, 3000); }
+  const msg = document.getElementById('gmMsg'); msg.textContent = ''; msg.classList.remove('show');      // (no message over the word: the box shows the right spelling instead)
   if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true)) c.prompted = true;
   soundKbPaint();
 }
