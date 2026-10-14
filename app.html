@@ -1513,8 +1513,9 @@
   .keyboard.kb-sounds .sk-row { flex: 1 1 0; min-height: 0; }
   .keyboard.kb-sounds .sk { height: auto; }
   .keyboard.kb-sounds > .row { flex: 1 1 0; }
-  .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #dff3e3; color: #1d6b31; }
-  .key.sndtoggle svg { width: clamp(30px, 4.6vmin, 44px); height: auto; } .key.sndtoggle small { font-size: clamp(11px, 1.6vmin, 14px); font-weight: 700; opacity: 0.8; margin-top: 2px; }
+  .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #bfd8ff; color: #1f4f9e; flex: 0.72 !important; }      /* the small words' blue, both ways */
+  .row:has(.sndtoggle) > .numkey { flex: 0.72 !important; }      /* 123 and the switch share the room of one wide key: the row matches the enter key on the other side */
+  .key.sndtoggle svg { width: clamp(24px, 3.6vmin, 34px); height: auto; } .key.sndtoggle small { font-size: clamp(10px, 1.4vmin, 12px); font-weight: 700; opacity: 0.85; margin-top: 1px; }
   .key.letter.sk { flex: 1; height: auto; border: 2px solid transparent; border-radius: 16px; font-weight: 600; font-size: clamp(24px, 5vmin, 46px); box-shadow: var(--shadow); }
   .key.letter.sk.opt { font-size: clamp(20px, 3.6vmin, 36px); font-weight: 800; }
   .key.letter.sk i { font-size: clamp(11px, 1.5vmin, 14px); }
@@ -1524,7 +1525,7 @@
   .keyboard .key.letter.sk.prompt-color { background: var(--prompt); color: var(--prompt-ink); border-color: transparent; }
   .keyboard .key.letter.sk.prompt-color.fade-1 { background: var(--prompt-f1); }
   .keyboard .key.letter.sk.prompt-color.fade-2 { background: var(--prompt-f2); color: var(--ink); }
-  .key.sndtoggle.on { background: #dff3e3; color: #1d6b31; }
+  .key.sndtoggle.on { background: #bfd8ff; color: #1f4f9e; }
   .sm-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
   .sm-input { flex: 1 1 180px; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #c9ced8; }
   .sm-voice { flex: 0 1 190px; }
@@ -3238,7 +3239,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 585 - 14 Oct';
+const BUILD = 'build 586 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6314,6 +6315,15 @@ function promptStepUp(word, idx) {
 // Called whenever the expected letter changes, or after an error that restarts the wait
 // ===== Practising a word with the sound keyboard: the word is said, then 2 s later the sound of its first spelling; each
 // spelling put in is said as it lands, and 2 s later the sound of the next one. A finished word is said slowly, then as usual.
+// the keyboard switched (letters / sounds) part-way through a word: the word starts again from the top - its letters
+// cleared, the word said again, and the prompts (the sound of the first spelling, on the sound keyboard) from the start
+function restartTargetTyping() {
+  const w = state.currentTarget; if (!w || (typeof game !== 'undefined' && game) || wordDone === w) return;
+  state.text = ''; state.targetIndex = 0; state.targetProgress = []; state.targetPromptedFlags = []; state.pendingLetterCounts = {};
+  trialAt = []; helpRequested = false; verbalSpokenFor = -1; try { soundCloseAll(); } catch (e) {} try { clearTimeout(soundPromptTimer); } catch (e) {}
+  armPrompt();
+  if (state.targetSpeech) { afterSpeech(() => { if (state.currentTarget !== w) return; sayAnyway = true; try { speakWord(w, 0.85); } finally { sayAnyway = false; } }, 0); }
+}
 function soundPracticeNow() { try { return !!state.soundKeysOn && !game && !!state.currentTarget && !kbSearch && document.getElementById('viewKeyboard').classList.contains('active'); } catch (e) { return false; } }
 // the sound of the word's spelling that starts at this letter of the target (null part-way through a spelling, or a silent letter)
 function soundPartAt(target, idx) {
@@ -6576,7 +6586,7 @@ function render() {
   r.appendChild(numKey);
   if (!inGame) { const t = document.createElement('button'); t.className = 'key wide sndtoggle' + (soundKeys ? ' on' : ''); t.setAttribute('aria-label', soundKeys ? 'Letter keyboard' : 'Sound keyboard');
     t.innerHTML = sndToggleHtml(soundKeys);
-    t.addEventListener('click', () => { warmSpeech(); buzz(10); state.soundKeysOn = !state.soundKeysOn; kbNumbers = false; shiftOn = false; save(); render(); try { typeKeysSync(); } catch (e) {} });
+    t.addEventListener('click', () => { warmSpeech(); buzz(10); state.soundKeysOn = !state.soundKeysOn; kbNumbers = false; shiftOn = false; try { restartTargetTyping(); } catch (e) {} save(); render(); try { typeKeysSync(); } catch (e) {} });
     r.appendChild(t); }
   const spaceKey = makeSpecialKey('', 'space', 'space space-blank');
   if (expected === ' ' && kbShow) promptKey(spaceKey);
