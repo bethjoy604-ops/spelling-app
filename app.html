@@ -897,6 +897,7 @@
   .view-home.magic-full #smallHost, .view-home.magic-full #smallHost.sm-open { padding-bottom: 0 !important; margin-bottom: 0 !important; }
   .view-home.magic-full #smallHost .small-strip { padding-bottom: 0 !important; }
   .view-home.magic-full .sugg-band { box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; padding-bottom: 14px; }
+  .view-home.magic-full #suggHost { touch-action: pan-x; overscroll-behavior: contain; }      /* (up and down is turned a grid at a time by the app; sideways the rows still slide) */
   /* the bands sit close together; only the last one fills the screen, so each can still click up to the top */
   .view-home.magic-full .sugg-band:last-child { min-height: 100%; }
   .view-home.magic-full .sugg-band .sugg-row:last-child { margin-bottom: 0; }
@@ -1650,9 +1651,38 @@
   .gp-level-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .gp-level-row .gp-note { font-size: 15px; font-weight: 700; color: var(--muted); flex: 1; min-width: 220px; }
   /* new suggested tiles turn over together */
-  .sugg-card.sugg-flip { animation: suggFlip 0.45s ease-out both; }      /* (gentle: a small turn and a fade, no flash) */
+  .sugg-card.sugg-cue-flip { animation: suggFlip 0.45s ease-out both; }
+  /* the cue for new suggested tiles (Settings > Magic mode): a soft fade, a small rise, a soft glow round the edge - or a small turn */
+  .sugg-card.sugg-cue-fade { animation: cueFade 0.35s ease-out both; }
+  @keyframes cueFade { from { opacity: 0.35; } to { opacity: 1; } }
+  .sugg-card.sugg-cue-rise { animation: cueRise 0.4s ease-out both; }
+  @keyframes cueRise { from { opacity: 0.5; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .sugg-card.sugg-cue-glow { animation: cueGlow 0.8s ease-out both; }
+  @keyframes cueGlow { 0% { box-shadow: 0 0 0 0 rgba(47,125,246,0), var(--shadow); } 35% { box-shadow: 0 0 0 5px rgba(47,125,246,0.28), var(--shadow); } 100% { box-shadow: 0 0 0 0 rgba(47,125,246,0), var(--shadow); } }
   @keyframes suggFlip { 0% { transform: perspective(1200px) rotateY(-28deg); opacity: 0.55; } 100% { transform: perspective(1200px) rotateY(0); opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .sugg-card.sugg-flip { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .sugg-card.sugg-cue-flip, .sugg-card.sugg-cue-rise { animation: cueFade 0.35s ease-out both; } }
+  /* Questions and Dictation */
+  .qa-card { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px 24px; box-sizing: border-box; cursor: pointer; }
+  .qa-q { font-size: clamp(30px, 5.6vmin, 60px); font-weight: 800; line-height: 1.35; color: var(--ink); }
+  .qa-q span { border-radius: 0.2em; padding: 0 0.08em; transition: background 0.12s; }
+  .qa-q span.on { background: var(--prompt-soft); }
+  .game-view.gm-type .gm-pic { flex: 1 1 0; flex-direction: column; gap: 16px; padding: 16px 20px 20px; }
+  .game-view.gm-type .gm-pic .qa-card { flex: 1 1 0; min-height: 0; height: auto; }
+  .dict-say { flex: 1 1 0; min-height: 0; border: none; background: transparent; font-size: clamp(60px, 12vmin, 120px); cursor: pointer; }
+  .ty-boxes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
+  .ty-box { width: var(--bx, 70px); height: calc(var(--bx, 70px) * 1.2); border-radius: 14px; border: 3px solid #cfd4dc; background: #fff; box-sizing: border-box; font-size: calc(var(--bx, 70px) * 0.72); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--ink); }
+  .ty-box.next { border-color: var(--prompt, #2f7df6); box-shadow: 0 0 0 4px var(--prompt-soft, #dbe9ff); }
+  .ty-box.filled { background: var(--green-soft, #d4f5d8); border-color: transparent; color: #1a6c1a; }
+  .ty-box .ty-hint { color: var(--prompt-dark, #1e4f9e); animation: tyHint 2.6s ease both; }
+  @keyframes tyHint { 0% { opacity: 0; transform: scale(0.7); } 12% { opacity: 1; transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  .ty-gap { width: calc(var(--bx, 70px) * 0.45); }
+  .ty-boxes.done .ty-box { animation: tyDone 0.5s ease both; }
+  @keyframes tyDone { 50% { transform: scale(1.12); } }
+  .game-view.gm-type .gm-row { flex: 0 0 auto; display: block; overflow: visible; padding: 0; margin: 0; }
+  .gm-keys { display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 14px); padding: 0 2px; }
+  .gm-keys .row { display: flex; gap: clamp(6px, 1vw, 12px); justify-content: center; }
+  .gm-keys .key { flex: 0 0 calc((100% - 9 * clamp(6px, 1vw, 12px)) / 10); height: clamp(56px, 9vh, 96px); font-size: clamp(26px, 4.4vmin, 44px); }
+  .gm-keys .key.gm-wrong { background: #ffd9d4; }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -3162,6 +3192,8 @@
           <div class="setting-row"><span>&#128269; Matching words while typing</span><div class="toggle on" id="toggleSuggestOn"></div></div>
         </div>
         <div id="bandSettings"></div>
+        <div class="sublabel">When new suggested tiles come up</div>
+        <div class="settings-list"><div class="setting-row"><span>How they show they are new</span><div class="seg" id="segTileCue"></div></div></div>
         <div class="sublabel">Tags: tiles and folders that go together</div>
         <div class="settings-list"><div class="setting-row" id="tagsRow" style="cursor:pointer"><span>&#127991;&#65039; Tags</span><span id="tagsSum" style="color:var(--muted);font-weight:800">&#8250;</span></div></div>
         <div class="help-note" style="margin:6px 4px 0">Give tiles and folders the same tag and they come up together in the suggestions (tag park and the Forests folder "outside": after park, the forest tiles are offered). Hold a tile or folder to tag it too.</div>
@@ -3387,7 +3419,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 617 - 14 Oct';
+const BUILD = 'build 618 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3651,11 +3683,11 @@ function groupPromptNow() {
 }
 const DECODE_RE = /^decod/i;      // the Decoding group: words practised with the sound keyboard, with prompting of their own
 const LTM_RE = /^least.?to.?most/i;      // Least to Most: targets typed with prompting that starts small and grows (see ltmNow)
-const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match)/i };
+const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, qa: /^(questions?|answers?)$/i, dict: /^dictat/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match|questions?$|answers?$|dictat)/i };
 // the practice group for a game mode: sight (picture to word tiles), write (picture to keyboard), tiles (picture to letter tiles)
-function practiceRe(mode) { return mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
+function practiceRe(mode) { return mode === 'qa' || mode === 'qatype' ? PRACTICE_RE.qa : mode === 'dict' ? PRACTICE_RE.dict : mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
 // A practice group keeps its job when it is renamed: its kind is fixed once (from its name) and the app goes by that
-const GROUP_KIND_NAME = { typing: 'Typing', ltm: 'Least to Most', decode: 'Decoding', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
+const GROUP_KIND_NAME = { typing: 'Typing', ltm: 'Least to Most', decode: 'Decoding', qa: 'Questions', dict: 'Dictation', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
 function gKey(g) { return g && g.kind && GROUP_KIND_NAME[g.kind] ? GROUP_KIND_NAME[g.kind] : String((g && g.name) || '').trim(); }
 function isPracticeGroup(g) { return PRACTICE_RE.any.test(gKey(g)); }   // set by the star; lasts until this word is finished or changed
 let promptDelayTimer = null;
@@ -9127,7 +9159,12 @@ function nextStep() {
   return out;
 }
 // ===== Tags: tiles and folders that go together (a tag is a name with its members: 'w:PARK', 'f:45' ...) =====
-function tagList() { return state.tags = (state.tags && typeof state.tags === 'object') ? state.tags : {}; }
+function tagList() { state.tags = (state.tags && typeof state.tags === 'object') ? state.tags : {};
+  if (!state.tagsSeedV1) { state.tagsSeedV1 = true; try { if (!state.tags.park) { const m = [];      // (a first tag to show how they work: the park, with what goes there - change it or delete it)
+      ['PARK', 'PLAY', 'SWING', 'SLIDE', 'RUN', 'BALL', 'TREE', 'STICK', 'PLAYGROUND', 'WALK', 'BIKE', 'DOG'].forEach(w => { if (state.words.includes(w) || categoriesOf(w).length) m.push('w:' + w); });
+      state.categories.filter(c => /^(forests?|outside|outdoors|playground)$/i.test(String(c.name).trim())).forEach(c => m.push('f:' + c.id));
+      if (m.length > 1) state.tags.park = m; save(); } } catch (e) {} }
+  return state.tags; }
 function tagsOf(key) { const T = tagList(); return Object.keys(T).filter(t => (T[t] || []).includes(key)).sort(); }
 function tagLabel(key) { if (/^f:/.test(key)) { const c = catById(Number(key.slice(2))); return c ? '\uD83D\uDCC1 ' + c.name : null; } return plainLabel(key.slice(2)); }
 function tagSet(t, key, on) { const T = tagList(); const m = T[t] = (T[t] || []).filter(x => x !== key); if (on) m.push(key); save(); }
@@ -9216,7 +9253,9 @@ function suggFlip() {
   const cards = [...document.querySelectorAll('#suggHost .sugg-card')], sig = cards.map(c => c.textContent).join('|');
   const was = suggFlipSig; suggFlipSig = sig;
   if (was === null || !sig || sig === was || state.tileFlip === false) return;
-  cards.forEach(c => { c.classList.remove('sugg-flip'); void c.offsetWidth; c.classList.add('sugg-flip'); setTimeout(() => c.classList.remove('sugg-flip'), 650); });
+  const cue = ['fade', 'rise', 'glow', 'flip', 'off'].includes(state.tileCue) ? state.tileCue : 'fade'; if (cue === 'off') return;
+  const cls = 'sugg-cue-' + cue;
+  cards.forEach(c => { c.classList.remove(cls); void c.offsetWidth; c.classList.add(cls); setTimeout(() => c.classList.remove(cls), 900); });
 }
 const bandLike = { h: 0, fs: 0 };
 function suggRender0() {
@@ -12153,7 +12192,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'tileCue', 'gameLevel',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -13623,6 +13662,8 @@ function groupOpt(g, k, dflt) { const o = (g && g.prompt) || {}; return k in o ?
 function groupTrials(group) {
   const nm = gKey(group);
   const mode = PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : 'typing';
+  if (isQaGroup(group)) { const ks = groupTargets(group); return { mode: 'qa', words: ks, wordT: (state.gameLog || []).filter(r => r.mode === 'qa' && ks.includes(r.tile)).map(r => Object.assign({}, r, { word: r.tile })), letterT: [] }; }
+  if (PRACTICE_RE.dict.test(nm)) { const ws = new Set((group.words || []).map(normaliseWord)); const wordT = (state.gameLog || []).filter(r => r.mode === 'dict' && ws.has(normaliseWord(r.tile || r.word))).map(r => Object.assign({}, r, { word: normaliseWord(r.tile || r.word) })); return { mode: 'dict', words: [...ws], wordT, letterT: wordT }; }
   if (mode === 'hear' || mode === 'match') { const ks = group.tiles || []; const wordT = (state.gameLog || []).filter(r => r.mode === mode && ks.includes(r.tile || r.word)).map(r => Object.assign({}, r, { word: r.tile || r.word })); return { mode, words: ks.slice(), wordT, letterT: [] }; }
   const words = new Set((group.words || []).map(w => normaliseWord(w)));
   let wordT = [], letterT = [];
@@ -13689,8 +13730,8 @@ function masteryCfg(g) { return Object.assign({}, MASTERY_DEF, (g && g.mastery) 
 function groupKey(g) { return String(g && g.id != null ? g.id : (g && g.name) || ''); }
 function masteryRec(g, w) { state.mastery = state.mastery || {}; const k = groupKey(g); state.mastery[k] = state.mastery[k] || {}; return state.mastery[k][w] || (state.mastery[k][w] = { st: 'learning', since: 0 }); }
 function masteryOf(g, w) { const m = (state.mastery || {})[groupKey(g)]; return (m && m[w]) || { st: 'learning', since: 0 }; }
-function groupModeOf(g) { const nm = gKey(g); return PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : /^typing$/i.test(nm) ? 'typing' : null; }
-function groupTargets(g) { return isTileGroup(g) ? (g.tiles || []).slice() : (g.words || []).slice(); }
+function groupModeOf(g) { const nm = gKey(g); return PRACTICE_RE.qa.test(nm) ? 'qa' : PRACTICE_RE.dict.test(nm) ? 'dict' : PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : /^typing$/i.test(nm) ? 'typing' : null; }
+function groupTargets(g) { return isQaGroup(g) ? (g.items || []).map(it => 'Q:' + it.id) : isTileGroup(g) ? (g.tiles || []).slice() : (g.words || []).slice(); }
 // a target's turns in this group's game, oldest first ({ t, ok })
 function masteryRows(g, w) {
   const mode = groupModeOf(g); if (!mode) return [];
@@ -14316,6 +14357,15 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     put(mark(head, gi));
     if (!open) return;
     if (!depth) drawSubs(g);
+    if (isQaGroup(g)) {      // (Questions: each question with its answer; tap to change it, hold for the group's menu)
+      (g.items || []).forEach(it => { const key = 'Q:' + it.id, row = makeListRow('', rowH, base); row.removeAttribute('data-word'); row.classList.add('tile-target');
+        row.querySelector('.hw').textContent = it.q + '  \u2192  ' + String(it.a || '').toLowerCase(); row.querySelector('.hw').style.whiteSpace = 'normal'; msPill(row, g, key);
+        if ((g.off || {})[key]) row.classList.add('paused');
+        holdTap(row, () => openQaEdit(g, it, () => renderHome(true)), () => openGroupHead(cat, g)); put(mark(row, -2)); });
+      const add = makeListRow('', rowH, base); add.classList.add('add-row'); add.removeAttribute('data-word'); add.querySelector('.hw').textContent = '+ question';
+      add.addEventListener('click', () => openQaEdit(g, null, () => renderHome(true))); put(mark(add, -2));
+      return;
+    }
     if (isTileGroup(g)) {      // (Hear the sound / Match the spelling: its spellings, each says its sound; hold for the group's menu)
       const rank = { learning: 0, mastered: 1, maint: 2 };
       (g.tiles || []).slice().sort((a, b) => rank[masteryOf(g, a).st] - rank[masteryOf(g, b).st]).forEach(k => { const row = makeListRow('', rowH, base); row.removeAttribute('data-word'); row.classList.add('tile-target'); row.querySelector('.hw').textContent = tileLabel(k); msPill(row, g, k);
@@ -14364,6 +14414,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
 // a person's name) are kept - being a title in My Stuff does not capitalise it here.
 function plainLabel(w) {
   const key = w || '';
+  if (/^Q:\d+$/.test(key)) return qaText(key);      // (a question target: its question)
   const kept = (state.wordCase || {})[key];
   if (kept && kept !== titleCase(key)) return kept;
   if (kept && categoriesOf(key).some(c => c.name.toLowerCase() === 'people')) return kept;
@@ -15609,7 +15660,7 @@ function seqOfferNow() {
 // The small words row comes up by itself when the message has the shape of a sentence (a doing word and what it is about:
 // go play park now) and is missing only small words: the row leads with them, and each tapped goes where it belongs.
 function fillNearlyDone() {
-  if (state.smallRowsOn === false || state.builderMode || homePhrase.length < 2) return false;
+  if ((state.smallRowsOn === false && !smallBandWanted()) || state.builderMode || homePhrase.length < 2) return false;      // (either switch: the small words row on pages, or Magic mode's small words)
   const mp = magicPhraseFull(); if (!mp || mp.ext) return false;
   const content = homePhrase.filter(w => !isPunct(w) && !isSmallWord(w));
   const kind = w => { try { return kindOfWord(w) || ''; } catch (e) { return ''; } };
@@ -16141,17 +16192,17 @@ function ensureTargets() {
     else if (/^sight words?$/i.test(nm)) g.name = 'Word Match'; else if (/^spelling tiles$/i.test(nm)) g.name = 'Tiles'; else if (/^sound it out$/i.test(nm)) g.name = 'Elkonin Boxes'; else if (/^hear the sound$/i.test(nm)) g.name = 'Sound Match'; });
   // each practice group's kind, fixed once from its name, so it can be renamed. A group renamed before kinds were kept
   // (Text-to-Speech: the targets spelled from the home page) takes back its job, and the empty one made in its place goes.
-  { const KR = [['typing', /^typing$/i], ['ltm', LTM_RE], ['decode', DECODE_RE], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
+  { const KR = [['typing', /^typing$/i], ['ltm', LTM_RE], ['decode', DECODE_RE], ['qa', PRACTICE_RE.qa], ['dict', PRACTICE_RE.dict], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
     const tts = t.groups.find(g => !g.kind && /^text.?to.?speech$/i.test(String(g.name || '').trim()));
     if (tts && !t.groups.some(g => g.kind === 'typing')) { tts.kind = 'typing'; const dup = t.groups.filter(g => g !== tts && !g.kind && /^typing$/i.test(String(g.name || '').trim())); dup.forEach(d => { (d.words || []).forEach(w => { if (!tts.words.includes(w)) tts.words.push(w); }); }); t.groups = t.groups.filter(g => !dup.includes(g)); }
     t.groups.forEach(g => { if (g.kind) return; const nm = String(g.name || '').trim(), k = KR.find(([, re]) => re.test(nm)); if (k && !t.groups.some(x => x.kind === k[0])) g.kind = k[0]; }); }
   // Match the spelling is taken out for now: its group goes (kept aside, with its spellings, in case it comes back)
   { const mi = t.groups.findIndex(g => /^match the spelling$/i.test(String(g.name || '').trim())); if (mi >= 0) { t.removedGroups = (t.removedGroups || []).concat(t.groups.splice(mi, 1)); } }
-  [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear]].forEach(([nm, re]) => {
-    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : {}));
+  [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear], ['Questions', PRACTICE_RE.qa], ['Dictation', PRACTICE_RE.dict]].forEach(([nm, re]) => {
+    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : nm === 'Questions' ? { kind: 'qa', items: QA_STARTERS.map((x, i) => Object.assign({ id: i + 1 }, x)) } : nm === 'Dictation' ? { kind: 'dict' } : {}));
   });
   // the groups in the order of the Games menu, after Typing and Decoding; once, the groups that are for no practice now are put aside (kept, not shown)
-  { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear];
+  { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear, PRACTICE_RE.qa, PRACTICE_RE.dict];
     const rank = g => { const nm = gKey(g), i = order.findIndex(re => re.test(nm)); return i < 0 ? order.length : i; };
     if (!t.groupsTidyV1) { t.groupsTidyV1 = true; const out = t.groups.filter(g => rank(g) === order.length); if (out.length) { t.removedGroups = (t.removedGroups || []).concat(out); t.groups = t.groups.filter(g => rank(g) < order.length); } }
     t.groups = t.groups.map((g, i) => [g, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]); }
@@ -16168,7 +16219,8 @@ function practiceGroupWords(kind) {
   const t = state.categories.find(c => c.target); if (!t) return [];
   const re = practiceRe(kind), g = (t.groups || []).find(x => re.test(gKey(x)));
   if (g && (kind === 'hear' || kind === 'match')) return masteryPool(g, (g.tiles || []).filter(k => !(g.off || {})[k]));
-  return g ? masteryPool(g, (g.words || []).filter(w => (t.words || []).includes(w) && !(g.off || {})[w] && !state.hiddenWords[w] && (kind === 'sound' ? soundSplit(w).length > 0 : picHas(w)))) : [];      // (sound it out: the word is on the screen, a picture is not needed)
+  if (g && (kind === 'qa' || kind === 'qatype')) return masteryPool(g, (g.items || []).filter(it => it.q && it.a && !(g.off || {})['Q:' + it.id]).map(it => 'Q:' + it.id));
+  return g ? masteryPool(g, (g.words || []).filter(w => (t.words || []).includes(w) && !(g.off || {})[w] && !state.hiddenWords[w] && (kind === 'sound' ? soundSplit(w).length > 0 : kind === 'dict' ? /[A-Z]/.test(w) : picHas(w)))) : [];      // (dictation: no picture needed)      // (sound it out: the word is on the screen, a picture is not needed)
 }
 function targetStateOf(w) { const v = (state.targetState || {})[w]; return TARGET_STATES.some(x => x[0] === v) ? v : 'waiting'; }
 // how the voice says a word: some come out wrong on their own (bat heard as "bad"). A few ways of writing it to listen
@@ -16947,8 +16999,8 @@ function gameTargetSets(words) {
   return [...sets.values()].sort((a, b) => b.words.length - a.words.length || a.label.localeCompare(b.label));
 }
 // the games in the Games menu, and which are switched on (in settings, under Games)
-const GAME_LIST = [['sight', '\uD83D\uDC40', 'Word Match'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes'], ['hear', '\uD83D\uDC42', 'Sound Match'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
-function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, builder: false }, state.gamesOn || {}, { match: false }); }      // (Match the spelling: taken out for now)
+const GAME_LIST = [['sight', '\uD83D\uDC40', 'Word Match'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes'], ['hear', '\uD83D\uDC42', 'Sound Match'], ['qa', '\u2753', 'Questions'], ['qatype', '\u2328\uFE0F', 'Questions: type'], ['dict', '\uD83C\uDFA7', 'Dictation'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
+function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, qa: true, qatype: true, dict: true, builder: false }, state.gamesOn || {}, { match: false }); }      // (Match the spelling: taken out for now)
 // + Add more in the Games menu: the whole library with ticks; a ticked word becomes a target in this game's group and
 // in the Unsorted group on the targets page (made when first needed), to be sorted later. Done goes back to the menu.
 function openGameAdd(mode) {
@@ -16956,6 +17008,7 @@ function openGameAdd(mode) {
   const gs = listGroups(t), re = practiceRe(mode), game = gs.find(x => re.test(gKey(x)));
   if (!game) return;
   if (mode === 'hear' || mode === 'match') { openTileAdd(game, () => gameChooseCount(mode)); return; }
+  if (mode === 'qa' || mode === 'qatype') { openQaList(game, () => gameChooseCount(mode)); return; }
   let uns = gs.find(x => /^unsorted$/i.test(String(x.name || '').trim()));
   const inG = w => (game.words || []).includes(w);
   openWordSheet(body => {
@@ -16979,7 +17032,7 @@ function openGameAdd(mode) {
         const paint = () => { const on = inG(w); r.classList.toggle('on', on); r.classList.toggle('no-pic', !picHas(w)); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w) + (picHas(w) ? ' \uD83D\uDDBC\uFE0F' : ' \uD83D\uDCF7'); };
         r.addEventListener('click', () => {
           if (inG(w)) { take(w); save(); buzz(8); paint(); return; }
-          if (picHas(w) || mode === 'sound') { put(w); save(); buzz(8); paint(); return; }      // (sound it out does not need a picture)
+          if (picHas(w) || mode === 'sound' || mode === 'dict') { put(w); save(); buzz(8); paint(); return; }      // (sound it out does not need a picture)
           // no picture yet: choose one first; the word goes in only once it has one
           picChoose(w, () => { if (picHas(w)) { put(w); save(); } paint(); });
         });
@@ -17107,7 +17160,7 @@ function presetRows(host) {
 // ===== The games home: the Games button turns the home page into the games - the tiles where the words would be.
 // First the kinds of game, then (one tapped) its saved games and a tile for a new one. Tokens and mastery on their own page.
 let gamesHome = null;      // null: the usual home page · { layer: 'types' | a game's mode | 'rewards' }
-const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', builder: 'Build' };
+const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', qa: 'Answer', qatype: 'Type it', dict: 'Dictate', builder: 'Build' };
 // Easy / Hard for a game: a switch, with a line on what each one does
 function gpLevelRow(m, after) {
   const row = document.createElement('div'); row.className = 'gp-level-row';
@@ -17231,7 +17284,7 @@ function gameChooseCount(preMode) {
     const count = document.createElement('div'); body.appendChild(count);
     let mode = null, startNow = null;
     const pickCount = () => { count.innerHTML = ''; startNow = null;
-      const all = mode === 'write' ? write : mode === 'tiles' ? tiles : mode === 'sound' ? sound : mode === 'hear' ? hear : mode === 'match' ? match : sight;
+      const all = mode === 'write' ? write : mode === 'tiles' ? tiles : mode === 'sound' ? sound : mode === 'hear' ? hear : mode === 'match' ? match : mode === 'sight' ? sight : practiceGroupWords(mode);
       // which targets: every ready one, or the folders ticked - main folders, each opening to the folders inside it
       const tree = gameTargetTree(all), sets = [].concat(...tree.map(m => [m].concat(m.subs)));
       // what is chosen: the ticked folders (less the targets taken out of them) and the targets put in on their own;
@@ -17326,9 +17379,9 @@ function gameChooseCount(preMode) {
         sv.addEventListener('click', () => { const ws = chosen(); if (!ws.length) return; const p0 = presetSave(mode, ws, turnsNow(ws)); if (p0) { buzz(10); if (gamesHome) { gamesHome = { layer: mode }; ghBack(); } else gameChooseCount(); } });
         count.appendChild(sv); }
       drawF(); };
-    [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear]].forEach(([m, ic, nm, sub, ws]) => {
+    [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear], ['qa', '\u2753', 'Questions', 'Hear a question, tap the answer', practiceGroupWords('qa')], ['qatype', '\u2328\uFE0F', 'Questions: type', 'Hear a question, type the answer', practiceGroupWords('qatype')], ['dict', '\uD83C\uDFA7', 'Dictation', 'Hear a word spelled out, type it', practiceGroupWords('dict')]].forEach(([m, ic, nm, sub, ws]) => {
       const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
-      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : m === 'sound' ? 'No targets in the "' + nm + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
+      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : m === 'qa' || m === 'qatype' ? 'No questions in the Questions group yet' : m === 'sound' || m === 'dict' ? 'No targets in the "' + (m === 'dict' ? 'Dictation' : nm) + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
       b.dataset.m = m;
       b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else { count.innerHTML = ''; startNow = null; } });      // (one chosen: the others step away until it is tapped again)
       acts.appendChild(b);
@@ -17358,7 +17411,7 @@ function gpFadeOf(tile) { const v = (state.gameFade || {})[game.mode + '|' + til
 function gpStep(key, sayIn, keep) {
   clearTimeout(gpTimer); if (!gpOn()) return;
   const g = game, c = g.cur; c.gpKey = key; c.gpRep = 0; c.gpErr = false;
-  c.lv = g.pmode === 'hard' ? 1 : (keep && c.lv0 != null ? c.lv0 : gpFadeOf(c.tile)); if (c.lv0 == null) c.lv0 = c.lv;
+  c.lv = g.pmode === 'hard' ? gpBase(g.mode) : (keep && c.lv0 != null ? c.lv0 : gpFadeOf(c.tile)); if (c.lv0 == null) c.lv0 = c.lv;
   gpPaint();
   if (c.lv > 0 && sayIn != null) setTimeout(() => { if (game === g && g.cur === c && c.gpKey === key && !g.busy) gpSay(); }, sayIn);
   gpArm();
@@ -17381,7 +17434,9 @@ function gpWrong(after) {
   setTimeout(() => { if (game !== g || g.cur !== c || c.gpKey !== key) return; gpPaint(); if (!after) gpSay(); gpArm(); }, after || 700);
 }
 // the right answer: how much help it took - g (none, or the least), b (some, or a mistake), y (the most)
-function gpRight() { clearTimeout(gpTimer); const c = game.cur, lv = c.lv || 0; return lv >= 3 ? 'y' : (lv === 2 || c.gpErr) ? 'b' : 'g'; }
+function gpRight() { clearTimeout(gpTimer); const c = game.cur, lv = c.lv || 0; if (gpBase(game.mode) === 0) return lv >= 3 ? 'y' : (lv >= 1 || c.gpErr) ? 'b' : 'g'; return lv >= 3 ? 'y' : (lv === 2 || c.gpErr) ? 'b' : 'g'; }
+// the typing games start with no prompt at all (the question, or the word spelled aloud, is the cue); the others with the least
+function gpBase(mode) { return mode === 'qatype' || mode === 'dict' ? 0 : 1; }
 // a turn done, on easy: the target's help fades one step after a turn with no mistakes, and comes back one after a mistake
 function gpTrialDone(tile, wrong) {
   clearTimeout(gpTimer); if (!game || game.pmode !== 'easy' || game.mode === 'write') return;
@@ -17391,13 +17446,16 @@ function gpTrialDone(tile, wrong) {
 function gpTargetEl() {
   const g = game, c = g && g.cur; if (!c) return null;
   const pick = v => [...document.querySelectorAll('#gmRow .gm-tile')].find(b => b.dataset.w === v);
-  if (g.mode === 'sight') return pick(c.word);
+  if (g.mode === 'sight' || g.mode === 'qa') return pick(c.word);
   if (g.mode === 'tiles') return pick(c.letter);
   return null;      // (the sound games: their keyboard paints it - see soundKbPaint)
 }
 function gpPaint() {
   if (!gpOn()) return;
   const g = game, c = g.cur;
+  if (g.mode === 'qatype' || g.mode === 'dict') {      // (the keys: light blue from the second step, the darkest blue at the third - the first step is the letter shown in its box)
+    document.querySelectorAll('#gmKeys .gp-1, #gmKeys .gp-2, #gmKeys .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
+    const L = c.word && c.word[c.k], el = L && document.querySelector('#gmKeys .key[data-letter="' + L + '"]'); if (el && c.lv >= 2) el.classList.add('gp-' + Math.min(3, c.lv)); return; }
   if (g.mode === 'sound' || g.mode === 'hear' || g.mode === 'match') { if (!gpPaint.busy) { gpPaint.busy = true; try { soundKbPaint(); } finally { gpPaint.busy = false; } } return; }
   document.querySelectorAll('#gmRow .gp-1, #gmRow .gp-2, #gmRow .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
   const el = gpTargetEl(); if (el && c.lv > 0) el.classList.add('gp-' + Math.min(3, c.lv));
@@ -17406,10 +17464,157 @@ function gpPaint() {
 function gpSay() {
   const g = game, c = g && g.cur; if (!c) return;
   try {
-    if (g.mode === 'sight') { warmSpeech(); sayAnyway = true; try { speakWord(c.word, 0.9); } finally { sayAnyway = false; } return; }
+    if (g.mode === 'sight' || g.mode === 'qa') { warmSpeech(); sayAnyway = true; try { speakWord(c.word, 0.9); } finally { sayAnyway = false; } return; }
+    if (g.mode === 'qatype' || g.mode === 'dict') { tyFlash(); return; }
     if (g.mode === 'tiles') { const p = soundPartCovering(c.word, c.k); if (p) soundSay(p.id, p.sp); else { warmSpeech(); sayAnyway = true; try { speakLetter(String(c.letter).toUpperCase()); } finally { sayAnyway = false; } } return; }
     const want = c.parts && c.parts[c.k]; if (want) soundSay(want.alt[0] || want.id, want.sp);
   } catch (e) {}
+}
+// ===== Questions (intraverbals: an answer controlled by someone else's words) and Dictation (typing what is heard) =====
+const QA_STARTERS = [
+  { q: 'What color is the sky?', a: 'BLUE', opts: 'RED, GREEN' }, { q: 'What do you drink when you are thirsty?', a: 'WATER', opts: 'SHOE, BED' },
+  { q: 'What animal says moo?', a: 'COW', opts: 'DOG, CAT' }, { q: 'What do you sleep in?', a: 'BED', opts: 'CUP, CAR' },
+  { q: 'What do you wear on your feet?', a: 'SHOES', opts: 'HAT, SPOON' }, { q: 'What is the capital of France?', a: 'PARIS', opts: 'LONDON, ROME' }];
+function isQaGroup(g) { return !!g && (g.kind === 'qa' || PRACTICE_RE.qa.test(gKey(g))); }
+function qaGroup() { const t = state.categories.find(c => c.target); return t ? (t.groups || []).find(isQaGroup) || null : null; }
+function qaItem(key) { const g = qaGroup(), id = String(key || '').replace(/^Q:/, ''); return g ? (g.items || []).find(x => String(x.id) === id) || null : null; }
+function qaText(key) { const it = qaItem(key); return it ? it.q : String(key || ''); }
+// a question: what is asked, the answer, and (if wanted) the other choices offered beside it
+function openQaEdit(g, it, after) {
+  openWordSheet(body => {
+    sheetTitle(body, it ? 'This question' : 'A new question');
+    const field = (label, val, big) => { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = label; body.appendChild(l);
+      const x = document.createElement(big ? 'textarea' : 'input'); x.value = val || ''; x.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:20px;font-weight:700;padding:12px 14px;border-radius:14px;border:2px solid #dfe2e7;' + (big ? 'min-height:84px;resize:vertical;' : ''); body.appendChild(x); return x; };
+    const q = field('The question (read aloud, each word lit as it is said)', it && it.q, true);
+    const a = field('The answer', it && String(it.a || '').toLowerCase());
+    const o = field('Other choices for the tap version (optional, with commas)', it && String(it.opts || '').toLowerCase());
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.marginTop = '8px'; n.textContent = 'With no other choices given, other answers and words from the library are offered beside it (3 tiles to start).'; body.appendChild(n);
+    body.appendChild(sheetBtn('Save', 'primary', () => { const qq = q.value.trim(), aa = normaliseWord(a.value); if (!qq || !aa) { alert('A question and its answer are both needed.'); return; }
+      g.items = g.items || []; if (it) { it.q = qq; it.a = aa; it.opts = o.value.trim().toUpperCase(); } else g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: aa, opts: o.value.trim().toUpperCase() });
+      save(); closeWordSheet(); if (after) after(); }));
+    if (it) body.appendChild(sheetBtn('Delete this question', 'danger', () => { if (!confirm('Delete this question?')) return; g.items = (g.items || []).filter(x => x !== it); save(); closeWordSheet(); if (after) after(); }));
+    body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
+  });
+}
+function openQaList(g, back) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Questions');
+    (g.items || []).forEach(it => body.appendChild(sheetBtn(it.q + '  \u2192  ' + String(it.a || '').toLowerCase(), '', () => openQaEdit(g, it, () => openQaList(g, back)))));
+    body.appendChild(sheetBtn('+ A new question', '', () => openQaEdit(g, null, () => openQaList(g, back))));
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); if (back) back(); }));
+  });
+}
+// the question in the card, read aloud with each word lit as it is said; done() once it has been read
+function qaRead(card, text, done) {
+  const q = card.querySelector('.qa-q') || (() => { const d = document.createElement('div'); d.className = 'qa-q'; card.appendChild(d); return d; })();
+  q.innerHTML = ''; const words = String(text || '').split(/\s+/).filter(Boolean);
+  const spans = words.map((w, i) => { const sp = document.createElement('span'); sp.textContent = w; q.appendChild(sp); if (i < words.length - 1) q.appendChild(document.createTextNode(' ')); return sp; });
+  try { warmSpeech(); sayAnyway = true; speak(text, 0.9); } catch (e) {} finally { sayAnyway = false; }
+  let t = 250; const g0 = game;
+  spans.forEach((sp, i) => { const d = Math.round((210 + 62 * words[i].replace(/[^A-Za-z0-9]/g, '').length) / 0.9);
+    setTimeout(() => { if (game !== g0) return; spans.forEach(x => x.classList.remove('on')); sp.classList.add('on'); }, t); t += d; });
+  setTimeout(() => { spans.forEach(x => x.classList.remove('on')); if (done && game === g0) done(); }, t + 350);
+}
+function qaCard(text) { const card = document.createElement('div'); card.className = 'qa-card'; const q = document.createElement('div'); q.className = 'qa-q'; q.textContent = text; card.appendChild(q); return card; }
+// the other answers offered beside the right one: its own choices, then other questions' answers, then words from the library
+function qaChoices(it, n) {
+  const ans = normaliseWord(it.a), out = [], add = w => { w = normaliseWord(w); if (w && w !== ans && !out.includes(w)) out.push(w); };
+  String(it.opts || '').split(',').forEach(add);
+  const g = qaGroup(); ((g && g.items) || []).filter(x => x !== it).map(x => x.a).sort(() => Math.random() - 0.5).forEach(add);
+  if (out.length < n - 1) state.words.filter(w => !isSmallWord(w) && !isPunct(w) && /^[A-Z]+$/.test(w)).sort(() => Math.random() - 0.5).slice(0, 20).forEach(add);
+  return [ans].concat(out.slice(0, Math.max(1, n - 1)));
+}
+// Questions, tapped: the question read aloud, then the answer among the tiles (3 to start)
+function gameQaTrial() {
+  const g = game, s = g.seq[g.i], key = s.w, it = qaItem(key);
+  if (!it) { g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); return; }
+  g.cur = { word: normaliseWord(it.a), tile: key, tries: 0, prompted: false };
+  const box = document.getElementById('gmPic'); box.innerHTML = ''; box.classList.add('no-pic');
+  const card = qaCard(''); box.appendChild(card); box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
+  card.addEventListener('click', e => { e.stopPropagation(); qaRead(card, it.q); });
+  document.getElementById('gmMsg').textContent = '';
+  g.cur.tiles = qaChoices(it, Math.max(2, Math.min(6, groupOpt(gameGroup(), 'qaChoices', 3))));
+  gameLay(); gameBar();
+  qaRead(card, it.q, () => { if (game === g && g.cur && g.cur.tile === key) gpStep('w', 500); });
+}
+// the letter keys for the typing games (the letters only: a wrong letter is not put in, so there is nothing to delete)
+function gameKeys(host) {
+  const kb = document.createElement('div'); kb.className = 'keyboard gm-keys'; kb.id = 'gmKeys';
+  LAYOUT.forEach(row => { const r = document.createElement('div'); r.className = 'row';
+    row.forEach(L => { const b = document.createElement('button'); b.className = 'key letter'; b.dataset.letter = L; b.textContent = L.toLowerCase(); b.addEventListener('click', e => { e.stopPropagation(); tyKey(L, b); }); r.appendChild(b); });
+    kb.appendChild(r); });
+  host.appendChild(kb);
+}
+// Questions typed, and Dictation: a box for each letter of the answer (or word); the letters typed fill them in turn
+function gameTypeTrial() {
+  const g = game, s = g.seq[g.i], key = s.w, it = g.mode === 'qatype' ? qaItem(key) : null;
+  const word = normaliseWord(g.mode === 'qatype' ? (it ? it.a : '') : key);
+  if (!word) { g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); return; }
+  g.cur = { word, tile: key, k: -1, tries: 0, wrongs: 0, anyPrompt: false, gpB: false, lets: [], lv: 0, ready: false };
+  const box = document.getElementById('gmPic'); box.innerHTML = ''; box.classList.add('no-pic');
+  let card;
+  if (it) { card = qaCard(''); card.addEventListener('click', e => { e.stopPropagation(); qaRead(card, it.q); }); }
+  else { card = document.createElement('button'); card.className = 'dict-say'; card.textContent = '\uD83D\uDD0A'; card.setAttribute('aria-label', 'Hear it again'); card.addEventListener('click', e => { e.stopPropagation(); dictSay(word); }); }
+  box.appendChild(card);
+  const bx = document.createElement('div'); bx.className = 'ty-boxes'; bx.id = 'tyBoxes';
+  const n = word.length, size = Math.max(36, Math.min(88, Math.floor(((box.clientWidth || window.innerWidth) - 60) / (n * 1.2))));
+  bx.style.setProperty('--bx', size + 'px');
+  [...word].forEach((ch, k) => { const el = document.createElement('span'); if (ch === ' ') el.className = 'ty-gap'; else if (/[A-Z]/.test(ch)) { el.className = 'ty-box'; el.dataset.k = k; } else { el.className = 'ty-box filled'; el.textContent = ch; } bx.appendChild(el); });
+  box.appendChild(bx); box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
+  document.getElementById('gmMsg').textContent = '';
+  const row = document.getElementById('gmRow'); row.innerHTML = ''; gameKeys(row);
+  gameBar();
+  const go = () => { if (game !== g || g.cur.tile !== key || g.cur.ready) return; g.cur.ready = true; tyNext(); };
+  if (it) qaRead(card, it.q, go); else dictSay(word, go);
+}
+// Dictation: the word said, then its letters spelled aloud one by one (nothing shown); done() after
+function dictSay(word, done) {
+  const g0 = game; try { warmSpeech(); sayAnyway = true; speakWord(word, 0.85); } catch (e) {} finally { sayAnyway = false; }
+  let t = 700 + 90 * word.length;
+  [...word].filter(ch => /[A-Z]/.test(ch)).forEach(ch => { setTimeout(() => { if (game !== g0) return; try { sayAnyway = true; speakLetter(ch); } catch (e) {} finally { sayAnyway = false; } }, t); t += 750; });
+  setTimeout(() => { if (done && game === g0) done(); }, t + 300);
+}
+function tyNext() {
+  const g = game, c = g.cur; c.k++; while (c.k < c.word.length && !/[A-Z]/.test(c.word[c.k])) c.k++;
+  document.querySelectorAll('#tyBoxes .ty-box').forEach(el => el.classList.toggle('next', el.dataset.k === String(c.k)));
+  if (c.k >= c.word.length) { gameTypeDone(); return; }
+  c.tries = 0; gpStep(c.k, 300);
+}
+// a prompt's first step: the letter shows in its box for a moment (and is said), then goes again
+function tyFlash() {
+  const c = game && game.cur; if (!c || c.k < 0 || c.k >= c.word.length) return;
+  const el = document.querySelector('#tyBoxes .ty-box[data-k="' + c.k + '"]'); if (!el || el.classList.contains('filled')) return;
+  el.innerHTML = ''; const h = document.createElement('span'); h.className = 'ty-hint'; h.textContent = c.word[c.k].toLowerCase(); el.appendChild(h);
+  setTimeout(() => { if (h.isConnected && !el.classList.contains('filled')) el.innerHTML = ''; }, 2600);
+  try { warmSpeech(); sayAnyway = true; speakLetter(c.word[c.k]); } catch (e) {} finally { sayAnyway = false; }
+}
+function tyKey(L, b) {
+  const g = game; if (!g || g.busy || !g.cur || !g.cur.ready) return; const c = g.cur, want = c.word[c.k]; if (!want) return;
+  if (L === want) {
+    const q = gpRight(), gr = q === 'y' ? 'y' : (q === 'b' || c.tries) ? 'b' : 'g'; if (gr === 'y') c.anyPrompt = true; if (gr === 'b') c.gpB = true;
+    c.lets.push(L + gr);
+    const el = document.querySelector('#tyBoxes .ty-box[data-k="' + c.k + '"]'); if (el) { el.textContent = L.toLowerCase(); el.classList.add('filled'); el.classList.remove('next'); }
+    document.querySelectorAll('#gmKeys .gp-1, #gmKeys .gp-2, #gmKeys .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
+    if (state.letterSpeech !== false) { try { warmSpeech(); sayAnyway = true; speakLetter(L); } catch (e) {} finally { sayAnyway = false; } }
+    buzz(15); setTimeout(() => { if (game === g && g.cur === c) tyNext(); }, 200);
+    return;
+  }
+  c.tries++; c.wrongs++; buzz([60, 40, 60]); gameBuzz();
+  const v = document.getElementById('gameView'); v.classList.remove('gm-shake'); void v.offsetWidth; v.classList.add('gm-shake');
+  if (b) { b.classList.add('gm-wrong'); setTimeout(() => b.classList.remove('gm-wrong'), 500); }
+  gpWrong();
+}
+function gameTypeDone() {
+  const g = game, c = g.cur; g.busy = true;
+  const res = c.anyPrompt ? 'prompted' : (c.wrongs || c.gpB) ? 'second' : 'first'; gpTrialDone(c.tile, c.wrongs > 0);
+  g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
+  state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: g.mode === 'dict' ? 'dict' : 'qa', style: 'type' }]).slice(-3000);
+  if (c.wrongs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
+  save(); gameBar();
+  const bx = document.getElementById('tyBoxes'); if (bx) bx.classList.add('done');
+  setTimeout(() => { try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; } }, 350);
+  buzz([20, 80, 40]); gameStars(bx || document.getElementById('gmPic'));
+  setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 2000);
 }
 function gameStart(n, mode, only, presetId) {
   mode = mode || (game && game.mode) || 'sight';
@@ -17477,7 +17682,7 @@ function picSay(box, word) {
 function picBtnSync() { const b = document.getElementById('homePicBtn'); if (b) { const on = !!state.picMode || !!state.builderMode; b.classList.toggle('off', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); } }      // (red when ready to start; greyed while a game is going)
 function gameView() {
   let v = document.getElementById('gameView'); if (v) v.remove();
-  v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '') + (game && /^(sound|hear|match)$/.test(game.mode) ? ' gm-sound' : '') + (game && /^(hear|match)$/.test(game.mode) ? ' gm-snd1' : '');
+  v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '') + (game && /^(sound|hear|match)$/.test(game.mode) ? ' gm-sound' : '') + (game && /^(hear|match)$/.test(game.mode) ? ' gm-snd1' : '') + (game && game.mode === 'qa' ? ' gm-qa' : '') + (game && /^(qatype|dict)$/.test(game.mode) ? ' gm-type' : '');
   v.innerHTML = '<div class="gm-top"><div class="gm-bar" id="gmBar"></div><button class="gm-x" aria-label="Stop the game">×</button></div><div class="gm-pic" id="gmPic"></div><div class="gm-slots" id="gmSlots"></div><div class="gm-msg" id="gmMsg"></div><div class="gm-row" id="gmRow"></div>';
   v.querySelector('.gm-x').addEventListener('click', () => { if (confirm('Stop the picture game?')) gameOff(); });
   v.querySelector('#gmPic').addEventListener('click', e => { if (game && game.cur) picSay(e.currentTarget, game.cur.word); });
@@ -17498,6 +17703,8 @@ function gameTrial() {
   if (g.mode === 'tiles') { gameTilesTrial(); return; }
   if (g.mode === 'sound') { gameSoundTrial(); return; }
   if (g.mode === 'hear' || g.mode === 'match') { gameSnd1Trial(); return; }
+  if (g.mode === 'qa') { gameQaTrial(); return; }
+  if (g.mode === 'qatype' || g.mode === 'dict') { gameTypeTrial(); return; }
   const s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile;
   g.cur = { word, tile, tries: 0, prompted: false };
@@ -18639,7 +18846,7 @@ function gameTap(w, b) {
     b.classList.add('gm-right'); buzz([20, 80, 40]);
     try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.95); } catch (e) {} finally { sayAnyway = false; }
     gameStars(b);
-    state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, tries: c.tries, fix: !!g.seq[g.i].fix, level: groupOpt(gameGroup(), 'picLevel', state.picLevel || 'easy') }]).slice(-3000);
+    state.gameLog = (state.gameLog || []).concat([Object.assign({ t: Date.now(), word: c.word, tile: c.tile, res, tries: c.tries, fix: !!g.seq[g.i].fix, level: groupOpt(gameGroup(), 'picLevel', state.picLevel || 'easy') }, g.mode === 'qa' ? { mode: 'qa', style: 'tap' } : {})]).slice(-3000);
     // a target got wrong comes back one or two turns later (once)
     if (c.tries > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 1 + 1 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
     save(); gameBar();
@@ -18966,6 +19173,14 @@ function blueAutoOpen() {
     if (want !== at && Math.abs(host.scrollTop - y) > 4) { host.style.scrollSnapType = 'none'; host.scrollTo({ top: y, behavior: 'smooth' }); setTimeout(() => { host.style.scrollSnapType = ''; }, 450); }
   };
   host.addEventListener('scroll', () => { clearTimeout(settle); settle = setTimeout(fix, 140); }, { passive: true });
+  // a swipe up or down turns exactly one grid, by itself (the page does not scroll freely: rows still slide sideways)
+  let ty0 = null, tx0 = 0, tFrom = 0, wheelAt = 0;
+  const pageTo = k => { const ts = tops(); if (!ts.length) return; k = Math.max(0, Math.min(ts.length - 1, k)); const y = Math.min(ts[k], host.scrollHeight - host.clientHeight); host.style.scrollSnapType = 'none'; host.scrollTo({ top: y, behavior: 'smooth' }); setTimeout(() => { host.style.scrollSnapType = ''; }, 500); };
+  host.addEventListener('touchstart', e => { if (!document.getElementById('viewHome').classList.contains('magic-full')) { ty0 = null; return; } const t = e.touches[0]; ty0 = t.clientY; tx0 = t.clientX; const ts = tops(); tFrom = ts.length ? nearest(ts, host.scrollTop) : 0; }, { passive: true });
+  host.addEventListener('touchend', e => { if (ty0 === null) return; const t = e.changedTouches[0], dy = ty0 - t.clientY, dx = tx0 - t.clientX; ty0 = null;
+    if (Math.abs(dy) > 30 && Math.abs(dy) > Math.abs(dx)) { from = null; pageTo(tFrom + (dy > 0 ? 1 : -1)); } }, { passive: true });
+  host.addEventListener('wheel', e => { if (!document.getElementById('viewHome').classList.contains('magic-full') || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return; e.preventDefault();
+    const now = Date.now(); if (now - wheelAt < 450) { wheelAt = now; return; } wheelAt = now; const ts = tops(); from = null; pageTo(nearest(ts, host.scrollTop) + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
   if ('onscrollend' in window) host.addEventListener('scrollend', () => { clearTimeout(settle); fix(); });
 }
 // A tile tapped again within three seconds of putting its word in the message does not add it a second time
@@ -19906,6 +20121,7 @@ function renderSettings() {
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
   document.getElementById('toggleSuggestOn').classList.toggle('on', state.suggestOn !== false);
   document.getElementById('toggleMagicCols').classList.toggle('on', state.magicCols !== false);
+  try { buildSeg('segTileCue', [{ value: 'fade', label: 'Fade' }, { value: 'rise', label: 'Rise' }, { value: 'glow', label: 'Glow' }, { value: 'flip', label: 'Turn' }, { value: 'off', label: 'Off' }], ['fade', 'rise', 'glow', 'flip', 'off'].includes(state.tileCue) ? state.tileCue : 'fade', v => { state.tileCue = v; save(); renderSettings(); }); } catch (e) {}
   { const ts = document.getElementById('tagsSum'); if (ts) { const n = Object.keys(state.tags || {}).length; ts.textContent = (n ? n + ' tag' + (n === 1 ? '' : 's') + ' ' : '') + '\u203A'; } }
   document.getElementById('toggleChatMode').classList.toggle('on', !!state.chatMode);
   document.getElementById('toggleSoundOn').classList.toggle('on', state.soundOn !== false);
