@@ -3258,7 +3258,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 598 - 14 Oct';
+const BUILD = 'build 599 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5849,6 +5849,15 @@ function typeLayerPaint() {
   msg.scrollTop = msg.scrollHeight;
   // the words on offer show in the message window itself, after what is being typed (only while a word is being typed)
   try { renderTypeSuggest(); } catch (e) {}
+  // typed with the sound keys, the right sounds but other letters: the word's spelling offered first (kat -> cat)
+  try { if (inp.value) soundFixFor(inp.value).forEach(to => { const b = document.createElement('button'); b.className = 'tl-chip tl-fix'; b.textContent = '\u21BB ' + to.toLowerCase();
+      b.addEventListener('pointerdown', e => e.preventDefault());
+      b.addEventListener('click', e => { e.stopPropagation(); inp.value = ''; soundTyped = { val: '', ids: [] }; homePhrase.push(to); buzz(10); try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } renderPhraseBar(); typeLayerPaint(); homeKeysIdle(); });
+      msg.appendChild(b); });
+    else if (homePhrase.length) { const i = homePhrase.length - 1, w = homePhrase[i]; ((soundFixes || {})[w] || []).forEach(to => { const b = document.createElement('button'); b.className = 'tl-chip tl-fix'; b.textContent = '\u21BB ' + to.toLowerCase();
+      b.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[i] !== w) return; homePhrase[i] = to; if (arrPrev[i] === w) arrPrev[i] = to; buzz(10); soundFixDone(w, to);
+        try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } renderPhraseBar(); typeLayerPaint(); homeKeysIdle(); });
+      msg.appendChild(b); }); } } catch (e) {}
   if (inp.value) [...document.getElementById('typeSuggest').querySelectorAll('button')].slice(0, 3).forEach(src => {
     const b = document.createElement('button'); b.className = 'tl-chip'; b.textContent = src.textContent;
     b.addEventListener('click', () => { src.click(); inp.blur(); typeLayerPaint(); homeKeysIdle(); });
@@ -9542,7 +9551,7 @@ function verbable(w) {
   let k = ''; try { k = kindOfWord(w); } catch (e) {}
   return k === 'action';
 }
-function endingChip(box, i, w, to, label) {
+function endingChip(box, i, w, to, label, onDone) {
   const b = document.createElement('button');
   b.className = 'pb-plural'; b.textContent = label; b.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
   b.addEventListener('click', e => {
@@ -9551,6 +9560,7 @@ function endingChip(box, i, w, to, label) {
     homePhrase[i] = to; buzz(10);
     if (arrPrev[i] === w) arrPrev[i] = to;      // (the word with its new ending is still the word that was put in: the next word is still put in order after it)
     try { tileAdd = null; } catch (er) {}
+    if (onDone) try { onDone(); } catch (er) {}
     renderPhraseBar();
     try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; }      // (the word is said again with its new ending)
   });
@@ -9567,6 +9577,9 @@ function pluralChip(box) {
     box.appendChild(b);
     return;      // (the order offer alone: the ending options come back once it is taken or put away)
   }
+  // a word typed with the sound keys that has the right sounds but not the right letters (kat): its spelling offered (cat)
+  { const i = homePhrase.length - 1, w = homePhrase[i], fx = (soundFixes || {})[w];
+    if (fx && fx.length) { fx.forEach(to => endingChip(box, i, w, to, '\u21BB ' + to.toLowerCase(), () => soundFixDone(w, to))); return; } }
   if (state.pluralChip === false) return;
   const i = homePhrase.length - 1, w = homePhrase[i];
   if (verbable(w)) {
@@ -10544,6 +10557,7 @@ function commitTypedWord() {
   const raw = normaliseWord(typed);
   if (!raw) return false;
   rememberCase(typed, raw);
+  try { const fx = soundFixFor(typed); if (fx.length) soundFixes[raw] = fx; else delete soundFixes[raw]; } catch (e) {}
   inp.value = '';
   renderTypeSuggest();
   if (!state.words.includes(raw)) state.words.push(raw);
@@ -17518,6 +17532,40 @@ function soundSay(id, sp) {
 }
 // sounds that count as the same in a word (c or k for /k/, either th, either oo)
 const SOUND_SAME = { c: ['c', 'k'], k: ['k', 'c'], th: ['th', 'dh'], dh: ['dh', 'th'], oo: ['oo', 'uu'], uu: ['uu', 'oo'] };
+// ---- the right sounds, the wrong letters: a word typed with the sound keys is checked against the words on the pages ----
+var soundTyped = { val: '', ids: [] };      // the message keyboard's typing so far, and the sound each spelling in it was put in for
+var soundFixes = {};                         // a word put in the message -> the words it sounds like (offered on a chip)
+function soundTypedNote(before, after, lets, id) {
+  if (before == null || after !== before + lets) return;      // (another box was typed in: the chat's)
+  if (!before) soundTyped = { val: after, ids: [id] };
+  else if (soundTyped.ids && soundTyped.val === before) { soundTyped.ids.push(id); soundTyped.val = after; }
+  else soundTyped = { val: after, ids: null };      // (some of it typed with the letter keys, or changed: not checked)
+}
+var soundFixCache = { n: -1, list: [] };
+function soundFixPool() {
+  let n = 0; state.categories.forEach(c => { n += (c.words || []).length + (c.row || []).length; });
+  n += Object.keys(state.soundSplits || {}).length * 100000;
+  if (soundFixCache.n === n) return soundFixCache.list;
+  const seen = new Set(), list = [];
+  state.categories.forEach(c => [...(c.words || []), ...(c.row || [])].forEach(w => { if (seen.has(w) || !/^[A-Z][A-Z']*$/.test(w)) return; seen.add(w); list.push({ w, parts: soundSplit(w) }); }));
+  soundFixCache = { n, list, set: seen }; return list;
+}
+function soundFixFor(typed) {
+  if (!state.soundKeysOn || !soundTyped.ids || !soundTyped.ids.length) return [];
+  const t = String(typed || '').trim(); if (!t || t.toLowerCase() !== String(soundTyped.val).toLowerCase()) return [];
+  const T = normaliseWord(t), ids = soundTyped.ids, list = soundFixPool();
+  if (soundFixCache.set.has(T)) return [];      // (spelled right already)
+  const same = (a, p) => a === p.id || (p.alt || []).includes(a) || (SOUND_SAME[a] || []).includes(p.id);
+  const hist = w => ((state.wordHistory || {})[w] || {}).n || 0;
+  return list.filter(x => x.w !== T && x.parts.length === ids.length && x.parts.every((p, k) => same(ids[k], p)))
+    .map(x => x.w).sort((a, b) => hist(b) - hist(a) || a.localeCompare(b)).slice(0, 2);
+}
+// the spelling was taken: the misspelling is not kept as a word of its own
+function soundFixDone(w, to) {
+  delete soundFixes[w];
+  try { if (!categoriesOf(w).length) { const k = state.words.indexOf(w); if (k >= 0 && !homePhrase.includes(w)) state.words.splice(k, 1); const h = state.wordHistory[w]; if (h && !(h.n > 1)) delete state.wordHistory[w]; }
+    if (!state.wordHistory[to]) state.wordHistory[to] = { n: 0, t: 0 }; save(); } catch (e) {}
+}
 // A word's sounds, from its spelling: each a { id, alt } - alt are the other sounds accepted for it. Set by hand (Sounds,
 // in the word's menu on the targets page) when the spelling does not say it plainly.
 function soundSplit(word) {
@@ -17771,7 +17819,8 @@ function soundKbTap(l, put) {
   const typing = !!put || (!game && !!state.soundKeysOn);
   if (!typing && (!game || game.busy)) return;
   // (a message keyboard - the one from the bar at the top, or the chat's - puts the spelling's letters in itself)
-  const enter = (id, sp) => put ? (() => { [...String(sp || '').replace(/-.*$/, '').toLowerCase()].forEach(ch => put(ch)); try { soundSay(id, sp); } catch (e) {} buzz(10); })() : typing ? soundTypeEnter(id, sp) : soundEnter(id, sp);
+  const enter = (id, sp) => put ? (() => { const pi = document.getElementById('pbInput'), before = pi ? pi.value : null, lets = String(sp || '').replace(/-.*$/, '').toLowerCase();
+      [...lets].forEach(ch => put(ch)); try { soundTypedNote(before, pi ? pi.value : null, lets, id); if (pi && pi.value !== before && document.getElementById('typeLayer')) typeLayerPaint(); } catch (e) {} try { soundSay(id, sp); } catch (e) {} buzz(10); })() : typing ? soundTypeEnter(id, sp) : soundEnter(id, sp);
   clearTimeout(soundOpenTimer);
   if (soundOpen) { let t = soundSwap[l] || (l === soundOpen ? soundOpts(l)[0] : null); if (t && t.cover) t = soundSwap[t.cover]; soundOpen = null; soundSwap = {}; soundKbPaint(); if (t) enter(t.id, t.sp); return; }
   const opts = soundOpts(l); if (!opts.length) return;
