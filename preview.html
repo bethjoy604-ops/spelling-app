@@ -3344,7 +3344,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 604 - 14 Oct';
+const BUILD = 'build 605 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9777,18 +9777,25 @@ function pbFit() {
 }
 // ---- Folders opened from a menu page (Food > Drinks) are noted in the key bar in grey, in their place among the words.
 // They are not part of the message: tapping one puts it in (and says it); the green enter leaves the grey ones out.
-var barNotes = [], notePathSeen = [];      // { at: the word it sits before, w: the word }
+var barNotes = [], notePathSeen = [], noteGroupSeen = '';      // { at: the word it sits before, w: the word }
 function barNotesSync() {
   const path = (typeof homePath !== 'undefined' ? homePath : []).filter(id => id !== RECENT_ID);
   const was = notePathSeen; notePathSeen = path.slice();
+  // a group of tiles opened in a folder (Food > Drinks) counts the same as a folder
+  const tg = (typeof tileGroup !== 'undefined' && tileGroup && tileGroup.group) ? tileGroup : null, gKeyNow = tg ? tg.cat + ':' + (tg.group.id || tg.group.name) : '';
+  const gWas = noteGroupSeen; noteGroupSeen = gKeyNow;
   if (state.builderMode || state.folderNotes === false || (typeof gamesHome !== 'undefined' && gamesHome)) return;
   try { if (onTargetsPage()) return; } catch (e) {}
-  const fresh = path.filter(id => !was.includes(id)); if (!fresh.length) return;
+  const fresh = path.filter(id => !was.includes(id));
+  const newGroup = gKeyNow && gKeyNow !== gWas ? tg.group.name : '';
+  if (!fresh.length && !newGroup) return;
   let added = false;
   fresh.forEach(id => { const c = catById(id); if (!c || !c.parent || c.target || c.hidden || c.small || c.smallSec) return;      // (a main menu - Chat, My Stuff, Categories - is not a word)
     const w = normaliseWord(c.name); if (!w || !/[A-Z]/.test(w)) return;
     const at = homePhrase.length; if (homePhrase[at - 1] === w || barNotes.some(n => n.at === at && n.w === w)) return;
     barNotes.push({ at, w }); added = true; });
+  if (newGroup) { const w = normaliseWord(newGroup), at = homePhrase.length;
+    if (w && /[A-Z]/.test(w) && homePhrase[at - 1] !== w && !barNotes.some(n => n.at === at && n.w === w)) { barNotes.push({ at, w }); added = true; } }
   if (added) renderPhraseBar();
 }
 function barNoteTake(n) {
@@ -10365,7 +10372,7 @@ document.getElementById('pbClear').addEventListener('click', () => {
   else if (inp.value) inp.value = '';
   else if (barNotes.length && barNotes[barNotes.length - 1].at >= homePhrase.length) barNotes.pop();      // (a folder noted after the last word goes first)
   else homePhrase.pop();
-  if (!homePhrase.length && !barNotes.length) notePathSeen = [];
+  if (!homePhrase.length && !barNotes.length) { notePathSeen = []; noteGroupSeen = ''; }
   renderTypeSuggest();
   renderPhraseBar();
   hideMagic();
