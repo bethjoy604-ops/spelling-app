@@ -3226,7 +3226,9 @@
         <div class="sublabel" style="margin-top:0">In the Games menu</div>
         <div class="settings-list" id="gamesOnList"></div>
         <div class="sublabel">Least to most: no answer at a prompt level for</div>
-        <div class="settings-list"><div class="setting-row"><span>Then the next prompt level comes by itself</span><div class="seg" id="segPromptStep"></div></div></div>
+        <div class="settings-list"><div class="setting-row"><span>Then the next prompt level comes by itself</span><div class="seg" id="segPromptStep"></div></div>
+          <div class="setting-row"><span>The prompt in the target word</span><div class="seg" id="segWordWait"></div></div></div>
+        <div class="help-note" style="margin:6px 4px 12px">Straight away: the letter in the target word is prompted as soon as its turn starts (a step ahead of the keyboard), and the keyboard follows after the wait. Waits too: the word and the keyboard both wait.</div>
         <div class="help-note" style="margin:6px 4px 12px">A game switched off stays in the Games menu greyed out, and cannot be started.</div>
         <div class="sublabel">The other tiles in the row (Word Match)</div>
         <div class="seg-row" id="segPicLevel"></div>
@@ -3474,7 +3476,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 630 - 14 Oct';
+const BUILD = 'build 631 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3690,7 +3692,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, tileCue: 'fade', promptStepSec: 7, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, tileCue: 'fade', promptStepSec: 7, wordPromptWait: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3868,7 +3870,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, tileCue: saved.tileCue || 'fade', promptStepSec: Number(saved.promptStepSec) || 7, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, tileCue: saved.tileCue || 'fade', promptStepSec: Number(saved.promptStepSec) || 7, wordPromptWait: !!saved.wordPromptWait, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4525,7 +4527,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, tileCue: state.tileCue || 'fade', promptStepSec: state.promptStepSec || 7, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, tileCue: state.tileCue || 'fade', promptStepSec: state.promptStepSec || 7, wordPromptWait: !!state.wordPromptWait, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -6494,6 +6496,13 @@ function anyPromptEnabled() {
          pOn('promptPulseOn') || pOn('promptTileOn') || pOn('promptTextColorOn') || pOn('promptTextPulseOn') || state.otherKeysMode !== 'normal';
 }
 // Prompts are showing right now (delay elapsed, letter not fully faded)
+// the target word's prompt straight away, before the wait the keyboard's prompts keep (unless it is set to wait too)
+function wordPromptNow() {
+  if (state.wordPromptWait || !state.currentTarget || isWordComplete()) return false;
+  if (fadeLevelAt(state.targetIndex) >= FADE_PLAIN) return false;
+  if (state.helpMode && !helpRequested) return false;
+  return true;
+}
 function promptsShowing() {
   if (!state.currentTarget || isWordComplete()) return false;
   if (ltmNow()) return true;      // (least to most: the first, smallest prompt is there from the start)
@@ -6750,7 +6759,7 @@ function isLetterPrompted(letter) {
 
 function render() {
   applyPromptTheme();
-  const showing = promptsShowing();
+  const showing = promptsShowing(), wShow = showing || wordPromptNow();
 
 
   // While drafting from the bank, the target bar previews the phrase
@@ -6798,14 +6807,14 @@ function render() {
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex && ltmNow() && !isWordComplete()) {
-        const lv = ltmLevel();
+        const lv = state.wordPromptWait ? ltmLevel() : Math.min(3, ltmLevel() + 1);      // (the word a step ahead of the keyboard, from the start - unless it is set to wait too)
         s.classList.add(lv >= 2 ? 'next' : 'pending', 'magnify', lv >= 3 ? 'tmag-large' : 'tmag-small', lv >= 3 ? 'pulse' : 'ltm-pulse');
         if (lv === 2) s.classList.add('ltm-light'); if (lv >= 3) s.classList.add('ltm-dark');
       }
       else if (i === state.targetIndex &&
-               ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1 || hintAt(i).word)) {
-        const fl = fadeLevelAt(i), E = Math.max(boostLevel(i), hintAt(i).word ? 1 : 0), on = showing && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
-        const sh = (lim, step) => (showing && fl < lim) || E >= step;
+               ((wShow && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1 || hintAt(i).word)) {
+        const fl = fadeLevelAt(i), E = Math.max(boostLevel(i), hintAt(i).word ? 1 : 0), on = wShow && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
+        const sh = (lim, step) => (wShow && fl < lim) || E >= step;
         if (E >= 1) s.classList.add('boosted');      // (errors in a row: the letter shows again in the word)
         if ((pOn('promptTextColorOn') && sh(6, 4)) || helpLead) s.classList.add('next');
         else s.classList.add('pending');
@@ -12402,7 +12411,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'tileCue', 'gameLevel', 'promptStepSec',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'tileCue', 'gameLevel', 'promptStepSec', 'wordPromptWait',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -20517,6 +20526,7 @@ function renderSettings() {
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
   document.getElementById('toggleSuggestOn').classList.toggle('on', state.suggestOn !== false);
   document.getElementById('toggleMagicCols').classList.toggle('on', state.magicCols !== false);
+  try { buildSeg('segWordWait', [{ value: 'now', label: 'Straight away' }, { value: 'wait', label: 'Waits too' }], state.wordPromptWait ? 'wait' : 'now', v => { state.wordPromptWait = v === 'wait'; save(); renderSettings(); try { render(); } catch (e) {} }); } catch (e) {}
   try { buildSeg('segPromptStep', [3, 5, 7, 10, 15].map(v => ({ value: v, label: v + ' s' })), Math.max(3, Math.min(15, Number(state.promptStepSec) || 7)), v => { state.promptStepSec = v; save(); renderSettings(); }); } catch (e) {}
   try { buildSeg('segTileCue', [{ value: 'fade', label: 'Fade' }, { value: 'rise', label: 'Rise' }, { value: 'glow', label: 'Glow' }, { value: 'flip', label: 'Turn' }, { value: 'off', label: 'Off' }], ['fade', 'rise', 'glow', 'flip', 'off'].includes(state.tileCue) ? state.tileCue : 'fade', v => { state.tileCue = v; save(); renderSettings(); }); } catch (e) {}
   { const ts = document.getElementById('tagsSum'); if (ts) { const n = Object.keys(state.tags || {}).length; ts.textContent = (n ? n + ' tag' + (n === 1 ? '' : 's') + ' ' : '') + '\u203A'; } }
