@@ -1452,13 +1452,13 @@
   .snd-word { font-family: inherit; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1.15; color: var(--ink); letter-spacing: 0.02em; margin-bottom: clamp(16px, 3vh, 36px); }
   .snd-word span { border-radius: 10px; padding: 0 0.02em; transition: background 0.2s; }
   .snd-word span.now { background: #ffe45c; box-shadow: 0 0 0 4px #ffe45c; }
-  .snd-word span.now.v { background: #b9e6c0; box-shadow: 0 0 0 4px #b9e6c0; color: #0f3d1a; }      /* the same colours as the keys: vowel sounds green, consonant sounds purple */
-  .snd-word span.now.c { background: #d6d0f7; box-shadow: 0 0 0 4px #d6d0f7; color: #2b2466; }
+  .snd-word span.now.v { background: #f8c3b3; box-shadow: 0 0 0 4px #f8c3b3; color: #5c1f10; }      /* the same colours as the keys (the Orton-Gillingham cards): vowel sounds salmon, consonant sounds white */
+  .snd-word span.now.c { background: #ffffff; box-shadow: 0 0 0 4px #ffffff, 0 0 0 6px #cfd4dc; color: #1f2328; }
   /* no picture: the word and its boxes sit at the top and the keyboard takes the room that is left */
   .game-view.gm-sound:has(.gm-pic.no-pic) .gm-pic { flex: 0 0 auto; padding: 22px 20px 26px; }
   .game-view.gm-sound:has(.gm-pic.no-pic) .gm-row { margin-top: 6px; }
   .game-view.gm-sound:has(.gm-pic.no-pic) .snd-word { margin-bottom: clamp(10px, 2vh, 24px); }
-  .game-view.gm-sound:has(.gm-pic.no-pic) .sk { height: clamp(64px, 15vh, 150px); }
+  .game-view.gm-sound:has(.gm-pic.no-pic) .sk { height: clamp(56px, 11.5vh, 130px); }
   .snd-cells { display: flex; gap: clamp(16px, 2.6vmin, 30px); justify-content: center; flex-wrap: wrap; }
   .snd-cell { min-width: clamp(76px, 11vmin, 132px); height: clamp(76px, 11vmin, 132px); padding: 0 14px; box-sizing: border-box; border-radius: 16px; border: 3px dashed #c4c8cf; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1; color: #9aa1ab; background: #fff; }
   .snd-cell.next { border-style: solid; border-color: #2f8bff; }
@@ -1469,17 +1469,19 @@
   .sound-kb { display: flex; flex-direction: column; gap: 8px; }
   .sk-row { display: flex; gap: 6px; box-sizing: border-box; }
   .sk { flex: 0 0 calc((100% - 54px) / 10); height: clamp(58px, 8.5vh, 92px); border: 2px solid transparent; border-radius: 12px; position: relative; font-family: inherit; font-weight: 800; font-size: clamp(26px, 4.4vmin, 44px); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; padding: 0; }
-  .sk.v { background: #b9e6c0; color: #0f3d1a; }
-  .sk.c { background: #d6d0f7; color: #2b2466; }
+  .sk.v { background: #f8c3b3; color: #5c1f10; }      /* Orton-Gillingham colours: vowels salmon, consonants white */
+  .sk.c { background: #ffffff; color: #1f2328; box-shadow: inset 0 0 0 1px #d5d9e0; }
   .sk i { position: absolute; top: 4px; right: 7px; font-style: normal; font-size: 14px; font-weight: 800; opacity: 0.8; }
   .sk:disabled { background: #e6e9ef; color: #9aa3b5; }
   .sk.dim { opacity: 0.3; }
   .sk.parent { border-color: #1f5fd6; box-shadow: 0 0 0 2px #1f5fd6; }
   .sk.opt { box-shadow: 0 0 0 2px #1f5fd6; font-size: clamp(20px, 3.4vmin, 34px); }
-  .sk.opt.v { background: #e4f6e7; border-color: #4fa863; }
-  .sk.opt.c { background: #efecfd; border-color: #8777dc; }
+  .sk.opt.v { background: #fde4dc; border-color: #e07a5f; }
+  .sk.opt.c { background: #ffffff; border-color: #8a94a3; }
   .sk.opt em { font-style: normal; font-weight: 600; font-size: clamp(10px, 1.6vmin, 15px); opacity: 0.85; }
-  .snd1-card { display: flex; align-items: center; justify-content: center; width: min(62vmin, 520px); height: min(34vh, 330px); border-radius: 26px; background: #f4f5f8; cursor: pointer; overflow: hidden; margin-bottom: clamp(12px, 2.5vh, 28px); }
+  .snd1-card { display: flex; align-items: center; justify-content: center; width: min(62vmin, 520px); height: clamp(100px, 20vh, 260px); border-radius: 26px; background: #f4f5f8; cursor: pointer; overflow: hidden; margin-bottom: clamp(12px, 2.5vh, 28px); }
+  .snd1-ear { font-size: clamp(70px, 11vh, 150px) !important; }
+  .snd1-sp { font-size: clamp(80px, 13vh, 200px) !important; }
   .snd1-card .snd-video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
   .snd1-ear { font-size: clamp(90px, 16vmin, 170px); }
   .snd1-sp { font-weight: 900; font-size: clamp(110px, 20vmin, 220px); line-height: 1; color: var(--ink); }
@@ -1497,7 +1499,7 @@
   .tune-chip.on { background: #ebfaee; border-color: var(--green); }
   .tune-chip.own { color: var(--muted); }
   .rec-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 12px; border-radius: 22px; margin: 6px 0 10px; }
-  .rec-card.v { background: #b9e6c0; color: #0f3d1a; } .rec-card.c { background: #d6d0f7; color: #2b2466; }
+  .rec-card.v { background: #f8c3b3; color: #5c1f10; } .rec-card.c { background: #ffffff; color: #1f2328; }
   .rec-card b { font-size: 96px; line-height: 1; } .rec-card em { font-style: normal; font-size: 22px; font-weight: 700; } .rec-card small { font-size: 15px; opacity: 0.85; text-align: center; }
   .rec-st { text-align: center; font-size: 16px; min-height: 22px; }
   .rec-row { display: flex; gap: 10px; justify-content: center; margin: 8px 0 12px; }
@@ -1511,18 +1513,19 @@
   .keyboard.kb-sounds .sk-row { flex: 1 1 0; min-height: 0; }
   .keyboard.kb-sounds .sk { height: auto; }
   .keyboard.kb-sounds > .row { flex: 1 1 0; }
-  .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #e8e2fb; color: #2b2466; }
-  .key.sndtoggle svg { width: clamp(30px, 4.6vmin, 44px); height: auto; } .key.sndtoggle small { font-size: clamp(11px, 1.6vmin, 14px); font-weight: 700; opacity: 0.8; margin-top: 2px; }
+  .key.sndtoggle { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; background: #bfd8ff; color: #1f4f9e; flex: 0.72 !important; }      /* the small words' blue, both ways */
+  .row:has(.sndtoggle) > .numkey { flex: 0.72 !important; }      /* 123 and the switch share the room of one wide key: the row matches the enter key on the other side */
+  .key.sndtoggle svg { width: clamp(24px, 3.6vmin, 34px); height: auto; } .key.sndtoggle small { font-size: clamp(10px, 1.4vmin, 12px); font-weight: 700; opacity: 0.85; margin-top: 1px; }
   .key.letter.sk { flex: 1; height: auto; border: 2px solid transparent; border-radius: 16px; font-weight: 600; font-size: clamp(24px, 5vmin, 46px); box-shadow: var(--shadow); }
   .key.letter.sk.opt { font-size: clamp(20px, 3.6vmin, 36px); font-weight: 800; }
   .key.letter.sk i { font-size: clamp(11px, 1.5vmin, 14px); }
   .key.letter.sk.opt, .key.letter.sk.parent { box-shadow: 0 0 0 2px #1f5fd6; }
-  .key.letter.sk.parent { border-color: #1f5fd6; } .key.letter.sk.opt.v { border-color: #4fa863; } .key.letter.sk.opt.c { border-color: #8777dc; }
+  .key.letter.sk.parent { border-color: #1f5fd6; } .key.letter.sk.opt.v { border-color: #e07a5f; } .key.letter.sk.opt.c { border-color: #8a94a3; }
   .key.letter.sk.gm-pulse { box-shadow: 0 0 0 6px #ffc93c; }
   .keyboard .key.letter.sk.prompt-color { background: var(--prompt); color: var(--prompt-ink); border-color: transparent; }
   .keyboard .key.letter.sk.prompt-color.fade-1 { background: var(--prompt-f1); }
   .keyboard .key.letter.sk.prompt-color.fade-2 { background: var(--prompt-f2); color: var(--ink); }
-  .key.sndtoggle.on { background: #dff3e3; color: #1d6b31; }
+  .key.sndtoggle.on { background: #bfd8ff; color: #1f4f9e; }
   .sm-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
   .sm-input { flex: 1 1 180px; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #c9ced8; }
   .sm-voice { flex: 0 1 190px; }
@@ -1530,7 +1533,7 @@
   .sm-snd { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 12px; background: #f4f5f8; }
   .sm-snd .hf-btn { padding: 8px 10px; }
   .sm-lab { width: 74px; flex: 0 0 auto; border-radius: 10px; display: flex; flex-direction: column; align-items: center; padding: 4px 0; }
-  .sm-lab.v { background: #b9e6c0; color: #0f3d1a; } .sm-lab.c { background: #d6d0f7; color: #2b2466; }
+  .sm-lab.v { background: #f8c3b3; color: #5c1f10; } .sm-lab.c { background: #ffffff; color: #1f2328; box-shadow: inset 0 0 0 1px #d5d9e0; }
   .sm-lab b { font-size: 24px; line-height: 1.1; } .sm-lab em { font-style: normal; font-size: 11px; opacity: 0.85; }
   .sm-st { flex: 1 1 auto; font-size: 15px; }
   .sm-vidpop { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; }
@@ -3236,7 +3239,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 581 - 14 Oct';
+const BUILD = 'build 586 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5937,6 +5940,13 @@ function getVoice() {
   return availableVoices.find(v => v.name === state.voiceName) || null;
 }
 let sayAnyway = false;      // the green enter: the message is said even with sound switched off
+// when whatever is being said now (a letter, a sound, a word) is over - so the next thing can wait its turn
+let speechBusyTill = 0;
+function speechQuietIn() { let t = Math.max(0, speechBusyTill - Date.now()); try { t = Math.max(t, soundBusyUntil()); } catch (e) {} return t; }
+// run fn once nothing has been said for at least gap ms (straight away if it has been quiet that long)
+function afterSpeech(fn, gap) { const g = gap == null ? 1000 : gap, busy = speechQuietIn(), since = Date.now() - speechLastEnd(); const wait = busy > 0 ? busy + g : Math.max(0, g - since); return setTimeout(fn, wait); }
+function speechLastEnd() { return Math.max(speechEndedAt, Math.min(Date.now(), speechBusyTill)); }
+let speechEndedAt = 0;
 function speak(text, rate = 1) {
   if (state.soundOn === false && !sayAnyway) return;           // sound is switched off: no word labels, no spoken prompts
   if (!text || !('speechSynthesis' in window)) return;
@@ -5944,6 +5954,8 @@ function speak(text, rate = 1) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = rate; u.pitch = 1; u.lang = 'en-US';
+    speechBusyTill = Math.max(speechBusyTill, Date.now() + Math.round((450 + 75 * String(text).length) / Math.max(0.3, rate)));      // (a guess until it is really done)
+    u.onend = () => { speechBusyTill = Math.min(speechBusyTill, Date.now()); };
     const v = getVoice();
     if (v) { u.voice = v; u.lang = v.lang; }
     window.speechSynthesis.speak(u);
@@ -6303,6 +6315,15 @@ function promptStepUp(word, idx) {
 // Called whenever the expected letter changes, or after an error that restarts the wait
 // ===== Practising a word with the sound keyboard: the word is said, then 2 s later the sound of its first spelling; each
 // spelling put in is said as it lands, and 2 s later the sound of the next one. A finished word is said slowly, then as usual.
+// the keyboard switched (letters / sounds) part-way through a word: the word starts again from the top - its letters
+// cleared, the word said again, and the prompts (the sound of the first spelling, on the sound keyboard) from the start
+function restartTargetTyping() {
+  const w = state.currentTarget; if (!w || (typeof game !== 'undefined' && game) || wordDone === w) return;
+  state.text = ''; state.targetIndex = 0; state.targetProgress = []; state.targetPromptedFlags = []; state.pendingLetterCounts = {};
+  trialAt = []; helpRequested = false; verbalSpokenFor = -1; try { soundCloseAll(); } catch (e) {} try { clearTimeout(soundPromptTimer); } catch (e) {}
+  armPrompt();
+  if (state.targetSpeech) { afterSpeech(() => { if (state.currentTarget !== w) return; sayAnyway = true; try { speakWord(w, 0.85); } finally { sayAnyway = false; } }, 0); }
+}
 function soundPracticeNow() { try { return !!state.soundKeysOn && !game && !!state.currentTarget && !kbSearch && document.getElementById('viewKeyboard').classList.contains('active'); } catch (e) { return false; } }
 // the sound of the word's spelling that starts at this letter of the target (null part-way through a spelling, or a silent letter)
 function soundPartAt(target, idx) {
@@ -6565,7 +6586,7 @@ function render() {
   r.appendChild(numKey);
   if (!inGame) { const t = document.createElement('button'); t.className = 'key wide sndtoggle' + (soundKeys ? ' on' : ''); t.setAttribute('aria-label', soundKeys ? 'Letter keyboard' : 'Sound keyboard');
     t.innerHTML = sndToggleHtml(soundKeys);
-    t.addEventListener('click', () => { warmSpeech(); buzz(10); state.soundKeysOn = !state.soundKeysOn; kbNumbers = false; shiftOn = false; save(); render(); try { typeKeysSync(); } catch (e) {} });
+    t.addEventListener('click', () => { warmSpeech(); buzz(10); state.soundKeysOn = !state.soundKeysOn; kbNumbers = false; shiftOn = false; try { restartTargetTyping(); } catch (e) {} save(); render(); try { typeKeysSync(); } catch (e) {} });
     r.appendChild(t); }
   const spaceKey = makeSpecialKey('', 'space', 'space space-blank');
   if (expected === ' ' && kbShow) promptKey(spaceKey);
@@ -7131,7 +7152,7 @@ function readBack(words, target, force) {
   document.body.appendChild(f);
   let i = 0;
   // spelled with the sound keyboard: each word is put together from its sounds slowly, then quickly, then said as usual
-  const seq = words.map((w, k) => [w, k, 'say']); if (slowFirst) seq.unshift(...words.map((w, k) => [w, k, 'slow']), ...words.map((w, k) => [w, k, 'fast']));
+  const seq = words.map((w, k) => [w, k, 'say']); if (slowFirst) seq.unshift(...words.map((w, k) => [w, k, 'slow']));      // (slow: the sounds' recordings - fast: the voice saying it)
   const rbLine = (k, dur, cls) => { const l = chips[k] && chips[k].querySelector('.rb-line'); if (!l) return; l.classList.toggle('slow', cls === 'slow'); l.classList.toggle('fast', cls === 'fast'); l.style.transition = 'none'; l.style.width = '0'; void l.offsetWidth; l.style.transition = 'width ' + Math.round(dur * 0.9) + 'ms linear'; l.style.width = 'calc(100% - 0.44em)'; };
   const step = async () => {
     chips.forEach((c, k) => c.classList.toggle('on', i < seq.length && k === seq[i][1]));
@@ -7140,12 +7161,12 @@ function readBack(words, target, force) {
     if (i > 0 && seq[i - 1][2] !== kind) chips.forEach(c => { const l = c.querySelector('.rb-line'); if (l) { l.style.transition = 'none'; l.style.width = '0'; } });      // (each pass starts its lines again)
     i++;
     if (isPunct(w)) { readBackTimer = setTimeout(step, 250); return; }
-    if (kind !== 'say') { const parts = soundSplit(w); if (parts.length) { const ms = await soundBlend(parts, kind === 'fast'); if (ending) return; rbLine(k, ms, kind); readBackTimer = setTimeout(step, ms + 300); return; } }
+    if (kind !== 'say') { const parts = soundSplit(w); if (parts.length) { await soundBlend(parts, kind === 'fast', null, ms => { if (!ending) rbLine(k, ms, kind); }); if (ending) return; readBackTimer = setTimeout(step, 1000); return; } }
     const dur = 520 + 75 * String(w).length; rbLine(k, dur, 'say');
     sayAnyway = true; try { speakWord(w, 0.95); } finally { sayAnyway = false; }
     readBackTimer = setTimeout(step, dur);
   };
-  readBackTimer = setTimeout(step, 350);
+  readBackTimer = afterSpeech(step, 1000);      // (a second after the last key or word was said, so they do not run together)
 }
 function celebrate(word) {
   const display = document.getElementById('readBackCard') || (document.getElementById('display').offsetParent ? document.getElementById('display') : document.getElementById('targetBanner'));
@@ -9839,7 +9860,7 @@ function chatPost(words) {
   state.chatLog = (state.chatLog || []).concat([{ text, replies: [], t: now }]).slice(-5000);
   state.chatPaneShut = false; chatPaneShow();
   save(); buzz(15);
-  warmSpeech(); sayAnyway = state.soundOn !== false; try { speakWord(words.join(' '), 0.95); } finally { sayAnyway = false; }
+  warmSpeech(); { const say = words.join(' '); afterSpeech(() => { sayAnyway = state.soundOn !== false; try { speakWord(say, 0.95); } finally { sayAnyway = false; } }, 1000); }      // (a second after the last word was said)
   renderPhraseBar(); renderHome(true); renderChatPane(true);
 }
 let chatPaneSig = '', chatPaneBig = false, chatBarTap = 0, chatBarTimer = null;
@@ -16873,7 +16894,10 @@ function smTx(mode, fn) { return smDB().then(db => new Promise((res, rej) => { c
 async function smLoad() {
   try { const keys = await smTx('readonly', st => st.getAllKeys()); SM.a = new Set(); SM.v = new Set();
     (keys || []).forEach(k => { const [kind, id] = String(k).split('|'); if (kind === 'a') SM.a.add(id); else if (kind === 'v') SM.v.add(id); }); } catch (e) {}
+  SM.loaded = true;
 }
+// (which sounds have recordings, known from the start: until then a prompt would fall back to the iPad voice)
+setTimeout(() => { smLoad().catch(() => {}); }, 0);
 async function smPut(kind, id, blob) { await smTx('readwrite', st => st.put(blob, kind + '|' + id)); SM[kind].add(id); if (kind === 'a' && typeof SMA !== 'undefined') delete SMA.buf[id]; if (SM.urls[kind + '|' + id]) { URL.revokeObjectURL(SM.urls[kind + '|' + id]); delete SM.urls[kind + '|' + id]; } }
 async function smDel(kind, id) { await smTx('readwrite', st => st.delete(kind + '|' + id)); SM[kind].delete(id); delete SM.urls[kind + '|' + id]; }
 async function smUrl(kind, id) {
@@ -16905,7 +16929,7 @@ function smPlay(id) {
     const ctx = smCtx(); if (!ctx) { viaPlayer(); return true; }
     smBuffer(id).then(b => { if (!b) { viaPlayer(); return; }
       try { if (SMA.src) SMA.src.stop(); } catch (e) {} try { if (currentAudio) currentAudio.pause(); } catch (e) {}
-      const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); SMA.src = src; }).catch(viaPlayer);
+      const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(ctx.currentTime + 0.03); src.startAt = ctx.currentTime + 0.03; SMA.src = src; try { speechBusyTill = Math.max(speechBusyTill, Date.now() + 30 + Math.round(b.duration * 1000)); } catch (e) {} }).catch(viaPlayer);
   } catch (e) { viaPlayer(); }
   return true;
 }
@@ -17385,11 +17409,14 @@ function openSoundTuner() {
 // A word put together from its sounds' own recordings: slow blending (each sound, a gap after it) or fast blending
 // (the sounds run on into each other - the quiet at the ends of the clips overlaps). A sound with no recording is said
 // by the iPad voice in its turn. onEach(k) as each sound starts; resolves with how long it all takes (ms).
-async function soundBlend(parts, fast, onEach) {
+async function soundBlend(parts, fast, onEach, onStart) {
   const ctx = smCtx(); try { await smLoad(); } catch (e) {}
   const bufs = await Promise.all(parts.map(p => (ctx && SM.a.has(p.id)) ? smBuffer(p.id).catch(() => null) : Promise.resolve(null)));
-  const gap = fast ? -150 : 380, t0 = ctx ? ctx.currentTime + 0.06 : 0; let ms = 60;
-  try { if (SMA.src) SMA.src.stop(); } catch (e) {}
+  // the iPad can hold its sound engine paused until it is woken: woken first, so the timing below is the real timing
+  if (ctx && ctx.state !== 'running') { try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 400))]); } catch (e) {} }
+  // a sound still playing (the last spelling put in) is let finish first
+  const busyUntil = soundBusyUntil(); if (busyUntil > 0) await new Promise(r => setTimeout(r, busyUntil));
+  const gap = fast ? -150 : 380, t0 = ctx ? ctx.currentTime + 0.06 : 0; let ms = 60, lastSrc = null;
   parts.forEach((p, k) => {
     const b = bufs[k], at = ms;
     if (b && ctx && fast) {      // (fast: just the heart of each sound - the quiet before it skipped, a long sound cut short and faded - one into the next)
@@ -17397,13 +17424,22 @@ async function soundBlend(parts, fast, onEach) {
       src.buffer = b; src.connect(gn); gn.connect(ctx.destination); const w = t0 + at / 1000;
       gn.gain.setValueAtTime(1, w); gn.gain.setValueAtTime(1, w + len - 0.05); gn.gain.linearRampToValueAtTime(0.0001, w + len);
       src.start(w, off, len); ms += len * 1000 - 25; }
-    else if (b && ctx) { const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(t0 + at / 1000); ms += b.duration * 1000 + gap; }
+    else if (b && ctx) { const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(t0 + at / 1000); lastSrc = src; ms += b.duration * 1000 + gap; }
     else { setTimeout(() => { try { soundSay(p.id, p.sp); } catch (e) {} }, at); ms += (fast ? 380 : 520) + Math.max(0, gap); }
     if (onEach) setTimeout(() => onEach(k), at);
   });
-  return Math.max(300, ms - Math.min(0, gap));
+  const total = Math.max(300, ms - Math.min(0, gap));
+  soundBlendEnd = Date.now() + total; try { speechBusyTill = Math.max(speechBusyTill, soundBlendEnd); } catch (e) {} if (onStart) try { onStart(total); } catch (e) {}
+  // when the last recording has really finished (the engine's own clock, not a guess) - or the time worked out, if sooner
+  if (lastSrc && !fast) await new Promise(res => { let done = false; const fin = () => { if (!done) { done = true; res(); } }; lastSrc.onended = fin; setTimeout(fin, total + 1500); });
+  else await new Promise(r => setTimeout(r, total));
+  return 0;
 }
+let soundBlendEnd = 0;      // (soundBusyUntil, below, counts it as speaking)
+// how long until the sound playing now (a single sound, or a blend) is over (ms)
+function soundBusyUntil() { let t = Math.max(0, soundBlendEnd - Date.now()); try { if (SMA.src && SMA.src.buffer && SMA.ctx && SMA.src.startAt != null) t = Math.max(t, (SMA.src.startAt + SMA.src.buffer.duration - SMA.ctx.currentTime) * 1000); } catch (e) {} return Math.min(2500, t); }
 function soundSay(id, sp) {
+  if (!SM.loaded) { smLoad().then(() => soundSay(id, sp)).catch(() => {}); return; }      // (the list of recordings first, so a recorded sound is never said by the voice instead)
   const ownSp = sp && (state.soundSpeak || {})[id + '|' + sp];      // (a spelling given its own way of being said)
   if (ownSp) { soundSpeakNow(ownSp); return; }
   if (smPlay(id)) return;
@@ -17719,13 +17755,12 @@ function gameSoundDone() {
   const lit = k => { cells.forEach((x, j) => x.classList.toggle('lit', j === k)); soundWordMark(k); };
   setTimeout(async () => { if (game !== g) return;
     const slow = await soundBlend(c.parts, false, k => { if (game === g) lit(k); });
-    setTimeout(async () => { if (game !== g) return; lit(-1); soundWordMark(-1); cells.forEach(x => x.classList.add('lit'));
-      const fast = await soundBlend(c.parts, true);
-      setTimeout(() => { if (game !== g) return; cells.forEach(x => x.classList.remove('lit'));
+    setTimeout(() => { if (game !== g) return; lit(-1); soundWordMark(-1);      // (slow: the sounds' recordings; fast: the word said by the voice)
+      { if (game !== g) return; cells.forEach(x => x.classList.remove('lit'));
         document.getElementById('gmCells').classList.add('gm-word-done');
         try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; }
         buzz([20, 80, 40]); gameStars(document.getElementById('gmCells'));
-        setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 1600); }, fast + 400); }, slow + 250); }, 350);
+        setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 1600); } }, slow + 250); }, 350);
 }
 function gameBuzz() { if (state.soundOn === false) return; try { const A = window.AudioContext || window.webkitAudioContext; const ac = gameBuzz.ac = gameBuzz.ac || new A(); const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'square'; o.frequency.value = 140; gn.gain.value = 0.08; o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.28); } catch (e) {} }
 function gameTap(w, b) {
