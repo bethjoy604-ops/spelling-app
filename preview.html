@@ -1458,7 +1458,7 @@
   .game-view.gm-sound:has(.gm-pic.no-pic) .gm-pic { flex: 0 0 auto; padding: 22px 20px 26px; }
   .game-view.gm-sound:has(.gm-pic.no-pic) .gm-row { margin-top: 6px; }
   .game-view.gm-sound:has(.gm-pic.no-pic) .snd-word { margin-bottom: clamp(10px, 2vh, 24px); }
-  .game-view.gm-sound:has(.gm-pic.no-pic) .sk { height: clamp(64px, 15vh, 150px); }
+  .game-view.gm-sound:has(.gm-pic.no-pic) .sk { height: clamp(56px, 11.5vh, 130px); }
   .snd-cells { display: flex; gap: clamp(16px, 2.6vmin, 30px); justify-content: center; flex-wrap: wrap; }
   .snd-cell { min-width: clamp(76px, 11vmin, 132px); height: clamp(76px, 11vmin, 132px); padding: 0 14px; box-sizing: border-box; border-radius: 16px; border: 3px dashed #c4c8cf; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1; color: #9aa1ab; background: #fff; }
   .snd-cell.next { border-style: solid; border-color: #2f8bff; }
@@ -1479,7 +1479,9 @@
   .sk.opt.v { background: #e4f6e7; border-color: #4fa863; }
   .sk.opt.c { background: #efecfd; border-color: #8777dc; }
   .sk.opt em { font-style: normal; font-weight: 600; font-size: clamp(10px, 1.6vmin, 15px); opacity: 0.85; }
-  .snd1-card { display: flex; align-items: center; justify-content: center; width: min(62vmin, 520px); height: min(34vh, 330px); border-radius: 26px; background: #f4f5f8; cursor: pointer; overflow: hidden; margin-bottom: clamp(12px, 2.5vh, 28px); }
+  .snd1-card { display: flex; align-items: center; justify-content: center; width: min(62vmin, 520px); height: clamp(100px, 20vh, 260px); border-radius: 26px; background: #f4f5f8; cursor: pointer; overflow: hidden; margin-bottom: clamp(12px, 2.5vh, 28px); }
+  .snd1-ear { font-size: clamp(70px, 11vh, 150px) !important; }
+  .snd1-sp { font-size: clamp(80px, 13vh, 200px) !important; }
   .snd1-card .snd-video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
   .snd1-ear { font-size: clamp(90px, 16vmin, 170px); }
   .snd1-sp { font-weight: 900; font-size: clamp(110px, 20vmin, 220px); line-height: 1; color: var(--ink); }
@@ -3236,7 +3238,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 581 - 14 Oct';
+const BUILD = 'build 582 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -7131,7 +7133,7 @@ function readBack(words, target, force) {
   document.body.appendChild(f);
   let i = 0;
   // spelled with the sound keyboard: each word is put together from its sounds slowly, then quickly, then said as usual
-  const seq = words.map((w, k) => [w, k, 'say']); if (slowFirst) seq.unshift(...words.map((w, k) => [w, k, 'slow']), ...words.map((w, k) => [w, k, 'fast']));
+  const seq = words.map((w, k) => [w, k, 'say']); if (slowFirst) seq.unshift(...words.map((w, k) => [w, k, 'slow']));      // (slow: the sounds' recordings - fast: the voice saying it)
   const rbLine = (k, dur, cls) => { const l = chips[k] && chips[k].querySelector('.rb-line'); if (!l) return; l.classList.toggle('slow', cls === 'slow'); l.classList.toggle('fast', cls === 'fast'); l.style.transition = 'none'; l.style.width = '0'; void l.offsetWidth; l.style.transition = 'width ' + Math.round(dur * 0.9) + 'ms linear'; l.style.width = 'calc(100% - 0.44em)'; };
   const step = async () => {
     chips.forEach((c, k) => c.classList.toggle('on', i < seq.length && k === seq[i][1]));
@@ -17719,13 +17721,12 @@ function gameSoundDone() {
   const lit = k => { cells.forEach((x, j) => x.classList.toggle('lit', j === k)); soundWordMark(k); };
   setTimeout(async () => { if (game !== g) return;
     const slow = await soundBlend(c.parts, false, k => { if (game === g) lit(k); });
-    setTimeout(async () => { if (game !== g) return; lit(-1); soundWordMark(-1); cells.forEach(x => x.classList.add('lit'));
-      const fast = await soundBlend(c.parts, true);
-      setTimeout(() => { if (game !== g) return; cells.forEach(x => x.classList.remove('lit'));
+    setTimeout(() => { if (game !== g) return; lit(-1); soundWordMark(-1);      // (slow: the sounds' recordings; fast: the word said by the voice)
+      { if (game !== g) return; cells.forEach(x => x.classList.remove('lit'));
         document.getElementById('gmCells').classList.add('gm-word-done');
         try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; }
         buzz([20, 80, 40]); gameStars(document.getElementById('gmCells'));
-        setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 1600); }, fast + 400); }, slow + 250); }, 350);
+        setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 1600); } }, slow + 250); }, 350);
 }
 function gameBuzz() { if (state.soundOn === false) return; try { const A = window.AudioContext || window.webkitAudioContext; const ac = gameBuzz.ac = gameBuzz.ac || new A(); const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'square'; o.frequency.value = 140; gn.gain.value = 0.08; o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.28); } catch (e) {} }
 function gameTap(w, b) {
