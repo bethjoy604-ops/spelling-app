@@ -3213,7 +3213,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 573 - 14 Oct';
+const BUILD = 'build 574 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9005,6 +9005,18 @@ function suggRender0() {
       b.addEventListener('click', e => {
         e.stopPropagation();
         if (m.back) { buzz(10); suggFolder = null; suggStack = []; suggRender(); return; }
+        // the open folder's own tile, tapped again: its name goes into the message as a word ("go play music"), and the folder closes
+        if (m.folder && (m.openHead || (m.pf ? (catOpen && catOpen.id === m.folder.id) : (suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null))))) {
+          const box = m.group || m.folder, name = String(box.name || ''), key = normaliseWord(name);
+          if (key && homePhrase[homePhrase.length - 1] !== key) {
+            state.wordCase = state.wordCase || {};
+            if (m.group && !plainStuff(m.folder) && name !== name.toLowerCase()) state.wordCase[key] = name; else if (!(state.words || []).includes(key)) delete state.wordCase[key];
+            magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); save();
+          }
+          buzz(10);
+          if (m.pf) catOpen = null; else { suggFolder = null; suggStack = []; }
+          const hs0 = document.getElementById('suggHost'); if (hs0) hs0.dataset.sig = '';
+          magicPickAt = Date.now(); renderPhraseBar(); return; }
         if (m.pf) { buzz(10);      // a purple folder: its tiles fill the second purple row; again (or its own tile there) and the row is as it was
           const key = homePhrase.join(' ');
           if (m.openHead || (catOpen && catOpen.id === m.folder.id)) catOpen = null;
@@ -16385,10 +16397,10 @@ function gameChooseCount(preMode) {
       let startBtn = null, tn = null;
       const turnsNow = ws => gameTurns[mode] || Math.max(1, Math.min(100, ws.length * 3));
       const paint = () => {
-        const ws = chosen(), cs = new Set(ws);
+        const ws = chosen(), cs = new Set(allMode() ? [] : ws);      // (All targets on: the folders and targets show unticked - tapping one chooses just it)
         n.textContent = (allMode() && !skip.size ? 'All ' + all.length : ws.length + ' of ' + all.length) + ' target' + (all.length === 1 ? '' : 's');
         chips.querySelectorAll('.gmf-row').forEach(r => { const k = r.dataset.key, x = k === '*' ? { words: all } : sets.find(y => y.key === k), par = r.dataset.par;
-          const on = k === '*' ? allMode() && !skip.size : (pick.includes(k) || (!!par && pick.includes(par))) && x.words.every(w => cs.has(w));
+          const on = k === '*' ? allMode() : (pick.includes(k) || (!!par && pick.includes(par))) && x.words.every(w => cs.has(w));
           const part = !on && !!x && x.words.some(w => cs.has(w));
           r.classList.toggle('on', on); r.classList.toggle('part', part); r.querySelector('.gmf-tick').textContent = on ? '✓' : part ? '–' : '';
           const nn = r.querySelector('.gmf-n'); if (nn && x) { const c = x.words.filter(w => cs.has(w)).length; nn.textContent = part ? c + '/' + x.words.length : x.words.length; } });
@@ -16403,17 +16415,18 @@ function gameChooseCount(preMode) {
       };
       const toggle = (key, par) => {
         const rm = k => { const i = pick.indexOf(k); if (i >= 0) pick.splice(i, 1); };
-        if (key === '*') { const was = allMode() && !skip.size; pick.length = 0; only.clear(); skip.clear(); if (was) pick.push('!'); return; }      // (all on: all off - all off: all on)
+        if (key === '*') { const was = allMode(); pick.length = 0; only.clear(); skip.clear(); if (was) pick.push('!'); return; }      // (all on: all off - all off: all on)
+        if (allMode()) { pick.length = 0; only.clear(); skip.clear(); pick.push(key); return; }      // (from All targets: just this folder)
         rm('!');
         const x = sets.find(y => y.key === key); const words = x ? x.words : [];
         const cs = new Set(chosen()), fullyOn = words.length && words.every(w => cs.has(w));
-        if (allMode()) { pick.push('!'); all.forEach(w => { if (!skip.has(w)) only.add(w); }); skip.clear(); rm('!'); }      // (from everything: everything stays, as single targets, so this folder can come off)
         if (fullyOn) { rm(key); if (par && pick.includes(par)) { rm(par); const m = tree.find(y => y.key === par); m.subs.forEach(sb => { if (sb.key !== key) pick.push(sb.key); }); }
           words.forEach(w => { only.delete(w); if (inPick(w)) skip.add(w); }); }
         else { pick.push(key); words.forEach(w => { skip.delete(w); only.delete(w); }); }
         if (!pick.length && !only.size) pick.push('!');
       };
       const tapWord = w => {
+        if (allMode()) { pick.length = 0; skip.clear(); only.clear(); only.add(w); return; }      // (from All targets: just this target)
         rm0('!');
         const on = chosen().includes(w);
         if (on) { if (only.has(w)) only.delete(w); else skip.add(w); }
