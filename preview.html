@@ -2459,6 +2459,10 @@
   .view-keyboard:not(.pic-on) #targetBanner.active .tletter.magnify { line-height: 1.1; }
   .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace { width: 0.42em; min-width: 0.42em !important; padding: 0 !important; font-size: var(--tile); }
   .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace:not(.next) { color: transparent !important; background: transparent !important; }
+  /* the space to type next: its own full-width box (the space mark fits inside it, and it can grow like a letter) */
+  .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace.next { width: auto !important; min-width: 0.9em !important; padding: 0 0.12em !important; text-align: center; justify-content: center; display: inline-flex; }
+  /* the space bar is wide already: when it is the key to press it grows a little, not over the keys beside it */
+  .key.space.prompt-size { --boost: 1.06 !important; }
   .view-keyboard:not(.pic-on):has(#targetBanner.active) .keyboard { flex: 5 1 0; min-height: 0; }
   /* coins at the end of a message typed from the home page */
   .rb-coins { position: absolute; left: 0; right: 0; bottom: 4vmin; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 0 5vmin; }
@@ -3376,7 +3380,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 607 - 14 Oct';
+const BUILD = 'build 608 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9798,6 +9802,7 @@ function pluralChip(box) {
   // a word typed with the sound keys that has the right sounds but not the right letters (kat): its spelling offered (cat)
   { const i = homePhrase.length - 1, w = homePhrase[i], fx = (soundFixes || {})[w];
     if (fx && fx.length) { fx.forEach(to => endingChip(box, i, w, to, '\u21BB ' + to.toLowerCase(), () => soundFixDone(w, to))); return; } }
+  folderPhraseChip(box);
   if (state.pluralChip === false) return;
   const i = homePhrase.length - 1, w = homePhrase[i];
   if (verbable(w)) {
@@ -9837,7 +9842,7 @@ function pbFit() {
 }
 // ---- Folders opened from a menu page (Food > Drinks) are noted in the key bar in grey, in their place among the words.
 // They are not part of the message: tapping one puts it in (and says it); the green enter leaves the grey ones out.
-var barNotes = [], notePathSeen = [], noteGroupSeen = '';      // { at: the word it sits before, w: the word }
+var barNotes = [], notePathSeen = [], noteGroupSeen = '', notesTaken = new Set();      // { at: the word it sits before, w: the word }
 function barNotesSync() {
   const path = (typeof homePath !== 'undefined' ? homePath : []).filter(id => id !== RECENT_ID);
   const was = notePathSeen; notePathSeen = path.slice();
@@ -9858,10 +9863,25 @@ function barNotesSync() {
     if (w && /[A-Z]/.test(w) && homePhrase[at - 1] !== w && !barNotes.some(n => n.at === at && n.w === w)) { barNotes.push({ at, w }); added = true; } }
   if (added) renderPhraseBar();
 }
+// a folder's name taken into the message just before a word from it (Drinks, bottle): the two as one phrase offered,
+// the folder's name made singular - "drink bottle". Tapped, they become that phrase.
+function folderSingular(w) { w = String(w || ''); if (/IES$/.test(w) && w.length > 4) return w.slice(0, -3) + 'Y'; if (/(SS|US|IS)$/.test(w)) return w; if (/(CH|SH|X|Z|SS)ES$/.test(w)) return w.slice(0, -2); if (/S$/.test(w) && w.length > 3) return w.slice(0, -1); return w; }
+function folderPhraseChip(box) {
+  if (!notesTaken.size) return;
+  let j = -1; for (let k = homePhrase.length - 2; k >= 0; k--) if (notesTaken.has(homePhrase[k]) && !notesTaken.has(homePhrase[k + 1]) && !isPunct(homePhrase[k + 1])) { j = k; break; }
+  if (j < 0) return;
+  const a = homePhrase[j], b = homePhrase[j + 1], to = (folderSingular(a) + ' ' + b).trim(); if (!b || to === a + ' ' + b && folderSingular(a) === a && false) return;
+  const btn = document.createElement('button'); btn.className = 'pb-plural pb-seq'; btn.textContent = '↻ ' + to.toLowerCase(); btn.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
+  btn.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[j] !== a || homePhrase[j + 1] !== b) return;
+    homePhrase.splice(j, 2, to); notesTaken.delete(a); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
+    state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; try { magicKnow(to); } catch (er) {} save(); buzz(10);
+    renderPhraseBar(); try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } });
+  box.appendChild(btn);
+}
 function barNoteTake(n) {
   const k = barNotes.indexOf(n); if (k < 0) return;
   const at = Math.min(n.at, homePhrase.length);
-  homePhrase.splice(at, 0, n.w);
+  homePhrase.splice(at, 0, n.w); notesTaken.add(n.w);
   barNotes.splice(k, 1); barNotes.slice(k).forEach(x => { if (x.at >= at) x.at++; });      // (the noted folders after it move along with the words)
   try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (e) {}
   buzz(10); try { magicKnow(n.w); } catch (e) {}
@@ -10028,7 +10048,7 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
-  barNotes = [];      // (the folders noted in the bar were not chosen: they go with the message)
+  barNotes = []; notesTaken.clear();      // (the folders noted in the bar were not chosen: they go with the message)
   try { if (homeKeysUp()) homeKeysClose(); } catch (e) {}
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
   // "I feel sad"): tap it to take it, or press the green button again to send the words as they are
@@ -10428,7 +10448,7 @@ document.getElementById('pbClear').addEventListener('click', () => {
   // with the keyboard down over the page this is its delete key: a letter at a time
   const twice = Date.now() - pbClearAt < 450;
   pbClearAt = Date.now();
-  if (twice) { inp.value = ''; homePhrase = []; barNotes = []; pbClearAt = 0; }
+  if (twice) { inp.value = ''; homePhrase = []; barNotes = []; notesTaken.clear(); pbClearAt = 0; }
   else if (inp.value) inp.value = '';
   else if (barNotes.length && barNotes[barNotes.length - 1].at >= homePhrase.length) barNotes.pop();      // (a folder noted after the last word goes first)
   else homePhrase.pop();
