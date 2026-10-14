@@ -1563,6 +1563,25 @@
   .gm-head-n { font-size: 15px; font-weight: 800; color: var(--muted); }
   .gm-count.rec { background: #ebfaee; box-shadow: inset 0 0 0 3px #b9e6c0; }
   .gm-count.sel { background: var(--green); color: #fff; box-shadow: none; }
+  .pic-ord { margin: 0 0 10px; }
+  .pic-cell { touch-action: none; }
+  .pic-cell.pic-lifted { opacity: 0.3; }
+  .pic-cell.pic-over { box-shadow: 0 0 0 4px #ffc93c; }
+  .pic-ghost { position: fixed; z-index: 400; pointer-events: none; opacity: 0.9; transform: scale(1.05); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+  .pic-num { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); min-width: 30px; height: 30px; border-radius: 15px; background: #1f5fd6; color: #fff; font-weight: 900; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 2; }
+  .pic-prev { position: fixed; inset: 0; z-index: 300; background: #aeb0b5; display: flex; flex-direction: column; padding: calc(16px + env(safe-area-inset-top, 0px)) 20px 20px; gap: 12px; }
+  .pp-top { display: flex; align-items: center; justify-content: space-between; }
+  .pp-n { font-weight: 900; font-size: 20px; color: #2f3640; }
+  .pp-x { width: 56px; height: 56px; border: none; border-radius: 50%; background: #e0473c; color: #fff; font-size: 34px; font-weight: 900; line-height: 1; }
+  .pp-strip { flex: 1 1 0; min-height: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .pp-strip::-webkit-scrollbar { display: none; }
+  .pp-page { flex: 0 0 100%; scroll-snap-align: center; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .pp-box { flex: 0 0 auto; height: 46vh; }
+  .pp-word { text-align: center; font-weight: 800; font-size: 26px; color: #2f3640; }
+  .pp-bar { display: flex; align-items: center; gap: 12px; }
+  .pp-nav { flex: 0 0 72px; height: 64px; border: none; border-radius: 18px; background: #fff; font-size: 40px; font-weight: 900; box-shadow: var(--shadow); }
+  .pp-nav:disabled { opacity: 0.35; }
+  .pp-fit { flex: 1; justify-content: center; }
   .tgt-subhead { grid-column: 1 / -1; font-weight: 800; color: #4a5568; padding: 14px 8px 4px; letter-spacing: 0.02em; }
   .gm-start { display: block; width: 100%; margin: 14px 0 4px; border: none; border-radius: 18px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; padding: 18px 12px; cursor: pointer; }
   .gm-start:disabled { background: #e6e9ef; color: #9aa3b5; }
@@ -3214,7 +3233,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 576 - 14 Oct';
+const BUILD = 'build 577 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3428,7 +3447,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], soundKeysOn: false, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, soundKeysOn: false, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3605,7 +3624,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4232,7 +4251,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -16072,13 +16091,13 @@ async function picPut(word, list) {
   const db = await picDB();
   await new Promise((res, rej) => { const tx = db.transaction('pics', 'readwrite'); list.length ? tx.objectStore('pics').put(list, word) : tx.objectStore('pics').delete(word); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   (picURL[word] || []).forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) {} });
-  if (list.length) picURL[word] = list.map(p => ({ id: p.id, on: p.on !== false, label: p.label || '', url: URL.createObjectURL(p.blob) })); else delete picURL[word];
+  if (list.length) picURL[word] = list.map(p => ({ id: p.id, on: p.on !== false, label: p.label || '', fit: p.fit || '', url: URL.createObjectURL(p.blob) })); else delete picURL[word];
 }
 async function picLoadAll() {      // (resolves once every picture is loaded)
   try { const db = await picDB(); await new Promise(res => { const req = db.transaction('pics', 'readonly').objectStore('pics').openCursor();
     req.onerror = () => res();
     req.onsuccess = () => { const c = req.result; if (!c) { picSightOnce(); picDecorate(); res(); return; }
-      const l = picList(c.value); if (l.length) picURL[c.key] = l.map(p => ({ id: p.id, on: p.on !== false, label: p.label || '', url: URL.createObjectURL(p.blob) })); c.continue(); }; }); } catch (e) {}
+      const l = picList(c.value); if (l.length) picURL[c.key] = l.map(p => ({ id: p.id, on: p.on !== false, label: p.label || '', fit: p.fit || '', url: URL.createObjectURL(p.blob) })); c.continue(); }; }); } catch (e) {}
 }
 const picOn = w => (picURL[w] || []).filter(p => p.on);
 // one-time: the words given pictures before the practice groups existed go into the sight words group (and the targets)
@@ -16121,12 +16140,32 @@ function openPicSheet(word) {
   openWordSheet(body => {
     sheetTitle(body, 'Pictures: ' + bankLabel(word));
     const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px';
-    n.textContent = 'Up to ' + PIC_MAX + ' pictures. Tap a picture to use it in practice or not (a tick: used). Practice picks one of the ticked pictures at random each time.';
+    n.textContent = 'Up to ' + PIC_MAX + ' pictures. Tap a picture to use it in practice or not (a tick: used). Drag a picture to move it.';
     body.appendChild(n);
+    // the order they come in: shuffled, or the order here (drag to change it)
+    const ordRow = document.createElement('div'); ordRow.className = 'seg-row pic-ord'; body.appendChild(ordRow);
+    const ordPaint = () => { ordRow.innerHTML = ''; [['', 'Shuffled'], ['1', 'In this order']].forEach(([v, t]) => { const b = document.createElement('button'); b.className = 'seg' + ((!!(state.picOrder || {})[word]) === !!v ? ' selected' : ''); b.textContent = t;
+      b.addEventListener('click', () => { state.picOrder = state.picOrder || {}; if (v) state.picOrder[word] = true; else delete state.picOrder[word]; delete picBags[word]; save(); buzz(8); ordPaint(); }); ordRow.appendChild(b); }); };
+    ordPaint();
     const grid = document.createElement('div'); grid.className = 'pic-sheet-grid'; body.appendChild(grid);
+    let dragged = false;
+    // drag a picture onto another's place: the pictures move along
+    const dragArm = (cell, p) => {
+      let st = null, ghost = null;
+      cell.addEventListener('pointerdown', e => { if (e.target.closest('.pic-del, .pic-label')) return; st = { x: e.clientX, y: e.clientY, id: e.pointerId }; dragged = false; });
+      cell.addEventListener('pointermove', e => { if (!st || e.pointerId !== st.id) return;
+        if (!ghost && Math.hypot(e.clientX - st.x, e.clientY - st.y) > 12) { dragged = true; try { cell.setPointerCapture(e.pointerId); } catch (er) {} ghost = cell.cloneNode(true); ghost.classList.add('pic-ghost'); const r = cell.getBoundingClientRect(); ghost.style.width = r.width + 'px'; ghost.style.height = r.height + 'px'; document.body.appendChild(ghost); cell.classList.add('pic-lifted'); }
+        if (ghost) { const r = cell.getBoundingClientRect(); ghost.style.left = (e.clientX - r.width / 2) + 'px'; ghost.style.top = (e.clientY - r.height / 2) + 'px';
+          grid.querySelectorAll('.pic-cell').forEach(c => c.classList.remove('pic-over')); const over = document.elementsFromPoint(e.clientX, e.clientY).find(x => x.classList && x.classList.contains('pic-cell') && x !== cell && x.dataset.id); if (over) over.classList.add('pic-over'); e.preventDefault(); } });
+      const end = async e => { if (!st) return; const was = st; st = null; if (!ghost) return; ghost.remove(); ghost = null; cell.classList.remove('pic-lifted');
+        const over = grid.querySelector('.pic-cell.pic-over'); grid.querySelectorAll('.pic-cell').forEach(c => c.classList.remove('pic-over')); void was;
+        if (over) { const l = await picGet(word), a = l.findIndex(x => x.id === p.id), b = l.findIndex(x => x.id === over.dataset.id); if (a >= 0 && b >= 0) { const [m] = l.splice(a, 1); l.splice(b, 0, m); await picPut(word, l); delete picBags[word]; buzz(10); paint(); picDecorate(true); } } };
+      cell.addEventListener('pointerup', end); cell.addEventListener('pointercancel', end);
+    };
     const paint = () => { grid.innerHTML = '';
-      (picURL[word] || []).forEach(p => {
-        const cell = document.createElement('div'); cell.className = 'pic-cell' + (p.on ? ' on' : '');
+      (picURL[word] || []).forEach((p, pi) => {
+        const cell = document.createElement('div'); cell.className = 'pic-cell' + (p.on ? ' on' : ''); cell.dataset.id = p.id; dragArm(cell, p);
+        if ((state.picOrder || {})[word]) { const nb = document.createElement('span'); nb.className = 'pic-num'; nb.textContent = pi + 1; cell.appendChild(nb); }
         const im = document.createElement('img'); im.src = p.url; cell.appendChild(im);
         const tick = document.createElement('span'); tick.className = 'pic-tick'; tick.textContent = p.on ? '✓' : ''; cell.appendChild(tick);
         const del = document.createElement('button'); del.className = 'pic-del'; del.textContent = '×'; del.setAttribute('aria-label', 'Remove this picture');
@@ -16139,14 +16178,40 @@ function openPicSheet(word) {
           if (t === null) return; const k = normaliseWord(t); const l = await picGet(word); const x = l.find(y => y.id === p.id);
           if (x) { x.label = k && k !== word ? k : ''; await picPut(word, l); paint(); } });
         cell.appendChild(lab);
-        cell.addEventListener('click', async () => { const l = await picGet(word); const x = l.find(y => y.id === p.id); if (x) x.on = x.on === false; await picPut(word, l); buzz(8); paint(); picDecorate(true); });
+        cell.addEventListener('click', async () => { if (dragged) { dragged = false; return; } const l = await picGet(word); const x = l.find(y => y.id === p.id); if (x) x.on = x.on === false; await picPut(word, l); buzz(8); paint(); picDecorate(true); });
         grid.appendChild(cell);
       });
       if ((picURL[word] || []).length < PIC_MAX) { const add = document.createElement('button'); add.className = 'pic-cell pic-add'; add.textContent = '📷 +'; add.addEventListener('click', () => picChoose(word, paint)); grid.appendChild(add); }
     };
     paint();
+    if ((picURL[word] || []).length) body.appendChild(sheetBtn('\uD83D\uDC41\uFE0F  See them as in the game', '', () => picPreview(word, paint)));
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); picDecorate(true); }));
   });
+}
+// the pictures one at a time, the size the game shows them: swipe (or the arrows) to go through them. Each can be shown
+// whole (the box around it may show) or filling the box (its edges may be cut off).
+function picPreview(word, back) {
+  const pics = picURL[word] || []; if (!pics.length) return;
+  let i = 0;
+  const ov = document.createElement('div'); ov.className = 'pic-prev';
+  const top = document.createElement('div'); top.className = 'pp-top'; ov.appendChild(top);
+  const cnt = document.createElement('span'); cnt.className = 'pp-n'; top.appendChild(cnt);
+  const x = document.createElement('button'); x.className = 'pp-x'; x.textContent = '\u00D7'; x.setAttribute('aria-label', 'Close'); top.appendChild(x);
+  const strip = document.createElement('div'); strip.className = 'pp-strip'; ov.appendChild(strip);
+  pics.forEach(p => { const pg = document.createElement('div'); pg.className = 'pp-page'; const box = document.createElement('div'); box.className = 'gm-pic pp-box'; const im = document.createElement('img'); im.src = p.url; im.alt = ''; if (p.fit) im.style.objectFit = p.fit; box.appendChild(im); pg.appendChild(box);
+    const w = document.createElement('div'); w.className = 'pp-word'; w.textContent = plainLabel(p.label || word).toLowerCase() + (p.on ? '' : '  (not used)'); pg.appendChild(w); strip.appendChild(pg); });
+  const bar = document.createElement('div'); bar.className = 'pp-bar'; ov.appendChild(bar);
+  const prev = document.createElement('button'); prev.className = 'pp-nav'; prev.textContent = '\u2039'; bar.appendChild(prev);
+  const fit = document.createElement('div'); fit.className = 'seg-row pp-fit'; bar.appendChild(fit);
+  const next = document.createElement('button'); next.className = 'pp-nav'; next.textContent = '\u203A'; bar.appendChild(next);
+  const go = k => { i = Math.max(0, Math.min(pics.length - 1, k)); strip.scrollTo({ left: i * strip.clientWidth, behavior: 'smooth' }); paint(); };
+  const paint = () => { cnt.textContent = (i + 1) + ' of ' + pics.length; prev.disabled = i === 0; next.disabled = i === pics.length - 1; fit.innerHTML = '';
+    [['', 'Whole picture'], ['cover', 'Fill the box']].forEach(([v, t]) => { const b = document.createElement('button'); b.className = 'seg' + ((pics[i].fit || '') === v ? ' selected' : ''); b.textContent = t;
+      b.addEventListener('click', async () => { const l = await picGet(word), it = l.find(y => y.id === pics[i].id); if (!it) return; it.fit = v; await picPut(word, l); pics[i].fit = v; const im = strip.children[i].querySelector('img'); im.style.objectFit = v || ''; buzz(8); paint(); }); fit.appendChild(b); }); };
+  strip.addEventListener('scroll', () => { const k = Math.round(strip.scrollLeft / Math.max(1, strip.clientWidth)); if (k !== i) { i = k; paint(); } }, { passive: true });
+  prev.addEventListener('click', () => go(i - 1)); next.addEventListener('click', () => go(i + 1));
+  x.addEventListener('click', () => { ov.remove(); if (back) back(); });
+  document.body.appendChild(ov); paint();
 }
 function picMenuBtns(body, word) {
   if (!word) return;      // (a name with no letters, like an emoji folder, has nowhere to keep pictures)
@@ -16272,6 +16337,8 @@ const picBags = {};
 function picRandomFor(word, pics) {
   if (!pics || !pics.length) return null; if (pics.length === 1) return pics[0];
   let bag = picBags[word]; const ids = pics.map(p => p.id);
+  if ((state.picOrder || {})[word]) {      // (in order: the pictures come in the order they are in, one after another)
+    const i = bag && bag.last ? ids.indexOf(bag.last) : -1, p = pics[(i + 1) % pics.length]; picBags[word] = { left: [], last: p.id }; return p; }
   if (!bag || !bag.left.length || bag.left.some(id => !ids.includes(id))) {
     const left = ids.slice().sort(() => Math.random() - 0.5);
     if (bag && left[0] === bag.last) left.push(left.shift());
@@ -16540,7 +16607,7 @@ function gameWriteTrial() {
   const word = (pic && pic.label) || tile;
   g.cur = { word, tile };
   picSession = { game: true, word };
-  const box = document.getElementById('picBox'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
+  const box = document.getElementById('picBox'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; if (pic && pic.fit) im.style.objectFit = pic.fit; box.appendChild(im);
   box.onclick = () => picSay(box, word);
   homePhrase = []; try { renderPhraseBar(); } catch (e) {}
   showKeyboard();
@@ -16601,7 +16668,7 @@ function gameTrial() {
   const s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile;
   g.cur = { word, tile, tries: 0, prompted: false };
-  const box = document.getElementById('gmPic'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
+  const box = document.getElementById('gmPic'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; if (pic && pic.fit) im.style.objectFit = pic.fit; box.appendChild(im);
   box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
   document.getElementById('gmMsg').textContent = '';
   // the tiles: the target, two other targets with pictures, and others from the library (easy or hard)
@@ -16657,7 +16724,7 @@ function gameTilesTrial() {
   const g = game, s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = String((pic && pic.label) || tile).toLowerCase();
   g.cur = { word, tile, k: -1, tries: 0, prompted: false, wrongs: 0, anyPrompt: false, lets: [] };
-  const box = document.getElementById('gmPic'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
+  const box = document.getElementById('gmPic'); box.innerHTML = ''; const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; if (pic && pic.fit) im.style.objectFit = pic.fit; box.appendChild(im);
   box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
   document.getElementById('gmMsg').textContent = '';
   // the empty boxes sit inside the white picture card, under the picture
@@ -17527,7 +17594,7 @@ function gameSoundTrial() {
   const g = game, s = g.seq[g.i], tile = s.w, parts = soundSplit(tile), pic = picRandomFor(tile, picOn(tile));
   g.cur = { word: tile, tile, parts, k: 0, tries: 0, prompted: false, wrongs: 0, anyPrompt: false, lets: [] };
   const box = document.getElementById('gmPic'); box.innerHTML = '';
-  if (pic) { const im = document.createElement('img'); im.src = pic.url; im.alt = ''; box.appendChild(im); }
+  if (pic) { const im = document.createElement('img'); im.src = pic.url; im.alt = ''; if (pic.fit) im.style.objectFit = pic.fit; box.appendChild(im); }
   const wd = document.createElement('div'); wd.className = 'snd-word'; wd.id = 'gmWord';
   { let li = 0; [...plainLabel(tile).toLowerCase()].forEach(ch => { const sp = document.createElement('span'); sp.textContent = ch;
       if (/[a-z]/.test(ch)) { const k = parts.findIndex(p => (p.at || []).includes(li)); if (k >= 0) { sp.dataset.k = k; sp.classList.add(soundIsVowel(parts[k].id) ? 'v' : 'c'); } li++; }
@@ -17651,7 +17718,7 @@ function picShow() {
   const tile = s.queue[s.done], pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile; s.word = word;      // (a picture can have its own spelling: strawberries)
   const box = document.getElementById('picBox'); box.innerHTML = '';
-  const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; box.appendChild(im);
+  const im = document.createElement('img'); im.src = pic ? pic.url : ''; im.alt = ''; if (pic && pic.fit) im.style.objectFit = pic.fit; box.appendChild(im);
   box.onclick = () => picSay(box, word);      // (a tap on the picture says the word)
   homePhrase = []; try { renderPhraseBar(); } catch (e) {}
   showKeyboard();
