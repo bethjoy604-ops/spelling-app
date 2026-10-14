@@ -1585,6 +1585,56 @@
   .gm-pile.glow { box-shadow: 0 0 0 4px #ffe7a3, 0 0 24px #ffd66b; transition: box-shadow 0.4s; }
   .gm-spark { position: fixed; z-index: 8; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; animation: spark 0.7s ease-out forwards; }
   @keyframes spark { to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; } }
+  /* ---- the games home: the games in place of the tiles on the home page ---- */
+  .view-home.gh-on .bank-area > :not(#gamesHome), .view-home.gh-on #magicBox, .view-home.gh-on #suggHost, .view-home.gh-on #smallHost, .view-home.gh-on #magicSmall, .view-home.gh-on #catTiles { display: none !important; }
+  .view-home.gh-on #gamesHome { display: flex !important; }
+  .games-home { flex: 1; min-height: 0; flex-direction: column; gap: 14px; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; }
+  .gh-head { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+  .gh-head .gh-title { font-size: 28px; font-weight: 900; color: var(--ink); flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .gh-head .gh-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gh-back, .gh-exit { border: none; font-family: inherit; font-weight: 900; border-radius: 16px; height: 52px; padding: 0 18px; font-size: 18px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); cursor: pointer; flex: 0 0 auto; }
+  .gh-exit { color: #c0392b; }
+  .gh-tokbtn { display: flex; align-items: center; gap: 10px; border: none; font-family: inherit; background: #fbf7ec; border-radius: 18px; padding: 6px 16px 6px 8px; box-shadow: var(--shadow); cursor: pointer; flex: 0 0 auto; }
+  .gh-tokbtn .tok { width: 40px; height: 40px; font-size: 19px; --tc: #f4b52a; }
+  .gh-tokbtn b { font-size: 26px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .gh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 22vw, 230px), 1fr)); gap: 16px; align-content: start; }
+  .gh-tile { position: relative; border: none; font-family: inherit; cursor: pointer; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); padding: 16px 12px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: clamp(140px, 22vh, 210px); overflow: hidden; text-align: center; }
+  .gh-tile:active { transform: scale(0.97); }
+  .gh-tile .gh-ic { font-size: clamp(46px, 7vh, 70px); line-height: 1; }
+  .gh-tile .gh-nm { font-size: clamp(20px, 2.6vh, 28px); font-weight: 900; color: var(--ink); line-height: 1.1; }
+  .gh-tile .gh-sub { font-size: 14px; font-weight: 800; color: var(--muted); line-height: 1.2; }
+  .gh-tile.off { opacity: 0.4; }
+  .gh-tile.gh-new { background: transparent; box-shadow: none; border: 3px dashed #c9ced8; }
+  .gh-tile.gh-new .gh-ic { font-size: 54px; color: #8a93a3; font-weight: 300; }
+  .gh-tile.gh-rew { background: #fbf7ec; }
+  .gh-tile.gh-due { background: #fff4d6; }
+  .gh-tile .gh-pic { width: 100%; flex: 1 1 auto; min-height: 70px; max-height: 120px; border-radius: 14px; background: #f2f3f6 center / cover no-repeat; }
+  .gh-tile .gh-more { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border-radius: 12px; border: none; background: rgba(255,255,255,0.92); font-size: 22px; font-weight: 900; color: #6b7280; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+  .gh-tile .gh-badge { position: absolute; top: 10px; left: 10px; background: #ffe7a3; color: #7a5a00; border-radius: 10px; padding: 2px 8px; font-size: 13px; font-weight: 900; }
+  .gh-sec { font-size: 15px; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px; }
+  .gh-panel { background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); padding: 18px 20px; }
+  .gh-bigtok { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .gh-bigtok .stack { position: relative; width: 150px; height: 96px; flex: 0 0 auto; }
+  .gh-bigtok .stack .tok { position: absolute; width: 84px; height: 84px; font-size: 40px; top: 6px; }
+  .gh-bigtok .stack .tok.g { left: 0; } .gh-bigtok .stack .tok.b { left: 33px; } .gh-bigtok .stack .tok.y { left: 66px; }
+  .gh-bigtok .n { font-size: 72px; font-weight: 900; color: var(--ink); line-height: 1; }
+  .gh-bigtok .lab { font-size: 16px; font-weight: 800; color: var(--muted); }
+  .gh-kinds { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+  .gh-kinds > span { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 18px; background: #f6f7f9; border-radius: 14px; padding: 6px 12px 6px 6px; }
+  .gh-kinds .tok { width: 32px; height: 32px; font-size: 15px; }
+  .gh-jar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; max-height: 30vh; overflow-y: auto; }
+  .gh-jar .tok { width: 30px; height: 30px; font-size: 14px; animation: tokIn 0.4s cubic-bezier(.34,1.56,.64,1) both; }
+  .gh-mrow { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid #eef0f3; flex-wrap: wrap; }
+  .gh-mrow:first-child { border-top: none; }
+  .gh-mrow .ic { font-size: 30px; width: 40px; text-align: center; }
+  .gh-mrow .nm { font-weight: 900; font-size: 20px; color: var(--ink); min-width: 140px; }
+  .gh-mbar { flex: 1; min-width: 160px; height: 22px; border-radius: 11px; background: #eef0f3; overflow: hidden; display: flex; }
+  .gh-mbar i { display: block; height: 100%; }
+  .gh-mbar .m { background: #4cc764; } .gh-mbar .x { background: #4d8df7; }
+  .gh-mrow .ct { font-weight: 800; color: var(--muted); font-size: 15px; min-width: 150px; text-align: right; }
+  .gh-mlist { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-left: 54px; }
+  .gh-mlist span { background: #e3f7e6; color: #1f6d2c; border-radius: 10px; padding: 3px 10px; font-weight: 800; font-size: 14px; }
+  .gh-mlist span.x { background: #e3edff; color: #1d4fa8; }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -2515,6 +2565,7 @@
 
   <div class="bank-area">
     <div class="home-grid" id="homeGrid"></div>
+    <div class="games-home" id="gamesHome" style="display:none"></div>
     <div class="folder-view" id="folderView" style="display:none;">
       <div class="fv-crumbs" id="fvCrumbs"></div>
       <div class="fv-body" id="fvBody"></div>
@@ -3288,7 +3339,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 601 - 14 Oct';
+const BUILD = 'build 602 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3504,7 +3555,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3682,7 +3733,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4339,7 +4390,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -10673,7 +10724,7 @@ function commitTypedWord() {
   return true;
 }
 
-function renderHome(reset) { try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} } }
+function renderHome(reset) { try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} try { ghPaint(); } catch (e) {} } }
 function renderHomeCore(reset) {
   try { renderChatPane(); } catch (e) {}
   linkWordCache = null;
@@ -16283,7 +16334,7 @@ document.getElementById('homeTargetBtn').addEventListener('click', () => {
 document.getElementById('homeMoreBtn').addEventListener('click', e => { e.stopPropagation(); iconsMore = !iconsMore; buzz(10); renderHome(true); armIcons(); });
 // leaving the targets page: its own Exit button, or choosing another mode in the pop-out
 function leaveTargets() { if (!onTargetsPage()) return false; homePath = []; return true; }
-document.getElementById('targetsExitBtn').addEventListener('click', () => { leaveTargets(); buzz(10); save(); renderHome(true); });
+document.getElementById('targetsExitBtn').addEventListener('click', () => { leaveTargets(); gamesHome = null; buzz(10); save(); renderHome(true); });
 document.getElementById('homeIconsToggle').addEventListener('click', () => {
   state.iconsOpen = !state.iconsOpen;      // shows or hides the mode switches on the right
   if (!state.iconsOpen) iconsMore = false;
@@ -16670,8 +16721,8 @@ function presetEdit(p) {
     body.appendChild(tr);
     body.appendChild(sheetBtn('▶ Play it now', 'primary', () => presetPlay(p)));
     body.appendChild(sheetBtn('Rename', '', () => { const v = (prompt('Name for this game', p.name) || '').trim(); if (v) { p.name = v; save(); } presetEdit(p); }));
-    body.appendChild(sheetBtn('Delete this game', 'danger', () => { if (!confirm('Delete the game "' + p.name + '"?')) return; state.gamePresets = presets().filter(x => x !== p); save(); gameChooseCount(); }));
-    body.appendChild(sheetBtn('Back to Games', '', () => gameChooseCount()));
+    body.appendChild(sheetBtn('Delete this game', 'danger', () => { if (!confirm('Delete the game "' + p.name + '"?')) return; state.gamePresets = presets().filter(x => x !== p); save(); ghBack(); }));
+    body.appendChild(sheetBtn('Back to Games', '', () => ghBack()));
   });
 }
 // the saved games at the top of the Games menu: tap plays, the dots open its settings
@@ -16689,6 +16740,95 @@ function presetRows(host) {
     b.addEventListener('click', () => { buzz(10); presetPlay(p); });
     const m = document.createElement('button'); m.className = 'ps-more'; m.textContent = '⋯'; m.setAttribute('aria-label', 'Settings for ' + p.name); m.addEventListener('click', () => { buzz(8); presetEdit(p); });
     r.appendChild(b); r.appendChild(m); box.appendChild(r);
+  });
+}
+// ===== The games home: the Games button turns the home page into the games - the tiles where the words would be.
+// First the kinds of game, then (one tapped) its saved games and a tile for a new one. Tokens and mastery on their own page.
+let gamesHome = null;      // null: the usual home page · { layer: 'types' | a game's mode | 'rewards' }
+const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', builder: 'Build' };
+function ghBack() { if (gamesHome) { closeWordSheet(); renderHome(true); } else gameChooseCount(); }
+function ghTok(k) { return '<span class="tok ' + (k || 'y') + '">★</span>'; }
+function ghPaint() {
+  const v = document.getElementById('viewHome'), host = document.getElementById('gamesHome'); if (!v || !host) return;
+  try { if (gamesHome && onTargetsPage()) gamesHome = null; } catch (e) {}
+  const on = !!gamesHome && !state.builderMode && !game;
+  v.classList.toggle('gh-on', on);
+  try { const b = document.getElementById('homePicBtn'); if (b) b.classList.toggle('on', on); } catch (e) {}
+  if (!on) { host.innerHTML = ''; return; }
+  const sig = JSON.stringify(gamesHome) + '|' + presets().length + '|' + (state.tokens || 0) + '|' + JSON.stringify(state.gamesOn || {}) + '|' + presets().map(p => p.name + (p.words || []).length + p.turns).join(',');
+  if (host.dataset.sig === sig && host.childElementCount) return;      // (nothing to change: the page is left as it is, scrolled where it was)
+  host.dataset.sig = sig; host.innerHTML = '';
+  try { ensureTargets(); masteryEvalAll(); } catch (e) {}
+  const L = gamesHome.layer;
+  const head = document.createElement('div'); head.className = 'gh-head'; host.appendChild(head);
+  if (L !== 'types') { const b = document.createElement('button'); b.className = 'gh-back'; b.textContent = '‹ Games'; b.addEventListener('click', () => { buzz(8); gamesHome = { layer: 'types' }; renderHome(true); }); head.appendChild(b); }
+  const ttl = document.createElement('div'); ttl.className = 'gh-title'; head.appendChild(ttl);
+  const tb = document.createElement('button'); tb.className = 'gh-tokbtn'; tb.setAttribute('aria-label', 'Tokens and targets mastered'); tb.innerHTML = ghTok('y') + '<b>' + (state.tokens || 0) + '</b>';
+  tb.addEventListener('click', () => { buzz(8); gamesHome = { layer: 'rewards' }; renderHome(true); });
+  if (L !== 'rewards') head.appendChild(tb);
+  const ex = document.createElement('button'); ex.className = 'gh-exit'; ex.textContent = '✕'; ex.setAttribute('aria-label', 'Leave the games'); ex.addEventListener('click', () => { buzz(8); gamesHome = null; renderHome(true); }); head.appendChild(ex);
+  const grid = document.createElement('div'); grid.className = 'gh-grid';
+  const tile = (ic, nm, sub, fn, cls) => { const t = document.createElement('button'); t.className = 'gh-tile' + (cls ? ' ' + cls : ''); t.innerHTML = '<span class="gh-ic"></span><span class="gh-nm"></span><span class="gh-sub"></span>';
+    t.querySelector('.gh-ic').textContent = ic; t.querySelector('.gh-nm').textContent = nm; t.querySelector('.gh-sub').textContent = sub || ''; t.addEventListener('click', () => { buzz(10); fn(); }); grid.appendChild(t); return t; };
+  if (L === 'types') {
+    ttl.innerHTML = '<span>🎮 Games</span>';
+    const due = (() => { try { return masteryDueList().filter(d => gamesOn()[d.mode]); } catch (e) { return []; } })();
+    if (due.length) { const byMode = {}; due.forEach(d => { (byMode[d.mode] = byMode[d.mode] || []).push(d.w); }); const m = Object.keys(byMode).sort((a, b) => byMode[b].length - byMode[a].length)[0], ws = byMode[m];
+      const grp = practiceGroups().find(g => groupModeOf(g) === m), ct = masteryCfg(grp).checkTurns || 1;
+      tile('🔁', 'Check-in', due.length + ' due · ' + ws.length + ' in ' + GH_SHORT[m], () => gameStart(ws.length * ct, m, ws), 'gh-due'); }
+    const on = gamesOn();
+    GAME_LIST.forEach(([m, ic, nm]) => {
+      if (m === 'builder') { if (on.builder) tile(ic, GH_SHORT[m], nm, () => { gamesHome = null; gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); }); return; }
+      if (on[m] === false) return;
+      const ps = presets().filter(p => p.mode === m).length, ready = practiceGroupWords(m).length;
+      tile(ic, GH_SHORT[m], nm + ' · ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: m }; renderHome(true); });
+    });
+    tile('🏆', 'Rewards', (state.tokens || 0) + ' tokens · mastered', () => { gamesHome = { layer: 'rewards' }; renderHome(true); }, 'gh-rew');
+    host.appendChild(grid); return;
+  }
+  if (L === 'rewards') { ttl.innerHTML = '<span>🏆 Rewards</span>'; ghRewards(host); return; }
+  // one kind of game: its saved games, then a new one
+  const m = L, nm = gameName(m);
+  ttl.innerHTML = '<span></span>'; ttl.firstChild.textContent = gameIcon(m) + ' ' + nm;
+  presets().filter(p => p.mode === m).forEach(p => {
+    const n = presetPlayable(p).length, done = presetMastered(p).length;
+    const t = tile('', p.name, n + ' target' + (n === 1 ? '' : 's') + ' · ' + (p.turns || 0) + ' turns', () => presetPlay(p));
+    const w0 = (p.words || []).find(w => !/\|/.test(w) && picOn(w).length);
+    const ic = t.querySelector('.gh-ic');
+    if (w0) { const pic = picOn(w0)[0], d = document.createElement('span'); d.className = 'gh-pic'; d.style.backgroundImage = 'url("' + String(pic.url).replace(/"/g, '%22') + '")'; ic.replaceWith(d); }
+    else ic.textContent = gameIcon(m);
+    if (done) { const bd = document.createElement('span'); bd.className = 'gh-badge'; bd.textContent = '🎉 ' + done; t.appendChild(bd); }
+    const mo = document.createElement('button'); mo.className = 'gh-more'; mo.textContent = '⋯'; mo.setAttribute('aria-label', 'Settings for ' + p.name);
+    mo.addEventListener('click', e => { e.stopPropagation(); buzz(8); presetEdit(p); }); t.appendChild(mo);
+  });
+  tile('+', 'New ' + GH_SHORT[m].toLowerCase() + ' game', 'Choose targets and turns', () => gameChooseCount(m), 'gh-new');
+  host.appendChild(grid);
+}
+// tokens: the total, by colour, and a jar of them - then the targets mastered in each game's group
+function ghRewards(host) {
+  const ts = state.tokenStats || {}, total = state.tokens || 0;
+  const p1 = document.createElement('div'); p1.className = 'gh-panel'; host.appendChild(p1);
+  p1.innerHTML = '<div class="gh-bigtok"><span class="stack">' + ghTok('g') + ghTok('b') + ghTok('y') + '</span><div><div class="n">' + total + '</div><div class="lab">tokens' + (ts.games ? ' · from ' + ts.games + ' game' + (ts.games === 1 ? '' : 's') : '') + '</div></div>'
+    + '<div class="gh-kinds"><span>' + ghTok('g') + (ts.g || 0) + ' first try</span><span>' + ghTok('b') + (ts.b || 0) + ' second try</span><span>' + ghTok('y') + (ts.y || 0) + ' with help</span></div></div>';
+  // the jar: one small token for each (the colours as they were won; tokens from before colours were counted are gold)
+  const jar = document.createElement('div'); jar.className = 'gh-jar'; p1.appendChild(jar);
+  const g = ts.g || 0, b = ts.b || 0, y = Math.max(0, total - g - b), show = Math.min(total, 400), list = [];
+  for (let k = 0; k < g; k++) list.push('g'); for (let k = 0; k < b; k++) list.push('b'); for (let k = 0; k < y; k++) list.push('y');
+  jar.innerHTML = list.slice(0, show).map((k, i) => '<span class="tok ' + k + '" style="animation-delay:' + Math.min(1.2, i * 0.012).toFixed(3) + 's">★</span>').join('') + (total > show ? '<span class="gh-sub" style="align-self:center;font-weight:900">+' + (total - show) + ' more</span>' : '');
+  if (ts.modes && Object.keys(ts.modes).length) { const k = document.createElement('div'); k.className = 'gh-sub'; k.style.cssText = 'margin-top:10px;font-weight:800'; k.textContent = Object.keys(ts.modes).map(m => gameIcon(m) + ' ' + gameName(m) + ': ' + ts.modes[m]).join('   ·   '); p1.appendChild(k); }
+  const sec = document.createElement('div'); sec.className = 'gh-sec'; sec.textContent = 'Targets mastered'; host.appendChild(sec);
+  const p2 = document.createElement('div'); p2.className = 'gh-panel'; host.appendChild(p2);
+  const groups = practiceGroups().filter(x => { const m = groupModeOf(x); return m && m !== 'typing' && gamesOn()[m] !== false; });
+  if (!groups.length) { p2.textContent = 'No game groups yet.'; return; }
+  groups.forEach(gr => {
+    const m = groupModeOf(gr), ws = groupTargets(gr).filter(w => !(gr.off || {})[w]);
+    const st = w => masteryOf(gr, w).st, mast = ws.filter(w => st(w) === 'mastered'), maint = ws.filter(w => st(w) === 'maint'), n = ws.length || 1;
+    const r = document.createElement('div'); r.className = 'gh-mrow';
+    r.innerHTML = '<span class="ic"></span><span class="nm"></span><span class="gh-mbar"><i class="m" style="width:' + (100 * mast.length / n) + '%"></i><i class="x" style="width:' + (100 * maint.length / n) + '%"></i></span><span class="ct"></span>';
+    r.querySelector('.ic').textContent = gameIcon(m); r.querySelector('.nm').textContent = gameName(m);
+    r.querySelector('.ct').textContent = (mast.length + maint.length) + ' of ' + ws.length + ' mastered';
+    if (mast.length || maint.length) { const l = document.createElement('div'); l.className = 'gh-mlist'; mast.forEach(w => { const s0 = document.createElement('span'); s0.textContent = targetName(w); l.appendChild(s0); }); maint.forEach(w => { const s0 = document.createElement('span'); s0.className = 'x'; s0.textContent = targetName(w) + ' · maintenance'; l.appendChild(s0); }); r.appendChild(l); }
+    p2.appendChild(r);
   });
 }
 function gameChooseCount(preMode) {
@@ -16804,7 +16944,7 @@ function gameChooseCount(preMode) {
       count.appendChild(row);
       startBtn = document.createElement('button'); startBtn.className = 'gm-start'; startBtn.addEventListener('click', () => { if (startNow) { buzz(10); startNow(); } }); count.appendChild(startBtn);
       { const sv = document.createElement('button'); sv.className = 'gm-save'; sv.textContent = '💾 Save as a game (these targets and turns)';
-        sv.addEventListener('click', () => { const ws = chosen(); if (!ws.length) return; const p0 = presetSave(mode, ws, turnsNow(ws)); if (p0) { buzz(10); gameChooseCount(); } });
+        sv.addEventListener('click', () => { const ws = chosen(); if (!ws.length) return; const p0 = presetSave(mode, ws, turnsNow(ws)); if (p0) { buzz(10); if (gamesHome) { gamesHome = { layer: mode }; ghBack(); } else gameChooseCount(); } });
         count.appendChild(sv); }
       drawF(); };
     [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear]].forEach(([m, ic, nm, sub, ws]) => {
@@ -18115,7 +18255,9 @@ function gameEnd() {
   const g = game, first = g.res.filter(r => r.res === 'first').length, second = g.res.filter(r => r.res === 'second').length, pr = g.res.filter(r => r.res === 'prompted').length;
   const v = document.getElementById('gameView') || document.body; const pop = document.createElement('div'); pop.className = 'gm-pop';
   const had = Math.max(0, +state.tokens || 0), kinds = g.res.map(r => r.res === 'first' ? 'g' : r.res === 'second' ? 'b' : 'y');
-  state.tokens = had + kinds.length; try { save(); } catch (e) {}
+  state.tokens = had + kinds.length;
+  { const ts = state.tokenStats = state.tokenStats || {}; kinds.forEach(k => { ts[k] = (ts[k] || 0) + 1; }); ts.modes = ts.modes || {}; ts.modes[g.mode] = (ts.modes[g.mode] || 0) + kinds.length; ts.games = (ts.games || 0) + 1; }
+  try { save(); } catch (e) {}
   pop.innerHTML = '<div class="gm-card"><div class="gm-done">All ' + g.res.length + ' done!</div><div class="gm-tokens">' + kinds.map(k => '<span class="tok ' + k + '">\u2605</span>').join('') + '</div>'
     + '<div class="gm-pile"><span class="stack"><span class="tok g">\u2605</span><span class="tok b">\u2605</span><span class="tok y">\u2605</span></span><span class="n">' + had + '</span><span class="lab">tokens</span></div>'
     + '<div class="gm-sum"><span class="g">' + first + ' first try</span><span class="b">' + second + ' second try</span><span class="y">' + pr + ' with help</span></div><button class="gm-again">▶ Play again</button><button class="gm-all">All done</button></div>';
@@ -18128,7 +18270,7 @@ function gameEnd() {
     setTimeout(() => { if (pop.isConnected) b.click(); }, 900);
   }
   [...pop.querySelectorAll('.gm-again')].filter(x => /Play again/.test(x.textContent)).forEach(x => x.addEventListener('click', () => { pop.remove(); if (psg && presetById(psg.id)) { const ws = presetPlayable(psg); if (presetMastered(psg).length || !ws.length) { gameOff(); presetPlay(psg); return; } gameStart(psg.turns || g.n, g.mode, ws, psg.id); } else gameStart(g.n, g.mode, g.only); }));
-  pop.querySelector('.gm-all').addEventListener('click', () => { gameOff(); showHome(); });
+  pop.querySelector('.gm-all').addEventListener('click', () => { if (!gamesHome) gamesHome = { layer: g.mode && GH_SHORT[g.mode] ? g.mode : 'types' }; gameOff(); showHome(); });
   v.appendChild(pop);
 }
 // a session: the picked words in a mixed-up order, each with one of its pictures picked at random
@@ -18238,7 +18380,7 @@ async function picImportData(pics) {
 }
 document.getElementById('homePicBtn').addEventListener('click', () => { buzz(10); if (leaveTargets()) renderHome(true);
   if (state.builderMode) { state.builderMode = false; builderPath = []; save(); renderHome(true); picBtnSync(); return; }      // (the builder is one of the games: tapped again, it ends)
-  if (game || state.picMode) gameOff(); else gameChooseCount(); });
+  if (game || state.picMode) { gameOff(); return; } gamesHome = gamesHome ? null : { layer: 'types' }; renderHome(true); });
 setTimeout(picLoadAll, 300);
 // One-time: the built-in pictures (pictures.json, beside the app) for every word that has none on this device yet;
 // a word with its own pictures keeps them. Tried again on the next start if it could not be fetched.
