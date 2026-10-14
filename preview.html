@@ -3383,7 +3383,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 614 - 14 Oct';
+const BUILD = 'build 615 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -18843,6 +18843,24 @@ function blueAutoOpen() {
   if (bar && bar.getAttribute('aria-expanded') !== 'true' && !sec.querySelector('.small-strip')) bar.click();
 }
 { let t = null; document.getElementById('suggHost').addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(blueAutoOpen, 120); }, { passive: true }); }
+// one grid of six at a time: a swipe moves on (or back) by one grid only - however hard it is flicked, it stops at the next
+// grid instead of flying past it to the last one (the scroll is brought back to the next grid once it settles)
+{ const host = document.getElementById('suggHost'); let from = null, settle = null;
+  const bands = () => [...host.querySelectorAll('.sugg-band')].filter(b => b.offsetParent && b.offsetHeight > 0);
+  const tops = () => bands().map(b => b.offsetTop - host.offsetTop - (host.firstElementChild ? host.firstElementChild.offsetTop - host.offsetTop : 0));
+  const nearest = (ts, y) => { let k = 0; ts.forEach((t, i) => { if (Math.abs(t - y) < Math.abs(ts[k] - y)) k = i; }); return k; };
+  const start = () => { if (from === null) { const ts = tops(); if (ts.length) from = nearest(ts, host.scrollTop); } };
+  ['touchstart', 'pointerdown', 'wheel'].forEach(ev => host.addEventListener(ev, start, { passive: true }));
+  const fix = () => {
+    const ts = tops(); if (from === null || ts.length < 3) { from = null; return; }
+    const at = nearest(ts, host.scrollTop), want = Math.max(from - 1, Math.min(from + 1, at));
+    const maxTop = host.scrollHeight - host.clientHeight, y = Math.min(ts[want], maxTop);
+    from = null;
+    if (want !== at && Math.abs(host.scrollTop - y) > 4) { host.style.scrollSnapType = 'none'; host.scrollTo({ top: y, behavior: 'smooth' }); setTimeout(() => { host.style.scrollSnapType = ''; }, 450); }
+  };
+  host.addEventListener('scroll', () => { clearTimeout(settle); settle = setTimeout(fix, 140); }, { passive: true });
+  if ('onscrollend' in window) host.addEventListener('scrollend', () => { clearTimeout(settle); fix(); });
+}
 // A tile tapped again within three seconds of putting its word in the message does not add it a second time
 let tileAdd = null;      // { el, label, at, len }
 window.addEventListener('click', e => {
