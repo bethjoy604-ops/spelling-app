@@ -1027,6 +1027,10 @@
   .tletter.magnify.tmag-large { font-size: calc(var(--tile) * 1.95); min-width: calc(var(--tile) * 2.3); }
   .target-word { align-items: center; }
   .tletter.next.fade-1 { background: var(--prompt-f1); }
+  .tletter.ltm-pulse { animation: ltmPulse 1.6s ease-in-out infinite; }
+  @keyframes ltmPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+  .tletter.next.ltm-light { background: var(--prompt-light); color: var(--ink); }
+  .tletter.next.ltm-dark { background: var(--prompt-dark); color: #fff; }
   .tletter.next.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; }
   /* letters still to come read as strongly as the keys: this is the word to look at */
   .tletter.pending { color: var(--ink); }
@@ -1839,6 +1843,11 @@
   }
   .key.prompt-pulse { animation: keypulse 1.3s ease-in-out infinite; }
   .key.prompt-color.fade-1 { background: var(--prompt-f1); color: var(--prompt-ink); }
+  /* Least to Most: a soft pulse with no colour (step 1), a light blue (2), the darkest blue (3) */
+  .key.ltm-pulse { animation: ltmKeyPulse 1.6s ease-in-out infinite; }
+  @keyframes ltmKeyPulse { 0%, 100% { transform: scale(var(--boost, 1)); box-shadow: 0 0 0 0 rgba(0,0,0,0.12), var(--shadow); } 50% { transform: scale(calc(var(--boost, 1) * 1.04)); box-shadow: 0 0 0 6px rgba(0,0,0,0), var(--shadow); } }
+  .key.prompt-color.ltm-light, .keyboard .key.letter.prompt-color.ltm-light { background: var(--prompt-light); color: var(--ink); }
+  .key.prompt-color.ltm-dark, .keyboard .key.letter.prompt-color.ltm-dark { background: var(--prompt-dark); color: #fff; }
   .key.prompt-color.fade-2 { background: var(--prompt-f2); color: var(--ink); animation: none; box-shadow: var(--shadow); }
   @keyframes keypulse {
     0%, 100% { box-shadow: 0 0 0 0 var(--prompt-glow), var(--shadow); transform: scale(var(--boost, 1)); }
@@ -3279,7 +3288,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 600 - 14 Oct';
+const BUILD = 'build 601 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3524,7 +3533,7 @@ let pendingErrorPos = null;
 let promptVisible = true;
 let helpRequested = false;
 // once SOS has been pressed, the prompts it brings are the ones chosen for SOS in the prompting settings
-function pOn(k) { if (state.helpMode && helpRequested && state.sosPrompts && k in state.sosPrompts) return !!state.sosPrompts[k]; const o = groupPromptNow(); if (o && k in o) return !!o[k]; return !!state[k]; }
+function pOn(k) { if ((k === 'fadeMode' || k === 'promptBack') && ltmNow()) return false; if (state.helpMode && helpRequested && state.sosPrompts && k in state.sosPrompts) return !!state.sosPrompts[k]; const o = groupPromptNow(); if (o && k in o) return !!o[k]; return !!state[k]; }
 // a setting for the word being practised: its group's own choice if it has one, otherwise the main setting
 function pOpt(k) { const o = groupPromptNow(); return o && k in o ? o[k] : state[k]; }
 // the group whose prompting applies now: Spelling in the picture writing game, otherwise the typing group the target is in
@@ -3542,11 +3551,12 @@ function groupPromptNow() {
   } catch (e) { return null; }
 }
 const DECODE_RE = /^decod/i;      // the Decoding group: words practised with the sound keyboard, with prompting of their own
+const LTM_RE = /^least.?to.?most/i;      // Least to Most: targets typed with prompting that starts small and grows (see ltmNow)
 const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match)/i };
 // the practice group for a game mode: sight (picture to word tiles), write (picture to keyboard), tiles (picture to letter tiles)
 function practiceRe(mode) { return mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
 // A practice group keeps its job when it is renamed: its kind is fixed once (from its name) and the app goes by that
-const GROUP_KIND_NAME = { typing: 'Typing', decode: 'Decoding', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
+const GROUP_KIND_NAME = { typing: 'Typing', ltm: 'Least to Most', decode: 'Decoding', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
 function gKey(g) { return g && g.kind && GROUP_KIND_NAME[g.kind] ? GROUP_KIND_NAME[g.kind] : String((g && g.name) || '').trim(); }
 function isPracticeGroup(g) { return PRACTICE_RE.any.test(gKey(g)); }   // set by the star; lasts until this word is finished or changed
 let promptDelayTimer = null;
@@ -6089,6 +6099,7 @@ function spellHintArm() {
 function hintAt(i) { const h = spellHint; if (!spellGameNow() || h.key !== state.currentTarget || h.i !== i || !h.kb) return { kb: false, word: false }; return { kb: true, word: Date.now() < h.until }; }
 function fadeLevelAt(index) {
   if (spellGameNow()) return spellLevel();
+  if (ltmNow()) return 0;
   const raw = fadeRawAt(index); if (raw <= FADE_KB) return raw;
   const t = state.currentTarget || '';
   let lv = raw;
@@ -6289,6 +6300,7 @@ function applyPromptTheme() {
   r.setProperty('--prompt-ink', 'var(--ink)');
   r.setProperty('--prompt-f1', mixHex(base, '#ffffff', 0.35));
   r.setProperty('--prompt-f2', mixHex(base, '#ffffff', 0.72));
+  r.setProperty('--prompt-light', shadeFor(c.solid, 'light')); r.setProperty('--prompt-dark', shadeFor(c.solid, 'dark'));
 }
 // Any visual/verbal prompt at all?
 function anyPromptEnabled() {
@@ -6298,6 +6310,7 @@ function anyPromptEnabled() {
 // Prompts are showing right now (delay elapsed, letter not fully faded)
 function promptsShowing() {
   if (!state.currentTarget || isWordComplete()) return false;
+  if (ltmNow()) return true;      // (least to most: the first, smallest prompt is there from the start)
   if (fadeLevelAt(state.targetIndex) >= FADE_PLAIN) return false;
   // In help mode nothing appears until it's asked for
   if (state.helpMode && !helpRequested) return false;
@@ -6312,6 +6325,7 @@ function barPromptNow() {
 }
 function kbPromptsShowing() {
   if (!promptsShowing()) { kbLagKey = ''; return false; }
+  if (ltmNow()) return true;      // (the word bar and the key together)
   if (!barPromptNow()) return true;
   const key = state.currentTarget + '|' + state.targetIndex + '|' + (helpRequested ? 1 : 0);
   if (key !== kbLagKey) { kbLagKey = key; kbLagAt = Date.now(); clearTimeout(kbLagTimer); kbLagTimer = setTimeout(() => { try { render(); } catch (e) {} }, 1010); }
@@ -6428,8 +6442,66 @@ function soundKbPromptPaint() {
 }
 let soundPromptLast = 0;
 function soundPromptSay() { if (!soundPracticeNow() || isWordComplete() || document.getElementById('readBack')) return;      /* (not over the read-back) */ if (Date.now() - soundPromptLast < 900) return; const p = soundPartAt(state.currentTarget, state.targetIndex); if (p) { soundPromptLast = Date.now(); soundSay(p.id, p.sp); } }
+// ---- Least to Most (the targets in that group, typed from the home page) ----
+// Each letter starts with the least help and it grows: no key within 5 seconds, or a wrong key, is one step up.
+//  1 the sound prompt, the letter a little bigger and pulsing softly (in the word and on its key) - no colour
+//  2 the colour comes in (a light blue), and the sound again
+//  3 the most: the darkest blue, bigger, a strong pulse, and the sound again (said again every 5 s, three times)
+// A right key: the next letter starts back at 1.
+const LTM_WAIT_MS = 5000;
+let ltm = { key: '', lv: 1, rep: 0 }, ltmTimer = null;
+function ltmGroup() { const t = state.categories.find(c => c.target); return t ? (t.groups || []).find(g => g.kind === 'ltm' || LTM_RE.test(gKey(g))) || null : null; }
+function ltmNow() {
+  try {
+    if (!state.currentTarget || (typeof game !== 'undefined' && game)) return false;
+    if (state.soundKeysOn) { try { if (soundPracticeNow()) return false; } catch (e) {} }
+    const g = ltmGroup(); if (!g || !(g.words || []).length) return false;
+    const has = w => { const u = normaliseWord(w); return !!u && (g.words || []).includes(u) && !(g.off || {})[u]; };
+    return has(state.currentTarget) || (isPhrase() && has(wordAtIndex(state.targetIndex)));
+  } catch (e) { return false; }
+}
+function ltmKey() { return state.currentTarget + '|' + state.targetIndex; }
+function ltmLevel() { return ltm.key === ltmKey() ? ltm.lv : 1; }
+function ltmSay() {
+  const L = nextExpectedLetter(); if (!L) return;
+  verbalSpokenFor = state.targetIndex;
+  try { warmSpeech(); if (L === ' ') speak('space', 1.0); else speakLetter(L, capitalAt(state.targetIndex)); } catch (e) {}
+}
+function ltmArm() {
+  clearTimeout(ltmTimer); ltmTimer = null;
+  if (!ltmNow() || isWordComplete()) return;
+  const key = ltmKey();
+  ltmTimer = setTimeout(() => { ltmTimer = null; if (ltmKey() === key) ltmUp(); }, LTM_WAIT_MS);
+}
+// one step more help (a wait with no key, or a wrong key)
+function ltmUp() {
+  if (!ltmNow() || isWordComplete()) return;
+  const key = ltmKey(); if (ltm.key !== key) ltm = { key, lv: 1, rep: 0 };
+  if (ltm.lv < 3) ltm.lv++; else ltm.rep++;
+  try { const a = trialAt[state.targetIndex] = trialAt[state.targetIndex] || { w: 0 }; a.ltm = Math.max(a.ltm || 1, ltm.lv); } catch (e) {}
+  render(); ltmSay();
+  if (ltm.lv < 3 || ltm.rep < 3) ltmArm();
+}
+// a letter's turn begins: the first step, the sound said once the word (or the letter just typed) has been said
+function ltmStart() {
+  const key = ltmKey(); if (ltm.key !== key) ltm = { key, lv: 1, rep: 0 };
+  promptVisible = true;
+  const fresh = state.targetIndex === 0 && !(state.text || '');
+  clearTimeout(promptDelayTimer);
+  promptDelayTimer = setTimeout(() => { promptDelayTimer = null; if (ltmKey() === key && ltmNow()) ltmSay(); }, fresh ? (state.targetSpeech ? 1300 + 90 * String(state.currentTarget).length : 400) : (state.letterSpeech ? 900 : 300));
+  ltmArm();
+}
+// the prompts on a key for the step it is at
+function ltmKeyPaint(k) {
+  const lv = ltmLevel();
+  k.classList.add('prompting', 'prompt-size', lv >= 3 ? 'boost-large' : 'boost-small', lv >= 3 ? 'prompt-pulse' : 'ltm-pulse');
+  if (lv === 2) k.classList.add('prompt-color', 'ltm-light');
+  if (lv >= 3) k.classList.add('prompt-color', 'ltm-dark');
+}
 function armPrompt(force) {
   clearPromptTimer();
+  clearTimeout(ltmTimer); ltmTimer = null;
+  if (ltmNow()) { clearTimeout(soundPromptTimer); soundPromptTimer = null; verbalSpokenFor = -1; if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; } ltmStart(); return; }
   if (soundPracticeNow()) { const fresh = state.targetIndex === 0 && !(state.text || '');      // (after the word is said: about its length, then 2 s - after a spelling's sound: 2 s)
     soundPromptArm(fresh ? 2000 + (state.targetSpeech ? 500 + 110 * String(state.currentTarget).length : 0) : 2700); } else { clearTimeout(soundPromptTimer); soundPromptTimer = null; }
   try { spellHintArm(); } catch (e) {}
@@ -6533,6 +6605,11 @@ function render() {
       const s = document.createElement('span');
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
+      else if (i === state.targetIndex && ltmNow() && !isWordComplete()) {
+        const lv = ltmLevel();
+        s.classList.add(lv >= 2 ? 'next' : 'pending', 'magnify', lv >= 3 ? 'tmag-large' : 'tmag-small', lv >= 3 ? 'pulse' : 'ltm-pulse');
+        if (lv === 2) s.classList.add('ltm-light'); if (lv >= 3) s.classList.add('ltm-dark');
+      }
       else if (i === state.targetIndex &&
                ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1 || hintAt(i).word)) {
         const fl = fadeLevelAt(i), E = Math.max(boostLevel(i), hintAt(i).word ? 1 : 0), on = showing && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
@@ -6599,11 +6676,12 @@ function render() {
   kb.innerHTML = '';
   kb.classList.remove('ks-small', 'ks-med', 'ks-large', 'ok-faded', 'ok-blank', 'ok-black');
   kb.classList.add('ks-' + state.keySize);
-  if (kbShow && state.otherKeysMode !== 'normal' && fadeLevelAt(state.targetIndex) < 5) kb.classList.add('ok-' + state.otherKeysMode);
+  if (kbShow && !ltmNow() && state.otherKeysMode !== 'normal' && fadeLevelAt(state.targetIndex) < 5) kb.classList.add('ok-' + state.otherKeysMode);
   freeCaps.forEach(i => { if (i >= state.text.length) freeCaps.delete(i); });
   const expected = nextExpectedLetter();
   // the same prompts a letter key gets, for a key that has to be pressed first
   const promptKey = k => {
+    if (ltmNow()) { ltmKeyPaint(k); return; }
     const fl = fadeLevelAt(state.targetIndex);
     k.classList.add('prompting');
     if (pOn('promptColorOn') && fl < 3) {
@@ -6689,7 +6767,8 @@ function makeLetterKey(letter, expected) {
   if (lvl) k.classList.add('level-' + lvl);
   if (state.hiddenKeys[letter]) k.classList.add('hidden');
   const E = expected && letter === expected ? Math.max(boostLevel(state.targetIndex), hintAt(state.targetIndex).kb ? 2 : 0) : 0;
-  if (expected && letter === expected && (kbPromptsShowing() || E >= 2)) {
+  if (expected && letter === expected && ltmNow()) ltmKeyPaint(k);
+  else if (expected && letter === expected && (kbPromptsShowing() || E >= 2)) {
     const fl = fadeLevelAt(state.targetIndex), show = kbPromptsShowing();
     const sh = (lim, step) => (show && fl < lim) || E >= step;
     k.classList.add('prompting'); // exempt from the other-key treatments
@@ -6957,7 +7036,7 @@ function typeChar(letter) {
   if (state.currentTarget) {
     const expected = state.currentTarget[state.targetIndex];
     if (expected && !isWrong) {
-      { const i = state.targetIndex, a = trialAt[i] || { w: 0 }; a.L = String(expected).toUpperCase(); a.p = !!prompted; a.f = boostLevel(i) >= BOOST_MAX ? 0 : Math.max(fadeLevelAt(i), boostLevel(i) ? 1 : 0); trialAt[i] = a; }
+      { const i = state.targetIndex, a = trialAt[i] || { w: 0 }; a.L = String(expected).toUpperCase(); a.p = !!prompted; if (ltmNow()) a.ltm = Math.max(a.ltm || 1, ltmLevel()); a.f = boostLevel(i) >= BOOST_MAX ? 0 : Math.max(fadeLevelAt(i), boostLevel(i) ? 1 : 0); trialAt[i] = a; }
       state.targetIndex++;
       state.targetProgress.push(true);
       state.targetPromptedFlags.push(prompted);
@@ -7121,6 +7200,8 @@ function handleError(expectedLetter, typedLetter) {
     setTimeout(() => speakLetter(expectedLetter, capitalAt(state.targetIndex)), gap);
   }
   // 2. What the prompt does
+  // least to most: a wrong key is one step more help (with the sound again, once anything said about the slip is done)
+  if (ltmNow()) { const key = ltmKey(); clearTimeout(ltmTimer); ltmTimer = null; setTimeout(() => { if (ltmKey() === key) ltmUp(); }, (state.errorFeedback && state.errorFeedback !== 'none' ? gap + ERROR_TO_PROMPT_MS : 350)); return; }
   // If the error feedback already said the letter, don't say it twice
   const alreadySaid = (state.errorFeedback === 'correct');
   // Anything spoken about the mistake needs room to finish before the app
@@ -7157,11 +7238,11 @@ function logTypingTrial(word, from, len) {
   try {
     const letters = [];
     for (let i = from; i < from + len; i++) { const a = trialAt[i]; if (!a || !a.L || !/[A-Z]/.test(a.L)) continue;
-      letters.push([a.L, a.p ? (a.f > 0 ? 'b' : 'y') : (a.w ? 'b' : 'g')]); }
+      letters.push([a.L, a.ltm ? (a.ltm >= 3 ? 'y' : a.ltm === 2 || a.w ? 'b' : 'g') : a.p ? (a.f > 0 ? 'b' : 'y') : (a.w ? 'b' : 'g')]); }      // (least to most: the first, least prompt green - the colour blue - the most yellow)
     if (!letters.length) return;
     const res = letters.every(x => x[1] === 'g') ? 'first' : letters.every(x => x[1] === 'y') ? 'prompted' : 'second';
     const mode = (typeof game !== 'undefined' && game && game.mode === 'write') ? 'write' : 'typing';
-    state.trialLog = (state.trialLog || []).concat([{ t: Date.now(), word: normaliseWord(word), res, mode, errors: letters.length ? (trialAt.slice(from, from + len).reduce((n, a) => n + ((a && a.w) || 0), 0)) : 0, letters: letters.map(x => x[0] + x[1]).join(' ') }]).slice(-5000);
+    state.trialLog = (state.trialLog || []).concat([{ t: Date.now(), word: normaliseWord(word), res, mode, errors: letters.length ? (trialAt.slice(from, from + len).reduce((n, a) => n + ((a && a.w) || 0), 0)) : 0, letters: letters.map(x => x[0] + x[1]).join(' '), ltm: trialAt.slice(from, from + len).some(a => a && a.ltm) ? trialAt.slice(from, from + len).filter(a => a && a.L && /[A-Z]/.test(a.L)).map(a => a.ltm || 1).join('') : undefined }]).slice(-5000);
   } catch (e) {}
 }
 function trialData() {
@@ -13862,7 +13943,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     const msG = !!groupModeOf(g), rank = { learning: 0, mastered: 1, maint: 2 };
     const gws = g.words.filter(w => listWords.includes(w)); if (msG) gws.sort((a, b) => rank[masteryOf(g, a).st] - rank[masteryOf(g, b).st]);
     // the Typing group (Text-to-Speech): its targets under the name of the folder each is in (Music, Food, Actions ...)
-    if (g.kind === 'typing' && gws.length) {
+    if ((g.kind === 'typing' || g.kind === 'ltm') && gws.length) {
       const fold = w => { try { const t0 = gameTargetTree([w])[0]; return t0 ? t0.label : 'Other'; } catch (e) { return 'Other'; } };
       const by = new Map(); gws.forEach(w => { const f = fold(w); if (!by.has(f)) by.set(f, []); by.get(f).push(w); });
       const names = [...by.keys()].sort((a, b) => (a === 'Other') - (b === 'Other') || a.localeCompare(b));
@@ -15652,21 +15733,23 @@ function ensureTargets() {
     else if (/^sight words?$/i.test(nm)) g.name = 'Word Match'; else if (/^spelling tiles$/i.test(nm)) g.name = 'Tiles'; else if (/^sound it out$/i.test(nm)) g.name = 'Elkonin Boxes'; else if (/^hear the sound$/i.test(nm)) g.name = 'Sound Match'; });
   // each practice group's kind, fixed once from its name, so it can be renamed. A group renamed before kinds were kept
   // (Text-to-Speech: the targets spelled from the home page) takes back its job, and the empty one made in its place goes.
-  { const KR = [['typing', /^typing$/i], ['decode', DECODE_RE], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
+  { const KR = [['typing', /^typing$/i], ['ltm', LTM_RE], ['decode', DECODE_RE], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
     const tts = t.groups.find(g => !g.kind && /^text.?to.?speech$/i.test(String(g.name || '').trim()));
     if (tts && !t.groups.some(g => g.kind === 'typing')) { tts.kind = 'typing'; const dup = t.groups.filter(g => g !== tts && !g.kind && /^typing$/i.test(String(g.name || '').trim())); dup.forEach(d => { (d.words || []).forEach(w => { if (!tts.words.includes(w)) tts.words.push(w); }); }); t.groups = t.groups.filter(g => !dup.includes(g)); }
     t.groups.forEach(g => { if (g.kind) return; const nm = String(g.name || '').trim(), k = KR.find(([, re]) => re.test(nm)); if (k && !t.groups.some(x => x.kind === k[0])) g.kind = k[0]; }); }
   // Match the spelling is taken out for now: its group goes (kept aside, with its spellings, in case it comes back)
   { const mi = t.groups.findIndex(g => /^match the spelling$/i.test(String(g.name || '').trim())); if (mi >= 0) { t.removedGroups = (t.removedGroups || []).concat(t.groups.splice(mi, 1)); } }
-  [['Typing', /^typing$/i], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear]].forEach(([nm, re]) => {
-    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : {}));
+  [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear]].forEach(([nm, re]) => {
+    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : {}));
   });
   // the groups in the order of the Games menu, after Typing and Decoding; once, the groups that are for no practice now are put aside (kept, not shown)
-  { const order = [/^typing$/i, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear];
+  { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear];
     const rank = g => { const nm = gKey(g), i = order.findIndex(re => re.test(nm)); return i < 0 ? order.length : i; };
     if (!t.groupsTidyV1) { t.groupsTidyV1 = true; const out = t.groups.filter(g => rank(g) === order.length); if (out.length) { t.removedGroups = (t.removedGroups || []).concat(out); t.groups = t.groups.filter(g => rank(g) < order.length); } }
     t.groups = t.groups.map((g, i) => [g, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]); }
-  { const di = t.groups.findIndex(g => DECODE_RE.test(gKey(g))), ti = t.groups.findIndex(g => /^typing$/i.test(gKey(g)));      // (Decoding sits just after Typing)
+  { const li = t.groups.findIndex(g => LTM_RE.test(gKey(g))), ti0 = t.groups.findIndex(g => /^typing$/i.test(gKey(g)));      // (Least to Most sits just after Typing)
+    if (li >= 0 && ti0 >= 0 && li !== ti0 + 1 && !t.groups[li].placed) { const [l] = t.groups.splice(li, 1); l.placed = true; t.groups.splice(t.groups.findIndex(g => /^typing$/i.test(gKey(g))) + 1, 0, l); } }
+  { const di = t.groups.findIndex(g => DECODE_RE.test(gKey(g))), ti = t.groups.findIndex(g => LTM_RE.test(gKey(g))) >= 0 ? t.groups.findIndex(g => LTM_RE.test(gKey(g))) : t.groups.findIndex(g => /^typing$/i.test(gKey(g)));      // (Decoding sits just after them)
     if (di > ti + 1 && ti >= 0 && !t.groups[di].moved) { const [d] = t.groups.splice(di, 1); d.moved = true; t.groups.splice(ti + 1, 0, d); } }
 }
 // the targets in a practice group (sight words or writing practice) that are switched on and have a picture
