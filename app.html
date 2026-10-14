@@ -1466,9 +1466,9 @@
   .snd-cells { display: flex; gap: clamp(16px, 2.6vmin, 30px); justify-content: center; flex-wrap: wrap; }
   .snd-cell { min-width: clamp(76px, 11vmin, 132px); height: clamp(76px, 11vmin, 132px); padding: 0 14px; box-sizing: border-box; border-radius: 16px; border: 3px dashed #c4c8cf; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1; color: #9aa1ab; background: #fff; }
   .snd-cell.next { border-style: solid; border-color: #2f8bff; }
-  .snd-cell.filled { border: 3px solid #d7dbe1; background: #f4f5f7; color: #8e959f; }
-  .snd-cell.filled.v { background: #fff; border: 3px solid #f5b3c8; color: #c2185b; }      /* Orton-Gillingham colours, as on the keys: vowels salmon, consonants white */
-  .snd-cell.filled.c { background: #ffffff; border-color: #d7dbe1; color: #6b7280; }
+  .snd-cell.filled { border: 3px solid #1f2328; background: #fff; color: #1f2328; }      /* a box filled in stays bright */
+  .snd-cell.filled.v { background: #fff; border: 4px solid #e0457b; color: #c2185b; }      /* Orton-Gillingham colours, as on the keys: vowels salmon, consonants white */
+  .snd-cell.filled.c { background: #ffffff; border: 3px solid #1f2328; color: #1f2328; }
   .snd-cell.lit, .snd-cell.lit.v { background: #fff; color: #c2185b; border: 4px solid #e0457b; transform: scale(1.06); }
   .snd-cell.lit.c { background: #ffffff; color: var(--ink); border-color: #1f2328; transform: scale(1.06); }
   .snd-cells.gm-word-done .snd-cell { background: #e6f7e9; border-color: var(--green); color: #4f9a5d; }
@@ -3258,7 +3258,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 597 - 14 Oct';
+const BUILD = 'build 598 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
