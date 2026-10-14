@@ -3447,7 +3447,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 622 - 14 Oct';
+const BUILD = 'build 623 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9318,15 +9318,19 @@ function respWordsSeen() {
   respTypedNext = null;
 }
 const RD_CLASSES = [
-  ['tile', 'Words chosen (tiles)'], ['typed', 'Words typed'], ['message', 'Messages sent'], ['mand', 'Requests (mands)'], ['letter', 'Letters spelled (practice)'],
-  ['game:sight', 'Tact: picture → word'], ['game:write', 'Spelling: picture → keyboard'], ['game:tiles', 'Spelling: letter tiles'], ['game:sound', 'Sounds: Elkonin boxes'],
-  ['game:hear', 'Listener: sound match'], ['game:qa', 'Intraverbal: questions'], ['game:dict', 'Transcription: dictation']];
+  ['w:action', 'Action words (go, eat, play ...)'], ['w:label', 'Labels (things, people, places, folder names)'], ['w:small', 'Small words (I, the, you, it, now, then ...)'],
+  ['tile', 'Words chosen from tiles'], ['typed', 'Words typed'], ['message', 'Messages sent'], ['letter', 'Letters spelled (practice)'],
+  ['game:sight', 'Word Match: picture \u2192 word'], ['game:write', 'Spelling: picture \u2192 keyboard'], ['game:tiles', 'Tiles: letters in order'], ['game:sound', 'Elkonin Boxes: sounds'],
+  ['game:hear', 'Sound Match: hear a sound'], ['game:qa', 'Questions: answering'], ['game:dict', 'Dictation: hear and type']];
+// the kind of word: an action word, a small word (I, the, you, it - and the describing and time words from Choices: now, then, big), or a label
+function rdWordType(w) { let k = ''; try { k = kindOfWord(w); } catch (e) {} if (k === 'action' || (typeof MAGIC_WANTS !== 'undefined' && MAGIC_WANTS.includes(w))) return 'action';
+  let d = false; try { d = isSmallWord(w) || describeWord(w) || k === 'describe'; } catch (e) {} return d ? 'small' : 'label'; }
 // every response in the logs, as one list: { t, cls, ok (independent), lat, who, where }
 function rdAll() {
   const out = [];
   (state.respLog || []).forEach(e => {
-    if (e.k === 'word') out.push({ t: e.t, cls: e.src === 'typed' ? 'typed' : 'tile', ok: true, who: e.who, where: e.where });
-    else if (e.k === 'message') { out.push({ t: e.t, cls: 'message', ok: true, who: e.who, where: e.where }); if (e.mand) out.push({ t: e.t, cls: 'mand', ok: true, who: e.who, where: e.where, sub: true }); }
+    if (e.k === 'word') { out.push({ t: e.t, cls: e.src === 'typed' ? 'typed' : 'tile', ok: true, who: e.who, where: e.where }); out.push({ t: e.t, cls: 'w:' + rdWordType(e.w), ok: true, who: e.who, where: e.where, sub: true }); }
+    else if (e.k === 'message') out.push({ t: e.t, cls: 'message', ok: true, who: e.who, where: e.where });
     else if (e.k === 'letter' && e.ok !== false) out.push({ t: e.t, cls: 'letter', ok: !e.p, lat: e.lat, who: e.who, where: e.where });
   });
   (state.gameLog || []).forEach(r => { const m = r.mode || 'sight'; if (m === 'write') return;      // (Spelling's letters are logged one by one above)
@@ -10448,7 +10452,7 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
-  try { if (homePhrase.length && !state.builderMode) { const m = homePhrase.filter(w => !isPunct(w)).join(' '); respNote({ k: 'message', w: m, src: state.chatMode ? 'chat' : 'home', mand: /\b(WANT|NEED|MORE|HELP|PLEASE|CAN I|GIVE)\b/.test(m) ? 1 : 0 }); } } catch (e) {}
+  try { if (homePhrase.length && !state.builderMode) { const m = homePhrase.filter(w => !isPunct(w)).join(' '); respNote({ k: 'message', w: m, src: state.chatMode ? 'chat' : 'home' }); } } catch (e) {}
   barNotes = []; notesTaken.clear(); notesAfter.clear();      // (the folders noted in the bar were not chosen: they go with the message)
   try { if (homeKeysUp()) homeKeysClose(); } catch (e) {}
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
