@@ -3380,7 +3380,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 608 - 14 Oct';
+const BUILD = 'build 609 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9803,6 +9803,7 @@ function pluralChip(box) {
   { const i = homePhrase.length - 1, w = homePhrase[i], fx = (soundFixes || {})[w];
     if (fx && fx.length) { fx.forEach(to => endingChip(box, i, w, to, '\u21BB ' + to.toLowerCase(), () => soundFixDone(w, to))); return; } }
   folderPhraseChip(box);
+  phraseOrderChip(box);
   if (state.pluralChip === false) return;
   const i = homePhrase.length - 1, w = homePhrase[i];
   if (verbable(w)) {
@@ -9866,6 +9867,24 @@ function barNotesSync() {
 // a folder's name taken into the message just before a word from it (Drinks, bottle): the two as one phrase offered,
 // the folder's name made singular - "drink bottle". Tapped, they become that phrase.
 function folderSingular(w) { w = String(w || ''); if (/IES$/.test(w) && w.length > 4) return w.slice(0, -3) + 'Y'; if (/(SS|US|IS)$/.test(w)) return w; if (/(CH|SH|X|Z|SS)ES$/.test(w)) return w.slice(0, -2); if (/S$/.test(w) && w.length > 3) return w.slice(0, -1); return w; }
+// a number or "some / more / another ..." put after a phrase (drink poppi, one): the word moved into its place - before the
+// thing it counts (drink one poppi) - or before the whole phrase (one drink poppi). Two offers; a tap takes one.
+const COUNT_WORDS = new Set(['A', 'AN', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'SOME', 'MORE', 'ANOTHER', 'ALL', 'NO', 'THE', 'MY', 'YOUR', 'BIG', 'LITTLE']);
+function phraseOrderChip(box) {
+  const n = homePhrase.length; if (n < 2) return;
+  const q = homePhrase[n - 1], P = homePhrase[n - 2];
+  if (!(COUNT_WORDS.has(q) || /^\d+$/.test(q)) || !/ /.test(String(P))) return;
+  const ws = String(P).split(' ').filter(Boolean); if (ws.length < 2 || COUNT_WORDS.has(ws[0])) return;
+  const opts = [ws.slice(0, -1).concat([q, ws[ws.length - 1]]), [q].concat(ws)];
+  opts.forEach(to => {
+    const b = document.createElement('button'); b.className = 'pb-plural pb-seq'; b.textContent = '⇄ ' + to.join(' ').toLowerCase(); b.setAttribute('aria-label', 'Put it in this order');
+    b.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[n - 1] !== q || homePhrase[n - 2] !== P) return;
+      const all = to.join(' '); homePhrase.splice(n - 2, 2, all); state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[all] = true;
+      try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {} buzz(10); renderPhraseBar();
+      try { warmSpeech(); sayAnyway = true; speakWord(all, 0.95); } catch (er) {} finally { sayAnyway = false; } });
+    box.appendChild(b);
+  });
+}
 function folderPhraseChip(box) {
   if (!notesTaken.size) return;
   let j = -1; for (let k = homePhrase.length - 2; k >= 0; k--) if (notesTaken.has(homePhrase[k]) && !notesTaken.has(homePhrase[k + 1]) && !isPunct(homePhrase[k + 1])) { j = k; break; }
@@ -9925,7 +9944,7 @@ function renderPhraseBar0() {
     if (!opts) { opts = document.createElement('div'); opts.id = 'pbOpts'; opts.className = 'pb-opts'; bar.appendChild(opts); }
     opts.innerHTML = '';
     try { pluralChip(opts); } catch (e) {}
-    { const sq = opts.querySelector('.pb-seq'); if (sq) box.appendChild(sq); }      // the word order offer sits beside the words, bigger
+    opts.querySelectorAll('.pb-seq').forEach(sq => box.appendChild(sq));      // the word order offer sits beside the words, bigger
     bar.classList.toggle('has-opts', !!opts.firstChild); }
   pbWordsFit(box);      // the first word stays in the top left: a long message gets smaller type rather than sliding up
   box.classList.toggle('clipped', box.scrollTop > 2);
