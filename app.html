@@ -1637,6 +1637,18 @@
   .gh-mlist { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-left: 54px; }
   .gh-mlist span { background: #e3f7e6; color: #1f6d2c; border-radius: 10px; padding: 3px 10px; font-weight: 800; font-size: 14px; }
   .gh-mlist span.x { background: #e3edff; color: #1d4fa8; }
+  /* Easy / Hard prompts on a game's tiles and keys: 1 a soft pulse, a little bigger, no colour - 2 light blue - 3 the darkest blue, bigger, a strong pulse */
+  .gm-tile.gp-1, .sk.gp-1 { animation: gpSoft 1.6s ease-in-out infinite; z-index: 3; position: relative; }
+  .gm-tile.gp-2, .sk.gp-2 { animation: gpSoft 1.6s ease-in-out infinite; background: var(--prompt-light, #a9c8ff) !important; color: var(--ink) !important; z-index: 3; position: relative; }
+  .gm-tile.gp-3, .sk.gp-3 { animation: gpStrong 1.2s ease-in-out infinite; background: var(--prompt-dark, #1e4f9e) !important; color: #fff !important; z-index: 4; position: relative; }
+  .sk.gp-3 *, .sk.gp-3 em { color: #fff !important; }
+  @keyframes gpSoft { 0%, 100% { transform: scale(1.06); box-shadow: 0 0 0 0 rgba(0,0,0,0.12), var(--shadow); } 50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(0,0,0,0), var(--shadow); } }
+  @keyframes gpStrong { 0%, 100% { transform: scale(1.2); box-shadow: 0 0 0 0 var(--prompt-glow, rgba(47,125,246,0.45)), var(--shadow); } 50% { transform: scale(1.27); box-shadow: 0 0 0 16px transparent, var(--shadow); } }
+  .gp-level { display: flex; gap: 0; background: #e9ebef; border-radius: 16px; padding: 4px; flex: 0 0 auto; }
+  .gp-level button { border: none; font-family: inherit; font-weight: 900; font-size: 18px; padding: 10px 22px; border-radius: 12px; background: transparent; color: #6b7280; cursor: pointer; }
+  .gp-level button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+  .gp-level-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .gp-level-row .gp-note { font-size: 15px; font-weight: 700; color: var(--muted); flex: 1; min-width: 220px; }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -3364,7 +3376,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 606 - 14 Oct';
+const BUILD = 'build 607 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3580,7 +3592,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3758,7 +3770,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4415,7 +4427,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -6529,7 +6541,8 @@ let ltm = { key: '', lv: 1, rep: 0 }, ltmTimer = null;
 function ltmGroup() { const t = state.categories.find(c => c.target); return t ? (t.groups || []).find(g => g.kind === 'ltm' || LTM_RE.test(gKey(g))) || null : null; }
 function ltmNow() {
   try {
-    if (!state.currentTarget || (typeof game !== 'undefined' && game)) return false;
+    if (typeof game !== 'undefined' && game) return !!state.currentTarget && game.mode === 'write' && game.pmode === 'hard';      // (Spelling on hard: least to most)
+    if (!state.currentTarget) return false;
     if (state.soundKeysOn) { try { if (soundPracticeNow()) return false; } catch (e) {} }
     const g = ltmGroup(); if (!g || !(g.words || []).length) return false;
     const has = w => { const u = normaliseWord(w); return !!u && (g.words || []).includes(u) && !(g.off || {})[u]; };
@@ -10817,7 +10830,8 @@ function commitTypedWord() {
   return true;
 }
 
-function renderHome(reset) { try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} try { ghPaint(); } catch (e) {} try { barNotesSync(); } catch (e) {} } }
+function renderHome(reset) { try { if (typeof gamesHome !== 'undefined' && !gamesHome && document.getElementById('viewHome').classList.contains('gh-on')) ghPaint(); } catch (e) {}      // (leaving the games: the tiles are shown again before they are laid out and sized)
+  try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} try { ghPaint(); } catch (e) {} try { barNotesSync(); } catch (e) {} } }
 function renderHomeCore(reset) {
   try { renderChatPane(); } catch (e) {}
   linkWordCache = null;
@@ -16864,6 +16878,17 @@ function presetRows(host) {
 // First the kinds of game, then (one tapped) its saved games and a tile for a new one. Tokens and mastery on their own page.
 let gamesHome = null;      // null: the usual home page · { layer: 'types' | a game's mode | 'rewards' }
 const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', builder: 'Build' };
+// Easy / Hard for a game: a switch, with a line on what each one does
+function gpLevelRow(m, after) {
+  const row = document.createElement('div'); row.className = 'gp-level-row';
+  const sw = document.createElement('div'); sw.className = 'gp-level'; row.appendChild(sw);
+  const note = document.createElement('div'); note.className = 'gp-note'; row.appendChild(note);
+  const paint = () => { const v = gameLevelOf(m); sw.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    note.textContent = v === 'hard' ? 'Hard: least to most - the least help first, more after 5 s or a mistake' : 'Easy: most to least - all the help first, less after each turn with no mistakes'; };
+  [['easy', 'Easy'], ['hard', 'Hard']].forEach(([v, t]) => { const b = document.createElement('button'); b.dataset.v = v; b.textContent = t;
+    b.addEventListener('click', e => { e.stopPropagation(); buzz(8); state.gameLevel = Object.assign({}, state.gameLevel || {}, { [m]: v }); save(); paint(); if (after) after(); }); sw.appendChild(b); });
+  paint(); return row;
+}
 function ghBack() { if (gamesHome) { closeWordSheet(); renderHome(true); } else gameChooseCount(); }
 function ghTok(k) { return '<span class="tok ' + (k || 'y') + '">★</span>'; }
 function ghPaint() {
@@ -16909,9 +16934,10 @@ function ghPaint() {
     host.appendChild(grid); return;
   }
   if (L === 'rewards') { ttl.innerHTML = '<span>🏆 Rewards</span>'; ghRewards(host); return; }
-  // one kind of game: its saved games, then a new one
+  // one kind of game: easy or hard, its saved games, then a new one
   const m = L, nm = gameName(m);
   ttl.innerHTML = '<span></span>'; ttl.firstChild.textContent = gameIcon(m) + ' ' + nm;
+  host.appendChild(gpLevelRow(m, () => { host.dataset.sig = ''; renderHome(true); }));
   presets().filter(p => p.mode === m).forEach(p => {
     const n = presetPlayable(p).length, done = presetMastered(p).length;
     const t = tile('', p.name, n + ' target' + (n === 1 ? '' : 's') + ' · ' + (p.turns || 0) + ' turns', () => presetPlay(p));
@@ -17056,6 +17082,7 @@ function gameChooseCount(preMode) {
         const c = document.createElement('button'); c.className = 'gm-chip gm-add'; c.textContent = '+ Add more'; c.addEventListener('click', () => { buzz(8); openGameAdd(mode); }); chips.appendChild(c);
         paint(); };
       const head = t => { const h = document.createElement('div'); h.className = 'gm-head'; h.textContent = t; count.appendChild(h); return h; };
+      head('Level'); count.appendChild(gpLevelRow(mode));
       const wh = head('Targets'); wh.appendChild(n); count.appendChild(chips);
       const th = head('Turns'); tn = document.createElement('span'); tn.className = 'gm-head-n'; th.appendChild(tn);
       const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, (allMode() && !skip.size) ? null : ws); };
@@ -17086,6 +17113,74 @@ function gameChooseCount(preMode) {
     if (preMode) { const pb = acts.querySelector('.gm-act[data-m="' + preMode + '"]'); if (pb && !pb.classList.contains('off')) pb.click(); }      // (back from + Add more: the same game, still chosen)
   });
 }
+// ===== Easy / Hard: how the games prompt (chosen for each game, as it starts) =====
+//  Hard - least to most: each step starts with the least help - the prompt said, the right one a little bigger and pulsing
+//         softly (no colour). No answer in 5 s, or a wrong one, is a step more: light blue (and said again), then the darkest
+//         blue, bigger, pulsing strongly (and said again). In Spelling (the keyboard) it is the Least to Most typing prompts.
+//  Easy - most to least: a target starts with all the help (the darkest blue, bigger, pulsing, said) and it fades - one step
+//         less after each turn with no mistakes, one step more after a mistake - until there is no prompt at all. In Spelling
+//         it is the usual fading of the prompts.
+function gameLevelOf(mode) { const v = (state.gameLevel || {})[mode]; return v === 'easy' ? 'easy' : 'hard'; }
+function gpOn() { return typeof game !== 'undefined' && !!game && !!game.cur && game.mode !== 'write' && (game.pmode === 'hard' || game.pmode === 'easy'); }
+let gpTimer = null;
+function gpFadeOf(tile) { const v = (state.gameFade || {})[game.mode + '|' + tile]; return v == null ? 3 : Math.max(0, Math.min(3, v)); }
+// a step begins (a turn, a letter, a sound): its first level, painted, and said after a moment (sayIn: ms, null: not said)
+function gpStep(key, sayIn, keep) {
+  clearTimeout(gpTimer); if (!gpOn()) return;
+  const g = game, c = g.cur; c.gpKey = key; c.gpRep = 0; c.gpErr = false;
+  c.lv = g.pmode === 'hard' ? 1 : (keep && c.lv0 != null ? c.lv0 : gpFadeOf(c.tile)); if (c.lv0 == null) c.lv0 = c.lv;
+  gpPaint();
+  if (c.lv > 0 && sayIn != null) setTimeout(() => { if (game === g && g.cur === c && c.gpKey === key && !g.busy) gpSay(); }, sayIn);
+  gpArm();
+}
+function gpArm() {
+  clearTimeout(gpTimer); if (!gpOn()) return;
+  const g = game, c = g.cur, key = c.gpKey;
+  gpTimer = setTimeout(() => { if (game !== g || g.cur !== c || c.gpKey !== key) return; if (g.busy || soundOpen) { gpArm(); return; } gpUp(); }, 5000);
+}
+// one step more help (no answer in 5 s)
+function gpUp() {
+  const c = game.cur; if (c.lv < 3) c.lv++; else c.gpRep++;
+  gpPaint(); gpSay();
+  if (c.lv < 3 || c.gpRep < 3) gpArm();
+}
+// a wrong answer: one step more, shown (and said) once the game's own response to it is over
+function gpWrong(after) {
+  if (!gpOn()) return; clearTimeout(gpTimer);
+  const g = game, c = g.cur, key = c.gpKey; c.gpErr = true; c.lv = Math.min(3, (c.lv || 0) + 1);
+  setTimeout(() => { if (game !== g || g.cur !== c || c.gpKey !== key) return; gpPaint(); if (!after) gpSay(); gpArm(); }, after || 700);
+}
+// the right answer: how much help it took - g (none, or the least), b (some, or a mistake), y (the most)
+function gpRight() { clearTimeout(gpTimer); const c = game.cur, lv = c.lv || 0; return lv >= 3 ? 'y' : (lv === 2 || c.gpErr) ? 'b' : 'g'; }
+// a turn done, on easy: the target's help fades one step after a turn with no mistakes, and comes back one after a mistake
+function gpTrialDone(tile, wrong) {
+  clearTimeout(gpTimer); if (!game || game.pmode !== 'easy' || game.mode === 'write') return;
+  const k = game.mode + '|' + tile, f = state.gameFade = state.gameFade || {}, was = f[k] == null ? 3 : f[k];
+  f[k] = wrong ? Math.min(3, was + 1) : Math.max(0, was - 1);
+}
+function gpTargetEl() {
+  const g = game, c = g && g.cur; if (!c) return null;
+  const pick = v => [...document.querySelectorAll('#gmRow .gm-tile')].find(b => b.dataset.w === v);
+  if (g.mode === 'sight') return pick(c.word);
+  if (g.mode === 'tiles') return pick(c.letter);
+  return null;      // (the sound games: their keyboard paints it - see soundKbPaint)
+}
+function gpPaint() {
+  if (!gpOn()) return;
+  const g = game, c = g.cur;
+  if (g.mode === 'sound' || g.mode === 'hear' || g.mode === 'match') { if (!gpPaint.busy) { gpPaint.busy = true; try { soundKbPaint(); } finally { gpPaint.busy = false; } } return; }
+  document.querySelectorAll('#gmRow .gp-1, #gmRow .gp-2, #gmRow .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
+  const el = gpTargetEl(); if (el && c.lv > 0) el.classList.add('gp-' + Math.min(3, c.lv));
+}
+// the prompt said: the word (Word Match), the letter's sound in the word (Tiles), the sound (Elkonin Boxes, Sound Match)
+function gpSay() {
+  const g = game, c = g && g.cur; if (!c) return;
+  try {
+    if (g.mode === 'sight') { warmSpeech(); sayAnyway = true; try { speakWord(c.word, 0.9); } finally { sayAnyway = false; } return; }
+    if (g.mode === 'tiles') { const p = soundPartCovering(c.word, c.k); if (p) soundSay(p.id, p.sp); else { warmSpeech(); sayAnyway = true; try { speakLetter(String(c.letter).toUpperCase()); } finally { sayAnyway = false; } } return; }
+    const want = c.parts && c.parts[c.k]; if (want) soundSay(want.alt[0] || want.id, want.sp);
+  } catch (e) {}
+}
 function gameStart(n, mode, only, presetId) {
   mode = mode || (game && game.mode) || 'sight';
   const pr = presetId ? presetById(presetId) : null;
@@ -17096,7 +17191,7 @@ function gameStart(n, mode, only, presetId) {
   const bag = []; while (bag.length < n) bag.push(...ws); bag.length = n; const mixed = bag.sort(() => Math.random() - 0.5);
   mixed.forEach(w => seq.push({ w }));
   for (let i = 1; i < seq.length; i++) if (seq[i].w === seq[i - 1].w) { const j = seq.findIndex((x, k) => k > i && x.w !== seq[i].w && (k + 1 >= seq.length || seq[k + 1].w !== seq[i].w) && seq[k - 1].w !== seq[i].w); if (j > 0) { const t = seq[i]; seq[i] = seq[j]; seq[j] = t; } }
-  game = { n, seq, i: 0, res: [], mode, only: only || null, preset: pr ? pr.id : null };
+  game = { n, seq, i: 0, res: [], mode, only: only || null, preset: pr ? pr.id : null, pmode: gameLevelOf(mode) };
   state.picMode = true; picBtnSync();
   if (mode === 'write') { const v = document.getElementById('gameView'); if (v) v.remove(); gameTrial(); return; }
   gameView(); gameTrial();
@@ -17126,7 +17221,8 @@ function gameWriteTrial() {
 // a word written: green with no wrong keys, blue with one or two, yellow with more (or help asked for); then the next
 function gameWriteDone() {
   const g = game; if (!g) return;
-  const errs = trialErrors || 0, res = (helpRequested || errs >= 3) ? 'prompted' : errs === 0 ? 'first' : 'second';
+  const errs = trialErrors || 0; let res = (helpRequested || errs >= 3) ? 'prompted' : errs === 0 ? 'first' : 'second';
+  if (g.pmode === 'hard') { const lvs = (trialAt || []).filter(x => x && x.L).map(x => x.ltm || 1); res = lvs.some(v => v >= 3) ? 'prompted' : (lvs.some(v => v === 2) || errs) ? 'second' : 'first'; }      // (hard: by the most help any letter needed)
   try { spellFadeAfter(errs === 0 && !helpRequested); } catch (e) {}
   g.seq[g.i].res = res; g.res.push({ word: g.cur.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
   state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: g.cur.word, tile: g.cur.tile, res, errors: errs, fix: !!g.seq[g.i].fix, mode: 'write' }]).slice(-3000);
@@ -17190,7 +17286,7 @@ function gameTrial() {
   const rest = others.concat(dis).filter((w, k, a) => a.indexOf(w) === k).slice(0, 5);
   g.cur.tiles = [word].concat(rest);
   g.prevTiles = rest.slice();
-  gameLay(); gameBar();
+  gameLay(); gameBar(); gpStep('w', 900);
 }
 // the tiles in order: the right one somewhere in the first three (a different place than last time), the rest mixed
 function gameLay() {
@@ -17207,6 +17303,7 @@ function gameLay() {
     b.addEventListener('click', () => gameTap(w, b));
     row.appendChild(b);
   });
+  gpPaint();
   requestAnimationFrame(() => row.querySelectorAll('.gm-tile').forEach(b => {
     const fits = () => { const r = document.createRange(); r.selectNodeContents(b); return r.getBoundingClientRect().width <= b.clientWidth - 60; };
     if (fits()) return; const hs = hyphenSplit(b.textContent); if (hs) { b.textContent = hs[0] + '-\n' + hs[1]; b.style.whiteSpace = 'pre-line'; b.style.lineHeight = '1.1'; }
@@ -17262,7 +17359,7 @@ function gameLetterNext() {
   const ch = c.word[c.k], lvl = groupOpt(gameGroup(), 'picLevel', state.picLevel || 'easy') === 'hard' ? 'hard' : 'easy';
   const others = gameLetterChoices(ch, lvl, new Set(c.prevLetters || []));
   c.prevLetters = others.slice(); c.letter = ch; c.tiles = [ch].concat(others);
-  gameLetterLay();
+  gameLetterLay(); gpStep(c.k, 600);
 }
 function gameLetterLay() {
   const g = game, c = g.cur, row = document.getElementById('gmRow');
@@ -17276,13 +17373,16 @@ function gameLetterLay() {
     b.addEventListener('click', () => gameLetterTap(x, b));
     row.appendChild(b);
   });
+  gpPaint();
 }
 function gameLetterTap(x, b) {
   const g = game; if (!g || g.busy) return; const c = g.cur;
   if (x === c.letter) {
     g.busy = true; b.classList.add('gm-right'); buzz(15);
     if (c.prompted) c.anyPrompt = true;
-    c.lets.push(x.toUpperCase() + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
+    let gr = c.prompted ? 'y' : c.tries ? 'b' : 'g';
+    if (gpOn()) { const q = gpRight(); gr = q === 'y' ? 'y' : (q === 'b' || c.tries) ? 'b' : 'g'; if (gr === 'y') c.anyPrompt = true; if (gr === 'b') c.gpB = true; }
+    c.lets.push(x.toUpperCase() + gr);
     const slot = document.querySelector('#gmSlots .gm-slot[data-k="' + c.k + '"]');
     if (slot) { slot.textContent = x; slot.classList.add('filled'); slot.classList.remove('next'); }
     { const p = soundPartAt(String(c.word).toUpperCase(), c.k); if (p) try { soundSay(p.id, p.sp); } catch (e) {} }      // (the letter's sound in this word - said where its sound starts: the c of "ck" says /k/, the k after it nothing)
@@ -17293,12 +17393,13 @@ function gameLetterTap(x, b) {
   const v = document.getElementById('gameView'); v.classList.remove('gm-shake'); void v.offsetWidth; v.classList.add('gm-shake');
   b.classList.add('gm-wrong');
   const msg = document.getElementById('gmMsg'); msg.textContent = 'Try again'; msg.classList.remove('show'); void msg.offsetWidth; msg.classList.add('show');
-  if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true)) c.prompted = true;
+  if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true) && !gpOn()) c.prompted = true;
+  gpWrong();
   g.busy = true; setTimeout(() => { g.busy = false; if (game === g) gameLetterLay(); }, 650);
 }
 function gameTilesDone() {
   const g = game, c = g.cur; g.busy = true;
-  const res = c.anyPrompt ? 'prompted' : c.wrongs ? 'second' : 'first';
+  const res = c.anyPrompt ? 'prompted' : (c.wrongs || c.gpB) ? 'second' : 'first'; gpTrialDone(c.tile, c.wrongs > 0);
   g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
   const slots = document.getElementById('gmSlots'); slots.classList.add('gm-word-done');
   buzz([20, 80, 40]); gameStars(slots);
@@ -18072,7 +18173,7 @@ function gameSnd1Trial() {
   const row = document.getElementById('gmRow'); row.innerHTML = ''; soundKbBuild(row);
   if (g.mode === 'hear') setTimeout(() => { if (game === g && g.cur && g.cur.word === key) play(); }, 250);
   soundIdleArm();
-  gameBar();
+  gameBar(); gpStep(0, g.mode === 'hear' ? null : 700);      // (Sound Match plays its sound to start with)
 }
 // which tap counts: Hear - any spelling of the sound (unless the group asks for this spelling); Match - the same spelling
 function snd1Ok(id, sp, want) {
@@ -18082,7 +18183,7 @@ function snd1Ok(id, sp, want) {
 }
 function gameSnd1Done(sp) {
   const g = game, c = g.cur; g.busy = true;
-  const res = c.anyPrompt ? 'prompted' : c.wrongs ? 'second' : 'first';
+  const res = c.anyPrompt ? 'prompted' : (c.wrongs || c.gpB) ? 'second' : 'first'; gpTrialDone(c.tile, c.wrongs > 0);
   g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
   state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: g.mode }]).slice(-3000);
   if (c.wrongs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
@@ -18117,7 +18218,7 @@ function soundKbPaint() {
   const g = game, c = g && g.cur, want = c && c.parts ? c.parts[c.k] : null;
   // the pulse (after misses): the key with the spelling - or, while its key is shut, the key that opens it
   let pulseKey = null;
-  if (c && c.prompted && want) { const home = soundHome(want);
+  if (c && (c.prompted || (gpOn() && c.lv > 0)) && want) { const home = soundHome(want);
     if (soundOpen === home) { const own = soundOpts(home)[0]; pulseKey = own && soundTileOk(own, want) ? home : (Object.keys(soundSwap).find(k => soundTileOk(soundSwap[k], want)) || home); }
     else pulseKey = home; }
   document.querySelectorAll('.sk[data-l]').forEach(el => {
@@ -18131,7 +18232,7 @@ function soundKbPaint() {
       el.disabled = !opts.length; el.innerHTML = '';
       if (soundOpen === l && opts[0]) { el.classList.add('opt'); { const vg = soundVowelGroup(opts[0].id); if (vg) el.classList.add(vg); } el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(opts[0].sp); el.lastChild.textContent = opts[0].ex; soundTint(el, opts[0].id); }
       else { el.appendChild(document.createTextNode(l)); if (n > 0 && !soundOpen) { const t = document.createElement('i'); t.textContent = '+' + n; el.appendChild(t); } } }
-    if (l === pulseKey) el.classList.add('gm-pulse');
+    if (l === pulseKey) el.classList.add(gpOn() ? 'gp-' + Math.min(3, c.lv) : 'gm-pulse');
   });
   try { soundKbPromptPaint(); } catch (e) {}
   // a tall spelling reaches down over the key below it
@@ -18224,13 +18325,14 @@ function gameSoundTrial() {
   const row = document.getElementById('gmRow'); row.innerHTML = ''; soundKbBuild(row);
   try { warmSpeech(); sayAnyway = true; speakWord(tile, 0.9); } catch (e) {} finally { sayAnyway = false; }
   soundIdleArm();
-  gameBar();
+  gameBar(); gpStep(0, 2200);
 }
 // nothing tapped for 5 s: the key with the sound pulses (a prompt) and the sound is said again - again every 5 s
 let soundIdleTimer = null;
 function soundIdleArm() {
   clearTimeout(soundIdleTimer);
   const g = game; if (!g || !g.cur || !['sound', 'hear'].includes(g.mode)) return;
+  if (gpOn()) return;      // (easy / hard: the prompt steps keep their own time)
   const k = g.cur.k, word = g.cur.word;
   soundIdleTimer = setTimeout(() => {
     if (game !== g || !g.cur || g.cur.word !== word || g.cur.k !== k) return;
@@ -18249,11 +18351,14 @@ function soundEnter(id, sp) {
   if (ok) soundSay(id, sp);      // (a wrong key is not said: the right one is shown and said instead, below)
   if (ok) {
     if (c.prompted) c.anyPrompt = true;
-    c.lets.push(want.sp + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
+    let gr = c.prompted ? 'y' : c.tries ? 'b' : 'g';
+    if (gpOn()) { const q = gpRight(); gr = q === 'y' ? 'y' : (q === 'b' || c.tries) ? 'b' : 'g'; if (gr === 'y') c.anyPrompt = true; if (gr === 'b') c.gpB = true; }
+    c.lets.push(want.sp + gr);
     const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (cell) { cell.textContent = soundSpShow(game.mode === 'hear' ? sp : want.sp); cell.classList.add('filled'); cell.classList.remove('next'); }
     c.k++; c.tries = 0; c.prompted = false; buzz(15); soundIdleArm();
     const nx = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (nx) nx.classList.add('next');
     soundWordMark(c.k);
+    if (c.k < c.parts.length) gpStep(c.k, 1400, true);
     soundKbPaint();
     if (c.k >= c.parts.length) { if (game.mode === 'hear' || game.mode === 'match') gameSnd1Done(sp); else gameSoundDone(); }
     return;
@@ -18266,7 +18371,8 @@ function soundEnter(id, sp) {
     g.busy = true; soundCloseAll(); setTimeout(() => { try { soundSay(want.alt[0] || want.id, want.sp); } catch (e) {} }, 350);
     setTimeout(() => { if (game !== g) return; if (cell && !cell.classList.contains('filled')) { cell.textContent = ''; cell.classList.remove('reveal'); } g.busy = false; soundKbPaint(); soundIdleArm(); }, 3000); }
   const msg = document.getElementById('gmMsg'); msg.textContent = ''; msg.classList.remove('show');      // (no message over the word: the box shows the right spelling instead)
-  if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true)) c.prompted = true;
+  if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true) && !gpOn()) c.prompted = true;
+  gpWrong(3000);
   soundKbPaint();
 }
 // the word done: the sounds said one by one, each cell lit in turn (slow blend), then the whole word (fast blend)
@@ -18275,7 +18381,7 @@ function soundIsVowel(id) { const k = SOUND_K[id]; if (!k) return /^[aeiou]/.tes
 function soundWordMark(k) { document.querySelectorAll('#gmWord span').forEach(sp => { const pk = sp.dataset.k == null ? -1 : Number(sp.dataset.k); sp.classList.toggle('now', pk === k); sp.classList.toggle('done', pk >= 0 && pk < k); }); }
 function gameSoundDone() {
   const g = game, c = g.cur; g.busy = true;
-  const res = c.anyPrompt ? 'prompted' : c.wrongs ? 'second' : 'first';
+  const res = c.anyPrompt ? 'prompted' : (c.wrongs || c.gpB) ? 'second' : 'first'; gpTrialDone(c.tile, c.wrongs > 0);
   g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
   state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: 'sound' }]).slice(-3000);
   if (c.wrongs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
@@ -18297,7 +18403,8 @@ function gameTap(w, b) {
   const g = game; if (!g || g.busy) return; const c = g.cur;
   if (w === c.word) {
     g.busy = true;
-    const res = c.prompted ? 'prompted' : c.tries === 0 ? 'first' : 'second';
+    let res = c.prompted ? 'prompted' : c.tries === 0 ? 'first' : 'second';
+    if (gpOn()) { const gr = gpRight(); res = gr === 'y' ? 'prompted' : (gr === 'b' || c.tries) ? 'second' : 'first'; gpTrialDone(c.tile, c.tries > 0); }
     g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
     b.classList.add('gm-right'); buzz([20, 80, 40]);
     try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.95); } catch (e) {} finally { sayAnyway = false; }
@@ -18314,7 +18421,8 @@ function gameTap(w, b) {
   const v = document.getElementById('gameView'); v.classList.remove('gm-shake'); void v.offsetWidth; v.classList.add('gm-shake');
   b.classList.add('gm-wrong');
   const msg = document.getElementById('gmMsg'); msg.textContent = 'Try again'; msg.classList.remove('show'); void msg.offsetWidth; msg.classList.add('show');
-  if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true)) c.prompted = true;
+  if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true) && !gpOn()) c.prompted = true;
+  gpWrong();
   g.busy = true; setTimeout(() => { g.busy = false; gameLay(); }, 650);
 }
 function picTile(im) {
