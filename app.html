@@ -1008,6 +1008,7 @@
   .rb-word { position: relative; }
   .rb-line { position: absolute; left: 0.22em; bottom: -0.28em; height: 0.11em; width: 0; max-width: calc(100% - 0.44em); border-radius: 99px; background: #2f7df6; }
   .rb-line.slow { background: #f0a020; }
+  .rb-line.fast { background: #8a63d2; }
   /* spelling practice: one bar. The target word is the typing bar - each letter typed turns green in
      place and the next one takes the highlight - so the separate typing bar steps aside and this one is larger */
   .view-keyboard:has(#targetBanner.active) #display { display: none; }
@@ -3235,7 +3236,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 579 - 14 Oct';
+const BUILD = 'build 580 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6315,7 +6316,7 @@ function soundKbPromptPaint() {
   if (pOn('promptSizeOn') && fl < 5) el.classList.add('prompt-size', 'boost-' + state.promptSize);
 }
 let soundPromptLast = 0;
-function soundPromptSay() { if (!soundPracticeNow() || isWordComplete()) return; if (Date.now() - soundPromptLast < 900) return; const p = soundPartAt(state.currentTarget, state.targetIndex); if (p) { soundPromptLast = Date.now(); soundSay(p.id, p.sp); } }
+function soundPromptSay() { if (!soundPracticeNow() || isWordComplete() || document.getElementById('readBack')) return;      /* (not over the read-back) */ if (Date.now() - soundPromptLast < 900) return; const p = soundPartAt(state.currentTarget, state.targetIndex); if (p) { soundPromptLast = Date.now(); soundSay(p.id, p.sp); } }
 function armPrompt(force) {
   clearPromptTimer();
   if (soundPracticeNow()) { const fresh = state.targetIndex === 0 && !(state.text || '');      // (after the word is said: about its length, then 2 s - after a spelling's sound: 2 s)
@@ -7113,17 +7114,19 @@ function readBack(words, target, force) {
   f.addEventListener('click', done);
   document.body.appendChild(f);
   let i = 0;
-  const seq = words.map((w, k) => [w, k, 0.95]); if (slowFirst) seq.unshift(...words.map((w, k) => [w, k, 0.45]));
-  const step = () => {
+  // spelled with the sound keyboard: each word is put together from its sounds slowly, then quickly, then said as usual
+  const seq = words.map((w, k) => [w, k, 'say']); if (slowFirst) seq.unshift(...words.map((w, k) => [w, k, 'slow']), ...words.map((w, k) => [w, k, 'fast']));
+  const rbLine = (k, dur, cls) => { const l = chips[k] && chips[k].querySelector('.rb-line'); if (!l) return; l.classList.toggle('slow', cls === 'slow'); l.classList.toggle('fast', cls === 'fast'); l.style.transition = 'none'; l.style.width = '0'; void l.offsetWidth; l.style.transition = 'width ' + Math.round(dur * 0.9) + 'ms linear'; l.style.width = 'calc(100% - 0.44em)'; };
+  const step = async () => {
     chips.forEach((c, k) => c.classList.toggle('on', i < seq.length && k === seq[i][1]));
     if (i >= seq.length) { readBackTimer = setTimeout(done, 700); return; }
-    const [w, k, rate] = seq[i];
-    const dur = isPunct(w) ? 250 : rate < 0.6 ? 1100 + 190 * String(w).length : 520 + 75 * String(w).length;
-    // a line runs under the word as it is said: slowly (amber) for the slow saying, quickly (blue) for the usual one
-    if (slowFirst && i === words.length) chips.forEach(c => { const l = c.querySelector('.rb-line'); if (l) { l.style.transition = 'none'; l.style.width = '0'; } });
-    { const l = chips[k] && chips[k].querySelector('.rb-line'); if (l && !isPunct(w)) { l.classList.toggle('slow', rate < 0.6); l.style.transition = 'none'; l.style.width = '0'; void l.offsetWidth; l.style.transition = 'width ' + Math.round(dur * 0.85) + 'ms linear'; l.style.width = 'calc(100% - 0.44em)'; } }
-    if (!isPunct(w)) { sayAnyway = true; try { speakWord(w, rate); } finally { sayAnyway = false; } }
+    const [w, k, kind] = seq[i];
+    if (i > 0 && seq[i - 1][2] !== kind) chips.forEach(c => { const l = c.querySelector('.rb-line'); if (l) { l.style.transition = 'none'; l.style.width = '0'; } });      // (each pass starts its lines again)
     i++;
+    if (isPunct(w)) { readBackTimer = setTimeout(step, 250); return; }
+    if (kind !== 'say') { const parts = soundSplit(w); if (parts.length) { const ms = await soundBlend(parts, kind === 'fast'); if (ending) return; rbLine(k, ms, kind); readBackTimer = setTimeout(step, ms + 300); return; } }
+    const dur = 520 + 75 * String(w).length; rbLine(k, dur, 'say');
+    sayAnyway = true; try { speakWord(w, 0.95); } finally { sayAnyway = false; }
     readBackTimer = setTimeout(step, dur);
   };
   readBackTimer = setTimeout(step, 350);
@@ -17363,6 +17366,27 @@ function openSoundTuner() {
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); try { openSoundMedia(); } catch (e) {} }));
   });
 }
+// A word put together from its sounds' own recordings: slow blending (each sound, a gap after it) or fast blending
+// (the sounds run on into each other - the quiet at the ends of the clips overlaps). A sound with no recording is said
+// by the iPad voice in its turn. onEach(k) as each sound starts; resolves with how long it all takes (ms).
+async function soundBlend(parts, fast, onEach) {
+  const ctx = smCtx(); try { await smLoad(); } catch (e) {}
+  const bufs = await Promise.all(parts.map(p => (ctx && SM.a.has(p.id)) ? smBuffer(p.id).catch(() => null) : Promise.resolve(null)));
+  const gap = fast ? -150 : 380, t0 = ctx ? ctx.currentTime + 0.06 : 0; let ms = 60;
+  try { if (SMA.src) SMA.src.stop(); } catch (e) {}
+  parts.forEach((p, k) => {
+    const b = bufs[k], at = ms;
+    if (b && ctx && fast) {      // (fast: just the heart of each sound - the quiet before it skipped, a long sound cut short and faded - one into the next)
+      const off = Math.min(0.1, b.duration * 0.2), len = Math.max(0.12, Math.min(b.duration - off, 0.4)), src = ctx.createBufferSource(), gn = ctx.createGain();
+      src.buffer = b; src.connect(gn); gn.connect(ctx.destination); const w = t0 + at / 1000;
+      gn.gain.setValueAtTime(1, w); gn.gain.setValueAtTime(1, w + len - 0.05); gn.gain.linearRampToValueAtTime(0.0001, w + len);
+      src.start(w, off, len); ms += len * 1000 - 25; }
+    else if (b && ctx) { const src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(t0 + at / 1000); ms += b.duration * 1000 + gap; }
+    else { setTimeout(() => { try { soundSay(p.id, p.sp); } catch (e) {} }, at); ms += (fast ? 380 : 520) + Math.max(0, gap); }
+    if (onEach) setTimeout(() => onEach(k), at);
+  });
+  return Math.max(300, ms - Math.min(0, gap));
+}
 function soundSay(id, sp) {
   const ownSp = sp && (state.soundSpeak || {})[id + '|' + sp];      // (a spelling given its own way of being said)
   if (ownSp) { soundSpeakNow(ownSp); return; }
@@ -17404,8 +17428,8 @@ function soundSplit(word) {
     if (last && i > 0 && w.length <= 3 && 'oe'.includes(ch) && isC(w[i - 1]) && w !== 'the') { const id = /^(do|to|who)$/.test(w) ? 'oo' : ch === 'o' ? 'oa' : 'ee'; add(id, [id], [i]); i++; continue; }      // go, no, me, she - do, to
     if (ch === 'e' && last && i > 0) { if (out.length) out[out.length - 1].at.push(i); i++; continue; }                             // a silent final e
     if (ch === 'y' && last && i > 0) { add(i <= 2 ? 'igh' : 'ee', i <= 2 ? ['igh'] : ['ee'], [i]); i++; continue; }      // my - happy
-    if (ch === 'c' && 'eiy'.includes(w[i + 1] || '')) { add('s', ['s'], [i]); i++; continue; }      // a soft c (city)
-    if (ch === 'g' && 'eiy'.includes(w[i + 1] || '') && !/^(get|giv|girl|gift|gig|gees|gear|gild|gill|forg|toget|begi|tiger|finger|hung|angr|together)/.test(w)) { add('j', ['j'], [i]); i++; continue; }      // a soft g (gem, giraffe)
+    if (ch === 'c' && 'eiy'.includes(w[i + 1] || '#')) { add('s', ['s'], [i]); i++; continue; }      // a soft c (city)
+    if (ch === 'g' && 'eiy'.includes(w[i + 1] || '#') && !/^(get|giv|girl|gift|gig|gees|gear|gild|gill|forg|toget|begi|tiger|finger|hung|angr|together)/.test(w)) { add('j', ['j'], [i]); i++; continue; }      // a soft g (gem, giraffe)
     add(ch, undefined, [i]); i++;
   }
   return soundSpell(w, out);
@@ -17674,18 +17698,18 @@ function gameSoundDone() {
   state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: 'sound' }]).slice(-3000);
   if (c.wrongs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
   save(); gameBar();
-  const cells = [...document.querySelectorAll('#gmCells .snd-cell')]; let k = 0;
-  const step = () => {
-    cells.forEach(x => x.classList.remove('lit'));
-    if (game !== g) return;
-    if (k < cells.length) { cells[k].classList.add('lit'); soundWordMark(k); soundSay(c.parts[k].id, c.parts[k].sp); k++; setTimeout(step, 700); return; }
-    soundWordMark(-1);
-    document.getElementById('gmCells').classList.add('gm-word-done');
-    try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; }
-    buzz([20, 80, 40]); gameStars(document.getElementById('gmCells'));
-    setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 1600);
-  };
-  setTimeout(step, 350);
+  const cells = [...document.querySelectorAll('#gmCells .snd-cell')];
+  // slow blending (each box lit as its sound plays), fast blending (all lit, the sounds run together), then the word
+  const lit = k => { cells.forEach((x, j) => x.classList.toggle('lit', j === k)); soundWordMark(k); };
+  setTimeout(async () => { if (game !== g) return;
+    const slow = await soundBlend(c.parts, false, k => { if (game === g) lit(k); });
+    setTimeout(async () => { if (game !== g) return; lit(-1); soundWordMark(-1); cells.forEach(x => x.classList.add('lit'));
+      const fast = await soundBlend(c.parts, true);
+      setTimeout(() => { if (game !== g) return; cells.forEach(x => x.classList.remove('lit'));
+        document.getElementById('gmCells').classList.add('gm-word-done');
+        try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; }
+        buzz([20, 80, 40]); gameStars(document.getElementById('gmCells'));
+        setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 1600); }, fast + 400); }, slow + 250); }, 350);
 }
 function gameBuzz() { if (state.soundOn === false) return; try { const A = window.AudioContext || window.webkitAudioContext; const ac = gameBuzz.ac = gameBuzz.ac || new A(); const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'square'; o.frequency.value = 140; gn.gain.value = 0.08; o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.28); } catch (e) {} }
 function gameTap(w, b) {
