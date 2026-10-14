@@ -3380,7 +3380,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 611 - 14 Oct';
+const BUILD = 'build 612 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9400,7 +9400,9 @@ function suggRender0() {
         // a word from an open folder: the folder stays open; a word from one of its groups (a song from Moana) has the group's name noted in grey after it
         if (m.cat && suggFolder && suggFolder.id === m.cat.id) { const k2 = homePhrase.join(' '); suggFolder.key = k2; suggStack.forEach(x => { x.key = k2; });
           const w0 = added[added.length - 1], gg = !m.hint && (m.cat.groups || []).find(x => (x.words || []).includes(w0));
-          if (gg && state.folderNotes !== false) withGroupNote = { word: w0, w: normaliseWord(gg.name) }; }
+          // (before the song, to build the sentence: "play music from moana where you are" - from, for music, films, shows and books)
+          if (gg && state.folderNotes !== false) { const media = /^(music|songs?|movies?|films?|tv|shows?|videos?|youtube|books?|stories)$/i.test(String(m.cat.name || '').trim());
+            withGroupNote = { word: w0, w: (media ? 'FROM ' : '') + normaliseWord(gg.name), before: true, noChip: media }; } }
         magicAccepted = homePhrase.join(' '); magicTarget = null;
         warmSpeech(); speakWord(added.join(' '), 0.95); buzz(10); save();
         magicPickAt = Date.now();
@@ -9919,7 +9921,7 @@ function folderPhraseChip(box) {
 function barNoteTake(n) {
   const k = barNotes.indexOf(n); if (k < 0) return;
   const at = Math.min(n.at, homePhrase.length);
-  homePhrase.splice(at, 0, n.w); notesTaken.add(n.w); if (n.after) notesAfter.add(n.w);
+  homePhrase.splice(at, 0, n.w); if (!n.noChip) notesTaken.add(n.w); if (n.after) notesAfter.add(n.w);
   barNotes.splice(k, 1); barNotes.slice(k).forEach(x => { if (x.at >= at) x.at++; });      // (the noted folders after it move along with the words)
   try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (e) {}
   buzz(10); try { magicKnow(n.w); } catch (e) {}
@@ -9947,7 +9949,7 @@ function renderPhraseBar0() {
   box.innerHTML = '';
   // a whole sentence: more than one word, and nothing the magic phrase would still add to it
   const whole = homePhrase.length >= 2;      // two words or more: it starts with a capital
-  if (withGroupNote) { const wg = withGroupNote; withGroupNote = null; const L = homePhrase.length; if (L && homePhrase[L - 1] === wg.word && !barNotes.some(n => n.at === L && n.w === wg.w)) barNotes.push({ at: L, w: wg.w, after: true }); }
+  if (withGroupNote) { const wg = withGroupNote; withGroupNote = null; const L = homePhrase.length, at = wg.before ? L - 1 : L; if (L && homePhrase[L - 1] === wg.word && !barNotes.some(n => n.at === at && n.w === wg.w)) barNotes.push(wg.before ? { at, w: wg.w, noChip: !!wg.noChip } : { at, w: wg.w, after: true }); }
   barNotes = barNotes.filter(n => n.at <= homePhrase.length && !(homePhrase[n.at] === n.w || homePhrase[n.at - 1] === n.w));
   const noteChips = at => barNotes.forEach(n => { if (n.at !== at) return; const c = document.createElement('button'); c.className = 'pb-chip pb-note'; c.textContent = plainLabel(n.w); c.setAttribute('aria-label', 'Add ' + plainLabel(n.w) + ' to the message');
     c.addEventListener('click', e => { e.stopPropagation(); barNoteTake(n); }); box.appendChild(c); });
