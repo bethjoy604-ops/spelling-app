@@ -1427,8 +1427,12 @@
   @keyframes gmStar { from { transform: translate(-50%, -50%) scale(0.4); opacity: 1; } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); opacity: 0; } }
   .gm-slots { display: none; }
   .game-view.gm-tiles .gm-slots { display: flex; flex: 0 0 auto; align-self: stretch; box-sizing: border-box; justify-content: center; align-items: flex-end; gap: calc(var(--slot, 70px) * 0.16); padding: 18px 10px 6px; }
-  .game-view.gm-tiles .gm-pic { flex-direction: column; padding: 20px 24px 22px; }
-  .game-view.gm-tiles .gm-pic img { flex: 1 1 0; min-height: 0; width: 100%; height: auto; }
+  .game-view.gm-tiles .gm-pic { flex-direction: column; padding: 0; position: relative; overflow: hidden; }      /* the picture fills the card; the letter boxes sit over it, along the bottom */
+  .game-view.gm-tiles .gm-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 26px; }
+  .game-view.gm-tiles .gm-slots { position: absolute; left: 0; right: 0; bottom: clamp(14px, 2.5vh, 28px); z-index: 2; padding: 0 10px; }
+  .game-view.gm-tiles .gm-slot { background: rgba(255,255,255,0.94); box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+  .game-view.gm-tiles .gm-slot.next { box-shadow: inset 0 0 0 3px #2f8bff, 0 6px 18px rgba(0,0,0,0.25); }
+  .game-view.gm-tiles .gm-slot.filled { background: #e6f7e9; }
   .gm-slot { width: var(--slot, 70px); height: calc(var(--slot, 70px) * 1.2); border-radius: 12px 12px 4px 4px; background: #eef0f3; border-bottom: 6px solid #8a8f98; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: calc(var(--slot, 70px) * 0.78); line-height: 1; color: var(--ink); }
   .gm-slot.next { box-shadow: inset 0 0 0 3px #2f8bff; }
   .gm-slot.filled { background: #e6f7e9; border-bottom-color: var(--green); animation: gmPop 0.35s ease; }
@@ -1452,35 +1456,38 @@
   .snd-word { font-family: inherit; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1.15; color: var(--ink); letter-spacing: 0.02em; margin-bottom: clamp(16px, 3vh, 36px); }
   .snd-word span { border-radius: 10px; padding: 0 0.02em; transition: background 0.2s; }
   .snd-word span.now { background: #ffe45c; box-shadow: 0 0 0 4px #ffe45c; }
-  .snd-word span.now.v { background: #f8c3b3; box-shadow: 0 0 0 4px #f8c3b3; color: #5c1f10; }      /* the same colours as the keys (the Orton-Gillingham cards): vowel sounds salmon, consonant sounds white */
+  .snd-word span.now.v { background: #fff; box-shadow: 0 0 0 4px #e0457b; color: #c2185b; }      /* the same colours as the keys (the Orton-Gillingham cards): vowel sounds salmon, consonant sounds white */
   .snd-word span.now.c { background: #ffffff; box-shadow: 0 0 0 4px #ffffff, 0 0 0 6px #cfd4dc; color: #1f2328; }
   /* no picture: the word and its boxes sit at the top and the keyboard takes the room that is left */
   .game-view.gm-sound:has(.gm-pic.no-pic) .gm-pic { flex: 0 0 auto; padding: 22px 20px 26px; }
-  .game-view.gm-sound:has(.gm-pic.no-pic) .gm-row { margin-top: 6px; }
+  .game-view.gm-sound:has(.gm-pic.no-pic) .gm-row { margin-top: 0; }
   .game-view.gm-sound:has(.gm-pic.no-pic) .snd-word { margin-bottom: clamp(10px, 2vh, 24px); }
   .game-view.gm-sound:has(.gm-pic.no-pic) .sk { height: clamp(56px, 11.5vh, 130px); }
   .snd-cells { display: flex; gap: clamp(16px, 2.6vmin, 30px); justify-content: center; flex-wrap: wrap; }
   .snd-cell { min-width: clamp(76px, 11vmin, 132px); height: clamp(76px, 11vmin, 132px); padding: 0 14px; box-sizing: border-box; border-radius: 16px; border: 3px dashed #c4c8cf; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1; color: #9aa1ab; background: #fff; }
   .snd-cell.next { border-style: solid; border-color: #2f8bff; }
   .snd-cell.filled { border: 3px solid #d7dbe1; background: #f4f5f7; color: #8e959f; }
-  .snd-cell.filled.v { background: #fde4dc; border-color: #f2b8a6; color: #8a4a3a; }      /* Orton-Gillingham colours, as on the keys: vowels salmon, consonants white */
+  .snd-cell.filled.v { background: #fff; border: 3px solid #f5b3c8; color: #c2185b; }      /* Orton-Gillingham colours, as on the keys: vowels salmon, consonants white */
   .snd-cell.filled.c { background: #ffffff; border-color: #d7dbe1; color: #6b7280; }
-  .snd-cell.lit, .snd-cell.lit.v { background: #f8c3b3; color: #5c1f10; border-color: #e07a5f; transform: scale(1.06); }
+  .snd-cell.lit, .snd-cell.lit.v { background: #fff; color: #c2185b; border: 4px solid #e0457b; transform: scale(1.06); }
   .snd-cell.lit.c { background: #ffffff; color: var(--ink); border-color: #1f2328; transform: scale(1.06); }
   .snd-cells.gm-word-done .snd-cell { background: #e6f7e9; border-color: var(--green); color: #4f9a5d; }
-  .game-view.gm-sound .gm-row { flex: 0 0 auto; display: block; overflow: visible; margin: 0; padding: 10px 6px 14px; }
+  .game-view.gm-sound .gm-row { flex: 0 0 auto; display: block; overflow: visible; margin: 0; padding: clamp(26px, 5vh, 56px) 6px clamp(8px, 2vh, 20px); }      /* (more room between the word and the keys; the keys lower down) */
   .sound-kb { display: flex; flex-direction: column; gap: 8px; }
   .sk-row { display: flex; gap: 6px; box-sizing: border-box; }
   .sk { flex: 0 0 calc((100% - 54px) / 10); height: clamp(58px, 8.5vh, 92px); border: 2px solid transparent; border-radius: 12px; position: relative; font-family: inherit; font-weight: 800; font-size: clamp(26px, 4.4vmin, 44px); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; padding: 0; }
-  .sk.v { background: #f8c3b3; color: #5c1f10; }      /* Orton-Gillingham colours: vowels salmon, consonants white */
+  .sk.v, .keyboard .key.letter.sk.v { background: #fff; color: #c2185b; font-weight: 900; box-shadow: inset 0 0 0 4px #e0457b, 0 2px 4px rgba(0,0,0,0.12); }      /* vowels: white with a raspberry ring */
   .sk.c { background: #ffffff; color: #1f2328; box-shadow: inset 0 0 0 1px #d5d9e0; }
   .sk i { position: absolute; top: 4px; right: 7px; font-style: normal; font-size: 14px; font-weight: 800; opacity: 0.8; }
   .sk:disabled { background: #e6e9ef; color: #9aa3b5; }
   .sk.dim { opacity: 0.3; }
   .sk.parent { border-color: #1f5fd6; box-shadow: 0 0 0 2px #1f5fd6; }
   .sk.opt { box-shadow: 0 0 0 2px #1f5fd6; font-size: clamp(20px, 3.4vmin, 34px); }
-  .sk.opt.v { background: #fde4dc; border-color: #e07a5f; }
+  .sk.opt.v, .keyboard .key.letter.sk.opt.v { background: #fff; border-color: transparent; color: #c2185b; box-shadow: inset 0 0 0 4px #e0457b, 0 2px 4px rgba(0,0,0,0.12); }
+  .sk.opt.v.vl, .keyboard .key.letter.sk.opt.v.vl { background: linear-gradient(#e0457b 0 9px, #fff 9px); }      /* long vowel: the same ring, and the bar of a long-vowel mark along the top */
+  .sk.opt.v.vo, .keyboard .key.letter.sk.opt.v.vo { color: #9c2a52; box-shadow: inset 0 0 0 3px #f5b3c8, 0 2px 4px rgba(0,0,0,0.12); }      /* other vowel sounds (with r, ow, oi, aw, oo): a lighter ring */
   .sk.opt.c { background: #ffffff; border-color: #8a94a3; }
+  .sk.tall { z-index: 3; }
   .sk.opt em { font-style: normal; font-weight: 600; font-size: clamp(10px, 1.6vmin, 15px); opacity: 0.85; }
   .snd1-card { display: flex; align-items: center; justify-content: center; width: min(62vmin, 520px); height: clamp(100px, 20vh, 260px); border-radius: 26px; background: #f4f5f8; cursor: pointer; overflow: hidden; margin-bottom: clamp(12px, 2.5vh, 28px); }
   .snd1-ear { font-size: clamp(70px, 11vh, 150px) !important; }
@@ -1502,7 +1509,7 @@
   .tune-chip.on { background: #ebfaee; border-color: var(--green); }
   .tune-chip.own { color: var(--muted); }
   .rec-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 12px; border-radius: 22px; margin: 6px 0 10px; }
-  .rec-card.v { background: #f8c3b3; color: #5c1f10; } .rec-card.c { background: #ffffff; color: #1f2328; }
+  .rec-card.v { background: #fff; color: #c2185b; box-shadow: inset 0 0 0 4px #e0457b; } .rec-card.c { background: #ffffff; color: #1f2328; }
   .rec-card b { font-size: 96px; line-height: 1; } .rec-card em { font-style: normal; font-size: 22px; font-weight: 700; } .rec-card small { font-size: 15px; opacity: 0.85; text-align: center; }
   .rec-st { text-align: center; font-size: 16px; min-height: 22px; }
   .rec-row { display: flex; gap: 10px; justify-content: center; margin: 8px 0 12px; }
@@ -1528,7 +1535,7 @@
   .key.letter.sk.opt { font-size: clamp(20px, 3.6vmin, 36px); font-weight: 800; }
   .key.letter.sk i { font-size: clamp(11px, 1.5vmin, 14px); }
   .key.letter.sk.opt, .key.letter.sk.parent { box-shadow: 0 0 0 2px #1f5fd6; }
-  .key.letter.sk.parent { border-color: #1f5fd6; } .key.letter.sk.opt.v { border-color: #e07a5f; } .key.letter.sk.opt.c { border-color: #8a94a3; }
+  .key.letter.sk.parent { border-color: #1f5fd6; } .key.letter.sk.opt.c { border-color: #8a94a3; }
   .key.letter.sk.gm-pulse { box-shadow: 0 0 0 6px #ffc93c; }
   .keyboard .key.letter.sk.prompt-color { background: var(--prompt); color: var(--prompt-ink); border-color: transparent; }
   .keyboard .key.letter.sk.prompt-color.fade-1 { background: var(--prompt-f1); }
@@ -1541,7 +1548,7 @@
   .sm-snd { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 12px; background: #f4f5f8; }
   .sm-snd .hf-btn { padding: 8px 10px; }
   .sm-lab { width: 74px; flex: 0 0 auto; border-radius: 10px; display: flex; flex-direction: column; align-items: center; padding: 4px 0; }
-  .sm-lab.v { background: #f8c3b3; color: #5c1f10; } .sm-lab.c { background: #ffffff; color: #1f2328; box-shadow: inset 0 0 0 1px #d5d9e0; }
+  .sm-lab.v { background: #fff; color: #c2185b; box-shadow: inset 0 0 0 3px #e0457b; } .sm-lab.c { background: #ffffff; color: #1f2328; box-shadow: inset 0 0 0 1px #d5d9e0; }
   .sm-lab b { font-size: 24px; line-height: 1.1; } .sm-lab em { font-style: normal; font-size: 11px; opacity: 0.85; }
   .sm-st { flex: 1 1 auto; font-size: 15px; }
   .sm-vidpop { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; }
@@ -1594,7 +1601,7 @@
   .pp-nav { flex: 0 0 72px; height: 64px; border: none; border-radius: 18px; background: #fff; font-size: 40px; font-weight: 900; box-shadow: var(--shadow); }
   .pp-nav:disabled { opacity: 0.35; }
   .pp-fit { flex: 1; justify-content: center; }
-  .snd-cell.reveal, .snd-cell.reveal.v { background: #f8c3b3; border-color: #e07a5f; color: #5c1f10; border-style: solid; animation: sndReveal 3s ease both; }
+  .snd-cell.reveal, .snd-cell.reveal.v { background: #fff; border: 4px solid #e0457b; color: #c2185b; animation: sndReveal 3s ease both; }
   .snd-cell.reveal.c { background: #ffffff; border-color: #1f2328; color: var(--ink); }
   @keyframes sndReveal { 0% { opacity: 0; transform: scale(0.9); } 8% { opacity: 1; transform: scale(1.08); } 15% { transform: none; } 85% { opacity: 1; } 100% { opacity: 0.4; } }
   .cp-empty { color: rgba(0,0,0,0.45); font-weight: 700; font-size: 15px; padding: 10px 6px; text-align: center; }
@@ -3251,7 +3258,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 594 - 14 Oct';
+const BUILD = 'build 595 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -17540,6 +17547,11 @@ function soundSpell(w, out) {
     p.sp = sp; });
   return out;
 }
+// the kind of vowel sound a spelling is: short (the letter's own sound: e in egg), long (says its name), or another vowel sound
+const SOUND_LONG = ['ai', 'ee', 'igh', 'oa', 'oo'];
+function soundVowelGroup(id) { if (!soundIsVowel(id)) return ''; return 'aeiou'.includes(id) && id.length === 1 ? 'vs' : SOUND_LONG.includes(id) ? 'vl' : 'vo'; }
+// a long vowel written with the same single letter as the short one on this key (o in go, e in me, a in baby): a tall tile
+function soundTallTile(t, key) { return !!t && t.sp === key && 'aeiou'.includes(key) && SOUND_LONG.includes(t.id); }
 function soundShown(id) { const k = SOUND_K[id]; return !!k && k.stage <= (state.soundStage || 3); }
 function soundKids(l) { return SOUND_K[l] && soundShown(l) ? (SOUND_KIDS[l] || []).filter(soundShown) : []; }
 function soundSlots(l) { const p = SOUND_POS[l]; return SOUND_LETTERS.filter(o => o !== l).map((o, i) => ({ o, i, d: Math.hypot(SOUND_POS[o].x - p.x, SOUND_POS[o].r - p.r) })).sort((a, b) => a.d - b.d || a.i - b.i).map(x => x.o); }
@@ -17681,15 +17693,21 @@ function soundKbPaint() {
   document.querySelectorAll('.sk[data-l]').forEach(el => {
     const l = el.dataset.l, alt = soundSwap[l];
     el.className = el.dataset.base || 'sk'; el.disabled = false; el.style.background = el.style.color = el.style.borderColor = '';
-    if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp); el.lastChild.textContent = alt.ex; soundTint(el, alt.id); }
+    el.style.height = el.style.marginBottom = el.style.alignSelf = el.style.visibility = '';
+    if (alt && alt.cover) { el.classList.add('opt'); el.innerHTML = ''; el.style.visibility = 'hidden'; }      // (under a tall spelling from the key above)
+    else if (alt) { el.classList.add('opt', soundIsVowel(alt.id) ? 'v' : 'c'); const vg = soundVowelGroup(alt.id); if (vg) el.classList.add(vg); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(alt.sp); el.lastChild.textContent = alt.ex; soundTint(el, alt.id); if (alt.tallOver) el.classList.add('tall'); }
     else { const opts = soundOpts(l), n = opts.length - 1; el.classList.add(SOUND_K[l].vowel ? 'v' : 'c');
       if (soundOpen === l) el.classList.add('parent'); else if (soundOpen) el.classList.add('dim');
       el.disabled = !opts.length; el.innerHTML = '';
-      if (soundOpen === l && opts[0]) { el.classList.add('opt'); el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(opts[0].sp); el.lastChild.textContent = opts[0].ex; soundTint(el, opts[0].id); }
+      if (soundOpen === l && opts[0]) { el.classList.add('opt'); { const vg = soundVowelGroup(opts[0].id); if (vg) el.classList.add(vg); } el.innerHTML = '<b></b><em></em>'; el.firstChild.textContent = soundSpShow(opts[0].sp); el.lastChild.textContent = opts[0].ex; soundTint(el, opts[0].id); }
       else { el.appendChild(document.createTextNode(l)); if (n > 0 && !soundOpen) { const t = document.createElement('i'); t.textContent = '+' + n; el.appendChild(t); } } }
     if (l === pulseKey) el.classList.add('gm-pulse');
   });
   try { soundKbPromptPaint(); } catch (e) {}
+  // a tall spelling reaches down over the key below it
+  document.querySelectorAll('.sk.tall').forEach(el => { if (!el.offsetParent) return; const below = soundSwap[el.dataset.l] && soundSwap[el.dataset.l].tallOver;
+    const b = below && [...document.querySelectorAll('.sk[data-l="' + below + '"]')].find(x => x.offsetParent && x.closest('.sound-kb, .keyboard') === el.closest('.sound-kb, .keyboard')); if (!b) return;
+    const r = el.getBoundingClientRect(), q = b.getBoundingClientRect(); el.style.alignSelf = 'flex-start'; el.style.height = Math.round(q.bottom - r.top) + 'px'; el.style.marginBottom = -Math.round(q.bottom - r.bottom) + 'px'; });
 }
 // the sounds / letters switch: a picture of sound for the sound keyboard, a keyboard for the letters (no letters on it)
 function mainSndToggle(on, side) {
@@ -17739,10 +17757,20 @@ function soundKbTap(l, put) {
   // (a message keyboard - the one from the bar at the top, or the chat's - puts the spelling's letters in itself)
   const enter = (id, sp) => put ? (() => { [...String(sp || '').replace(/-.*$/, '').toLowerCase()].forEach(ch => put(ch)); try { soundSay(id, sp); } catch (e) {} buzz(10); })() : typing ? soundTypeEnter(id, sp) : soundEnter(id, sp);
   clearTimeout(soundOpenTimer);
-  if (soundOpen) { const t = soundSwap[l] || (l === soundOpen ? soundOpts(l)[0] : null); soundOpen = null; soundSwap = {}; soundKbPaint(); if (t) enter(t.id, t.sp); return; }
+  if (soundOpen) { let t = soundSwap[l] || (l === soundOpen ? soundOpts(l)[0] : null); if (t && t.cover) t = soundSwap[t.cover]; soundOpen = null; soundSwap = {}; soundKbPaint(); if (t) enter(t.id, t.sp); return; }
   const opts = soundOpts(l); if (!opts.length) return;
   if (opts.length === 1) { enter(opts[0].id, opts[0].sp); return; }
-  const slots = soundSlots(l); soundOpen = l; soundSwap = {}; opts.slice(1).forEach((t, i) => { if (slots[i]) soundSwap[slots[i]] = t; }); buzz(8); soundKbPaint();      // (opening a key is quiet: the sound is said once a spelling goes in)
+  const slots = soundSlots(l); soundOpen = l; soundSwap = {};
+  // each spelling to the nearest free key; a long vowel spelled with the key's own letter (o in go) takes a key and the one under it
+  { const vis = k => [...document.querySelectorAll('.sk[data-l="' + k + '"]')].find(e => e.offsetParent);
+    const below = k => { const e = vis(k); if (!e) return null; const box = e.closest('.sound-kb, .keyboard'); const r = e.getBoundingClientRect(), cx = r.left + r.width / 2; let best = null, bd = 1e9;
+      box.querySelectorAll('.sk[data-l]').forEach(o => { const q = o.getBoundingClientRect(); if (q.top < r.bottom - 2 || q.top > r.bottom + r.height) return; const d = Math.abs(q.left + q.width / 2 - cx); if (d < q.width * 0.6 && d < bd) { bd = d; best = o.dataset.l; } }); return best; };
+    const used = new Set([l]);
+    opts.slice(1).forEach(t => { const tall = soundTallTile(t, l);
+      let sl = tall ? slots.find(x => !used.has(x) && below(x) && !used.has(below(x))) : null; if (!sl) sl = slots.find(x => !used.has(x)); if (!sl) return;
+      used.add(sl); soundSwap[sl] = t;
+      if (tall) { const b = below(sl); if (b && !used.has(b)) { used.add(b); soundSwap[sl] = Object.assign({}, t, { tallOver: b }); soundSwap[b] = { cover: sl }; } } }); }
+  buzz(8); soundKbPaint();      // (opening a key is quiet: the sound is said once a spelling goes in)
   soundOpenTimer = setTimeout(() => { if (soundOpen !== l) return; soundOpen = null; soundSwap = {}; soundKbPaint(); try { homeKeysIdle(); } catch (e) {} }, 10000);      // (the spellings stay open 10 s for a choice to be made, then the keyboard is back as it was)
   try { homeKeysIdle(); } catch (e) {}
 }
