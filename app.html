@@ -1649,6 +1649,9 @@
   .gp-level button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
   .gp-level-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .gp-level-row .gp-note { font-size: 15px; font-weight: 700; color: var(--muted); flex: 1; min-width: 220px; }
+  /* new suggested tiles turn over together */
+  .sugg-card.sugg-flip { animation: suggFlip 0.55s cubic-bezier(.3,.7,.3,1) both; backface-visibility: hidden; }
+  @keyframes suggFlip { 0% { transform: perspective(900px) rotateY(-90deg); opacity: 0.2; } 60% { transform: perspective(900px) rotateY(12deg); opacity: 1; } 100% { transform: perspective(900px) rotateY(0); } }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -3380,7 +3383,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 612 - 14 Oct';
+const BUILD = 'build 614 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8581,6 +8584,37 @@ function magicTwoRows() {
   if (acts.length) { r++; acts.forEach(m => out.push(Object.assign({}, m, { row: r, act: true }))); }
   return out;
 }
+// A message of main words made into a sentence by the small words it is missing, each where it goes:
+// "go play park now" -> "I want to go play at the park now"; "Dad go park" -> "Dad go to the park"; "want eat cookie" -> "I want to eat a cookie".
+//  - no one doing it, and a doing word first: I (and want to, unless want / need / like is there already)
+//  - want / need / like and then a doing word: to between them
+//  - a place: to the (after go, come, walk, run, drive) or at the (after any other doing word), unless it has one
+//  - a thing (food, a toy ...) straight after a doing word: a (some when it is more than one)
+function sentenceFill(ph) {
+  const W = (ph || []).filter(w => !isPunct(w)); if (W.length < 2) return null;
+  const SUBJ = ['I', 'WE', 'YOU', 'HE', 'SHE', 'THEY', "LET'S", 'LETS'], WANTS = ['WANT', 'NEED', 'LIKE', 'LOVE'], DET = ['THE', 'A', 'AN', 'MY', 'YOUR', 'SOME', 'MORE', 'TO', 'AT', 'IN', 'ON', 'FROM'];
+  const HELLO = ['HI', 'HELLO', 'HEY', 'PLEASE', 'YES', 'NO', 'OK'], MOVE = ['GO', 'COME', 'WALK', 'RUN', 'DRIVE', 'RIDE', 'GET'];
+  const kind = w => { try { return kindOfWord(w) || ''; } catch (e) { return ''; } }, mk = w => { try { return magicKind(w) || ''; } catch (e) { return ''; } };
+  const isVerb = w => WANTS.includes(w) || kind(w) === 'action';
+  const isPlace = w => mk(w) === 'place' || kind(w) === 'places';
+  const isThing = w => ['food', 'thing', 'drink', 'book', 'game', 'watch', 'music'].includes(mk(w)) && kind(w) !== 'action';
+  const isPerson = w => kind(w) === 'people' || mk(w) === 'person';
+  const v = W.findIndex(isVerb); if (v < 0) return null;
+  const out = []; let added = 0;
+  // who: greetings and names kept in front; nobody before the first doing word - I (want to)
+  const lead = W.slice(0, v), hasSubj = lead.some(w => SUBJ.includes(w) || isPerson(w));
+  lead.forEach(w => out.push(w));
+  if (!hasSubj && lead.every(w => HELLO.includes(w))) { out.push('I'); added++; if (!WANTS.includes(W[v]) && !W.some(w => WANTS.includes(w)) && W[v] !== 'CAN') { out.push('WANT', 'TO'); added += 2; } }
+  let lastVerb = '';
+  for (let i = v; i < W.length; i++) {
+    const w = W[i], prev = out[out.length - 1] || '';
+    if (isVerb(w) && WANTS.includes(prev) && !WANTS.includes(w)) { out.push('TO'); added++; }
+    else if (isPlace(w) && !DET.includes(prev) && lastVerb) { out.push(MOVE.includes(lastVerb) && MOVE.includes(prev) ? 'TO' : 'AT', 'THE'); added += 2; }
+    else if (isThing(w) && !DET.includes(prev) && isVerb(prev) && !WANTS.includes(prev)) { out.push(/[^S]S$/.test(w) ? 'SOME' : /^[AEIOU]/.test(w) ? 'AN' : 'A'); added++; }
+    out.push(w); if (isVerb(w) && !WANTS.includes(w)) lastVerb = w;
+  }
+  return added ? out : null;
+}
 function magicPhraseFull() {
   if (!homePhrase.length) { magicTarget = null; magicTargetExt = false; return null; }
   if (magicTarget && !magicMatch(magicTarget, homePhrase)) magicTargetExt = false;
@@ -8591,7 +8625,8 @@ function magicPhraseFull() {
     const main = homePhrase.filter((w, i) => !['TO', 'THE', 'A', 'AN'].includes(w) && !(w === 'I' && i > 0));
     magicTargetExt = false;
     magicTarget = magicExpand(homePhrase) || (homePhrase.length === 2 ? magicExpand(homePhrase.slice().reverse()) : null)
-      || (main.length < homePhrase.length ? magicExpand(main) : null);
+      || (main.length < homePhrase.length ? magicExpand(main) : null)
+      || sentenceFill(homePhrase);      // (a longer message - go play park now: the small words it still needs, each in its place)
     used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
   }
   if (!magicTarget || !used || homePhrase.join(' ') === magicTarget.join(' ')) {
@@ -9086,7 +9121,15 @@ function nextStep() {
   else { doing(); tail(); }
   return out;
 }
-function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} } }
+function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} try { suggFlip(); } catch (e) {} } }
+// new suggested tiles (after a tile is picked, or a folder opened): they turn over together, a cue that the grid has changed
+let suggFlipSig = null;
+function suggFlip() {
+  const cards = [...document.querySelectorAll('#suggHost .sugg-card')], sig = cards.map(c => c.textContent).join('|');
+  const was = suggFlipSig; suggFlipSig = sig;
+  if (was === null || !sig || sig === was || state.tileFlip === false) return;
+  cards.forEach(c => { c.classList.remove('sugg-flip'); void c.offsetWidth; c.classList.add('sugg-flip'); setTimeout(() => c.classList.remove('sugg-flip'), 650); });
+}
 const bandLike = { h: 0, fs: 0 };
 function suggRender0() {
   const grid = document.getElementById('homeGrid'), host = document.getElementById('suggHost');
@@ -11554,7 +11597,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const mp = magicPhraseFull();
     // (the words a sentence is still missing - I, want, to, the - never the guessed-at next thing of a
     //  sentence that is already whole: "I want to attach" does not offer "the park")
-    const core = ['I', 'TO', 'THE', 'A', 'AN', 'WANT', 'FEEL', 'AM', 'IS', 'ARE'];
+    const core = ['I', 'TO', 'THE', 'A', 'AN', 'AT', 'SOME', 'WANT', 'FEEL', 'AM', 'IS', 'ARE'];
     const need = mp && !mp.ext ? mp.phrase.filter((w, i) => !mp.used.includes(i) && (core.includes(w) || isSmallWord(w))) : [];
     // only the ones that really fit: what the sentence still needs, and what belongs after the last
     // word. No padding out to six - the blue is as short as the words that make sense. (A word with
@@ -11574,8 +11617,8 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const ctx = magicAsking() && MAGIC_SUBJ.includes(last) ? ['HELP', 'GET', 'FIND', 'COME', 'GO', 'OPEN']
       : MAGIC_ASK.includes(last) ? ['YOU', 'I', 'WE', 'HELP', 'GO', 'GET']
       : greeted ? ['I', 'CAN', 'YOU', 'WE', 'PLEASE'] : null;
-    const smAll = allSmallWords(), okS = w => smAll.includes(w);      // the blue row only ever holds small words; doing words and things are large tiles
-    (ctx || leads.concat(need.slice(0, leads.length ? 2 : 3), followSpecific(last), kindNext)).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w] && okS(w)) six.push(w); });
+    const smAll = allSmallWords(), okS = w => smAll.includes(w) || need.includes(w);      // (and the words the sentence is missing - want, at - even when they are not in the small words library)      // the blue row only ever holds small words; doing words and things are large tiles
+    (ctx || leads.concat(need.slice(0, leads.length ? 2 : 6), followSpecific(last), kindNext)).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w] && okS(w)) six.push(w); });
     [].forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     if (!six.length) followWords(last, []).forEach(w => { if (okS(w) && !isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     // never an empty row: failing all that, the page's own small words and then the most used ones
@@ -15459,6 +15502,24 @@ function seqOfferNow() {
   if (dropped) { arrMoved = dropped; moved = true; }
   seqOffer = moved && arrMoved.join(' ') !== was.join(' ') ? { from: was.join(' '), to: arrMoved } : keep;
 }
+// The small words row comes up by itself when the message has the shape of a sentence (a doing word and what it is about:
+// go play park now) and is missing only small words: the row leads with them, and each tapped goes where it belongs.
+function fillNearlyDone() {
+  if (state.smallRowsOn === false || state.builderMode || homePhrase.length < 2) return false;
+  if (state.magicType && !smallBandWanted()) return false;      // (the small words row switched off under Magic mode: it stays off)
+  const mp = magicPhraseFull(); if (!mp || mp.ext) return false;
+  const content = homePhrase.filter(w => !isPunct(w) && !isSmallWord(w));
+  const kind = w => { try { return kindOfWord(w) || ''; } catch (e) { return ''; } };
+  const verb = content.some(w => kind(w) === 'action'), other = content.some(w => kind(w) !== 'action');
+  const missing = mp.phrase.filter((w, i) => !mp.used.includes(i));
+  return verb && other && content.length >= 2 && missing.length > 0 && missing.every(w => isSmallWord(w) || ['I', 'TO', 'THE', 'A', 'AN', 'AT', 'WANT', 'SOME'].includes(w));
+}
+function fillRowCheck() {
+  if (!fillNearlyDone()) return;
+  if (stripKey !== null || smallFullHook) { setBlue(true); return; }
+  popRowUntil = Infinity; popRowShut = false; stripFull = null; smallHostRedo = popRowDraw; popRowPaint = popRowDraw; popRowDraw();
+  try { gridSync(); } catch (e) {}
+}
 function smallRowPop() {
   const viaMagic = Date.now() - magicPickAt < 500;
   seqOfferNow();      // (a doing word picked from the magic rows after a thing is offered in order too: "mandarin" + eat -> eat mandarin)
@@ -15473,6 +15534,7 @@ function smallRowPop() {
   if (!navd) { bandOpen.fold = true; bandOpen.cat = true; bandOpen.things = true; }
   suggShut = navd; suggRender();      // a green tile chosen: the row fills again with what goes next, and stays open
   setBlue(false);      // the small words open only by their blue bar
+  try { fillRowCheck(); } catch (e) {}      // (but a sentence nearly there - go play park now - brings them up, with the words it is missing)
   // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
   // other opens (a cue to look there too); then that folds as well - both bars shut says "ready to enter".
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
