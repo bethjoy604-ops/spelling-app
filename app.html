@@ -3477,7 +3477,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 633 - 14 Oct';
+const BUILD = 'build 634 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -14129,7 +14129,9 @@ function openTargetGroupMenu(cat, group) {
     body.appendChild(sheetBtn('Rename', '', () => askText('Rename group', 'Save', group.name, typed => {
       const name = String(typed || '').replace(/\s+/g, ' ').trim(); if (!name) return false; group.name = name;
     })));
-    body.appendChild(sheetBtn('Delete this group', 'danger', () => {
+    if (group.kind && group.kind !== 'ltm' || isQaGroup(group) || isTileGroup(group) || groupModeOf(group)) {      // (a game's own group: deleting it would only bring it back empty - so it stays)
+      const nn = document.createElement('div'); nn.className = 'help-note'; nn.style.margin = '10px 4px'; nn.textContent = 'This group belongs to a game, so it can\u2019t be deleted. ' + (isQaGroup(group) ? 'To delete one question, tap it (or hold it) and choose Delete this question.' : 'To take a target out, hold it.'); body.appendChild(nn);
+    } else body.appendChild(sheetBtn('Delete this group', 'danger', () => {
       if (!confirm('Remove the group "' + group.name + '"? Its targets stay on the targets page.')) return;
       cat.groups = groups.filter(g => g !== group); save(); closeWordSheet(); renderHome(true);
     }));
@@ -14609,7 +14611,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       (g.items || []).forEach(it => { const key = 'Q:' + it.id, row = makeListRow('', rowH, base); row.removeAttribute('data-word'); row.classList.add('tile-target');
         row.querySelector('.hw').textContent = (it.pic ? '\uD83D\uDDBC\uFE0F ' : '') + it.q + '  \u2192  ' + String(it.a || '').toLowerCase(); row.querySelector('.hw').style.whiteSpace = 'normal'; msPill(row, g, key);
         if ((g.off || {})[key]) row.classList.add('paused');
-        holdTap(row, () => openQaEdit(g, it, () => renderHome(true)), () => openGroupHead(cat, g)); put(mark(row, -2)); });
+        holdTap(row, () => openQaEdit(g, it, () => renderHome(true)), () => openQaEdit(g, it, () => renderHome(true))); put(mark(row, -2)); });      // (holding a question opens that question - change it or delete it - not the whole group's menu)
       const add = makeListRow('', rowH, base); add.classList.add('add-row'); add.removeAttribute('data-word'); add.querySelector('.hw').textContent = '+ question';
       add.addEventListener('click', () => openQaPick(g, () => renderHome(true))); put(mark(add, -2));
       if (qaStartersLeft(g)) { const rm = makeListRow('', rowH, base); rm.classList.add('add-row'); rm.removeAttribute('data-word'); rm.querySelector('.hw').textContent = '\u2715 remove the example questions';
@@ -16463,7 +16465,7 @@ function ensureTargets() {
   // Match the spelling is taken out for now: its group goes (kept aside, with its spellings, in case it comes back)
   { const mi = t.groups.findIndex(g => /^match the spelling$/i.test(String(g.name || '').trim())); if (mi >= 0) { t.removedGroups = (t.removedGroups || []).concat(t.groups.splice(mi, 1)); } }
   [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear], ['Questions', PRACTICE_RE.qa], ['Dictation', PRACTICE_RE.dict], ['Copy', PRACTICE_RE.copy]].forEach(([nm, re]) => {
-    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : nm === 'Questions' ? { kind: 'qa', items: QA_STARTERS.map((x, i) => Object.assign({ id: i + 1 }, x)) } : nm === 'Dictation' ? { kind: 'dict' } : nm === 'Copy' ? { kind: 'copy' } : {}));
+    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : nm === 'Questions' ? { kind: 'qa', items: [] } : nm === 'Dictation' ? { kind: 'dict' } : nm === 'Copy' ? { kind: 'copy' } : {}));
   });
   // the groups in the order of the Games menu, after Typing and Decoding; once, the groups that are for no practice now are put aside (kept, not shown)
   { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear, PRACTICE_RE.qa, PRACTICE_RE.dict, PRACTICE_RE.copy];
@@ -17473,10 +17475,18 @@ function ghPaint() {
       tile('🔁', 'Check-in', due.length + ' due · ' + ws.length + ' in ' + GH_SHORT[m], () => gameStart(ws.length * ct, m, ws), 'gh-due'); }
     const on = gamesOn(), op = gamesHome.open && on[gamesHome.open] !== false ? gamesHome.open : null;
     if (op) {      // one kind of game open: its tile first (tap it again to close), then its saved games and a new one
+      if (op === 'qa' || op === 'qatype') {      // (Answer: the questions answered by tapping a tile or by typing - their saved games, then a new one of each)
+        const ks = ['qa', 'qatype'].filter(m => on[m] !== false);
+        tile(gameIcon('qa'), 'Answer', 'Questions \u00B7 tap to close', () => { gamesHome = { layer: 'types' }; renderHome(true); }, 'gh-open');
+        ks.forEach(m => presets().some(p => p.mode === m) && ghModeTilesSaved(m, tile)); ks.forEach(m => ghModeTilesNew(m, tile)); host.appendChild(grid); return; }
       tile(gameIcon(op), GH_SHORT[op], gameName(op) + ' \u00B7 tap to close', () => { gamesHome = { layer: 'types' }; renderHome(true); }, 'gh-open');
       ghModeTiles(op, tile); host.appendChild(grid); return; }
     GAME_LIST.forEach(([m, ic, nm]) => {
       if (m === 'builder') { if (on.builder) tile(ic, GH_SHORT[m], nm, () => { gamesHome = null; gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); }); return; }
+      if (m === 'qatype' && on.qa !== false) return;      // (one Answer tile for both ways of answering)
+      if (m === 'qa' && on.qa === false && on.qatype === false) return;
+      if (m === 'qa' || m === 'qatype') { const ps = presets().filter(p => p.mode === 'qa' || p.mode === 'qatype').length, ready = practiceGroupWords('qa').length;
+        tile(gameIcon('qa'), 'Answer', 'Questions \u00B7 ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: 'types', open: on.qa !== false ? 'qa' : 'qatype' }; renderHome(true); }); return; }
       if (on[m] === false) return;
       const ps = presets().filter(p => p.mode === m).length, ready = practiceGroupWords(m).length;
       tile(ic, GH_SHORT[m], nm + ' · ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: 'types', open: m }; renderHome(true); });
@@ -17487,10 +17497,11 @@ function ghPaint() {
   if (L === 'rewards') { ttl.innerHTML = '<span>🏆 Rewards</span>'; ghRewards(host); return; }
 }
 // a kind of game opened on the games page: its saved games, then a tile for a new one, in the grid after its own tile
-function ghModeTiles(m, tile) {
+function ghModeTiles(m, tile) { ghModeTilesSaved(m, tile); ghModeTilesNew(m, tile); }
+function ghModeTilesSaved(m, tile) {
   presets().filter(p => p.mode === m).forEach(p => {
     const n = presetPlayable(p).length, done = presetMastered(p).length;
-    const t = tile('', p.name, n + ' target' + (n === 1 ? '' : 's') + ' \u00B7 ' + (p.turns || 0) + ' turns', () => presetPlay(p), 'gh-in');
+    const t = tile('', p.name, (m === 'qa' ? 'Tap a tile \u00B7 ' : m === 'qatype' ? 'Type it \u00B7 ' : '') + n + ' target' + (n === 1 ? '' : 's') + ' \u00B7 ' + (p.turns || 0) + ' turns', () => presetPlay(p), 'gh-in');
     const w0 = (p.words || []).find(w => !/\|/.test(w) && !/^Q:/.test(w) && picOn(w).length);
     const ic = t.querySelector('.gh-ic');
     if (w0) { const pic = picOn(w0)[0], d = document.createElement('span'); d.className = 'gh-pic'; d.style.backgroundImage = 'url("' + String(pic.url).replace(/"/g, '%22') + '")'; ic.replaceWith(d); }
@@ -17499,6 +17510,9 @@ function ghModeTiles(m, tile) {
     const mo = document.createElement('button'); mo.className = 'gh-more'; mo.textContent = '\u22EF'; mo.setAttribute('aria-label', 'Settings for ' + p.name);
     mo.addEventListener('click', e => { e.stopPropagation(); buzz(8); presetEdit(p); }); t.appendChild(mo);
   });
+}
+function ghModeTilesNew(m, tile) {
+  if (m === 'qa' || m === 'qatype') { tile('+', m === 'qa' ? 'Answer by tapping' : 'Answer by typing', (m === 'qa' ? 'Pick the answer from the tiles' : 'Type the answer in its boxes') + ' \u00B7 a new game', () => gameChooseCount(m), 'gh-new gh-in'); return; }
   tile('+', 'New ' + GH_SHORT[m].toLowerCase() + ' game', 'Choose targets and turns', () => gameChooseCount(m), 'gh-new gh-in');
 }
 // tokens: the total, by colour, and a jar of them - then the targets mastered in each game's group
