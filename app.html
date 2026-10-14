@@ -1595,6 +1595,7 @@
   .gh-head .gh-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gh-back, .gh-exit { border: none; font-family: inherit; font-weight: 900; border-radius: 16px; height: 52px; padding: 0 18px; font-size: 18px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); cursor: pointer; flex: 0 0 auto; }
   .gh-exit { color: #c0392b; }
+  .view-home:not(.gh-on) #ghTokRow { display: none; }
   .gh-tokbtn { display: flex; align-items: center; gap: 10px; border: none; font-family: inherit; background: #fbf7ec; border-radius: 18px; padding: 6px 16px 6px 8px; box-shadow: var(--shadow); cursor: pointer; flex: 0 0 auto; }
   .gh-tokbtn .tok { width: 40px; height: 40px; font-size: 19px; --tc: #f4b52a; }
   .gh-tokbtn b { font-size: 26px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -3343,7 +3344,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 603 - 14 Oct';
+const BUILD = 'build 604 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -16817,7 +16818,7 @@ function ghPaint() {
   const on = !!gamesHome && !state.builderMode && !game;
   v.classList.toggle('gh-on', on);
   try { const b = document.getElementById('homePicBtn'); if (b) b.classList.toggle('on', on); } catch (e) {}
-  if (!on) { host.innerHTML = ''; return; }
+  if (!on) { host.innerHTML = ''; host.dataset.sig = ''; const o = document.getElementById('ghTokRow'); if (o) o.remove(); return; }
   const sig = JSON.stringify(gamesHome) + '|' + presets().length + '|' + (state.tokens || 0) + '|' + JSON.stringify(state.gamesOn || {}) + '|' + presets().map(p => p.name + (p.words || []).length + p.turns).join(',');
   if (host.dataset.sig === sig && host.childElementCount) return;      // (nothing to change: the page is left as it is, scrolled where it was)
   host.dataset.sig = sig; host.innerHTML = '';
@@ -16828,8 +16829,9 @@ function ghPaint() {
   const ttl = document.createElement('div'); ttl.className = 'gh-title'; head.appendChild(ttl);
   const tb = document.createElement('button'); tb.className = 'gh-tokbtn'; tb.setAttribute('aria-label', 'Tokens and targets mastered'); tb.innerHTML = ghTok('y') + '<b>' + (state.tokens || 0) + '</b>';
   tb.addEventListener('click', () => { buzz(8); gamesHome = { layer: 'rewards' }; renderHome(true); });
-  if (L !== 'rewards') head.appendChild(tb);
-  const ex = document.createElement('button'); ex.className = 'gh-exit'; ex.textContent = '✕'; ex.setAttribute('aria-label', 'Leave the games'); ex.addEventListener('click', () => { buzz(8); gamesHome = null; renderHome(true); }); head.appendChild(ex);
+  // the token count sits on the left of the row of switches above, in the room the folder tabs leave (the games button leaves the games)
+  { const row = document.querySelector('#viewHome .home-row'), old = document.getElementById('ghTokRow'); if (old) old.remove();
+    if (row && L !== 'rewards') { tb.id = 'ghTokRow'; row.insertBefore(tb, row.firstChild); } }
   const grid = document.createElement('div'); grid.className = 'gh-grid';
   const tile = (ic, nm, sub, fn, cls) => { const t = document.createElement('button'); t.className = 'gh-tile' + (cls ? ' ' + cls : ''); t.innerHTML = '<span class="gh-ic"></span><span class="gh-nm"></span><span class="gh-sub"></span>';
     t.querySelector('.gh-ic').textContent = ic; t.querySelector('.gh-nm').textContent = nm; t.querySelector('.gh-sub').textContent = sub || ''; t.addEventListener('click', () => { buzz(10); fn(); }); grid.appendChild(t); return t; };
