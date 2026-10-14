@@ -543,6 +543,8 @@
   .home-card.gr-tile { flex-direction: column; gap: 2px; } .home-card.gr-tile .hw { font-weight: 800; }
   .home-card.gr-tile .gr-ex { font-size: 14px; font-weight: 700; color: var(--muted); }
   .home-card.gr-long { background: linear-gradient(#e0457b 0 12px, #fff 12px); }
+  .lk-chip { display: inline-flex; align-items: center; gap: 8px; } .lk-chip .lk-x { font-style: normal; font-size: 0.8em; opacity: 0.55; padding: 0 2px 0 6px; border-left: 1px solid rgba(0,0,0,0.15); }
+  .lk-add { border-style: dashed !important; }
   .home-card.gr-play { background: #e8f0ff; } .home-card.gr-play .hw { color: #1e4f9e; }
   .home-card.gr-say { animation: cueGlow 0.6s ease-out; }
   .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -3477,7 +3479,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 636 - 14 Oct';
+const BUILD = 'build 637 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3694,7 +3696,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, tileCue: 'fade', promptStepSec: 7, kbPromptDelay: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, links: {}, tileCue: 'fade', promptStepSec: 7, kbPromptDelay: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3872,7 +3874,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, tileCue: saved.tileCue || 'fade', promptStepSec: Number(saved.promptStepSec) || 7, kbPromptDelay: !!saved.kbPromptDelay, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, links: (saved.links && typeof saved.links === 'object') ? saved.links : {}, tileCue: saved.tileCue || 'fade', promptStepSec: Number(saved.promptStepSec) || 7, kbPromptDelay: !!saved.kbPromptDelay, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4544,7 +4546,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, tileCue: state.tileCue || 'fade', promptStepSec: state.promptStepSec || 7, kbPromptDelay: !!state.kbPromptDelay, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, links: state.links || {}, tileCue: state.tileCue || 'fade', promptStepSec: state.promptStepSec || 7, kbPromptDelay: !!state.kbPromptDelay, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -9261,6 +9263,9 @@ function tagLabel(key) { if (/^f:/.test(key)) { const c = catById(Number(key.sli
 function tagSet(t, key, on) { const T = tagList(); const m = T[t] = (T[t] || []).filter(x => x !== key); if (on) m.push(key); save(); }
 // the words and folders sharing a tag with the message: each word's own tags, and those of the folders it is in
 function tagRelated(ph) {
+  const LK = state.links || {}, linked = []; (ph || []).forEach(w => (LK[w] || []).forEach(x => { if (!linked.includes(x) && !(ph || []).includes(x)) linked.push(x); }));
+  const r = tagRelated0(ph); r.words = linked.concat(r.words.filter(w => !linked.includes(w))); return r; }      // (a tile's linked tiles first, then those sharing a tag)
+function tagRelated0(ph) {
   const T = tagList(); if (!Object.keys(T).length) return { words: [], folders: [], groups: [] };
   const own = new Set(), tags = new Set();
   (ph || []).filter(w => !isPunct(w)).forEach(w => { own.add('w:' + w); categoriesOf(w).forEach(c => { (c.groups || []).forEach(g => { if ((g.words || []).includes(w)) own.add('g:' + c.id + '/' + g.id); }); let x = c, g = 0; while (x && g++ < 6) { own.add('f:' + x.id); x = x.parent ? catById(x.parent) : null; } }); });
@@ -9271,6 +9276,74 @@ function tagRelated(ph) {
     else if (/^g:/.test(k)) { const [ci, gi] = k.slice(2).split('/'), c = catById(Number(ci)), g = c && (c.groups || []).find(x => String(x.id) === gi); if (g && !g.hidden && !groups.some(x => x.group === g)) groups.push({ folder: c, group: g }); }
     else { const c = catById(Number(k.slice(2))); if (c && !c.hidden && !folders.includes(c)) folders.push(c); } }));
   return { words, folders, groups };
+}
+// ===== Linked tiles: hold a tile > Link tiles. The tiles that go with it, by kind of word, in the numbers that help a
+// word grow into phrases: a thing or place gets action words (what you do with it / there), other things that go with
+// it and describing words; an action word gets the things it is done to or with, describing words and a couple of other
+// actions; a describing word gets things it describes and actions. With the tile in the message, its linked tiles come
+// first in the suggested tiles. Suggestions come from what has been said together, the tile's folder and use.
+const LINK_PLAN = {
+  label: [['action', 3, 'Action words', 'what you do with it, or there'], ['label', 3, 'Things and places', 'that go with it'], ['describe', 2, 'Describing words', 'what it is like']],
+  action: [['label', 4, 'Things and places', 'what it is done to, with or where'], ['describe', 2, 'Describing words', 'how'], ['action', 2, 'Other action words', 'what comes next']],
+  describe: [['label', 4, 'Things', 'that it describes'], ['action', 2, 'Action words', 'to go with it']] };
+const LINK_CORE_DESC = ['BIG', 'LITTLE', 'FUN', 'FAST', 'SLOW', 'HOT', 'COLD', 'GOOD', 'LOUD', 'QUIET', 'HAPPY', 'WET', 'DIRTY', 'CLEAN', 'NEW', 'BROKEN', 'SOFT', 'HARD', 'TALL', 'LONG'];
+const LINK_DESC_F = /^(colou?rs?|sizes?|shapes?|feelings?|describing( words)?|adjectives?|textures?|temperature)$/i;
+const LINK_SKIP_F = /^(chat|time|quantity|questions?|small words?|numbers?|letters?|uppercase|lowercase)$/i;
+function linkType(w) { let k = ''; try { k = kindOfWord(w); } catch (e) {} if (k === 'action') return 'action';
+  if (k === 'describe' || k === 'feelings' || categoriesOf(w).some(c => LINK_DESC_F.test(String(c.name).trim()))) return 'describe'; return 'label'; }
+function linkSkip(x) { return isSmallWord(x) || categoriesOf(x).some(c => LINK_SKIP_F.test(String(c.name).trim())) || /^FROM /.test(x); }
+function linksOf(w) { return ((state.links || {})[w] || []).slice(); }
+function linkBtn(w) { const n = linksOf(w).length; return sheetBtn('🔗  Link tiles' + (n ? ' (' + n + ' linked)' : ''), '', () => openLinkSheet(w)); }
+function linkPool(w) { const seen = new Set(), out = [];
+  state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(c => (c.words || []).forEach(x => { if (x === w || seen.has(x) || state.hiddenWords[x] || isPunct(x) || linkSkip(x)) return; seen.add(x); out.push(x); }));
+  return out; }
+function linkScore(w, x) { const cu = state.coUse || {}; let sc = ((cu[w] || {})[x] || 0) * 3 + ((cu[x] || {})[w] || 0) * 3;
+  const mine = new Set(categoriesOf(w).map(c => c.id)); if (categoriesOf(x).some(c => mine.has(c.id))) sc += 4;
+  try { if (tagsOf('w:' + w).some(t => tagsOf('w:' + x).includes(t))) sc += 8; } catch (e) {}
+  if (LINK_CORE_DESC.includes(x)) sc += 2.5;      // (the describing words most used early on, ahead of rarer ones)
+  sc += Math.min(3, ((state.wordHistory[x] || {}).n || 0) / 4); return sc; }
+function linkRanked(w, type, not) { return linkPool(w).filter(x => linkType(x) === type && !(not || []).includes(x) && !(type !== 'describe' && isSmallWord(x))).map(x => [x, linkScore(w, x)]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(a => a[0]); }
+function openLinkSheet(w, draft) {
+  const plan = LINK_PLAN[linkType(w)];
+  // the slots: the links made so far sorted into their kinds; with none yet, the suggestions fill them (not kept until saved)
+  let slots = draft;
+  if (!slots) { const have = linksOf(w), fresh = !have.length; slots = plan.map(([type, n]) => { const own = have.filter(x => linkType(x) === type); return own.length || !fresh ? own : []; });
+    have.filter(x => !plan.some(([t]) => t === linkType(x))).forEach(x => slots[0].push(x));
+    if (fresh) plan.forEach(([type, n], i) => { const taken = [].concat(...slots); slots[i] = linkRanked(w, type, taken).slice(0, n); }); }
+  openWordSheet(body => {
+    sheetTitle(body, 'Link tiles', plainLabel(w));
+    const n0 = document.createElement('div'); n0.className = 'help-note'; n0.style.margin = '2px 4px 10px';
+    n0.textContent = 'With "' + plainLabel(w).toLowerCase() + '" in the message, these come up first in the suggested tiles. Tap one to swap it for another, ✕ to take it off.' + (linksOf(w).length ? '' : ' These are suggestions - Save keeps them.'); body.appendChild(n0);
+    plan.forEach(([type, n, title, why], i) => {
+      const h = document.createElement('div'); h.className = 'sublabel'; h.textContent = title + ' · ' + n + ' · ' + why; body.appendChild(h);
+      const row = document.createElement('div'); row.className = 'tune-chips'; row.style.flexWrap = 'wrap'; body.appendChild(row);
+      slots[i].forEach((x, j) => { const b = document.createElement('button'); b.className = 'tune-chip on lk-chip'; b.innerHTML = '<span></span><i class="lk-x">✕</i>'; b.firstChild.textContent = plainLabel(x).toLowerCase();
+        b.addEventListener('click', e => { if (e.target.classList.contains('lk-x')) { slots[i].splice(j, 1); openLinkSheet(w, slots); return; } linkPick(w, type, title, [].concat(...slots), pick => { if (pick) slots[i][j] = pick; openLinkSheet(w, slots); }); });
+        row.appendChild(b); });
+      if (slots[i].length < n) for (let k = slots[i].length; k < n; k++) { const a = document.createElement('button'); a.className = 'tune-chip lk-add'; a.textContent = '+ add';
+        a.addEventListener('click', () => linkPick(w, type, title, [].concat(...slots), pick => { if (pick) slots[i].push(pick); openLinkSheet(w, slots); })); row.appendChild(a); }
+      else { const a = document.createElement('button'); a.className = 'tune-chip lk-add'; a.textContent = '+ one more'; a.style.opacity = '0.6';
+        a.addEventListener('click', () => linkPick(w, type, title, [].concat(...slots), pick => { if (pick) slots[i].push(pick); openLinkSheet(w, slots); })); row.appendChild(a); }
+    });
+    body.appendChild(sheetBtn('Save links', 'primary', () => { const all = [...new Set([].concat(...slots))]; state.links = state.links || {}; if (all.length) state.links[w] = all; else delete state.links[w]; save(); buzz(10); closeWordSheet(); try { renderHome(true); } catch (e) {} }));
+    body.appendChild(sheetBtn('Fill the empty places with suggestions', '', () => { plan.forEach(([type, n], i) => { const taken = [].concat(...slots); slots[i] = slots[i].concat(linkRanked(w, type, taken).slice(0, Math.max(0, n - slots[i].length))); }); openLinkSheet(w, slots); }));
+    if (linksOf(w).length) body.appendChild(sheetBtn('Take all the links off', 'danger', () => { if (!confirm('Take all the links off "' + plainLabel(w).toLowerCase() + '"?')) return; delete state.links[w]; save(); closeWordSheet(); }));
+    body.appendChild(sheetBtn('Cancel', '', () => closeWordSheet()));
+  });
+}
+// choosing a tile for a place: the best suggestions of that kind first, or find any tile
+function linkPick(w, type, title, taken, done) {
+  openWordSheet(body => {
+    sheetTitle(body, title, 'for ' + plainLabel(w).toLowerCase());
+    const f = document.createElement('input'); f.placeholder = 'Find a tile'; f.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:18px;font-weight:700;padding:10px 14px;border-radius:14px;border:2px solid #dfe2e7;margin-bottom:8px;'; body.appendChild(f);
+    const list = document.createElement('div'); list.className = 'tune-chips'; list.style.cssText = 'flex-wrap:wrap;max-height:50vh;overflow-y:auto;'; body.appendChild(list);
+    const ranked = linkRanked(w, type, taken), pool = linkPool(w).filter(x => !taken.includes(x));
+    const paint = () => { list.innerHTML = ''; const q = normaliseWord(f.value); const ws = q ? pool.filter(x => x.includes(q)).sort((a, b) => (b.startsWith(q) - a.startsWith(q)) || a.localeCompare(b)).slice(0, 60) : ranked.slice(0, 40);
+      ws.forEach(x => { const b = document.createElement('button'); b.className = 'tune-chip'; b.textContent = plainLabel(x).toLowerCase(); b.addEventListener('click', () => { buzz(8); done(x); }); list.appendChild(b); });
+      if (!ws.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'No tiles match.'; list.appendChild(n); } };
+    f.addEventListener('input', paint); paint();
+    body.appendChild(sheetBtn('Back', '', () => done(null)));
+  });
 }
 function tagBtn(key, label) { const ts = tagsOf(key); return sheetBtn('\uD83C\uDFF7\uFE0F  Tags' + (ts.length ? ': ' + ts.join(', ') : ' (to go with other tiles)'), '', () => openTagSheet(key, label)); }
 // a tile's or folder's tags: tap one to give it or take it off; a new one by name
@@ -12424,7 +12497,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'tileCue', 'gameLevel', 'promptStepSec', 'kbPromptDelay',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'links', 'tileCue', 'gameLevel', 'promptStepSec', 'kbPromptDelay',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -16778,7 +16851,7 @@ function openWordActions(word, cat, extra) {
       const nb = newListBtn(word);
       if (nb) body.appendChild(nb);
       body.appendChild(smallWordBtn(word));
-      body.appendChild(tagBtn('w:' + word, plainLabel(word)));
+      body.appendChild(linkBtn(word));
       picMenuBtns(body, word);
       body.appendChild(sheetBtn(filed ? 'Remove from ' + page : 'Delete this word', 'danger', () => poofWord(word)));
       body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
@@ -16799,7 +16872,7 @@ function openWordActions(word, cat, extra) {
     const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
-    body.appendChild(tagBtn('w:' + word, plainLabel(word)));
+    body.appendChild(linkBtn(word));
     picMenuBtns(body, word);
     if (hasSmallStrip(cat) && !cat.smallSec) pairBtns(body, word, cat);
     if (!cat.smallSec && !cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; closeWordSheet(); renderHome(true); }));
