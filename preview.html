@@ -322,6 +322,7 @@
   .pb-opts:empty { display: none; }
   .pb-opts .pb-plural { font-size: 24px !important; padding: 2px 14px !important; margin: 0 !important; flex: none; }
   .pb-words .pb-seq { font-size: 0.55em !important; padding: 0.1em 0.5em !important; margin-left: 6px !important; vertical-align: middle; }
+  .phrase-bar .pb-chip.pb-note { background: transparent; color: #9aa1ad; border: 3px dashed #c9ced8; font-family: inherit; font-weight: 800; cursor: pointer; padding: 0 12px; vertical-align: baseline; }
   .pb-plural { align-self: center; border: 3px dashed #9db8e6; background: #fff; color: #4a6fb0; border-radius: 14px; font-family: inherit; font-weight: 900; font-size: 0.62em; padding: 0.05em 0.45em; margin-left: 2px; line-height: 1.15; cursor: pointer; }
   /* chat mode on the main page: the conversation sits above the key bar, its newest message in view,
      with a bar under it (like the small words' bar) to fold it away */
@@ -1432,7 +1433,7 @@
   .gm-slots { display: none; }
   .game-view.gm-tiles .gm-slots { display: flex; flex: 0 0 auto; align-self: stretch; box-sizing: border-box; justify-content: center; align-items: flex-end; gap: calc(var(--slot, 70px) * 0.16); padding: 18px 10px 6px; }
   .game-view.gm-tiles .gm-pic { flex-direction: column; padding: 0; position: relative; overflow: hidden; }      /* the picture fills the card; the letter boxes sit over it, along the bottom */
-  .game-view.gm-tiles .gm-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 26px; }
+  .game-view.gm-tiles .gm-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; border-radius: 26px; }      /* (the whole picture, its copies filling the rest - see picTile) */
   .game-view.gm-tiles .gm-slots { position: absolute; left: 0; right: 0; bottom: clamp(14px, 2.5vh, 28px); z-index: 2; padding: 0 10px; }
   .game-view.gm-tiles .gm-slot { background: rgba(255,255,255,0.94); box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
   .game-view.gm-tiles .gm-slot.next { box-shadow: inset 0 0 0 3px #2f8bff, 0 6px 18px rgba(0,0,0,0.25); }
@@ -1680,6 +1681,9 @@
   .snd-cell.reveal.c { background: #ffffff; border-color: #1f2328; color: var(--ink); }
   @keyframes sndReveal { 0% { opacity: 0; transform: scale(0.9); } 8% { opacity: 1; transform: scale(1.08); } 15% { transform: none; } 85% { opacity: 1; } 100% { opacity: 0.4; } }
   .cp-empty { color: rgba(0,0,0,0.45); font-weight: 700; font-size: 15px; padding: 10px 6px; text-align: center; }
+  .group-head.sub-group, .tgt-subhead.sub-group { margin-left: 44px; }
+  .group-head.sub-group { background: #eef4ff; }
+  .home-card.sub-group, .list-row.sub-group { margin-left: 44px; }
   .tgt-subhead { grid-column: 1 / -1; font-weight: 800; color: #4a5568; padding: 14px 8px 4px; letter-spacing: 0.02em; }
   .gm-start { display: block; width: 100%; margin: 14px 0 4px; border: none; border-radius: 18px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; padding: 18px 12px; cursor: pointer; }
   .gm-start:disabled { background: #e6e9ef; color: #9aa3b5; }
@@ -3339,7 +3343,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 602 - 14 Oct';
+const BUILD = 'build 603 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3597,7 +3601,7 @@ function groupPromptNow() {
     // the sound keyboard: a word in the Decoding group has that group's prompting; otherwise the word's own, as on the letters
     const snd = (() => { try { return soundPracticeNow(); } catch (e) { return false; } })();
     if (snd) { const d = t.groups.find(x => DECODE_RE.test(gKey(x)) && (x.words || []).includes(w)); if (d) return d.prompt || null; }
-    const g = t.groups.find(x => !isPracticeGroup(x) && !DECODE_RE.test(gKey(x)) && (x.words || []).includes(w));
+    const g = t.groups.find(x => x.parentG && !isPracticeGroup(x) && !DECODE_RE.test(gKey(x)) && (x.words || []).includes(w) && x.prompt) || t.groups.find(x => !isPracticeGroup(x) && !DECODE_RE.test(gKey(x)) && (x.words || []).includes(w));      // (a prompting group inside Type-to-Speak first)
     return g && g.prompt || null;
   } catch (e) { return null; }
 }
@@ -8664,7 +8668,7 @@ function pbWordsFit(box) {
   if (!box.offsetParent) return;
   const base = parseFloat(getComputedStyle(box).fontSize) || 40; let f = 1;
   while (box.scrollHeight > box.clientHeight + 2 && f > 0.45) { f -= 0.07; box.style.fontSize = Math.round(base * f) + 'px'; }
-  box.scrollTop = 0;
+  box.scrollTop = box.scrollHeight > box.clientHeight + 2 ? box.scrollHeight : 0;      // (still too long at the smallest type: the newest words in view - scroll back for the first ones)
 }
 // The suggested sentence waits for a stall: three seconds after a word goes in with nothing else
 // touched or scrolled, it appears in the key bar; three seconds more and it is gone again
@@ -9770,6 +9774,32 @@ function pbFit() {
   pbFitT = setTimeout(() => { pb.classList.remove('pb-grow'); pb.style.height = '';
     try { const h = document.getElementById('suggHost'); if (h) { h.dataset.sig = ''; suggRender(); } } catch (e) {} }, 260);      // (the magic rows are sized again to the room left)
 }
+// ---- Folders opened from a menu page (Food > Drinks) are noted in the key bar in grey, in their place among the words.
+// They are not part of the message: tapping one puts it in (and says it); the green enter leaves the grey ones out.
+var barNotes = [], notePathSeen = [];      // { at: the word it sits before, w: the word }
+function barNotesSync() {
+  const path = (typeof homePath !== 'undefined' ? homePath : []).filter(id => id !== RECENT_ID);
+  const was = notePathSeen; notePathSeen = path.slice();
+  if (state.builderMode || state.folderNotes === false || (typeof gamesHome !== 'undefined' && gamesHome)) return;
+  try { if (onTargetsPage()) return; } catch (e) {}
+  const fresh = path.filter(id => !was.includes(id)); if (!fresh.length) return;
+  let added = false;
+  fresh.forEach(id => { const c = catById(id); if (!c || !c.parent || c.target || c.hidden || c.small || c.smallSec) return;      // (a main menu - Chat, My Stuff, Categories - is not a word)
+    const w = normaliseWord(c.name); if (!w || !/[A-Z]/.test(w)) return;
+    const at = homePhrase.length; if (homePhrase[at - 1] === w || barNotes.some(n => n.at === at && n.w === w)) return;
+    barNotes.push({ at, w }); added = true; });
+  if (added) renderPhraseBar();
+}
+function barNoteTake(n) {
+  const k = barNotes.indexOf(n); if (k < 0) return;
+  const at = Math.min(n.at, homePhrase.length);
+  homePhrase.splice(at, 0, n.w);
+  barNotes.splice(k, 1); barNotes.slice(k).forEach(x => { if (x.at >= at) x.at++; });      // (the noted folders after it move along with the words)
+  try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (e) {}
+  buzz(10); try { magicKnow(n.w); } catch (e) {}
+  try { warmSpeech(); sayAnyway = true; speakWord(n.w, 0.95); } catch (e) {} finally { sayAnyway = false; }
+  renderPhraseBar();
+}
 function renderPhraseBar() { try { return renderPhraseBar0(); } finally { try { pbFit(); } catch (e) {} } }
 function renderPhraseBar0() {
   renderSpeakBtn();
@@ -9787,16 +9817,21 @@ function renderPhraseBar0() {
   // Same size settings as the keyboard's typing bar
   bar.className = 'display phrase-bar ds-' + state.displaySize;
   bar.classList.toggle('suggesting', document.getElementById('typeSuggest').style.display !== 'none');
-  bar.classList.toggle('has-text', homePhrase.length > 0 || !!document.getElementById('pbInput').value);
+  bar.classList.toggle('has-text', homePhrase.length > 0 || barNotes.length > 0 || !!document.getElementById('pbInput').value);
   box.innerHTML = '';
   // a whole sentence: more than one word, and nothing the magic phrase would still add to it
   const whole = homePhrase.length >= 2;      // two words or more: it starts with a capital
+  barNotes = barNotes.filter(n => n.at <= homePhrase.length && !(homePhrase[n.at] === n.w || homePhrase[n.at - 1] === n.w));
+  const noteChips = at => barNotes.forEach(n => { if (n.at !== at) return; const c = document.createElement('button'); c.className = 'pb-chip pb-note'; c.textContent = plainLabel(n.w); c.setAttribute('aria-label', 'Add ' + plainLabel(n.w) + ' to the message');
+    c.addEventListener('click', e => { e.stopPropagation(); barNoteTake(n); }); box.appendChild(c); });
   homePhrase.forEach((w, i) => {
+    noteChips(i);
     const c = document.createElement('span');
     c.className = 'pb-chip';
     c.textContent = i || !whole ? sentenceLabel(w) : capFirst(sentenceLabel(w));     // a capital to start only once it reads as a whole sentence
     box.appendChild(c);
   });
+  noteChips(homePhrase.length);
   // the ending / word-order options sit in their own small row along the bottom of the bar, so the words keep their room
   { let opts = document.getElementById('pbOpts');
     if (!opts) { opts = document.createElement('div'); opts.id = 'pbOpts'; opts.className = 'pb-opts'; bar.appendChild(opts); }
@@ -9925,6 +9960,7 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
+  barNotes = [];      // (the folders noted in the bar were not chosen: they go with the message)
   try { if (homeKeysUp()) homeKeysClose(); } catch (e) {}
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
   // "I feel sad"): tap it to take it, or press the green button again to send the words as they are
@@ -10324,9 +10360,11 @@ document.getElementById('pbClear').addEventListener('click', () => {
   // with the keyboard down over the page this is its delete key: a letter at a time
   const twice = Date.now() - pbClearAt < 450;
   pbClearAt = Date.now();
-  if (twice) { inp.value = ''; homePhrase = []; pbClearAt = 0; }
+  if (twice) { inp.value = ''; homePhrase = []; barNotes = []; pbClearAt = 0; }
   else if (inp.value) inp.value = '';
+  else if (barNotes.length && barNotes[barNotes.length - 1].at >= homePhrase.length) barNotes.pop();      // (a folder noted after the last word goes first)
   else homePhrase.pop();
+  if (!homePhrase.length && !barNotes.length) notePathSeen = [];
   renderTypeSuggest();
   renderPhraseBar();
   hideMagic();
@@ -10724,7 +10762,7 @@ function commitTypedWord() {
   return true;
 }
 
-function renderHome(reset) { try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} try { ghPaint(); } catch (e) {} } }
+function renderHome(reset) { try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} try { ghPaint(); } catch (e) {} try { barNotesSync(); } catch (e) {} } }
 function renderHomeCore(reset) {
   try { renderChatPane(); } catch (e) {}
   linkWordCache = null;
@@ -13951,20 +13989,39 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
   // targets keep their unsorted words on top; in My Stuff the groups come first, in the order they
   // were added (or dragged into), and the titles with no group follow
   if (cat.target) loose();
-  groupsNow.forEach((g, gi) => {
+  // a group can sit inside another (on the targets page: prompting groups such as Least to Most inside Type-to-Speak)
+  const isSubG = g => !!g.parentG && groupsNow.some(x => x.id === g.parentG && x !== g);
+  const subsOf = g => groupsNow.filter(x => x.parentG === g.id && x !== g);
+  const drawGroup = (g, gi, depth) => drawGroup0(g, gi, depth);
+  const drawSubs = g => {      // (the prompting groups first, at the top of the group they are in)
+    subsOf(g).forEach(sg => drawGroup(sg, groupsNow.indexOf(sg), 1));
+    if (cat.target && g.kind === 'typing') {      // a new prompting group inside it
+      const ng = document.createElement('button'); ng.className = 'small-head group-head add-group sub-group'; ng.innerHTML = '<span>+ prompting group</span>';
+      ng.style.fontSize = Math.max(16, Math.round(base * 0.55)) + 'px'; ng.style.minHeight = Math.max(44, Math.round(rowH * 0.3)) + 'px';
+      ng.addEventListener('click', () => askText('New prompting group in ' + g.name, 'Add', '', typed => {
+        const name = String(typed || '').replace(/\s+/g, ' ').trim(); if (!name) return false;
+        const gs = listGroups(cat), at = gs.indexOf(g) + 1 + subsOf(g).length;
+        gs.splice(at, 0, { id: Math.max(0, ...gs.map(x => x.id || 0)) + 1, name, words: [], open: true, parentG: g.id }); save(); redraw(); }));
+      put(ng);
+    }
+    if (cat.target && g.kind === 'typing' && (subsOf(g).length)) { const sh = document.createElement('div'); sh.className = 'tgt-subhead'; sh.textContent = 'All ' + g.name + ' targets'; sh.style.fontSize = Math.max(15, Math.round(base * 0.45)) + 'px'; put(sh); }
+  };
+  groupsNow.forEach((g, gi) => { if (!isSubG(g)) drawGroup(g, gi, 0); });
+  function drawGroup0(g, gi, depth) {
     const open = g.open !== false;
     const head = document.createElement('button');
-    head.className = 'small-head group-head';
+    head.className = 'small-head group-head' + (depth ? ' sub-group' : '');
     head.setAttribute('aria-expanded', open ? 'true' : 'false');
     head.innerHTML = '<span class="sh-arrow">\u25BC</span><span></span>';
     head.lastChild.textContent = g.name;
-    head.style.fontSize = Math.max(18, Math.round(base * 0.7)) + 'px';
+    if (depth) { const n = (g.words || []).filter(w => listWords.includes(w)).length; head.lastChild.textContent = g.name + (n ? ' \u00B7 ' + n : ''); }
+    head.style.fontSize = Math.max(18, Math.round(base * (depth ? 0.58 : 0.7))) + 'px';
     head.style.minHeight = Math.max(48, Math.round(rowH * 0.36)) + 'px';
     holdTap(head, () => {
       // one group open at a time: opening this one closes the others, and the heading that was
       // tapped stays where it is on the screen
       const was = head.getBoundingClientRect().top;
-      groupsNow.forEach(x => { x.open = (x === g) ? !open : false; });
+      groupsNow.forEach(x => { x.open = (x === g) ? !open : (x.id === g.parentG || (x.parentG === g.id && !open && x.open)) ? true : false; });      // (a group inside another keeps that one open)
       buzz(10); save();
       renderHome(true);
       const now = [...grid.querySelectorAll('.group-head[data-gidx]')].find(h => h.dataset.gidx === String(gi));
@@ -13981,6 +14038,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
       } });
     put(mark(head, gi));
     if (!open) return;
+    if (!depth) drawSubs(g);
     if (isTileGroup(g)) {      // (Hear the sound / Match the spelling: its spellings, each says its sound; hold for the group's menu)
       const rank = { learning: 0, mastered: 1, maint: 2 };
       (g.tiles || []).slice().sort((a, b) => rank[masteryOf(g, a).st] - rank[masteryOf(g, b).st]).forEach(k => { const row = makeListRow('', rowH, base); row.removeAttribute('data-word'); row.classList.add('tile-target'); row.querySelector('.hw').textContent = tileLabel(k); msPill(row, g, k);
@@ -13992,18 +14050,20 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     }
     // inside a group the titles keep the order they were put in (drag one to move it)
     const msG = !!groupModeOf(g), rank = { learning: 0, mastered: 1, maint: 2 };
-    const gws = g.words.filter(w => listWords.includes(w)); if (msG) gws.sort((a, b) => rank[masteryOf(g, a).st] - rank[masteryOf(g, b).st]);
+    const inSub = new Set([].concat(...subsOf(g).map(x => x.words || [])));
+    const gws = g.words.filter(w => listWords.includes(w) && !inSub.has(w)); if (msG) gws.sort((a, b) => rank[masteryOf(g, a).st] - rank[masteryOf(g, b).st]);
     // the Typing group (Text-to-Speech): its targets under the name of the folder each is in (Music, Food, Actions ...)
     if ((g.kind === 'typing' || g.kind === 'ltm') && gws.length) {
       const fold = w => { try { const t0 = gameTargetTree([w])[0]; return t0 ? t0.label : 'Other'; } catch (e) { return 'Other'; } };
       const by = new Map(); gws.forEach(w => { const f = fold(w); if (!by.has(f)) by.set(f, []); by.get(f).push(w); });
       const names = [...by.keys()].sort((a, b) => (a === 'Other') - (b === 'Other') || a.localeCompare(b));
-      names.forEach(f => { const sh = document.createElement('div'); sh.className = 'tgt-subhead'; sh.textContent = f + ' \u00B7 ' + by.get(f).length; sh.style.fontSize = Math.max(15, Math.round(base * 0.45)) + 'px'; put(sh);
-        by.get(f).forEach(w => { const row = wordRow(w); if (msG) msPill(row, g, w); put(mark(row, gi)); }); });
+      names.forEach(f => { const sh = document.createElement('div'); sh.className = 'tgt-subhead' + (depth ? ' sub-group' : ''); sh.textContent = f + ' \u00B7 ' + by.get(f).length; sh.style.fontSize = Math.max(15, Math.round(base * 0.45)) + 'px'; put(sh);
+        by.get(f).forEach(w => { const row = wordRow(w); if (msG) msPill(row, g, w); if (depth) row.classList.add('sub-group'); put(mark(row, gi)); }); });
       return;
     }
-    gws.forEach(w => { const row = wordRow(w); if (msG) msPill(row, g, w); put(mark(row, gi)); });
-  });
+    gws.forEach(w => { const row = wordRow(w); if (msG) msPill(row, g, w); if (depth) row.classList.add('sub-group'); put(mark(row, gi)); });
+    if (depth && !gws.length) { const e0 = document.createElement('div'); e0.className = 'tgt-subhead sub-group'; e0.style.fontWeight = '700'; e0.textContent = 'No targets yet - hold a target and drag it here, or hold this heading to add some'; put(e0); }
+  }
   if (!cat.target) loose();
   // at the bottom of the whole list: add a title (ungrouped), then start a new group
   // (when the last group is open its own add row is already the last thing, so one is enough)
@@ -15798,6 +15858,9 @@ function ensureTargets() {
     const rank = g => { const nm = gKey(g), i = order.findIndex(re => re.test(nm)); return i < 0 ? order.length : i; };
     if (!t.groupsTidyV1) { t.groupsTidyV1 = true; const out = t.groups.filter(g => rank(g) === order.length); if (out.length) { t.removedGroups = (t.removedGroups || []).concat(out); t.groups = t.groups.filter(g => rank(g) < order.length); } }
     t.groups = t.groups.map((g, i) => [g, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]); }
+  { const lg = t.groups.find(g => LTM_RE.test(gKey(g))), tg = t.groups.find(g => g.kind === 'typing') || t.groups.find(g => /^typing$/i.test(gKey(g)));      // (Least to Most: a prompting group inside Typing / Type-to-Speak)
+    t.groups.forEach((g, i) => { if (!g.id) g.id = Math.max(0, ...t.groups.map(x => x.id || 0)) + 1 + i; });
+    if (lg && tg && !lg.nestV1) { lg.nestV1 = true; lg.parentG = tg.id; } }
   { const li = t.groups.findIndex(g => LTM_RE.test(gKey(g))), ti0 = t.groups.findIndex(g => /^typing$/i.test(gKey(g)));      // (Least to Most sits just after Typing)
     if (li >= 0 && ti0 >= 0 && li !== ti0 + 1 && !t.groups[li].placed) { const [l] = t.groups.splice(li, 1); l.placed = true; t.groups.splice(t.groups.findIndex(g => /^typing$/i.test(gKey(g))) + 1, 0, l); } }
   { const di = t.groups.findIndex(g => DECODE_RE.test(gKey(g))), ti = t.groups.findIndex(g => LTM_RE.test(gKey(g))) >= 0 ? t.groups.findIndex(g => LTM_RE.test(gKey(g))) : t.groups.findIndex(g => /^typing$/i.test(gKey(g)));      // (Decoding sits just after them)
@@ -18204,8 +18267,11 @@ function picTile(im) {
   if (ir < br * 0.88) im.style.background = veil + ', ' + url + ' center / auto 100% repeat-x';
   else if (ir > br / 0.88) im.style.background = veil + ', ' + url + ' center / 100% auto repeat-y';
 }
-document.addEventListener('load', e => { const t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.gm-pic, #picBox')) picTile(t); }, true);
-window.addEventListener('resize', () => { clearTimeout(picTile.t); picTile.t = setTimeout(() => document.querySelectorAll('.gm-pic img, #picBox img').forEach(picTile), 200); });
+// every game's picture (Word Match, Spelling, Tiles, Elkonin Boxes, the picture writing): tiled when it does not fill its window -
+// worked out when it loads, again once the page has settled, and whenever its window changes size
+const picTileRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(es => es.forEach(en => { try { picTile(en.target); } catch (e) {} })) : null;
+document.addEventListener('load', e => { const t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.gm-pic, #picBox, #gameView')) { picTile(t); setTimeout(() => picTile(t), 300); if (picTileRO && !t._tileObs) { t._tileObs = true; picTileRO.observe(t); } } }, true);
+window.addEventListener('resize', () => { clearTimeout(picTile.t); picTile.t = setTimeout(() => document.querySelectorAll('.gm-pic img, #picBox img, #gameView img').forEach(picTile), 200); });
 function gameStars(b) {
   const r = b.getBoundingClientRect(), v = document.getElementById('gameView');
   ['⭐', '🌟', '✨', '🎉', '⭐', '✨', '💫', '🎊'].forEach((e, k) => {
