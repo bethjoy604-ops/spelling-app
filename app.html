@@ -1715,6 +1715,8 @@
   /* big, simple icons for little fingers: the pop-out and its button */
   .home-row .ctl.icon.pop, #homeIconsToggle { width: 68px; height: 68px; border-radius: 20px; font-size: 34px; }
   #homeIconsToggle { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .home-row #homeIconsToggle { width: 54px !important; height: 54px !important; border-radius: 14px !important; font-size: 30px !important; }      /* the size of the folder tabs beside it */
+  .home-row #homeIconsToggle svg { width: 32px; height: 32px; }
   .home-row .ctl.icon.retired { display: none !important; }
   .home-row:not(.more-open) .ctl.icon.more { display: none !important; }
   .home-row.more-open #homeMoreBtn { background: rgba(255,255,255,0.6); }
@@ -3243,7 +3245,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 587 - 14 Oct';
+const BUILD = 'build 588 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9602,7 +9604,7 @@ function renderPhraseBar0() {
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
-  document.getElementById('pbInput').placeholder = homePhrase.length ? '' : '...';      // (an empty bar: three dots, a cue that it can be typed into)
+  document.getElementById('pbInput').placeholder = '';      // (an empty bar stays empty: the three dots are retired)
 }
 // Words put in the bar were each said aloud as they went in, so pressing enter
 // does not say them again. sayIt is for a phrase that was never voiced.
