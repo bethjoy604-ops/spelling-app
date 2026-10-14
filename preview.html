@@ -540,6 +540,10 @@
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: var(--surface); }
+  .home-card.gr-tile { flex-direction: column; gap: 2px; } .home-card.gr-tile .hw { font-weight: 800; }
+  .home-card.gr-tile .gr-ex { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .home-card.gr-play { background: #e8f0ff; } .home-card.gr-play .hw { color: #1e4f9e; }
+  .home-card.gr-say { animation: cueGlow 0.6s ease-out; }
   .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .mg-dot { flex: none; width: 22px; height: 22px; border-radius: 7px; border: 2px solid rgba(0,0,0,0.08); }
   .mg-name { font-weight: 800; }
@@ -3470,7 +3474,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 629 - 14 Oct';
+const BUILD = 'build 630 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3864,7 +3868,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, tileCue: saved.tileCue || 'fade', promptStepSec: Number(saved.promptStepSec) || 7, tagsSeedV1: !!saved.tagsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, tileCue: saved.tileCue || 'fade', promptStepSec: Number(saved.promptStepSec) || 7, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4521,7 +4525,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, tileCue: state.tileCue || 'fade', promptStepSec: state.promptStepSec || 7, tagsSeedV1: !!state.tagsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, tileCue: state.tileCue || 'fade', promptStepSec: state.promptStepSec || 7, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -7952,6 +7956,7 @@ function applyDefaultGroups() {
     }
   }
   DEFAULT_GROUPS.forEach((n, i) => { const c = byName(n); if (c) c.order = i; });
+  try { phonicsSeed(); } catch (e) {}
   save();
 }
 
@@ -11281,6 +11286,7 @@ function commitTypedWord() {
 }
 
 function renderHome(reset) { try { if (typeof gamesHome !== 'undefined' && !gamesHome && document.getElementById('viewHome').classList.contains('gh-on')) ghPaint(); } catch (e) {}      // (leaving the games: the tiles are shown again before they are laid out and sized)
+  if (!state.phonicsSeedV1) { try { phonicsSeed(); if (state.phonicsSeedV1) save(); } catch (e) {} }
   try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} try { ghPaint(); } catch (e) {} try { barNotesSync(); } catch (e) {} } }
 function renderHomeCore(reset) {
   try { renderChatPane(); } catch (e) {}
@@ -13705,6 +13711,31 @@ function looseSorted(cat, words) {
   const nums = rest.filter(w => numberValue(w) !== null);
   return order.concat(nums.length && nums.length * 2 >= rest.length ? sortAZ(rest) : rest);
 }
+// the Graphemes folder: Practise, then a tile for each spelling (tap: its sound; hold: practise it, or take it out)
+function renderGraphemeBody(grid, cat, rowStart, rowH, base, cols) {
+  if (!(cat.words || []).length && !childrenOf(cat.id).length) { grid.querySelectorAll('.slot-empty, .add-folder').forEach(x => x.remove()); rowStart = 1; }      // (nothing else on the page: the graphemes from the top)
+  let i = 0; const cellW = (grid.clientWidth - 16 * (cols - 1)) / cols;
+  const put = card => { card.style.gridRow = String(rowStart + Math.floor(i / cols)); card.style.gridColumn = String(i % cols + 1); card.style.height = rowH + 'px'; grid.appendChild(card); i++; };
+  const mk = (label, cls) => { const card = document.createElement('button'); card.className = 'home-card ' + cls; const t = document.createElement('span'); t.className = 'hw'; t.textContent = label;
+    t.style.fontSize = Math.max(16, Math.min(base * 1.15, (cellW - 40) / (Math.max(1, label.length) * 0.72))) + 'px'; card.appendChild(t); return card; };
+  const tiles = cat.gtiles = cat.gtiles || [];
+  const pr = mk('▶ Practise', 'gr-play'); pr.addEventListener('click', () => graphemePractise(tiles.slice())); put(pr);
+  tiles.forEach(k => { const t = tileParse(k), card = mk(soundSpShow(t.sp), 'gr-tile'); card.dataset.gr = k;
+    const ex = document.createElement('span'); ex.className = 'gr-ex'; ex.textContent = tileEx(k); card.appendChild(ex);
+    let timer = null, held = false;
+    card.addEventListener('pointerdown', () => { held = false; timer = setTimeout(() => { timer = null; held = true; buzz(15); }, 520); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, () => { if (timer) { clearTimeout(timer); timer = null; } }));
+    card.addEventListener('contextmenu', e => e.preventDefault());
+    card.addEventListener('click', () => {
+      if (held) { held = false; openWordSheet(body => { sheetTitle(body, soundSpShow(t.sp) + '  (' + tileEx(k) + ')');
+          body.appendChild(sheetBtn('Practise this one', 'primary', () => { closeWordSheet(); graphemePractise([k]); }));
+          body.appendChild(sheetBtn('Hear its sound', '', () => { try { soundSay(t.id); } catch (e) {} }));
+          body.appendChild(sheetBtn('Take it out of ' + cat.name, 'danger', () => { cat.gtiles = (cat.gtiles || []).filter(x => x !== k); save(); closeWordSheet(); renderHome(true); }));
+          body.appendChild(sheetBtn('Cancel', '', () => closeWordSheet())); }); return; }
+      buzz(8); try { soundSay(t.id); } catch (e) {} card.classList.remove('gr-say'); void card.offsetWidth; card.classList.add('gr-say'); });
+    put(card); });
+  const add = mk('+ grapheme', 'add-folder ghost-tile'); add.addEventListener('click', () => { const g = { name: cat.name, tiles: cat.gtiles }; openTileAdd(g, () => { cat.gtiles = g.tiles; save(); closeWordSheet(); renderHome(true); }); }); put(add);
+}
 function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   grid.style.gridAutoRows = 'auto';
   const groups = listGroups(cat);
@@ -15673,6 +15704,7 @@ function renderSlotGrid(grid, cat, folders) {
       lib.style.gridRow = String(rowOff + r); lib.style.gridColumn = String(c + 1); }
     grid.appendChild(lib);
   }
+  if (arrange && cat && cat.graphemes && pageEdit !== cat.id) renderGraphemeBody(grid, cat, (topRow ? 1 : 0) + totalRows + 1, rowH, base, cols);
   if (listMode && tilesPage(cat)) renderTileBody(grid, cat, listWords, rowH, base, cols);
   else if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
@@ -15986,6 +16018,11 @@ function attachWordHold(card, word, cat, folder, builder) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, cancel));
   card.addEventListener('contextmenu', e => e.preventDefault());
 }
+// a short note at the foot of the screen saying where something went
+function moveNote(text) { const old = document.getElementById('moveNote'); if (old) old.remove();
+  const n = document.createElement('div'); n.id = 'moveNote'; n.textContent = text;
+  n.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2430;color:#fff;font-weight:800;font-size:18px;padding:12px 20px;border-radius:16px;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:86vw;text-align:center;';
+  document.body.appendChild(n); setTimeout(() => { n.style.transition = 'opacity .4s'; n.style.opacity = '0'; setTimeout(() => n.remove(), 450); }, 3200); }
 function startWordDrag(card, word, cat, x, y, folder, builder) {
   const r = card.getBoundingClientRect();
   const ghost = card.cloneNode(true);
@@ -16064,6 +16101,13 @@ function trackWordDrag() {
     let x = catById(id), g = 0, bad = false;
     while (x && g++ < 20) { if (x.id === d.folder.id) { bad = true; break; } x = x.parent ? catById(x.parent) : null; }
     if (bad) return;
+    // the menu tab of the page that is open names the folder you are in: a folder dropped on it goes up a level, out of
+    // that folder into the one around it (not into the top page the tab belongs to)
+    if (over.classList.contains('cat-tile') && over.classList.contains('selected') && homePath.length > 1) {
+      const here = catById(homePath[homePath.length - 1]);
+      if (here && d.folder.parent === here.id && here.parent) { over.classList.add('drop-into'); d.ghost.classList.add('over-folder'); d.target = { kind: 'folder-into', id: here.parent, up: true }; return; }
+      if (here && d.folder.parent === here.id && !here.parent) return;
+    }
     let how = 'into';
     if (over.classList.contains('folder-card')) {
       const r = over.getBoundingClientRect();
@@ -16169,6 +16213,7 @@ function endWordDrag(cancelled) {
     }
     if (homePath.includes(c.id)) homePath = [];
     save(); renderHome(true);
+    { const to = catById(c.parent); moveNote(c.name + ' moved ' + (t.kind === 'folder-into' ? 'into ' : 'next to ' + over.name + ' in ') + (t.kind === 'folder-into' ? (to ? to.name : 'the top') : (to ? to.name : 'the top'))); }
     return;
   }
   if (t.kind === 'slot') {
@@ -17270,7 +17315,7 @@ function picRandomFor(word, pics) {
 function presets() { return state.gamePresets = state.gamePresets || []; }
 function presetById(id) { return presets().find(p => p.id === id); }
 function presetGroup(p) { const t = state.categories.find(c => c.target); return t && (t.groups || []).find(x => practiceRe(p.mode).test(gKey(x))); }
-const gameName = m => (GAME_LIST.find(x => x[0] === m) || [])[2] || m, gameIcon = m => (GAME_LIST.find(x => x[0] === m) || [])[1] || '🎮';
+const gameName = m => (GAME_LIST.find(x => x[0] === m) || [])[2] || (m === 'match' ? 'Find the spelling' : m), gameIcon = m => (GAME_LIST.find(x => x[0] === m) || [])[1] || (m === 'match' ? '\uD83D\uDD0E' : '🎮');
 const targetName = w => /\|/.test(w) ? tileLabel(w) : plainLabel(w);
 // the targets of a saved game that can be played now: still being learned (or due a check), or kept on purpose after mastery
 function presetPlayable(p) {
@@ -17946,7 +17991,7 @@ function gameStart(n, mode, only, presetId, level) {
   if (level !== 'easy' && level !== 'hard') { gameLevelAsk(mode, lv => gameStart(n, mode, only, presetId, lv)); return; }      // (easy or hard is chosen as each game starts)
   state.gameLevel = Object.assign({}, state.gameLevel || {}, { [mode]: level });
   const pr = presetId ? presetById(presetId) : null;
-  const ready = pr ? [...new Set(practiceGroupWords(mode).concat(presetPlayable(pr)))] : practiceGroupWords(mode), ws = only ? ready.filter(w => only.includes(w)) : ready; if (!ws.length) return;
+  let ready = pr ? [...new Set(practiceGroupWords(mode).concat(presetPlayable(pr)))] : practiceGroupWords(mode); if (mode === 'match' && only) ready = [...new Set(ready.concat(graphemeTiles()))]; const ws = only ? ready.filter(w => only.includes(w)) : ready; if (!ws.length) return;
   const seq = []; let pool = [];
   // the turns: every chosen target about the same number of times, all mixed up at random (not one round of each
   // before the next), and never the same target twice in a row when there is more than one
@@ -18891,6 +18936,29 @@ const soundSpShow = sp => String(sp || '').replace(/-/g, '‑');      // (a-e wi
 // ===== Hear the sound / Match the spelling: one sound a turn. Their targets are spellings (sh, ea, igh ...), kept in their
 // own groups on the targets page as "sound|spelling" (ee|ea is the ea in eat). Hear: the sound (or its video) plays and
 // the spelling is found on the sound keyboard. Match: the spelling is shown and the same one is found on the keyboard.
+// ===== Categories > Things > Phonics > Graphemes: a tile for each spelling on the sound keyboard. A tile says its sound;
+// Practise starts Match the spelling with them (the spelling shown, found on the sound keyboard)
+function graphemeKeys() { const seen = new Set(), out = [];
+  tileAll().forEach(({ key }) => { const sp = tileParse(key).sp; if (seen.has(sp)) return; seen.add(sp); out.push(key); });
+  const rank = sp => sp.replace(/-/g, '').length;
+  return out.sort((a, b) => { const x = tileParse(a).sp, y = tileParse(b).sp; return rank(x) - rank(y) || x.localeCompare(y); }); }
+function graphemeFolder() { return state.categories.find(c => c.graphemes) || null; }
+function graphemeTiles() { const f = graphemeFolder(); return f ? (f.gtiles || []) : []; }
+function phonicsSeed() {
+  if (state.phonicsSeedV1) return;
+  const things = state.categories.find(c => c.name.toLowerCase() === 'things' && c.parent && /^categories$/i.test(String((catById(c.parent) || {}).name || ''))); if (!things) return;
+  state.phonicsSeedV1 = true;
+  if (graphemeFolder()) return;
+  let ph = state.categories.find(c => c.parent === things.id && /^phonics$/i.test(String(c.name).trim()));
+  if (!ph) ph = addCategory('Phonics', things.id);
+  let gf = state.categories.find(c => c.parent === ph.id && /^graphemes$/i.test(String(c.name).trim()));
+  if (!gf) gf = addCategory('Graphemes', ph.id);
+  gf.graphemes = true; gf.gtiles = graphemeKeys();
+}
+function graphemePractise(keys) {
+  const ks = (keys || []).filter(Boolean); if (!ks.length) return;
+  buzz(10); const n = ks.length === 1 ? 3 : Math.min(10, ks.length); const pick = ks.length > n ? ks.slice().sort(() => Math.random() - 0.5).slice(0, n) : ks; gameStart(n, 'match', pick);
+}
 function isTileGroup(g) { return /^(hear|match|sound match)/i.test(gKey(g)); }
 function tileParse(key) { const [id, sp] = String(key || '').split('|'); return { id, sp: sp || (SOUND_K[id] ? SOUND_K[id].label : id) }; }
 function tileEx(key) { const t = tileParse(key); for (const l of Object.keys(SOUND_TILES)) { const x = SOUND_TILES[l].find(([id, sp]) => id === t.id && sp === t.sp); if (x) return x[2]; } return (SOUND_K[t.id] || {}).ex || ''; }
