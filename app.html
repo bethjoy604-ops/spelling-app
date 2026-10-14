@@ -3235,7 +3235,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 578 - 14 Oct';
+const BUILD = 'build 579 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3449,7 +3449,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, soundKeysOn: false, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3626,7 +3626,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4253,7 +4253,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -5625,6 +5625,7 @@ function speakWord(word, rate) {
 // letter by letter ("A D D"). So what is handed to the voice is written the way it reads: small
 // letters, with I, names and titles as they are shown.
 function spokenText(text) {
+  { const own = (state.wordSay || {})[String(text || '').toUpperCase().trim()]; if (own) return own; }      // (a word given its own way of being said: "bat." so it is not heard as "bad")
   const t = String(text || '');
   if (!t || t !== t.toUpperCase() || t.length < 2) return t;
   const one = k => { try { return (state.words || []).includes(k) ? sentenceLabel(k) : (k === 'I' ? 'I' : k.toLowerCase()); } catch (e) { return k.toLowerCase(); } };
@@ -13421,6 +13422,7 @@ function openTitleActions(word, cat, extra) {
     if (!cat.target) body.appendChild(selSheetBtn(word));
     body.appendChild(sheetBtn(cat.target ? 'Edit spelling or capitals' : 'Edit the title or its capitals', '', () => openWordEdit(word)));
     if (cat.target) body.appendChild(targetPauseBtn(word));
+    if (cat.target) body.appendChild(sheetBtn('\uD83D\uDDE3\uFE0F  How the voice says it' + ((state.wordSay || {})[word] ? ': "' + state.wordSay[word] + '"' : ''), '', () => openWordSay(word)));
     if (cat.target) body.appendChild(sheetBtn('Sounds (sound it out): ' + soundSplit(word).map(x => SOUND_K[x.id] ? SOUND_K[x.id].label : x.id).join(' \u00B7 '), '', () => askText('The sounds in "' + plainLabel(word) + '", with spaces or dashes between (like f ee t, or sh ee p)', 'Save', soundSplit(word).map(x => SOUND_K[x.id] ? SOUND_K[x.id].label : x.id).join(' '), typed => {
       const parts = String(typed || '').toLowerCase().split(/[\s\-\u00B7,]+/).filter(Boolean); if (!parts.length) { delete (state.soundSplits || {})[word]; return; }
       const ids = parts.map(p => SOUND_BY_LABEL[p] || null); if (ids.some(x => !x)) { alert('Not a sound on the sound keyboard: ' + parts.filter((p, i) => !ids[i]).join(', ')); return false; }
@@ -15539,6 +15541,27 @@ function practiceGroupWords(kind) {
   return g ? masteryPool(g, (g.words || []).filter(w => (t.words || []).includes(w) && !(g.off || {})[w] && !state.hiddenWords[w] && (kind === 'sound' ? soundSplit(w).length > 0 : picHas(w)))) : [];      // (sound it out: the word is on the screen, a picture is not needed)
 }
 function targetStateOf(w) { const v = (state.targetState || {})[w]; return TARGET_STATES.some(x => x[0] === v) ? v : 'waiting'; }
+// how the voice says a word: some come out wrong on their own (bat heard as "bad"). A few ways of writing it to listen
+// to - the one tapped is kept, everywhere the word is said
+function openWordSay(word) {
+  openWordSheet(body => {
+    sheetTitle(body, 'How the voice says it', plainLabel(word));
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px';
+    n.textContent = 'Tap a way of writing it to hear it. The one you tap (green) is used wherever the word is said. A word that ends in t, p or k often sounds clearer with a full stop or the last letter doubled.';
+    body.appendChild(n);
+    const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+    const low = plainLabel(word).toLowerCase(), last = low.slice(-1);
+    const paint = () => { ch.innerHTML = ''; const cur = (state.wordSay || {})[word] || '';
+      const opts = [['', low + ' (as written)'], [low + '.', low + '.'], [/[a-z]/.test(last) ? low + last : '', low + last], [low + '!', low + '!'], [low + ', ' + low, low + ', ' + low]].filter(([v], i) => i === 0 || v);
+      if (cur && !opts.some(([v]) => v === cur)) opts.push([cur, cur]);
+      opts.forEach(([v, t]) => { const b = document.createElement('button'); b.className = 'tune-chip' + (v === cur ? ' on' : ''); b.textContent = t;
+        b.addEventListener('click', () => { state.wordSay = state.wordSay || {}; if (v) state.wordSay[word] = v; else delete state.wordSay[word]; save(); try { warmSpeech(); sayAnyway = true; speak(v || spokenText(word), 0.9); } finally { sayAnyway = false; } paint(); }); ch.appendChild(b); });
+      const o = document.createElement('button'); o.className = 'tune-chip own'; o.textContent = '\u270E your own';
+      o.addEventListener('click', () => { const v = prompt('How the voice should say "' + low + '"', cur || low); if (v === null) return; state.wordSay = state.wordSay || {}; if (v.trim() && v.trim() !== low) state.wordSay[word] = v.trim(); else delete state.wordSay[word]; save(); try { warmSpeech(); sayAnyway = true; speak(spokenText(word), 0.9); } finally { sayAnyway = false; } paint(); }); ch.appendChild(o); };
+    paint();
+    body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
+  });
+}
 function openTargetWord(word, cat) {
   openWordSheet(body => {
     sheetTitle(body, 'This target', word);
