@@ -1664,6 +1664,11 @@
   /* Questions and Dictation */
   .qa-card { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px 24px; box-sizing: border-box; cursor: pointer; }
   .qa-q { font-size: clamp(30px, 5.6vmin, 60px); font-weight: 800; line-height: 1.35; color: var(--ink); }
+  .gm-pic.qa-has-pic { flex-direction: column; gap: 10px; padding: 14px 16px; }
+  .gm-pic.qa-has-pic .qa-img { flex: 1 1 0; min-height: 0; width: 100%; height: auto; object-fit: contain; border-radius: 16px; }
+  .gm-pic.qa-has-pic .qa-card { flex: 0 0 auto; height: auto; padding: 0 16px; }
+  .gm-pic.qa-has-pic .qa-q { font-size: clamp(26px, 4.4vmin, 46px); }
+  .qa-pv { margin-top: 8px; min-height: 0; } .qa-pv img { max-height: 120px; max-width: 100%; border-radius: 12px; display: block; } .qa-pv span { font-size: 14px; font-weight: 700; color: var(--muted); }
   .qa-q span { border-radius: 0.2em; padding: 0 0.08em; transition: background 0.12s; }
   .qa-q span.on { background: var(--prompt-soft); }
   .game-view.gm-type .gm-pic { flex: 1 1 0; flex-direction: column; gap: 16px; padding: 16px 20px 20px; }
@@ -3452,7 +3457,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 624 - 14 Oct';
+const BUILD = 'build 625 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -14543,11 +14548,13 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     if (!depth) drawSubs(g);
     if (isQaGroup(g)) {      // (Questions: each question with its answer; tap to change it, hold for the group's menu)
       (g.items || []).forEach(it => { const key = 'Q:' + it.id, row = makeListRow('', rowH, base); row.removeAttribute('data-word'); row.classList.add('tile-target');
-        row.querySelector('.hw').textContent = it.q + '  \u2192  ' + String(it.a || '').toLowerCase(); row.querySelector('.hw').style.whiteSpace = 'normal'; msPill(row, g, key);
+        row.querySelector('.hw').textContent = (it.pic ? '\uD83D\uDDBC\uFE0F ' : '') + it.q + '  \u2192  ' + String(it.a || '').toLowerCase(); row.querySelector('.hw').style.whiteSpace = 'normal'; msPill(row, g, key);
         if ((g.off || {})[key]) row.classList.add('paused');
         holdTap(row, () => openQaEdit(g, it, () => renderHome(true)), () => openGroupHead(cat, g)); put(mark(row, -2)); });
       const add = makeListRow('', rowH, base); add.classList.add('add-row'); add.removeAttribute('data-word'); add.querySelector('.hw').textContent = '+ question';
       add.addEventListener('click', () => openQaEdit(g, null, () => renderHome(true))); put(mark(add, -2));
+      { const af = makeListRow('', rowH, base); af.classList.add('add-row'); af.removeAttribute('data-word'); af.querySelector('.hw').textContent = '+ questions from a folder';
+        af.addEventListener('click', () => openQaFromFolder(g, () => renderHome(true))); put(mark(af, -2)); }
       if (qaStartersLeft(g)) { const rm = makeListRow('', rowH, base); rm.classList.add('add-row'); rm.removeAttribute('data-word'); rm.querySelector('.hw').textContent = '\u2715 remove the example questions';
         rm.addEventListener('click', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); renderHome(true); }); put(mark(rm, -2)); }
       return;
@@ -17670,14 +17677,47 @@ function openQaEdit(g, it, after) {
     sheetTitle(body, it ? 'This question' : 'A new question');
     const field = (label, val, big) => { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = label; body.appendChild(l);
       const x = document.createElement(big ? 'textarea' : 'input'); x.value = val || ''; x.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:20px;font-weight:700;padding:12px 14px;border-radius:14px;border:2px solid #dfe2e7;' + (big ? 'min-height:84px;resize:vertical;' : ''); body.appendChild(x); return x; };
+    { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = 'Start with a simple question'; body.appendChild(l);
+      const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+      QA_WH.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip'; b.textContent = t; b.addEventListener('click', () => { buzz(8); q.value = t; }); ch.appendChild(b); }); }
     const q = field('The question (read aloud, each word lit as it is said)', it && it.q, true);
     const a = field('The answer', it && String(it.a || '').toLowerCase());
+    const pf = field('The picture shown with it (a word from the library - blank: no picture)', it ? String(it.pic || '').toLowerCase() : '');
+    const pv = document.createElement('div'); pv.className = 'qa-pv'; body.appendChild(pv);
+    const pvPaint = () => { pv.innerHTML = ''; const w = normaliseWord(pf.value), pics = w ? picOn(w) : []; if (pics.length) { const im = document.createElement('img'); im.src = pics[0].url; pv.appendChild(im); } else if (w) { const n2 = document.createElement('span'); n2.textContent = 'No picture for "' + pf.value.trim() + '" yet'; pv.appendChild(n2); } };
+    pf.addEventListener('input', pvPaint); pvPaint();
+    const same = document.createElement('button'); same.className = 'tune-chip'; same.style.marginTop = '6px'; same.textContent = 'Use the answer\'s picture'; same.addEventListener('click', () => { pf.value = a.value; pvPaint(); }); body.appendChild(same);
     const o = field('Other choices for the tap version (optional, with commas)', it && String(it.opts || '').toLowerCase());
     const n = document.createElement('div'); n.className = 'help-note'; n.style.marginTop = '8px'; n.textContent = 'With no other choices given, other answers and words from the library are offered beside it (3 tiles to start).'; body.appendChild(n);
     body.appendChild(sheetBtn('Save', 'primary', () => { const qq = q.value.trim(), aa = normaliseWord(a.value); if (!qq || !aa) { alert('A question and its answer are both needed.'); return; }
-      g.items = g.items || []; if (it) { it.q = qq; it.a = aa; it.opts = o.value.trim().toUpperCase(); } else g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: aa, opts: o.value.trim().toUpperCase() });
+      const pp = normaliseWord(pf.value);
+      g.items = g.items || []; if (it) { it.q = qq; it.a = aa; it.opts = o.value.trim().toUpperCase(); it.pic = pp; } else g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: aa, opts: o.value.trim().toUpperCase(), pic: pp });
       save(); closeWordSheet(); if (after) after(); }));
     if (it) body.appendChild(sheetBtn('Delete this question', 'danger', () => { if (!confirm('Delete this question?')) return; g.items = (g.items || []).filter(x => x !== it); save(); closeWordSheet(); if (after) after(); }));
+    body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
+  });
+}
+const QA_WH = ['What is this?', 'What is that?', 'Who is this?', 'Who is that?', 'Where is this?', 'What color is this?', 'What number is this?', 'What shape is this?'];
+// a set of questions in one go: one question for each picture in a folder ("What is this?" + Animals -> a question for each animal, its picture shown)
+function openQaFromFolder(g, after) {
+  let tpl = 'What is this?';
+  openWordSheet(body => {
+    sheetTitle(body, 'Questions from a folder');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 8px'; n.textContent = 'Pick the question, then a folder: each tile in it with a picture becomes a question, its picture shown and its word the answer.'; body.appendChild(n);
+    const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+    const paintCh = () => { ch.innerHTML = ''; QA_WH.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip' + (t === tpl ? ' on' : ''); b.textContent = t; b.addEventListener('click', () => { tpl = t; buzz(8); paintCh(); }); ch.appendChild(b); }); };
+    paintCh();
+    const list = document.createElement('div'); list.style.cssText = 'max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-top:10px'; body.appendChild(list);
+    const pathName = f => { const a = []; let x = f, k = 0; while (x && k++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a.join(' › '); };
+    const sets = [];
+    state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(c => { const ws = (c.words || []).filter(w => picHas(w)); if (ws.length) sets.push({ label: pathName(c), ws });
+      listGroups(c).filter(x => !x.hidden).forEach(x => { const gw = (x.words || []).filter(w => picHas(w)); if (gw.length) sets.push({ label: pathName(c) + ' › ' + x.name, ws: gw }); }); });
+    sets.forEach(st => { const b = document.createElement('button'); b.className = 'pick-row'; b.style.textAlign = 'left'; b.textContent = '📁 ' + st.label + '   · ' + st.ws.length + ' with pictures';
+      b.addEventListener('click', () => { const have = new Set((g.items || []).map(x => x.q + '|' + x.a)); g.items = g.items || []; let made = 0;
+        st.ws.forEach(w => { if (have.has(tpl + '|' + w)) return; g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: tpl, a: w, opts: '', pic: w }); made++; });
+        save(); buzz(10); alert(made + ' question' + (made === 1 ? '' : 's') + ' made: "' + tpl + '" for ' + st.label + '.'); closeWordSheet(); if (after) after(); });
+      list.appendChild(b); });
+    if (!sets.length) { const n2 = document.createElement('div'); n2.className = 'help-note'; n2.textContent = 'No folders have tiles with pictures yet.'; list.appendChild(n2); }
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
   });
 }
@@ -17688,6 +17728,7 @@ function openQaList(g, back) {
     sheetTitle(body, 'Questions');
     (g.items || []).forEach(it => body.appendChild(sheetBtn(it.q + '  \u2192  ' + String(it.a || '').toLowerCase(), '', () => openQaEdit(g, it, () => openQaList(g, back)))));
     body.appendChild(sheetBtn('+ A new question', '', () => openQaEdit(g, null, () => openQaList(g, back))));
+    body.appendChild(sheetBtn('+ Questions from a folder (one for each picture)', '', () => openQaFromFolder(g, () => openQaList(g, back))));
     if (qaStartersLeft(g)) body.appendChild(sheetBtn('Remove the example questions', 'danger', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); openQaList(g, back); }));
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); if (back) back(); }));
   });
@@ -17703,12 +17744,15 @@ function qaRead(card, text, done) {
     setTimeout(() => { if (game !== g0) return; spans.forEach(x => x.classList.remove('on')); sp.classList.add('on'); }, t); t += d; });
   setTimeout(() => { spans.forEach(x => x.classList.remove('on')); if (done && game === g0) done(); }, t + 350);
 }
+// a question's picture (the word it shows), above the question
+function qaPicInto(box, it) { box.classList.remove('qa-has-pic'); const pics = it && it.pic ? picOn(it.pic) : []; if (!pics.length) return; const pic = picRandomFor(it.pic, pics); const im = document.createElement('img'); im.className = 'qa-img'; im.src = pic.url; im.alt = ''; if (pic.fit) im.style.objectFit = pic.fit; box.appendChild(im); box.classList.add('qa-has-pic'); box.classList.remove('no-pic'); }
 function qaCard(text) { const card = document.createElement('div'); card.className = 'qa-card'; const q = document.createElement('div'); q.className = 'qa-q'; q.textContent = text; card.appendChild(q); return card; }
 // the other answers offered beside the right one: its own choices, then other questions' answers, then words from the library
 function qaChoices(it, n) {
   const ans = normaliseWord(it.a), out = [], add = w => { w = normaliseWord(w); if (w && w !== ans && !out.includes(w)) out.push(w); };
   String(it.opts || '').split(',').forEach(add);
-  const g = qaGroup(); ((g && g.items) || []).filter(x => x !== it).map(x => x.a).sort(() => Math.random() - 0.5).forEach(add);
+  const g = qaGroup(), others = ((g && g.items) || []).filter(x => x !== it).sort(() => Math.random() - 0.5);
+  others.filter(x => x.q === it.q).map(x => x.a).forEach(add); others.filter(x => x.q !== it.q).map(x => x.a).forEach(add);      // ("what is this?": the other things asked the same way first)
   if (out.length < n - 1) state.words.filter(w => !isSmallWord(w) && !isPunct(w) && /^[A-Z]+$/.test(w)).sort(() => Math.random() - 0.5).slice(0, 20).forEach(add);
   return [ans].concat(out.slice(0, Math.max(1, n - 1)));
 }
@@ -17718,6 +17762,7 @@ function gameQaTrial() {
   if (!it) { g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); return; }
   g.cur = { word: normaliseWord(it.a), tile: key, tries: 0, prompted: false };
   const box = document.getElementById('gmPic'); box.innerHTML = ''; box.classList.add('no-pic');
+  qaPicInto(box, it);
   const card = qaCard(''); box.appendChild(card); box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
   card.addEventListener('click', e => { e.stopPropagation(); qaRead(card, it.q); });
   document.getElementById('gmMsg').textContent = '';
@@ -17747,6 +17792,7 @@ function gameTypeTrial() {
     [...plainLabel(word)].forEach((ch, k) => { const sp = document.createElement('span'); sp.textContent = ch === ' ' ? '\u00A0' : ch; sp.dataset.k = k; card.appendChild(sp); });
     card.addEventListener('click', e => { e.stopPropagation(); try { warmSpeech(); sayAnyway = true; speakWord(word, 0.9); } catch (er) {} finally { sayAnyway = false; } }); }
   else { card = document.createElement('button'); card.className = 'dict-say'; card.textContent = '\uD83D\uDD0A'; card.setAttribute('aria-label', 'Hear it again'); card.addEventListener('click', e => { e.stopPropagation(); dictSay(word); }); }
+  if (it) qaPicInto(box, it);
   box.appendChild(card);
   const bx = document.createElement('div'); bx.className = 'ty-boxes'; bx.id = 'tyBoxes';
   const n = word.length, size = Math.max(36, Math.min(88, Math.floor(((box.clientWidth || window.innerWidth) - 60) / (n * 1.2))));
@@ -19082,6 +19128,7 @@ function picTile(im) {
   if (!im || !im.naturalWidth || !im.isConnected) return;
   im.style.background = '';
   if (getComputedStyle(im).objectFit !== 'contain') return;      // (a picture set to fill, or the tiles game's cover: as it is)
+  if (im.classList.contains('qa-img')) return;      // (a question's picture stays one picture: "what is this?" with three of it would confuse)
   const bw = im.clientWidth, bh = im.clientHeight; if (!bw || !bh) return;
   const ir = im.naturalWidth / im.naturalHeight, br = bw / bh, url = 'url("' + String(im.currentSrc || im.src).replace(/"/g, '%22') + '")', veil = 'linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3))';
   if (ir < br * 0.88) im.style.background = veil + ', ' + url + ' center / auto 100% repeat-x';
