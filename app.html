@@ -1670,6 +1670,11 @@
   .gm-pic.qa-has-pic .qa-img { flex: 1 1 0; min-height: 0; width: 100%; height: auto; object-fit: contain; border-radius: 16px; }
   .gm-pic.qa-has-pic .qa-card { flex: 0 0 auto; height: auto; padding: 0 16px; }
   .gm-pic.qa-has-pic .qa-q { font-size: clamp(26px, 4.4vmin, 46px); }
+.qa-pk-sec { margin-top: 8px; } .qa-pk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 8px 0 4px; }
+  .qa-pk { position: relative; border: 3px solid #dfe2e7; border-radius: 14px; background: #fff; padding: 4px 4px 6px; font: inherit; font-size: 13px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+  .qa-pk img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; }
+  .qa-pk.on { border-color: #2a78d6; background: #e8f0ff; } .qa-pk.on::after { content: '\2713'; position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; background: #2a78d6; color: #fff; font-size: 15px; line-height: 24px; text-align: center; }
+  .qa-pk.had { opacity: 0.45; }
   .qa-pv { margin-top: 8px; min-height: 0; } .qa-pv img { max-height: 120px; max-width: 100%; border-radius: 12px; display: block; } .qa-pv span { font-size: 14px; font-weight: 700; color: var(--muted); }
   .qa-q span { border-radius: 0.2em; padding: 0 0.08em; transition: background 0.12s; }
   .qa-q span.on { background: var(--prompt-soft); }
@@ -3461,7 +3466,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 627 - 14 Oct';
+const BUILD = 'build 628 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -14558,9 +14563,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
         if ((g.off || {})[key]) row.classList.add('paused');
         holdTap(row, () => openQaEdit(g, it, () => renderHome(true)), () => openGroupHead(cat, g)); put(mark(row, -2)); });
       const add = makeListRow('', rowH, base); add.classList.add('add-row'); add.removeAttribute('data-word'); add.querySelector('.hw').textContent = '+ question';
-      add.addEventListener('click', () => openQaEdit(g, null, () => renderHome(true))); put(mark(add, -2));
-      { const af = makeListRow('', rowH, base); af.classList.add('add-row'); af.removeAttribute('data-word'); af.querySelector('.hw').textContent = '+ questions from a folder';
-        af.addEventListener('click', () => openQaFromFolder(g, () => renderHome(true))); put(mark(af, -2)); }
+      add.addEventListener('click', () => openQaPick(g, () => renderHome(true))); put(mark(add, -2));
       if (qaStartersLeft(g)) { const rm = makeListRow('', rowH, base); rm.classList.add('add-row'); rm.removeAttribute('data-word'); rm.querySelector('.hw').textContent = '\u2715 remove the example questions';
         rm.addEventListener('click', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); renderHome(true); }); put(mark(rm, -2)); }
       return;
@@ -17730,14 +17733,63 @@ function openQaFromFolder(g, after) {
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
   });
 }
+// the quick way: pick the question, then tap the pictures - each picture becomes a question, its name the answer
+function openQaPick(g, after) {
+  let tpl = 'What is this?', q2 = '', open = null; const picked = new Set();
+  const pathName = f => { const a = []; let x = f, k = 0; while (x && k++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a.join(' › '); };
+  const sets = [];
+  state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(c => { const ws = (c.words || []).filter(w => picHas(w)); if (ws.length) sets.push({ label: pathName(c), ws });
+    listGroups(c).filter(x => !x.hidden).forEach(x => { const gw = (x.words || []).filter(w => picHas(w)); if (gw.length) sets.push({ label: pathName(c) + ' › ' + x.name, ws: gw }); }); });
+  const allWs = [...new Set(sets.flatMap(st => st.ws))].sort();
+  openWordSheet(body => {
+    sheetTitle(body, 'A new question');
+    const lab = t => { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = t; body.appendChild(l); return l; };
+    lab('1. The question');
+    const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+    const own = document.createElement('input'); own.placeholder = 'or type your own question'; own.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:18px;font-weight:700;padding:10px 14px;border-radius:14px;border:2px solid #dfe2e7;margin-top:8px;'; body.appendChild(own);
+    const qNow = () => (own.value.trim() || tpl);
+    const paintCh = () => { ch.innerHTML = ''; QA_WH.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip' + (t === tpl && !own.value.trim() ? ' on' : ''); b.textContent = t; b.addEventListener('click', () => { tpl = t; own.value = ''; buzz(8); paintCh(); paintHad(); }); ch.appendChild(b); }); };
+    own.addEventListener('input', () => { paintCh(); paintHad(); });
+    lab('2. Tap the pictures - the name of each picture is its answer');
+    const find = document.createElement('input'); find.placeholder = 'Find a picture'; find.style.cssText = own.style.cssText; body.appendChild(find);
+    const list = document.createElement('div'); list.style.cssText = 'max-height:44vh;overflow-y:auto;margin-top:6px;'; body.appendChild(list);
+    const have = () => new Set((g.items || []).filter(x => x.q === qNow()).map(x => x.a));
+    const pkTile = w => { const b = document.createElement('button'); b.className = 'qa-pk' + (picked.has(w) ? ' on' : ''); b.dataset.w = w;
+      const pics = picOn(w); if (pics.length) { const im = document.createElement('img'); im.src = pics[0].url; im.alt = ''; b.appendChild(im); }
+      const t = document.createElement('span'); t.textContent = w.toLowerCase(); b.appendChild(t);
+      b.addEventListener('click', () => { buzz(6); if (picked.has(w)) picked.delete(w); else picked.add(w); list.querySelectorAll('.qa-pk[data-w="' + CSS.escape(w) + '"]').forEach(x => x.classList.toggle('on', picked.has(w))); paintSave(); });
+      return b; };
+    const paintHad = () => { const h = have(); list.querySelectorAll('.qa-pk').forEach(x => x.classList.toggle('had', h.has(x.dataset.w))); };
+    const paintList = () => { list.innerHTML = ''; const f = normaliseWord(find.value);
+      if (f) { const grid = document.createElement('div'); grid.className = 'qa-pk-grid'; allWs.filter(w => w.includes(f)).slice(0, 60).forEach(w => grid.appendChild(pkTile(w))); list.appendChild(grid); if (!grid.children.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'No pictures match.'; list.appendChild(n); } paintHad(); return; }
+      sets.forEach((st, i) => { const sec = document.createElement('div'); sec.className = 'qa-pk-sec';
+        const n = st.ws.filter(w => picked.has(w)).length;
+        const hd = document.createElement('button'); hd.className = 'pick-row'; hd.style.cssText = 'text-align:left;width:100%;'; hd.textContent = (open === i ? '▾ ' : '▸ ') + '📁 ' + st.label + '   · ' + st.ws.length + (n ? '   · ' + n + ' picked' : '');
+        hd.addEventListener('click', () => { open = open === i ? null : i; paintList(); }); sec.appendChild(hd);
+        if (open === i) { const all = document.createElement('button'); all.className = 'tune-chip'; all.style.marginTop = '6px'; const allOn = st.ws.every(w => picked.has(w)); all.textContent = allOn ? 'Unpick all in this folder' : 'Pick all in this folder';
+          all.addEventListener('click', () => { st.ws.forEach(w => allOn ? picked.delete(w) : picked.add(w)); paintList(); paintSave(); }); sec.appendChild(all);
+          const grid = document.createElement('div'); grid.className = 'qa-pk-grid'; st.ws.forEach(w => grid.appendChild(pkTile(w))); sec.appendChild(grid); }
+        list.appendChild(sec); });
+      if (!sets.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'No tiles have pictures yet.'; list.appendChild(n); }
+      paintHad(); };
+    find.addEventListener('input', paintList);
+    const sv = sheetBtn('Pick some pictures', 'primary', () => { if (!picked.size) return; const qq = qNow(), h = have(); g.items = g.items || []; let made = 0;
+      [...picked].forEach(w => { if (h.has(w)) return; g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: w, opts: '', pic: w }); made++; });
+      save(); buzz(10); closeWordSheet(); if (after) after(); });
+    const paintSave = () => { const k = picked.size; sv.textContent = k ? 'Make ' + k + ' question' + (k === 1 ? '' : 's') : 'Pick some pictures'; sv.style.opacity = k ? '' : '0.5'; };
+    body.appendChild(sv);
+    body.appendChild(sheetBtn('Write a question and answer by hand', '', () => { closeWordSheet(); openQaEdit(g, null, after); }));
+    body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
+    paintCh(); paintList(); paintSave();
+  });
+}
 function qaStartersLeft(g) { const qs = QA_STARTERS.map(x => x.q); return (g.items || []).filter(it => qs.includes(it.q)).length; }
 function qaRemoveStarters(g) { const qs = QA_STARTERS.map(x => x.q); g.items = (g.items || []).filter(it => !qs.includes(it.q)); save(); }
 function openQaList(g, back) {
   openWordSheet(body => {
     sheetTitle(body, 'Questions');
     (g.items || []).forEach(it => body.appendChild(sheetBtn(it.q + '  \u2192  ' + String(it.a || '').toLowerCase(), '', () => openQaEdit(g, it, () => openQaList(g, back)))));
-    body.appendChild(sheetBtn('+ A new question', '', () => openQaEdit(g, null, () => openQaList(g, back))));
-    body.appendChild(sheetBtn('+ Questions from a folder (one for each picture)', '', () => openQaFromFolder(g, () => openQaList(g, back))));
+    body.appendChild(sheetBtn('+ New questions (pick the question, then the pictures)', '', () => openQaPick(g, () => openQaList(g, back))));
     if (qaStartersLeft(g)) body.appendChild(sheetBtn('Remove the example questions', 'danger', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); openQaList(g, back); }));
     body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); if (back) back(); }));
   });
