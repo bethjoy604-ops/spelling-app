@@ -3380,7 +3380,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 609 - 14 Oct';
+const BUILD = 'build 611 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -8313,6 +8313,8 @@ function withGroup(cat, w, hint) {
   const gk = normaliseWord(box.name);
   const stem = x => x.replace(/(ES|S)$/, '');
   if (!gk || w.split(' ').some(part => stem(part) === stem(gk)) || w.endsWith(gk)) return w;     // "sugar cookie" already says it
+  // the group's name is noted in grey after the word (Where You Are · moana, chocolate · cookies): tapped, it goes in - and the two can be made one phrase
+  if (state.folderNotes !== false && !state.builderMode) { withGroupNote = { word: w, w: gk }; return w; }
   const key = w + ' ' + gk;
   magicKnow(key);
   state.keptPhrases[key] = true;
@@ -9361,13 +9363,18 @@ function suggRender0() {
         // the open folder's own tile, tapped again: its name goes into the message as a word ("go play music"), and the folder closes
         if (m.folder && (m.openHead || (m.pf ? (catOpen && catOpen.id === m.folder.id) : (suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null))))) {
           const box = m.group || m.folder, name = String(box.name || ''), key = normaliseWord(name);
-          if (key && homePhrase[homePhrase.length - 1] !== key) {
+          // (the folder's name already the last word: this tap folds the folder away - see below)
+          const fold = !key || homePhrase.includes(key);      // (its name in the message already: folded away, not put in twice)
+          if (!fold) {
             state.wordCase = state.wordCase || {};
             if (m.group && !plainStuff(m.folder) && name !== name.toLowerCase()) state.wordCase[key] = name; else if (!(state.words || []).includes(key)) delete state.wordCase[key];
             magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); save();
           }
           buzz(10);
-          if (m.pf) catOpen = null; else { suggFolder = null; suggStack = []; }
+          // its name put in: the folder stays open with its tiles (a song may be wanted from Music next) until it is folded away -
+          // its tile tapped once more, or the folder tab
+          if (fold) { if (m.pf) catOpen = null; else { suggFolder = null; suggStack = []; } }
+          else { const k2 = homePhrase.join(' '); if (m.pf) { if (catOpen) catOpen.key = k2; } else if (suggFolder) { suggFolder.key = k2; suggStack.forEach(x => { x.key = k2; }); } }
           const hs0 = document.getElementById('suggHost'); if (hs0) hs0.dataset.sig = '';
           magicPickAt = Date.now(); renderPhraseBar(); return; }
         if (m.pf) { buzz(10);      // a purple folder: its tiles fill the second purple row; again (or its own tile there) and the row is as it was
@@ -9390,6 +9397,10 @@ function suggRender0() {
         if (m.cat) { try { withGroup(m.cat, added[added.length - 1], m.hint); m.phrase = homePhrase.concat(added); } catch (er) {} }      // "want" + bottle -> "want to drink bottle"
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
+        // a word from an open folder: the folder stays open; a word from one of its groups (a song from Moana) has the group's name noted in grey after it
+        if (m.cat && suggFolder && suggFolder.id === m.cat.id) { const k2 = homePhrase.join(' '); suggFolder.key = k2; suggStack.forEach(x => { x.key = k2; });
+          const w0 = added[added.length - 1], gg = !m.hint && (m.cat.groups || []).find(x => (x.words || []).includes(w0));
+          if (gg && state.folderNotes !== false) withGroupNote = { word: w0, w: normaliseWord(gg.name) }; }
         magicAccepted = homePhrase.join(' '); magicTarget = null;
         warmSpeech(); speakWord(added.join(' '), 0.95); buzz(10); save();
         magicPickAt = Date.now();
@@ -9843,7 +9854,7 @@ function pbFit() {
 }
 // ---- Folders opened from a menu page (Food > Drinks) are noted in the key bar in grey, in their place among the words.
 // They are not part of the message: tapping one puts it in (and says it); the green enter leaves the grey ones out.
-var barNotes = [], notePathSeen = [], noteGroupSeen = '', notesTaken = new Set();      // { at: the word it sits before, w: the word }
+var barNotes = [], notePathSeen = [], noteGroupSeen = '', notesTaken = new Set(), notesAfter = new Set(), withGroupNote = null;      // { at: the word it sits before, w: the word }
 function barNotesSync() {
   const path = (typeof homePath !== 'undefined' ? homePath : []).filter(id => id !== RECENT_ID);
   const was = notePathSeen; notePathSeen = path.slice();
@@ -9887,7 +9898,15 @@ function phraseOrderChip(box) {
 }
 function folderPhraseChip(box) {
   if (!notesTaken.size) return;
-  let j = -1; for (let k = homePhrase.length - 2; k >= 0; k--) if (notesTaken.has(homePhrase[k]) && !notesTaken.has(homePhrase[k + 1]) && !isPunct(homePhrase[k + 1])) { j = k; break; }
+  { let k = -1; for (let x = homePhrase.length - 1; x >= 1; x--) if (notesAfter.has(homePhrase[x]) && !notesTaken.has(homePhrase[x - 1]) && !isPunct(homePhrase[x - 1])) { k = x; break; }
+    if (k > 0) { const a = homePhrase[k - 1], nm = homePhrase[k], to = (a + ' ' + folderSingular(nm)).trim();
+      const btn = document.createElement('button'); btn.className = 'pb-plural pb-seq'; btn.textContent = '\u21BB ' + to.toLowerCase(); btn.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
+      btn.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[k - 1] !== a || homePhrase[k] !== nm) return;
+        homePhrase.splice(k - 1, 2, to); notesTaken.delete(nm); notesAfter.delete(nm); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
+        state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; state.compoundOf = state.compoundOf || {}; state.compoundOf[to] = a; try { magicKnow(to); } catch (er) {} save(); buzz(10);
+        renderPhraseBar(); try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } });
+      box.appendChild(btn); return; } }
+  let j = -1; for (let k = homePhrase.length - 2; k >= 0; k--) if (notesTaken.has(homePhrase[k]) && !notesAfter.has(homePhrase[k]) && !notesTaken.has(homePhrase[k + 1]) && !isPunct(homePhrase[k + 1])) { j = k; break; }
   if (j < 0) return;
   const a = homePhrase[j], b = homePhrase[j + 1], to = (folderSingular(a) + ' ' + b).trim(); if (!b || to === a + ' ' + b && folderSingular(a) === a && false) return;
   const btn = document.createElement('button'); btn.className = 'pb-plural pb-seq'; btn.textContent = '↻ ' + to.toLowerCase(); btn.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
@@ -9900,7 +9919,7 @@ function folderPhraseChip(box) {
 function barNoteTake(n) {
   const k = barNotes.indexOf(n); if (k < 0) return;
   const at = Math.min(n.at, homePhrase.length);
-  homePhrase.splice(at, 0, n.w); notesTaken.add(n.w);
+  homePhrase.splice(at, 0, n.w); notesTaken.add(n.w); if (n.after) notesAfter.add(n.w);
   barNotes.splice(k, 1); barNotes.slice(k).forEach(x => { if (x.at >= at) x.at++; });      // (the noted folders after it move along with the words)
   try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (e) {}
   buzz(10); try { magicKnow(n.w); } catch (e) {}
@@ -9928,6 +9947,7 @@ function renderPhraseBar0() {
   box.innerHTML = '';
   // a whole sentence: more than one word, and nothing the magic phrase would still add to it
   const whole = homePhrase.length >= 2;      // two words or more: it starts with a capital
+  if (withGroupNote) { const wg = withGroupNote; withGroupNote = null; const L = homePhrase.length; if (L && homePhrase[L - 1] === wg.word && !barNotes.some(n => n.at === L && n.w === wg.w)) barNotes.push({ at: L, w: wg.w, after: true }); }
   barNotes = barNotes.filter(n => n.at <= homePhrase.length && !(homePhrase[n.at] === n.w || homePhrase[n.at - 1] === n.w));
   const noteChips = at => barNotes.forEach(n => { if (n.at !== at) return; const c = document.createElement('button'); c.className = 'pb-chip pb-note'; c.textContent = plainLabel(n.w); c.setAttribute('aria-label', 'Add ' + plainLabel(n.w) + ' to the message');
     c.addEventListener('click', e => { e.stopPropagation(); barNoteTake(n); }); box.appendChild(c); });
@@ -10067,7 +10087,7 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
-  barNotes = []; notesTaken.clear();      // (the folders noted in the bar were not chosen: they go with the message)
+  barNotes = []; notesTaken.clear(); notesAfter.clear();      // (the folders noted in the bar were not chosen: they go with the message)
   try { if (homeKeysUp()) homeKeysClose(); } catch (e) {}
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
   // "I feel sad"): tap it to take it, or press the green button again to send the words as they are
@@ -10467,7 +10487,7 @@ document.getElementById('pbClear').addEventListener('click', () => {
   // with the keyboard down over the page this is its delete key: a letter at a time
   const twice = Date.now() - pbClearAt < 450;
   pbClearAt = Date.now();
-  if (twice) { inp.value = ''; homePhrase = []; barNotes = []; notesTaken.clear(); pbClearAt = 0; }
+  if (twice) { inp.value = ''; homePhrase = []; barNotes = []; notesTaken.clear(); notesAfter.clear(); pbClearAt = 0; }
   else if (inp.value) inp.value = '';
   else if (barNotes.length && barNotes[barNotes.length - 1].at >= homePhrase.length) barNotes.pop();      // (a folder noted after the last word goes first)
   else homePhrase.pop();
