@@ -886,7 +886,7 @@
   .view-home.magic-full .sugg-host::-webkit-scrollbar { display: none; }
   /* each band fills the screen and snaps into place: scroll once, the next band clicks in */
   .view-home.magic-full .sugg-host { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-  .view-home.magic-full.no-small-band #smallHost { display: none !important; }
+  .view-home.magic-full.no-small-band:not(.fill-row) #smallHost { display: none !important; }
   /* the rows fit the screen: no bars over them, no gaps for half rows - just the tiles */
   .view-home.magic-full .sugg-host .sugg-head { display: none !important; }
   .view-home.magic-fit .sugg-band:last-child { min-height: 0 !important; }
@@ -1650,8 +1650,9 @@
   .gp-level-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .gp-level-row .gp-note { font-size: 15px; font-weight: 700; color: var(--muted); flex: 1; min-width: 220px; }
   /* new suggested tiles turn over together */
-  .sugg-card.sugg-flip { animation: suggFlip 0.55s cubic-bezier(.3,.7,.3,1) both; backface-visibility: hidden; }
-  @keyframes suggFlip { 0% { transform: perspective(900px) rotateY(-90deg); opacity: 0.2; } 60% { transform: perspective(900px) rotateY(12deg); opacity: 1; } 100% { transform: perspective(900px) rotateY(0); } }
+  .sugg-card.sugg-flip { animation: suggFlip 0.45s ease-out both; }      /* (gentle: a small turn and a fade, no flash) */
+  @keyframes suggFlip { 0% { transform: perspective(1200px) rotateY(-28deg); opacity: 0.55; } 100% { transform: perspective(1200px) rotateY(0); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .sugg-card.sugg-flip { animation: none; } }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -3386,7 +3387,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 616 - 14 Oct';
+const BUILD = 'build 617 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9450,7 +9451,7 @@ function suggRender0() {
     vwM.classList.toggle('no-small-band', !cfg.small.on);
     { const sh = document.getElementById('smallHost');
       if (sh) { if (host.contains(sh)) host.after(sh);
-        if (all && cfg.small.on) { if (sh.nextElementSibling !== host) host.before(sh); }
+        if (all && (cfg.small.on || vwM.classList.contains('fill-row'))) { if (sh.nextElementSibling !== host) host.before(sh); }
         else if (sh.previousElementSibling !== host) host.after(sh); } }
     if (all && cfg.small.on) { try { smallTopOpen(); } catch (e) {} }
     let fitH = 0;
@@ -10118,7 +10119,7 @@ function renderPhraseBar0() {
   if (!box._clipWatch) { box._clipWatch = true; box.addEventListener('scroll', () => box.classList.toggle('clipped', box.scrollTop > 2)); }
   if (!homePhrase.length) magicPathIn = []; else magicPathIn = magicPathIn.filter(p => homePhrase.includes(p.key));
   { const ph = homePhrase.join(' '); if (ph !== magicAt.phrase) { magicAt = { phrase: ph, nav: magicNavKey() }; magicSkipped = null; } }
-  if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; magicStickPool = null; }      // a cleared bar starts the next sentence afresh
+  if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; magicStickPool = null; document.getElementById('viewHome').classList.remove('fill-row'); }      // a cleared bar starts the next sentence afresh
   if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   magicIntoBar();
   suggRender();
@@ -15609,7 +15610,6 @@ function seqOfferNow() {
 // go play park now) and is missing only small words: the row leads with them, and each tapped goes where it belongs.
 function fillNearlyDone() {
   if (state.smallRowsOn === false || state.builderMode || homePhrase.length < 2) return false;
-  if (state.magicType && !smallBandWanted()) return false;      // (the small words row switched off under Magic mode: it stays off)
   const mp = magicPhraseFull(); if (!mp || mp.ext) return false;
   const content = homePhrase.filter(w => !isPunct(w) && !isSmallWord(w));
   const kind = w => { try { return kindOfWord(w) || ''; } catch (e) { return ''; } };
@@ -15618,7 +15618,9 @@ function fillNearlyDone() {
   return verb && other && content.length >= 2 && missing.length > 0 && missing.every(w => isSmallWord(w) || ['I', 'TO', 'THE', 'A', 'AN', 'AT', 'WANT', 'SOME'].includes(w));
 }
 function fillRowCheck() {
-  if (!fillNearlyDone()) return;
+  const vh = document.getElementById('viewHome');
+  if (!fillNearlyDone()) { vh.classList.remove('fill-row'); return; }
+  vh.classList.add('fill-row');      // (shown even where the small words band is folded away under Magic mode)
   if (stripKey !== null || smallFullHook) { setBlue(true); return; }
   popRowUntil = Infinity; popRowShut = false; stripFull = null; smallHostRedo = popRowDraw; popRowPaint = popRowDraw; popRowDraw();
   try { gridSync(); } catch (e) {}
