@@ -1561,7 +1561,10 @@
   .gm-acts.picked .gm-act:not(.on) { display: none; }
   .gm-head { display: flex; align-items: baseline; gap: 12px; margin: 18px 2px 10px; font-size: 22px; font-weight: 900; color: var(--ink); }
   .gm-head-n { font-size: 15px; font-weight: 800; color: var(--muted); }
-  .gm-count.rec { background: #ebfaee; box-shadow: inset 0 0 0 3px var(--green); }
+  .gm-count.rec { background: #ebfaee; box-shadow: inset 0 0 0 3px #b9e6c0; }
+  .gm-count.sel { background: var(--green); color: #fff; box-shadow: none; }
+  .gm-start { display: block; width: 100%; margin: 14px 0 4px; border: none; border-radius: 18px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; padding: 18px 12px; cursor: pointer; }
+  .gm-start:disabled { background: #e6e9ef; color: #9aa3b5; }
   .gm-counts { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)) !important; }
   .gm-act.off { opacity: 0.4; filter: grayscale(1); cursor: default; }
   .view-keyboard.pic-on .pic-progress.gm-bar { height: 18px; gap: 5px; }
@@ -2969,7 +2972,7 @@
         <div class="sublabel" style="margin-top:0">In the Games menu</div>
         <div class="settings-list" id="gamesOnList"></div>
         <div class="help-note" style="margin:6px 4px 12px">A game switched off stays in the Games menu greyed out, and cannot be started.</div>
-        <div class="sublabel">The other tiles in the row (Sight words)</div>
+        <div class="sublabel">The other tiles in the row (Word Match)</div>
         <div class="seg-row" id="segPicLevel"></div>
         <div class="help-note">Pictures are added on the targets page: tap the camera at the end of a target (up to 7 pictures each, switched on or off, each with its own spelling if needed, like "strawberries"). The games button (&#127918;) in the pop-out starts a game: choose the game, the folders and how many turns. Green in the bar: right first time; blue: right on the second go; yellow: after the right tile was shown. A target got wrong comes back a turn or two later.</div>
       </div>
@@ -3133,7 +3136,7 @@
         <span class="sg-chev">&#9662;</span>
       </button>
       <div class="sgroup-body">
-        <div class="help-note" style="margin:0 4px 10px">The keyboard of sounds and spellings used by Sound it out, Hear the sound and Match the spelling. Its sounds are its own - the ordinary keyboard keeps its letters and its voice.</div>
+        <div class="help-note" style="margin:0 4px 10px">The keyboard of sounds and spellings used by Elkonin Boxes and Sound Match. Its sounds are its own - the ordinary keyboard keeps its letters and its voice.</div>
         <div class="sublabel" style="margin-top:0">Its sounds</div>
         <div class="settings-list">
           <div class="setting-row" id="soundMediaRow" style="cursor:pointer"><span>&#128264;  Sound files: Google voice, recordings, sharing</span><span class="hf-btn">Open</span></div>
@@ -3210,7 +3213,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 572 - 13 Oct';
+const BUILD = 'build 573 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3471,7 +3474,7 @@ function groupPromptNow() {
   } catch (e) { return null; }
 }
 const DECODE_RE = /^decod/i;      // the Decoding group: words practised with the sound keyboard, with prompting of their own
-const PRACTICE_RE = { sight: /^sight/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles)/i, sound: /^sound/i, hear: /^hear/i, match: /^match/i, any: /^(sight|spell|writ|letter tiles|sound|hear|match)/i };
+const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match)/i };
 // the practice group for a game mode: sight (picture to word tiles), write (picture to keyboard), tiles (picture to letter tiles)
 function practiceRe(mode) { return mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
 function isPracticeGroup(g) { return PRACTICE_RE.any.test(String((g && g.name) || '').trim()); }   // set by the star; lasts until this word is finished or changed
@@ -3598,7 +3601,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], soundKeysOn: !!saved.soundKeysOn, soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -6053,6 +6056,8 @@ function selectTargetWord(w, speakIt) {
   getOrInitWordData(w);
   helpRequested = false;
   kbNumbers = false; shiftOn = false;    // every word starts on the letters
+  // ... and on the letter keyboard - unless it is a Decoding target, which starts on the sound keyboard (either can be switched for the word)
+  try { const tg = state.categories.find(c => c.target), u = normaliseWord(w); state.soundKeysOn = !!tg && (tg.groups || []).some(g => DECODE_RE.test(String(g.name || '').trim()) && (g.words || []).includes(u)); } catch (e) { state.soundKeysOn = false; }
   armPrompt();
   save(); render();
   if (speakIt && state.targetSpeech) speakWord(w, 0.85);
@@ -6477,7 +6482,8 @@ function render() {
                      !shiftOn && targetCapAt(state.targetIndex);
   const keyTarget = (needsSwitch || needsShift) ? null : expected;
   const layout = kbNumbers ? NUM_LAYOUT : LAYOUT;
-  const soundKeys = !!state.soundKeysOn && !kbNumbers && !kbSearch;      // (the keyboard of sounds and spellings, switched on from the bottom row)
+  const inGame = typeof game !== 'undefined' && !!game;      // (a game keeps its own keyboard: the letters for Spelling - the sound games have their own)
+  const soundKeys = !!state.soundKeysOn && !kbNumbers && !kbSearch && !inGame;      // (the keyboard of sounds and spellings, switched on from the bottom row)
   kb.classList.toggle('kb-sounds', soundKeys);
   layout.forEach((row, ri) => {
     const r = document.createElement('div');
@@ -6513,7 +6519,7 @@ function render() {
   const numKey = makeSpecialKey(kbNumbers ? 'ABC' : '123', 'numbers', 'wide numkey');
   if (needsSwitch) promptKey(numKey);
   r.appendChild(numKey);
-  { const t = document.createElement('button'); t.className = 'key wide sndtoggle' + (soundKeys ? ' on' : ''); t.setAttribute('aria-label', soundKeys ? 'Letter keyboard' : 'Sound keyboard');
+  if (!inGame) { const t = document.createElement('button'); t.className = 'key wide sndtoggle' + (soundKeys ? ' on' : ''); t.setAttribute('aria-label', soundKeys ? 'Letter keyboard' : 'Sound keyboard');
     t.innerHTML = sndToggleHtml(soundKeys);
     t.addEventListener('click', () => { warmSpeech(); buzz(10); state.soundKeysOn = !state.soundKeysOn; kbNumbers = false; shiftOn = false; save(); render(); try { typeKeysSync(); } catch (e) {} });
     r.appendChild(t); }
@@ -15455,9 +15461,13 @@ function ensureTargets() {
   // Spelling (a picture to write the word for)
   if (!Array.isArray(t.groups)) t.groups = [];
   // (the old names change once: Current Targets is now Typing, Writing practice is now Spelling)
-  t.groups.forEach(g => { const nm = String(g.name || '').trim(); if (/^current targets?$/i.test(nm)) g.name = 'Typing'; else if (/^writing practice$/i.test(nm)) g.name = 'Spelling'; });
-  [['Typing', /^typing$/i], ['Decoding', DECODE_RE], ['Sight words', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Spelling tiles', PRACTICE_RE.tiles], ['Sound it out', PRACTICE_RE.sound], ['Hear the sound', PRACTICE_RE.hear], ['Match the spelling', PRACTICE_RE.match]].forEach(([nm, re]) => {
-    if (!t.groups.some(g => re.test(String(g.name || '').trim()))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^(hear|match)/i.test(nm) ? { tiles: [] } : {}));
+  t.groups.forEach(g => { const nm = String(g.name || '').trim(); if (/^current targets?$/i.test(nm)) g.name = 'Typing'; else if (/^writing practice$/i.test(nm)) g.name = 'Spelling';
+    // (the games' new names, once: the group keeps its targets and progress)
+    else if (/^sight words?$/i.test(nm)) g.name = 'Word Match'; else if (/^spelling tiles$/i.test(nm)) g.name = 'Tiles'; else if (/^sound it out$/i.test(nm)) g.name = 'Elkonin Boxes'; else if (/^hear the sound$/i.test(nm)) g.name = 'Sound Match'; });
+  // Match the spelling is taken out for now: its group goes (kept aside, with its spellings, in case it comes back)
+  { const mi = t.groups.findIndex(g => /^match the spelling$/i.test(String(g.name || '').trim())); if (mi >= 0) { t.removedGroups = (t.removedGroups || []).concat(t.groups.splice(mi, 1)); } }
+  [['Typing', /^typing$/i], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear]].forEach(([nm, re]) => {
+    if (!t.groups.some(g => re.test(String(g.name || '').trim()))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : {}));
   });
   { const di = t.groups.findIndex(g => DECODE_RE.test(String(g.name || '').trim())), ti = t.groups.findIndex(g => /^typing$/i.test(String(g.name || '').trim()));      // (Decoding sits just after Typing)
     if (di > ti + 1 && ti >= 0 && !t.groups[di].moved) { const [d] = t.groups.splice(di, 1); d.moved = true; t.groups.splice(ti + 1, 0, d); } }
@@ -16037,7 +16047,7 @@ const picOn = w => (picURL[w] || []).filter(p => p.on);
 // one-time: the words given pictures before the practice groups existed go into the sight words group (and the targets)
 function picSightOnce() {
   if (state.picSightV1) return; state.picSightV1 = true;
-  try { ensureTargets(); const t = state.categories.find(c => c.target), g = t && (t.groups || []).find(x => /^sight/i.test(String(x.name || '').trim()));
+  try { ensureTargets(); const t = state.categories.find(c => c.target), g = t && (t.groups || []).find(x => PRACTICE_RE.sight.test(String(x.name || '').trim()));
     if (t && g) Object.keys(picURL).forEach(w => { if (!state.words.includes(w) || state.hiddenWords[w]) return; if (!t.words.includes(w)) t.words.push(w); if (!g.words.includes(w)) g.words.push(w); }); } catch (e) {}
   save(); try { if (onTargetsPage()) renderHome(true); } catch (e) {}
 }
@@ -16143,6 +16153,8 @@ function gameTargets() { const ws = practiceGroupWords((game && game.mode) || 's
 const gamePick = {};
 const gameSkip = {};
 const gameOpenF = {};
+const gameOnly = {};      // single targets put in on their own (their folder not ticked)
+const gameTurns = {};      // the number of turns picked (none: the suggested one)
 // the ready targets by folder for the Games menu: each main folder (the top folder under Categories / My Stuff ...) with
 // how many targets it holds, and inside it the folders the targets are in
 const GAME_ROOTS = /^(categories|my stuff|popular|chat|things|groups|choices|folders)$/i;
@@ -16175,8 +16187,8 @@ function gameTargetSets(words) {
   return [...sets.values()].sort((a, b) => b.words.length - a.words.length || a.label.localeCompare(b.label));
 }
 // the games in the Games menu, and which are switched on (in settings, under Games)
-const GAME_LIST = [['sight', '\uD83D\uDC40', 'Sight words'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Spelling tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Sound it out'], ['hear', '\uD83D\uDC42', 'Hear the sound'], ['match', '\uD83E\uDDE9', 'Match the spelling'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
-function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, match: true, builder: false }, state.gamesOn || {}); }
+const GAME_LIST = [['sight', '\uD83D\uDC40', 'Word Match'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes'], ['hear', '\uD83D\uDC42', 'Sound Match'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
+function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, builder: false }, state.gamesOn || {}, { match: false }); }      // (Match the spelling: taken out for now)
 // + Add more in the Games menu: the whole library with ticks; a ticked word becomes a target in this game's group and
 // in the Unsorted group on the targets page (made when first needed), to be sorted later. Done goes back to the menu.
 function openGameAdd(mode) {
@@ -16357,76 +16369,99 @@ function gameChooseCount(preMode) {
       const all = mode === 'write' ? write : mode === 'tiles' ? tiles : mode === 'sound' ? sound : mode === 'hear' ? hear : mode === 'match' ? match : sight;
       // which targets: every ready one, or the folders ticked - main folders, each opening to the folders inside it
       const tree = gameTargetTree(all), sets = [].concat(...tree.map(m => [m].concat(m.subs)));
-      const pick = gamePick[mode] = (gamePick[mode] || []).filter(k => sets.some(x => x.key === k));
-      const skip = gameSkip[mode] = gameSkip[mode] || new Set();      // (single targets left out: double-tap an inner folder)
+      // what is chosen: the ticked folders (less the targets taken out of them) and the targets put in on their own;
+      // nothing ticked at all is every ready target. ('!' in the ticks: everything taken off - nothing chosen yet)
+      const pick = gamePick[mode] = (gamePick[mode] || []).filter(k => k === '!' || sets.some(x => x.key === k));
+      const skip = gameSkip[mode] = gameSkip[mode] || new Set();
+      const only = gameOnly[mode] = gameOnly[mode] || new Set();
       const open = gameOpenF[mode] = gameOpenF[mode] || new Set();
-      const chosen = () => (pick.length ? all.filter(w => sets.some(x => pick.includes(x.key) && x.words.includes(w))) : all).filter(w => !skip.has(w));
+      const inPick = w => sets.some(x => pick.includes(x.key) && x.words.includes(w));
+      const allMode = () => !pick.length && !only.size;
+      const chosen = () => allMode() ? all.filter(w => !skip.has(w)) : all.filter(w => (inPick(w) && !skip.has(w)) || only.has(w));
       const n = document.createElement('span'); n.className = 'gm-head-n';
       const chips = document.createElement('div'); chips.className = 'gm-folders';
       const row = document.createElement('div'); row.className = 'gm-counts';
+      const wl = w => /\|/.test(w) ? tileLabel(w) : plainLabel(w);
+      let startBtn = null, tn = null;
+      const turnsNow = ws => gameTurns[mode] || Math.max(1, Math.min(100, ws.length * 3));
       const paint = () => {
-        const ws = chosen();
-        n.textContent = (pick.length ? ws.length + ' of ' + all.length : 'All ' + all.length) + ' target' + (all.length === 1 ? '' : 's');
-        chips.querySelectorAll('.gmf-row').forEach(r => { const k = r.dataset.key, m = tree.find(x => x.key === k), par = r.dataset.par;
-          const on = k === '*' ? !pick.length : pick.includes(k) || (!!par && pick.includes(par));
-          const part = !on && !!m && m.subs.some(sb => pick.includes(sb.key));
-          r.classList.toggle('on', on); r.classList.toggle('part', part); r.querySelector('.gmf-tick').textContent = on ? '✓' : part ? '–' : ''; });
-        row.querySelectorAll('.gm-count').forEach(b => { b.disabled = !ws.length; });
-        const rec = Math.max(1, Math.min(100, ws.length * 3));
+        const ws = chosen(), cs = new Set(ws);
+        n.textContent = (allMode() && !skip.size ? 'All ' + all.length : ws.length + ' of ' + all.length) + ' target' + (all.length === 1 ? '' : 's');
+        chips.querySelectorAll('.gmf-row').forEach(r => { const k = r.dataset.key, x = k === '*' ? { words: all } : sets.find(y => y.key === k), par = r.dataset.par;
+          const on = k === '*' ? allMode() && !skip.size : (pick.includes(k) || (!!par && pick.includes(par))) && x.words.every(w => cs.has(w));
+          const part = !on && !!x && x.words.some(w => cs.has(w));
+          r.classList.toggle('on', on); r.classList.toggle('part', part); r.querySelector('.gmf-tick').textContent = on ? '✓' : part ? '–' : '';
+          const nn = r.querySelector('.gmf-n'); if (nn && x) { const c = x.words.filter(w => cs.has(w)).length; nn.textContent = part ? c + '/' + x.words.length : x.words.length; } });
+        chips.querySelectorAll('.gm-word').forEach(b => { const on = cs.has(b.dataset.w); b.classList.toggle('on', on); b.textContent = (on ? '✓ ' : '') + wl(b.dataset.w); });
+        const rec = Math.max(1, Math.min(100, ws.length * 3)), cur = turnsNow(ws);
         tn.textContent = ws.length ? 'Suggested: ' + rec + ' (about 3 for each of the ' + ws.length + ' target' + (ws.length === 1 ? '' : 's') + ')' : '';
         const recB = row.querySelector('.gm-count.rec-own'); recB.textContent = rec; recB.dataset.n = rec; recB.style.display = [5, 10, 15].includes(rec) ? 'none' : '';
-        row.querySelectorAll('.gm-count').forEach(b => b.classList.toggle('rec', Number(b.dataset.n) === rec));
-        startNow = ws.length ? () => go(rec) : null;
+        const oth = row.querySelector('.gm-count.other'); const custom = ![5, 10, 15, rec].includes(cur); oth.textContent = custom ? cur : 'Other';
+        row.querySelectorAll('.gm-count').forEach(b => { b.classList.toggle('rec', Number(b.dataset.n) === rec); b.classList.toggle('sel', b.classList.contains('other') ? custom : Number(b.dataset.n) === cur); });
+        startBtn.disabled = !ws.length; startBtn.textContent = ws.length ? '▶  Start · ' + ws.length + ' target' + (ws.length === 1 ? '' : 's') + ', ' + cur + ' turns' : 'Choose some targets first';
+        startNow = ws.length ? () => go(cur) : null;
       };
-      const wp = document.createElement('div'); wp.className = 'gm-wordpick'; let wpKey = null, lastTap = { key: null, t: 0 };
-      const openWords = key => { wp.innerHTML = ''; wpKey = key; const x = sets.find(y => y.key === key); if (!x) { wp.style.display = 'none'; return; }
-        wp.style.display = ''; const h = document.createElement('div'); h.className = 'gm-wp-head'; h.textContent = x.label + ': tap a target to leave it out or put it back'; wp.appendChild(h);
-        x.words.forEach(w => { const b = document.createElement('button'); b.className = 'gm-chip gm-word'; const pt = () => { const on = !skip.has(w); b.classList.toggle('on', on); b.textContent = (on ? '✓ ' : '') + (/\|/.test(w) ? tileLabel(w) : plainLabel(w)); }; pt();
-          b.addEventListener('click', () => { buzz(8); if (skip.has(w)) skip.delete(w); else skip.add(w); pt(); paint(); }); wp.appendChild(b); });
-        const d = document.createElement('button'); d.className = 'gm-chip gm-wp-done'; d.textContent = 'Done'; d.addEventListener('click', () => { buzz(8); wp.style.display = 'none'; wpKey = null; }); wp.appendChild(d); };
-      wp.style.display = 'none';
       const toggle = (key, par) => {
-        if (key === '*') { pick.length = 0; return; }
         const rm = k => { const i = pick.indexOf(k); if (i >= 0) pick.splice(i, 1); };
-        if (par) { const m = tree.find(x => x.key === par);
-          if (pick.includes(par)) { rm(par); m.subs.forEach(sb => { if (sb.key !== key && !pick.includes(sb.key)) pick.push(sb.key); }); }      // (the whole folder was ticked: all of it but this one)
-          else if (pick.includes(key)) rm(key); else { pick.push(key); if (m.subs.every(sb => pick.includes(sb.key))) { m.subs.forEach(sb => rm(sb.key)); pick.push(par); } }
-          return; }
-        const m = tree.find(x => x.key === key);
-        if (pick.includes(key)) rm(key); else { (m ? m.subs : []).forEach(sb => rm(sb.key)); pick.push(key); }
+        if (key === '*') { const was = allMode() && !skip.size; pick.length = 0; only.clear(); skip.clear(); if (was) pick.push('!'); return; }      // (all on: all off - all off: all on)
+        rm('!');
+        const x = sets.find(y => y.key === key); const words = x ? x.words : [];
+        const cs = new Set(chosen()), fullyOn = words.length && words.every(w => cs.has(w));
+        if (allMode()) { pick.push('!'); all.forEach(w => { if (!skip.has(w)) only.add(w); }); skip.clear(); rm('!'); }      // (from everything: everything stays, as single targets, so this folder can come off)
+        if (fullyOn) { rm(key); if (par && pick.includes(par)) { rm(par); const m = tree.find(y => y.key === par); m.subs.forEach(sb => { if (sb.key !== key) pick.push(sb.key); }); }
+          words.forEach(w => { only.delete(w); if (inPick(w)) skip.add(w); }); }
+        else { pick.push(key); words.forEach(w => { skip.delete(w); only.delete(w); }); }
+        if (!pick.length && !only.size) pick.push('!');
       };
-      const fRow = (x, par) => {
-        const r = document.createElement('div'); r.className = 'gmf-row' + (par ? ' sub' : ''); r.dataset.key = x.key; if (par) r.dataset.par = par;
+      const tapWord = w => {
+        rm0('!');
+        const on = chosen().includes(w);
+        if (on) { if (only.has(w)) only.delete(w); else skip.add(w); }
+        else { skip.delete(w); if (!chosen().includes(w)) only.add(w); }
+        if (!pick.length && !only.size && skip.size) { /* everything but the ones taken out */ }
+      };
+      const rm0 = k => { const i = pick.indexOf(k); if (i >= 0 && (only.size || pick.length > 1)) pick.splice(i, 1); };
+      // a row: tick it to choose all of it; the arrow shows what is inside - its folders, then its own targets, each to tick
+      const fRow = (x, par, depth) => {
+        const r = document.createElement('div'); r.className = 'gmf-row' + (depth ? ' sub' : ''); r.dataset.key = x.key; if (par) r.dataset.par = par; if (depth > 1) r.style.marginLeft = (30 * depth) + 'px';
         const b = document.createElement('button'); b.className = 'gmf-main';
         b.innerHTML = '<span class="gmf-tick"></span><span class="gmf-name"></span><span class="gmf-n"></span>';
         b.querySelector('.gmf-name').textContent = x.label; b.querySelector('.gmf-n').textContent = x.words.length;
-        b.addEventListener('click', () => { buzz(8); const now = Date.now(), dbl = !!par && lastTap.key === x.key && now - lastTap.t < 400; lastTap = { key: x.key, t: now };
-          if (dbl) { if (!(pick.includes(x.key) || pick.includes(par))) toggle(x.key, par); if (wpKey === x.key) { wp.style.display = 'none'; wpKey = null; } else { r.after(wp); openWords(x.key); } paint(); return; }
-          toggle(x.key, par); paint(); });
+        b.addEventListener('click', () => { buzz(8); toggle(x.key, par); paint(); });
         r.appendChild(b);
-        if (!par && x.subs && x.subs.length) { const ex = document.createElement('button'); ex.className = 'gmf-open' + (open.has(x.key) ? ' is-open' : ''); ex.setAttribute('aria-label', 'Show the folders in ' + x.label); ex.textContent = open.has(x.key) ? '▾' : '▸';
-          ex.addEventListener('click', () => { buzz(8); if (open.has(x.key)) open.delete(x.key); else open.add(x.key); drawF(); }); r.appendChild(ex); }
+        const ex = document.createElement('button'); ex.className = 'gmf-open' + (open.has(x.key) ? ' is-open' : ''); ex.setAttribute('aria-label', 'Show what is in ' + x.label); ex.textContent = open.has(x.key) ? '▾' : '▸';
+        ex.addEventListener('click', () => { buzz(8); if (open.has(x.key)) open.delete(x.key); else open.add(x.key); drawF(); }); r.appendChild(ex);
         chips.appendChild(r);
+        if (!open.has(x.key)) return;
+        const subs = x.key === '*' ? [] : (x.subs || []);
+        subs.forEach(sb => fRow(sb, x.key, (depth || 0) + 1));
+        const own = x.words.filter(w => !subs.some(sb => sb.words.includes(w)));
+        if (own.length) { const box = document.createElement('div'); box.className = 'gm-wordpick'; box.style.marginLeft = (30 * ((depth || 0) + 1)) + 'px';
+          own.forEach(w => { const c = document.createElement('button'); c.className = 'gm-chip gm-word'; c.dataset.w = w; c.textContent = wl(w);
+            c.addEventListener('click', () => { buzz(8); tapWord(w); paint(); }); box.appendChild(c); });
+          chips.appendChild(box); }
       };
-      const drawF = () => { chips.innerHTML = ''; fRow({ key: '*', label: 'All targets', words: all });
-        tree.forEach(m => { fRow(m); if (open.has(m.key)) m.subs.forEach(sb => fRow(sb, m.key)); });
+      const drawF = () => { chips.innerHTML = ''; fRow({ key: '*', label: 'All targets', words: all }, null, 0);
+        tree.forEach(m => fRow(m, null, 0));
         const c = document.createElement('button'); c.className = 'gm-chip gm-add'; c.textContent = '+ Add more'; c.addEventListener('click', () => { buzz(8); openGameAdd(mode); }); chips.appendChild(c);
         paint(); };
       const head = t => { const h = document.createElement('div'); h.className = 'gm-head'; h.textContent = t; count.appendChild(h); return h; };
-      const wh = head('Words'); wh.appendChild(n); count.appendChild(chips); count.appendChild(wp);
-      const th = head('Turns'); const tn = document.createElement('span'); tn.className = 'gm-head-n'; th.appendChild(tn);
-      const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, pick.length ? ws : null); };
-      [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.dataset.n = k; b.addEventListener('click', () => go(k)); row.appendChild(b); });
-      { const b = document.createElement('button'); b.className = 'gm-count rec-own'; b.addEventListener('click', () => go(Number(b.dataset.n))); row.appendChild(b); }      // (the suggested number, when it is not 5, 10 or 15)
-      const c = document.createElement('button'); c.className = 'gm-count'; c.textContent = 'Other'; c.addEventListener('click', () => { const v = parseInt(prompt('How many turns?', '20'), 10); if (v > 0) go(Math.min(100, v)); }); row.appendChild(c);
+      const wh = head('Targets'); wh.appendChild(n); count.appendChild(chips);
+      const th = head('Turns'); tn = document.createElement('span'); tn.className = 'gm-head-n'; th.appendChild(tn);
+      const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, (allMode() && !skip.size) ? null : ws); };
+      const setT = k => { buzz(8); gameTurns[mode] = k; paint(); };      // (picking the turns does not start the game: Start does)
+      [5, 10, 15].forEach(k => { const b = document.createElement('button'); b.className = 'gm-count'; b.textContent = k; b.dataset.n = k; b.addEventListener('click', () => setT(k)); row.appendChild(b); });
+      { const b = document.createElement('button'); b.className = 'gm-count rec-own'; b.addEventListener('click', () => { gameTurns[mode] = null; buzz(8); paint(); }); row.appendChild(b); }      // (the suggested number, when it is not 5, 10 or 15)
+      const c = document.createElement('button'); c.className = 'gm-count other'; c.textContent = 'Other'; c.addEventListener('click', () => { const v = parseInt(prompt('How many turns?', String(turnsNow(chosen()))), 10); if (v > 0) setT(Math.min(100, v)); }); row.appendChild(c);
       count.appendChild(row);
-      { const sv = document.createElement('button'); sv.className = 'gm-save'; sv.textContent = '\uD83D\uDCBE Save as a game (these targets and turns)';
-        sv.addEventListener('click', () => { const ws = chosen(); if (!ws.length) return; const rec = Math.max(1, Math.min(100, ws.length * 3)); const p0 = presetSave(mode, ws, rec); if (p0) { buzz(10); gameChooseCount(); } });
+      startBtn = document.createElement('button'); startBtn.className = 'gm-start'; startBtn.addEventListener('click', () => { if (startNow) { buzz(10); startNow(); } }); count.appendChild(startBtn);
+      { const sv = document.createElement('button'); sv.className = 'gm-save'; sv.textContent = '💾 Save as a game (these targets and turns)';
+        sv.addEventListener('click', () => { const ws = chosen(); if (!ws.length) return; const p0 = presetSave(mode, ws, turnsNow(ws)); if (p0) { buzz(10); gameChooseCount(); } });
         count.appendChild(sv); }
       drawF(); };
-    [['sight', '\uD83D\uDC40', 'Sight words', 'Match the picture to its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'Type the word for the picture', write], ['tiles', '\uD83D\uDD24', 'Spelling tiles', 'Pick the letters for the picture', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Sound it out', 'Build the word from its sounds', sound], ['hear', '\uD83D\uDC42', 'Hear the sound', 'Find the spelling for the sound', hear], ['match', '\uD83E\uDDE9', 'Match the spelling', 'Find the same spelling on the keyboard', match]].forEach(([m, ic, nm, sub, ws]) => {
+    [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear]].forEach(([m, ic, nm, sub, ws]) => {
       const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
-      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
+      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : m === 'sound' ? 'No targets in the "' + nm + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
       b.dataset.m = m;
       b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else { count.innerHTML = ''; startNow = null; } });      // (one chosen: the others step away until it is tapped again)
       acts.appendChild(b);
@@ -16436,7 +16471,7 @@ function gameChooseCount(preMode) {
       b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); closeWordSheet(); gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); });
       acts.appendChild(b); }
     // Done: with a game chosen, it starts (with the green-outlined, suggested number of turns); otherwise it just closes
-    body.appendChild(sheetBtn('Done', 'primary', () => { if (mode && startNow) { buzz(10); startNow(); return; } closeWordSheet(); }));
+    body.appendChild(sheetBtn('Done', '', () => { closeWordSheet(); }));      // (only Start starts a game)
     body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); gameOff(); }));
     if (preMode) { const pb = acts.querySelector('.gm-act[data-m="' + preMode + '"]'); if (pb && !pb.classList.contains('off')) pb.click(); }      // (back from + Add more: the same game, still chosen)
   });
@@ -17299,7 +17334,7 @@ const soundSpShow = sp => String(sp || '').replace(/-/g, '‑');      // (a-e wi
 // ===== Hear the sound / Match the spelling: one sound a turn. Their targets are spellings (sh, ea, igh ...), kept in their
 // own groups on the targets page as "sound|spelling" (ee|ea is the ea in eat). Hear: the sound (or its video) plays and
 // the spelling is found on the sound keyboard. Match: the spelling is shown and the same one is found on the keyboard.
-function isTileGroup(g) { return /^(hear|match)/i.test(String((g && g.name) || '').trim()); }
+function isTileGroup(g) { return /^(hear|match|sound match)/i.test(String((g && g.name) || '').trim()); }
 function tileParse(key) { const [id, sp] = String(key || '').split('|'); return { id, sp: sp || (SOUND_K[id] ? SOUND_K[id].label : id) }; }
 function tileEx(key) { const t = tileParse(key); for (const l of Object.keys(SOUND_TILES)) { const x = SOUND_TILES[l].find(([id, sp]) => id === t.id && sp === t.sp); if (x) return x[2]; } return (SOUND_K[t.id] || {}).ex || ''; }
 function tileLabel(key) { const t = tileParse(key), ex = tileEx(key); return soundSpShow(t.sp) + (ex ? '  (' + ex + ')' : ''); }
