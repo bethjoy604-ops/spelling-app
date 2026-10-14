@@ -3419,7 +3419,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 618 - 14 Oct';
+const BUILD = 'build 619 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9166,19 +9166,22 @@ function tagList() { state.tags = (state.tags && typeof state.tags === 'object')
       if (m.length > 1) state.tags.park = m; save(); } } catch (e) {} }
   return state.tags; }
 function tagsOf(key) { const T = tagList(); return Object.keys(T).filter(t => (T[t] || []).includes(key)).sort(); }
-function tagLabel(key) { if (/^f:/.test(key)) { const c = catById(Number(key.slice(2))); return c ? '\uD83D\uDCC1 ' + c.name : null; } return plainLabel(key.slice(2)); }
+function tagLabel(key) { if (/^f:/.test(key)) { const c = catById(Number(key.slice(2))); return c ? '\uD83D\uDCC1 ' + c.name : null; }
+  if (/^g:/.test(key)) { const [ci, gi] = key.slice(2).split('/'), c = catById(Number(ci)), g = c && (c.groups || []).find(x => String(x.id) === gi); return g ? '\uD83D\uDCC2 ' + c.name + ' \u203A ' + g.name : null; }
+  return plainLabel(key.slice(2)); }
 function tagSet(t, key, on) { const T = tagList(); const m = T[t] = (T[t] || []).filter(x => x !== key); if (on) m.push(key); save(); }
 // the words and folders sharing a tag with the message: each word's own tags, and those of the folders it is in
 function tagRelated(ph) {
-  const T = tagList(); if (!Object.keys(T).length) return { words: [], folders: [] };
+  const T = tagList(); if (!Object.keys(T).length) return { words: [], folders: [], groups: [] };
   const own = new Set(), tags = new Set();
-  (ph || []).filter(w => !isPunct(w)).forEach(w => { own.add('w:' + w); categoriesOf(w).forEach(c => { let x = c, g = 0; while (x && g++ < 6) { own.add('f:' + x.id); x = x.parent ? catById(x.parent) : null; } }); });
+  (ph || []).filter(w => !isPunct(w)).forEach(w => { own.add('w:' + w); categoriesOf(w).forEach(c => { (c.groups || []).forEach(g => { if ((g.words || []).includes(w)) own.add('g:' + c.id + '/' + g.id); }); let x = c, g = 0; while (x && g++ < 6) { own.add('f:' + x.id); x = x.parent ? catById(x.parent) : null; } }); });
   own.forEach(k => tagsOf(k).forEach(t => tags.add(t)));
-  const words = [], folders = [];
+  const words = [], folders = [], groups = [];
   tags.forEach(t => (T[t] || []).forEach(k => { if (own.has(k)) return;
     if (/^w:/.test(k)) { const w = k.slice(2); if (!words.includes(w)) words.push(w); }
+    else if (/^g:/.test(k)) { const [ci, gi] = k.slice(2).split('/'), c = catById(Number(ci)), g = c && (c.groups || []).find(x => String(x.id) === gi); if (g && !g.hidden && !groups.some(x => x.group === g)) groups.push({ folder: c, group: g }); }
     else { const c = catById(Number(k.slice(2))); if (c && !c.hidden && !folders.includes(c)) folders.push(c); } }));
-  return { words, folders };
+  return { words, folders, groups };
 }
 function tagBtn(key, label) { const ts = tagsOf(key); return sheetBtn('\uD83C\uDFF7\uFE0F  Tags' + (ts.length ? ': ' + ts.join(', ') : ' (to go with other tiles)'), '', () => openTagSheet(key, label)); }
 // a tile's or folder's tags: tap one to give it or take it off; a new one by name
@@ -9227,22 +9230,40 @@ function openTagDetail(t) {
     body.appendChild(sheetBtn('Back to all tags', '', () => openTagsManager()));
   });
 }
-// every folder (ticked: the folder itself has the tag) with its tiles under it (each ticked on its own)
+// the whole library as it is laid out - each folder in its place, the folders inside it, its groups (Drinks in Food) and its
+// tiles - every one of them can be given the tag on its own; the arrow opens a folder or group to see what is inside
+let tagPickOpen = new Set();
 function openTagPicker(t) {
   openWordSheet(body => {
     sheetTitle(body, 'Add to "' + t + '"');
-    const list = document.createElement('div'); list.className = 'pick-list pick-grid'; list.style.maxHeight = '58vh'; list.style.overflowY = 'auto'; body.appendChild(list);
+    const n0 = document.createElement('div'); n0.className = 'help-note'; n0.style.margin = '2px 0 8px'; n0.textContent = 'Tap a folder, group or tile to give it the tag (green). The arrow opens it to show what is inside.'; body.appendChild(n0);
+    const list = document.createElement('div'); list.style.cssText = 'max-height:58vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px'; body.appendChild(list);
     const has = k => (tagList()[t] || []).includes(k);
-    const pathName = f => { const a = []; let x = f, g = 0; while (x && g++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a.join(' \u203A '); };
-    const done = new Set();
-    state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(f => {
-      const fb = document.createElement('button'); fb.className = 'pick-row'; fb.style.gridColumn = '1 / -1'; fb.style.fontWeight = '900';
-      const pf = () => { fb.classList.toggle('on', has('f:' + f.id)); fb.textContent = (has('f:' + f.id) ? '\u2713 ' : '') + '\uD83D\uDCC1 ' + pathName(f); };
-      fb.addEventListener('click', () => { buzz(8); tagSet(t, 'f:' + f.id, !has('f:' + f.id)); pf(); }); pf(); list.appendChild(fb);
-      (f.words || []).filter(w => !isPunct(w) && !done.has(w)).forEach(w => { done.add(w);
-        const b = document.createElement('button'); b.className = 'pick-row'; const pw = () => { b.classList.toggle('on', has('w:' + w)); b.textContent = (has('w:' + w) ? '\u2713 ' : '') + plainLabel(w); };
-        b.addEventListener('click', () => { buzz(8); tagSet(t, 'w:' + w, !has('w:' + w)); pw(); }); pw(); list.appendChild(b); });
-    });
+    const kids = id => state.categories.filter(c => (c.parent || null) === id && !c.target && !c.hidden && !c.smallSec).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const inside = (c, g) => { let n = 0; const T = tagList()[t] || []; const ws = g ? (g.words || []) : (c.words || []); ws.forEach(w => { if (T.includes('w:' + w)) n++; }); if (!g) { listGroups(c).forEach(x => { if (T.includes('g:' + c.id + '/' + x.id)) n++; }); kids(c.id).forEach(k => { if (T.includes('f:' + k.id)) n++; n += inside(k); }); } return n; };
+    const row = (depth, label, key, openKey, count) => {
+      const r = document.createElement('div'); r.style.cssText = 'display:flex;gap:8px;align-items:stretch;margin-left:' + (depth * 22) + 'px';
+      const b = document.createElement('button'); b.className = 'pick-row'; b.style.cssText = 'flex:1;text-align:left;font-weight:' + (openKey ? '900' : '700');
+      const paint = () => { b.classList.toggle('on', has(key)); b.textContent = (has(key) ? '\u2713 ' : '') + label + (count ? '   \u00B7 ' + count + ' tagged inside' : ''); };
+      b.addEventListener('click', () => { buzz(8); tagSet(t, key, !has(key)); paint(); }); paint(); r.appendChild(b);
+      if (openKey) { const o = document.createElement('button'); o.className = 'pick-row'; o.style.cssText = 'flex:0 0 56px;font-size:20px'; o.textContent = tagPickOpen.has(openKey) ? '\u25BE' : '\u25B8'; o.setAttribute('aria-label', 'Show what is inside');
+        o.addEventListener('click', () => { buzz(8); if (tagPickOpen.has(openKey)) tagPickOpen.delete(openKey); else tagPickOpen.add(openKey); draw(); }); r.appendChild(o); }
+      list.appendChild(r);
+    };
+    const wordsGrid = (depth, ws) => { if (!ws.length) return; const gr = document.createElement('div'); gr.className = 'pick-grid'; gr.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-left:' + (depth * 22) + 'px';
+      ws.forEach(w => { const b = document.createElement('button'); b.className = 'pick-row'; const pw = () => { b.classList.toggle('on', has('w:' + w)); b.textContent = (has('w:' + w) ? '\u2713 ' : '') + plainLabel(w); };
+        b.addEventListener('click', () => { buzz(8); tagSet(t, 'w:' + w, !has('w:' + w)); pw(); }); pw(); gr.appendChild(b); });
+      list.appendChild(gr); };
+    const folder = (c, depth) => {
+      const ok = 'f' + c.id; row(depth, '\uD83D\uDCC1 ' + c.name, 'f:' + c.id, ok, inside(c));
+      if (!tagPickOpen.has(ok)) return;
+      kids(c.id).forEach(k => folder(k, depth + 1));
+      const gs = listGroups(c).filter(g => !g.hidden && (g.words || []).length), inG = new Set([].concat(...gs.map(g => g.words || [])));
+      gs.forEach(g => { const gk = 'g' + c.id + '/' + g.id; row(depth + 1, '\uD83D\uDCC2 ' + g.name, 'g:' + c.id + '/' + g.id, gk, inside(c, g)); if (tagPickOpen.has(gk)) wordsGrid(depth + 2, (g.words || []).filter(w => !isPunct(w))); });
+      wordsGrid(depth + 1, (c.words || []).filter(w => !isPunct(w) && !inG.has(w)));
+    };
+    const draw = () => { const y = list.scrollTop; list.innerHTML = ''; kids(null).forEach(c => folder(c, 0)); list.scrollTop = y; };
+    draw();
     body.appendChild(sheetBtn('Done', 'primary', () => openTagDetail(t)));
   });
 }
@@ -9369,13 +9390,15 @@ function suggRender0() {
           if (rs.some(x => x[0] > 0)) folders = [].concat(...rs.sort((a, b) => a[3] - b[3] || b[0] - a[0] || a[1] - b[1]).map(x => x[2])); } }      // (the doing word's own folders stay first)
       // tags: the tiles and folders that share a tag with a word in the message come first - folders (with a few of their tiles) in grey,
       // doing words in green, describing words in purple, things in the second grey row
-      if (live) { try { const rel = tagRelated(homePhrase); if (rel.words.length || rel.folders.length) {
+      if (live) { try { const rel = tagRelated(homePhrase); if (rel.words.length || rel.folders.length || rel.groups.length) {
           const lastOf = m => m.phrase[m.phrase.length - 1], idxA = homePhrase.map((_, i) => i), mkI = w => ({ phrase: homePhrase.concat([w]), used: idxA });
           const ok = w => !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w) && magicAllowed(w) && !isPunct(w);
           const pull = (list, w) => { const at = list.findIndex(m => !m.folder && lastOf(m) === w); return at >= 0 ? list.splice(at, 1)[0] : mkI(w); };
           const gF = [], gT = [], gG = [], gC = [];
           if (cfg.grey.on) rel.folders.forEach(c => { if (magicCatOff(c)) return; folders = folders.filter(m => !(m.folder === c && !m.group)); gF.push({ folder: c, group: null, phrase: homePhrase.concat(['\u25B8' + c.id]), used: idxA, tag: true });
             (c.words || []).filter(ok).slice(0, 4).forEach(w => { if (!gT.some(m => lastOf(m) === w)) gT.push(pull(things2, w)); }); });
+          if (cfg.grey.on) rel.groups.forEach(({ folder: c, group: g }) => { if (magicCatOff(c)) return; folders = folders.filter(m => !(m.folder === c && m.group === g)); gF.push({ folder: c, group: g, phrase: homePhrase.concat(['\u25B8' + c.id + '/' + g.id]), used: idxA, tag: true });
+            (g.words || []).filter(ok).slice(0, 4).forEach(w => { if (!gT.some(m => lastOf(m) === w)) gT.push(pull(things2, w)); }); });
           rel.words.filter(ok).forEach(w => { let k = ''; try { k = kindOfWord(w); } catch (e) {}
             if (k === 'action') { if (cfg.green.on) gG.push(Object.assign(pull(green, w), { act: true })); }
             else if (describeWord(w)) { if (cfg.cat.on) gC.push(pull(cats, w)); }
