@@ -3251,7 +3251,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 593 - 14 Oct';
+const BUILD = 'build 594 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -5830,7 +5830,7 @@ let homeKeysTimer = null, typeLayerQuiet = false;
 function homeKeysUp() { const k = document.getElementById('typeLayer'); return !!k && k.classList.contains('open'); }
 function homeKeysIdle() {
   clearTimeout(homeKeysTimer);
-  homeKeysTimer = setTimeout(() => { if (homeKeysUp() && !document.getElementById('pbInput').value && !homePhrase.length) homeKeysClose(); }, 8000);
+  homeKeysTimer = setTimeout(() => { if (soundOpen) { homeKeysIdle(); return; } if (homeKeysUp() && !document.getElementById('pbInput').value && !homePhrase.length) homeKeysClose(); }, 8000);      // (spellings open on a key: the keyboard stays)
 }
 function typeLayerPaint() {
   const L = document.getElementById('typeLayer'); if (!L) return;
@@ -17629,6 +17629,7 @@ function gameSnd1Trial() {
   document.getElementById('gmMsg').textContent = '';
   const row = document.getElementById('gmRow'); row.innerHTML = ''; soundKbBuild(row);
   if (g.mode === 'hear') setTimeout(() => { if (game === g && g.cur && g.cur.word === key) play(); }, 250);
+  soundIdleArm();
   gameBar();
 }
 // which tap counts: Hear - any spelling of the sound (unless the group asks for this spelling); Match - the same spelling
@@ -17732,6 +17733,7 @@ function soundTypeEnter(id, sp) {
   buzz(10); try { render(); } catch (e) {}
 }
 function soundKbTap(l, put) {
+  try { if (game) soundIdleArm(); } catch (e) {}
   const typing = !!put || (!game && !!state.soundKeysOn);
   if (!typing && (!game || game.busy)) return;
   // (a message keyboard - the one from the bar at the top, or the chat's - puts the spelling's letters in itself)
@@ -17741,7 +17743,7 @@ function soundKbTap(l, put) {
   const opts = soundOpts(l); if (!opts.length) return;
   if (opts.length === 1) { enter(opts[0].id, opts[0].sp); return; }
   const slots = soundSlots(l); soundOpen = l; soundSwap = {}; opts.slice(1).forEach((t, i) => { if (slots[i]) soundSwap[slots[i]] = t; }); buzz(8); soundKbPaint();      // (opening a key is quiet: the sound is said once a spelling goes in)
-  soundOpenTimer = setTimeout(() => { if (soundOpen !== l) return; soundOpen = null; soundSwap = {}; soundKbPaint(); }, 10000);      // (the spellings stay open 10 s for a choice to be made)
+  soundOpenTimer = setTimeout(() => { if (soundOpen !== l) return; soundOpen = null; soundSwap = {}; soundKbPaint(); try { homeKeysIdle(); } catch (e) {} }, 10000);      // (the spellings stay open 10 s for a choice to be made, then the keyboard is back as it was)
   try { homeKeysIdle(); } catch (e) {}
 }
 function gameSoundTrial() {
@@ -17762,7 +17764,24 @@ function gameSoundTrial() {
   document.getElementById('gmMsg').textContent = '';
   const row = document.getElementById('gmRow'); row.innerHTML = ''; soundKbBuild(row);
   try { warmSpeech(); sayAnyway = true; speakWord(tile, 0.9); } catch (e) {} finally { sayAnyway = false; }
+  soundIdleArm();
   gameBar();
+}
+// nothing tapped for 5 s: the key with the sound pulses (a prompt) and the sound is said again - again every 5 s
+let soundIdleTimer = null;
+function soundIdleArm() {
+  clearTimeout(soundIdleTimer);
+  const g = game; if (!g || !g.cur || !['sound', 'hear'].includes(g.mode)) return;
+  const k = g.cur.k, word = g.cur.word;
+  soundIdleTimer = setTimeout(() => {
+    if (game !== g || !g.cur || g.cur.word !== word || g.cur.k !== k) return;
+    if (g.busy || soundOpen) { soundIdleArm(); return; }
+    const want = g.cur.parts[k]; if (!want) return;
+    if (groupOpt(gameGroup(), 'gamePulse', true)) g.cur.prompted = true;
+    soundKbPaint();
+    try { soundSay(want.alt[0] || want.id, want.sp); } catch (e) {}
+    soundIdleArm();
+  }, 5000);
 }
 function soundEnter(id, sp) {
   const g = game; if (!g || g.busy) return; const c = g.cur, want = c.parts[c.k]; if (!want) return;
@@ -17773,7 +17792,7 @@ function soundEnter(id, sp) {
     if (c.prompted) c.anyPrompt = true;
     c.lets.push(want.sp + (c.prompted ? 'y' : c.tries ? 'b' : 'g'));
     const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (cell) { cell.textContent = soundSpShow(game.mode === 'hear' ? sp : want.sp); cell.classList.add('filled'); cell.classList.remove('next'); }
-    c.k++; c.tries = 0; c.prompted = false; buzz(15);
+    c.k++; c.tries = 0; c.prompted = false; buzz(15); soundIdleArm();
     const nx = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]'); if (nx) nx.classList.add('next');
     soundWordMark(c.k);
     soundKbPaint();
@@ -17786,7 +17805,7 @@ function soundEnter(id, sp) {
   { const cell = document.querySelector('#gmCells .snd-cell[data-k="' + c.k + '"]');
     if (cell) { cell.textContent = soundSpShow(want.sp); cell.classList.add('reveal'); }
     g.busy = true; soundCloseAll(); setTimeout(() => { try { soundSay(want.alt[0] || want.id, want.sp); } catch (e) {} }, 350);
-    setTimeout(() => { if (game !== g) return; if (cell && !cell.classList.contains('filled')) { cell.textContent = ''; cell.classList.remove('reveal'); } g.busy = false; soundKbPaint(); }, 3000); }
+    setTimeout(() => { if (game !== g) return; if (cell && !cell.classList.contains('filled')) { cell.textContent = ''; cell.classList.remove('reveal'); } g.busy = false; soundKbPaint(); soundIdleArm(); }, 3000); }
   const msg = document.getElementById('gmMsg'); msg.textContent = ''; msg.classList.remove('show');      // (no message over the word: the box shows the right spelling instead)
   if (c.tries >= 2 && groupOpt(gameGroup(), 'gamePulse', true)) c.prompted = true;
   soundKbPaint();
