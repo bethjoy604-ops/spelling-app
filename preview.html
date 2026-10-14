@@ -2437,6 +2437,26 @@
 .snd-credit{display:flex;align-items:center;gap:12px;margin:10px 4px;padding:10px 12px;border-radius:14px;background:var(--card,#fff);border:1px solid rgba(0,0,0,.1);text-decoration:none;color:inherit}
 .snd-credit img{width:52px;height:52px;object-fit:contain;border-radius:10px;flex:none}
 .snd-credit span{display:flex;flex-direction:column;gap:2px}.snd-credit b{font-size:15px}.snd-credit small{font-size:13px;opacity:.7}
+  /* ---- spelling practice laid out as the key bar's typing page: the message window half the page, the words from the top
+     left at the typing page's size, wrapping word by word; the prompted letter grows as set in the prompting settings ---- */
+  .target-word .tword { display: contents; }
+  .view-keyboard:not(.pic-on) #targetBanner.active { --tile: clamp(48px, 10vmin, 100px) !important; height: calc(50vh - 24px) !important; min-height: 0 !important; max-height: none !important; flex: 0 0 auto !important; align-items: flex-start !important; padding: 14px 22px !important; overflow: hidden; border-radius: 22px; }
+  .view-keyboard:not(.pic-on) #targetBanner.active .target-word { flex-wrap: wrap !important; align-content: flex-start !important; align-items: baseline !important; overflow-x: hidden !important; overflow-y: auto !important; gap: 4px 0 !important; margin: 0 !important; padding: 0 !important; max-height: 100%; }
+  .view-keyboard:not(.pic-on) #targetBanner.active .target-word .tword { display: inline-flex; flex-wrap: nowrap; align-items: baseline; }
+  .view-keyboard:not(.pic-on) #targetBanner.active .tletter { padding: 0.02em 0.012em !important; min-width: 0 !important; border-radius: 0.14em; line-height: 1.25; font-weight: 600; }
+  .view-keyboard:not(.pic-on) #targetBanner.active .tletter.magnify { line-height: 1.1; }
+  .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace { width: 0.42em; min-width: 0.42em !important; padding: 0 !important; font-size: var(--tile); }
+  .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace:not(.next) { color: transparent !important; background: transparent !important; }
+  .view-keyboard:not(.pic-on):has(#targetBanner.active) .keyboard { flex: 5 1 0; min-height: 0; }
+  /* coins at the end of a message typed from the home page */
+  .rb-coins { position: absolute; left: 0; right: 0; bottom: 4vmin; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 0 5vmin; }
+  .rb-coins .tok { transform: scale(0); opacity: 0; }
+  .rb-coins .tok.in { animation: tokIn 0.45s cubic-bezier(.34,1.56,.64,1) forwards; }
+  .rb-pile { position: absolute; top: 3vmin; right: 3vmin; display: flex; align-items: center; gap: 10px; background: #fbf7ec; border-radius: 18px; padding: 6px 16px 6px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); animation: tokIn 0.4s cubic-bezier(.34,1.56,.64,1) both; }
+  .rb-pile .tok { width: 44px; height: 44px; font-size: 21px; --tc: #f4b52a; }
+  .rb-pile .n { font-size: 32px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .rb-pile.bump .tok, .rb-pile.bump .n { animation: pileBump 0.32s ease; }
+  .rb-pile.glow { box-shadow: 0 0 0 4px #ffe7a3, 0 0 24px #ffd66b; transition: box-shadow 0.4s; }
 </style>
 </head>
 <body>
@@ -3344,7 +3364,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 605 - 14 Oct';
+const BUILD = 'build 606 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -6657,6 +6677,8 @@ function render() {
     // In help mode the word bar always marks the letter to type next, straight
     // away; the matching highlight on the keys still waits to be asked for
     const helpLead = state.helpMode && !isWordComplete() && fadeLevelAt(state.targetIndex) < FADE_MAX;
+    // each word's letters kept together, so a long message wraps word by word from the top left (as in the key bar's typing page)
+    let tword = null; const putL = (s, ch) => { if (ch === ' ') { tw.appendChild(s); tword = null; return; } if (!tword) { tword = document.createElement('span'); tword.className = 'tword'; tw.appendChild(tword); } tword.appendChild(s); };
     [...state.currentTarget].forEach((ch, i) => {
       const s = document.createElement('span');
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
@@ -6680,17 +6702,17 @@ function render() {
       if (i >= state.targetIndex && ch !== ' ' && fadeLevelAt(i) >= FADE_MAX && !boostLevel(i) && !hintAt(i).word) s.classList.add('gone');
       if (i === state.targetIndex && hintAt(i).word) s.classList.add('flash-hint');      // (faded right out: typed from memory)
       s.textContent = (ch === ' ') ? '\u2423' : displayLetterAt(ch, i);
-      tw.appendChild(s);
+      putL(s, ch);
     });
     // a long phrase: the word being spelled slides to the front of the bar (and the letter to type
     // is always in view, however long the word)
     tw.scrollLeft = twWas;
     if (tw.scrollWidth > tw.clientWidth + 2) {
-      const idx = Math.min(state.targetIndex, tw.children.length - 1);
+      const Ls = tw.querySelectorAll('.tletter'), idx = Math.min(state.targetIndex, Ls.length - 1);
       const start = state.currentTarget.lastIndexOf(' ', Math.max(0, idx - 1)) + 1;
       const x = el => el.getBoundingClientRect().left - tw.getBoundingClientRect().left + tw.scrollLeft;
-      let left = Math.max(0, x(tw.children[start]) - 10);
-      const cur = tw.children[idx], curRight = x(cur) + cur.getBoundingClientRect().width;
+      let left = Math.max(0, x(Ls[start]) - 10);
+      const cur = Ls[idx], curRight = x(cur) + cur.getBoundingClientRect().width;
       if (curRight > left + tw.clientWidth - 10) left = curRight - tw.clientWidth + 24;
       if (Math.abs(left - tw.scrollLeft) > 2) { try { tw.scrollTo({ left, behavior: 'smooth' }); } catch (e) { tw.scrollLeft = left; } }
     }
@@ -7298,6 +7320,7 @@ function logTypingTrial(word, from, len) {
     if (!letters.length) return;
     const res = letters.every(x => x[1] === 'g') ? 'first' : letters.every(x => x[1] === 'y') ? 'prompted' : 'second';
     const mode = (typeof game !== 'undefined' && game && game.mode === 'write') ? 'write' : 'typing';
+    if (mode === 'typing' && !/\s/.test(String(word).trim())) typingCoins.push(res === 'first' ? 'g' : res === 'second' ? 'b' : 'y');      // (a coin for each word typed: shown at the end of its read-back)
     state.trialLog = (state.trialLog || []).concat([{ t: Date.now(), word: normaliseWord(word), res, mode, errors: letters.length ? (trialAt.slice(from, from + len).reduce((n, a) => n + ((a && a.w) || 0), 0)) : 0, letters: letters.map(x => x[0] + x[1]).join(' '), ltm: trialAt.slice(from, from + len).some(a => a && a.ltm) ? trialAt.slice(from, from + len).filter(a => a && a.L && /[A-Z]/.test(a.L)).map(a => a.ltm || 1).join('') : undefined }]).slice(-5000);
   } catch (e) {}
 }
@@ -7346,6 +7369,28 @@ function goHomeAfter(word, wordCount) {
 // ---- Celebration ----
 // The finished message, large on the whole screen: each word lights up in turn as it is said
 let readBackTimer = null;
+var typingCoins = [];
+// the coins for the words just typed, at the end of the read-back: they pop in under the message, fly to the count, and add up
+function rbCoins(card, kinds, then) {
+  const had = Math.max(0, +state.tokens || 0); state.tokens = had + kinds.length;
+  { const ts = state.tokenStats = state.tokenStats || {}; kinds.forEach(k => { ts[k] = (ts[k] || 0) + 1; }); ts.modes = ts.modes || {}; ts.modes.typing = (ts.modes.typing || 0) + kinds.length; }
+  try { save(); } catch (e) {}
+  const row = document.createElement('div'); row.className = 'rb-coins'; row.innerHTML = kinds.map(k => '<span class="tok ' + k + '">\u2605</span>').join('');
+  const pile = document.createElement('div'); pile.className = 'rb-pile'; pile.innerHTML = '<span class="tok">\u2605</span><span class="n">' + had + '</span>';
+  card.appendChild(row); card.appendChild(pile);
+  const toks = [...row.querySelectorAll('.tok')], num = pile.querySelector('.n'), dest = pile.querySelector('.tok'), step = 200;
+  toks.forEach((t, k) => setTimeout(() => { if (!card.isConnected) return; t.classList.add('in'); tokNote(TOK_SCALE[k % TOK_SCALE.length], 0, 0.09); }, k * step));
+  let n = had; const flyAt = toks.length * step + 500;
+  toks.forEach((t, k) => setTimeout(() => {
+    if (!card.isConnected) return;
+    const r = t.getBoundingClientRect(), d = dest.getBoundingClientRect(), f = t.cloneNode(true);
+    f.classList.remove('in'); f.classList.add('fly'); f.style.left = r.left + 'px'; f.style.top = r.top + 'px'; f.style.width = r.width + 'px'; f.style.height = r.height + 'px'; f.style.zIndex = '70';
+    document.body.appendChild(f); t.style.visibility = 'hidden';
+    requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transform = 'translate(' + (d.left + d.width / 2 - r.left - r.width / 2) + 'px,' + (d.top + d.height / 2 - r.top - r.height / 2) + 'px) scale(0.75)'; }));
+    setTimeout(() => { f.remove(); if (!card.isConnected) return; n++; num.textContent = n; pile.classList.remove('bump'); void pile.offsetWidth; pile.classList.add('bump'); tokNote(392 * (1 + (k % 5) * 0.125), 0, 0.07);
+      if (k === toks.length - 1) { pile.classList.add('glow'); [523.25, 659.25, 783.99].forEach((fq, j) => tokNote(fq, j * 0.09, 0.06)); try { tokSparks(dest); } catch (e) {} setTimeout(then, 900); } }, 620);
+  }, flyAt + k * 160));
+}
 function readBack(words, target, force) {
   // a chat message that went through spelling practice first: finished, it joins the conversation
   try { if (chatAfterPractice && state.chatMode && !state.builderMode) { const k = words.map(w => bareWord(String(w))).join(' ').toUpperCase(); if (k === chatAfterPractice.toUpperCase()) { chatLogAdd(words); chatPaneSig = ''; } chatAfterPractice = null; } } catch (e) { chatAfterPractice = null; }
@@ -7370,7 +7415,9 @@ function readBack(words, target, force) {
   const rbLine = (k, dur, cls) => { const l = chips[k] && chips[k].querySelector('.rb-line'); if (!l) return; l.classList.toggle('slow', cls === 'slow'); l.classList.toggle('fast', cls === 'fast'); l.style.transition = 'none'; l.style.width = '0'; void l.offsetWidth; l.style.transition = 'width ' + Math.round(dur * 0.9) + 'ms linear'; l.style.width = 'calc(100% - 0.44em)'; };
   const step = async () => {
     chips.forEach((c, k) => c.classList.toggle('on', i < seq.length && k === seq[i][1]));
-    if (i >= seq.length) { readBackTimer = setTimeout(done, 700); return; }
+    if (i >= seq.length) {
+      const coins = typingCoins.splice(0); if (target && coins.length && state.typingCoins !== false && !ending) { rbCoins(card, coins, () => { if (!ending) readBackTimer = setTimeout(done, 300); }); return; }
+      readBackTimer = setTimeout(done, 700); return; }
     const [w, k, kind] = seq[i];
     if (i > 0 && seq[i - 1][2] !== kind) chips.forEach(c => { const l = c.querySelector('.rb-line'); if (l) { l.style.transition = 'none'; l.style.width = '0'; } });      // (each pass starts its lines again)
     i++;
@@ -16824,6 +16871,9 @@ function ghPaint() {
   try { if (gamesHome && onTargetsPage()) gamesHome = null; } catch (e) {}
   const on = !!gamesHome && !state.builderMode && !game;
   v.classList.toggle('gh-on', on);
+  // (the page of big menu tiles sets its grid to show with an inline style: the games page puts it away the same way)
+  { const hg = document.getElementById('homeGrid'); if (hg) { if (on) { if (!hg.dataset.ghHid) hg.dataset.ghHid = hg.style.getPropertyValue('display') + '|' + hg.style.getPropertyPriority('display'); hg.style.setProperty('display', 'none', 'important'); }
+    else if (hg.dataset.ghHid) { const [d, pr] = hg.dataset.ghHid.split('|'); delete hg.dataset.ghHid; if (hg.style.getPropertyValue('display') === 'none') { if (d) hg.style.setProperty('display', d, pr); else hg.style.removeProperty('display'); } } } }
   try { const b = document.getElementById('homePicBtn'); if (b) b.classList.toggle('on', on); } catch (e) {}
   if (!on) { host.innerHTML = ''; host.dataset.sig = ''; const o = document.getElementById('ghTokRow'); if (o) o.remove(); return; }
   const sig = JSON.stringify(gamesHome) + '|' + presets().length + '|' + (state.tokens || 0) + '|' + JSON.stringify(state.gamesOn || {}) + '|' + presets().map(p => p.name + (p.words || []).length + p.turns).join(',');
