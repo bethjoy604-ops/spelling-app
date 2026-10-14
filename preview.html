@@ -3213,7 +3213,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 574 - 14 Oct';
+const BUILD = 'build 575 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -15481,6 +15481,11 @@ function ensureTargets() {
   [['Typing', /^typing$/i], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear]].forEach(([nm, re]) => {
     if (!t.groups.some(g => re.test(String(g.name || '').trim()))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : {}));
   });
+  // the groups in the order of the Games menu, after Typing and Decoding; once, the groups that are for no practice now are put aside (kept, not shown)
+  { const order = [/^typing$/i, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear];
+    const rank = g => { const nm = String(g.name || '').trim(), i = order.findIndex(re => re.test(nm)); return i < 0 ? order.length : i; };
+    if (!t.groupsTidyV1) { t.groupsTidyV1 = true; const out = t.groups.filter(g => rank(g) === order.length); if (out.length) { t.removedGroups = (t.removedGroups || []).concat(out); t.groups = t.groups.filter(g => rank(g) < order.length); } }
+    t.groups = t.groups.map((g, i) => [g, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]); }
   { const di = t.groups.findIndex(g => DECODE_RE.test(String(g.name || '').trim())), ti = t.groups.findIndex(g => /^typing$/i.test(String(g.name || '').trim()));      // (Decoding sits just after Typing)
     if (di > ti + 1 && ti >= 0 && !t.groups[di].moved) { const [d] = t.groups.splice(di, 1); d.moved = true; t.groups.splice(ti + 1, 0, d); } }
 }
@@ -16213,13 +16218,11 @@ function openGameAdd(mode) {
   openWordSheet(body => {
     sheetTitle(body, 'Add to ' + game.name);
     const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '4px 0 8px';
-    n.textContent = 'Tick words to practise in ' + game.name + ' (they also go into the Unsorted group on the targets page). Every word needs a picture: a word with \uD83D\uDCF7 has none yet - tapping it asks for a picture first, and it is only added once it has one.';
+    n.textContent = 'Tick words to practise in ' + game.name + '. Every word needs a picture: a word with \uD83D\uDCF7 has none yet - tapping it asks for a picture first, and it is only added once it has one.';
     body.appendChild(n);
     const list = document.createElement('div'); list.className = 'pick-list pick-grid'; list.style.maxHeight = '56vh'; list.style.overflowY = 'auto'; body.appendChild(list);
     const put = w => {
       if (!(t.words || []).includes(w)) { addTitleTo(t, null, sentenceLabel(w)); delete state.hiddenWords[w]; }
-      if (!uns) { uns = { id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: 'Unsorted', words: [], open: false }; t.groups.push(uns); }
-      if (!uns.words.includes(w)) uns.words.push(w);
       if (!inG(w)) game.words.push(w);
     };
     const take = w => { game.words = game.words.filter(y => y !== w); if (uns) uns.words = uns.words.filter(y => y !== w); };
