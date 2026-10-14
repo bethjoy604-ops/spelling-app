@@ -1463,7 +1463,10 @@
   .snd-cell { min-width: clamp(76px, 11vmin, 132px); height: clamp(76px, 11vmin, 132px); padding: 0 14px; box-sizing: border-box; border-radius: 16px; border: 3px dashed #c4c8cf; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: clamp(54px, 10vmin, 120px); line-height: 1; color: #9aa1ab; background: #fff; }
   .snd-cell.next { border-style: solid; border-color: #2f8bff; }
   .snd-cell.filled { border: 3px solid #d7dbe1; background: #f4f5f7; color: #8e959f; }
-  .snd-cell.lit { background: #ffe45c; color: var(--ink); border-color: #e0c000; }
+  .snd-cell.filled.v { background: #fde4dc; border-color: #f2b8a6; color: #8a4a3a; }      /* Orton-Gillingham colours, as on the keys: vowels salmon, consonants white */
+  .snd-cell.filled.c { background: #ffffff; border-color: #d7dbe1; color: #6b7280; }
+  .snd-cell.lit, .snd-cell.lit.v { background: #f8c3b3; color: #5c1f10; border-color: #e07a5f; transform: scale(1.06); }
+  .snd-cell.lit.c { background: #ffffff; color: var(--ink); border-color: #1f2328; transform: scale(1.06); }
   .snd-cells.gm-word-done .snd-cell { background: #e6f7e9; border-color: var(--green); color: #4f9a5d; }
   .game-view.gm-sound .gm-row { flex: 0 0 auto; display: block; overflow: visible; margin: 0; padding: 10px 6px 14px; }
   .sound-kb { display: flex; flex-direction: column; gap: 8px; }
@@ -1586,7 +1589,8 @@
   .pp-nav { flex: 0 0 72px; height: 64px; border: none; border-radius: 18px; background: #fff; font-size: 40px; font-weight: 900; box-shadow: var(--shadow); }
   .pp-nav:disabled { opacity: 0.35; }
   .pp-fit { flex: 1; justify-content: center; }
-  .snd-cell.reveal { background: #fff4cc; border-color: #f0b400; color: #7a5a00; animation: sndReveal 3s ease both; }
+  .snd-cell.reveal, .snd-cell.reveal.v { background: #f8c3b3; border-color: #e07a5f; color: #5c1f10; border-style: solid; animation: sndReveal 3s ease both; }
+  .snd-cell.reveal.c { background: #ffffff; border-color: #1f2328; color: var(--ink); }
   @keyframes sndReveal { 0% { opacity: 0; transform: scale(0.9); } 8% { opacity: 1; transform: scale(1.08); } 15% { transform: none; } 85% { opacity: 1; } 100% { opacity: 0.4; } }
   .tgt-subhead { grid-column: 1 / -1; font-weight: 800; color: #4a5568; padding: 14px 8px 4px; letter-spacing: 0.02em; }
   .gm-start { display: block; width: 100%; margin: 14px 0 4px; border: none; border-radius: 18px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 22px; padding: 18px 12px; cursor: pointer; }
@@ -1711,6 +1715,8 @@
   /* big, simple icons for little fingers: the pop-out and its button */
   .home-row .ctl.icon.pop, #homeIconsToggle { width: 68px; height: 68px; border-radius: 20px; font-size: 34px; }
   #homeIconsToggle { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .home-row #homeIconsToggle { width: 54px !important; height: 54px !important; border-radius: 14px !important; font-size: 30px !important; }      /* the size of the folder tabs beside it */
+  .home-row #homeIconsToggle svg { width: 32px; height: 32px; }
   .home-row .ctl.icon.retired { display: none !important; }
   .home-row:not(.more-open) .ctl.icon.more { display: none !important; }
   .home-row.more-open #homeMoreBtn { background: rgba(255,255,255,0.6); }
@@ -3239,7 +3245,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 586 - 14 Oct';
+const BUILD = 'build 588 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -9598,7 +9604,7 @@ function renderPhraseBar0() {
   // Green enter: ready when there's something to spell or something typed
   const typed = (document.getElementById('pbInput').value || '').trim();
   document.getElementById('pbGo').classList.toggle('enter-ready', homePhrase.length > 0 || !!typed);
-  document.getElementById('pbInput').placeholder = homePhrase.length ? '' : '...';      // (an empty bar: three dots, a cue that it can be typed into)
+  document.getElementById('pbInput').placeholder = '';      // (an empty bar stays empty: the three dots are retired)
 }
 // Words put in the bar were each said aloud as they went in, so pressing enter
 // does not say them again. sayIt is for a phrase that was never voiced.
@@ -17579,7 +17585,7 @@ function gameSnd1Trial() {
   else { const t = document.createElement('div'); t.className = 'snd1-sp'; t.textContent = soundSpShow(want.sp); card.appendChild(t); }
   card.addEventListener('click', e => { e.stopPropagation(); play(); });
   const cells = document.createElement('div'); cells.className = 'snd-cells'; cells.id = 'gmCells';
-  const c0 = document.createElement('span'); c0.className = 'snd-cell next'; c0.dataset.k = 0; cells.appendChild(c0); box.appendChild(cells);
+  const c0 = document.createElement('span'); c0.className = 'snd-cell next' + (soundIsVowel(want.id) ? ' v' : ' c'); c0.dataset.k = 0; cells.appendChild(c0); box.appendChild(cells);
   box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
   document.getElementById('gmMsg').textContent = '';
   const row = document.getElementById('gmRow'); row.innerHTML = ''; soundKbBuild(row);
@@ -17703,7 +17709,7 @@ function gameSoundTrial() {
       wd.appendChild(sp); }); }
   box.appendChild(wd);
   const cells = document.createElement('div'); cells.className = 'snd-cells'; cells.id = 'gmCells';
-  parts.forEach((p, k) => { const c = document.createElement('span'); c.className = 'snd-cell' + (k === 0 ? ' next' : ''); c.dataset.k = k; cells.appendChild(c); });
+  parts.forEach((p, k) => { const c = document.createElement('span'); c.className = 'snd-cell' + (k === 0 ? ' next' : '') + (soundIsVowel(p.id) ? ' v' : ' c'); c.dataset.k = k; cells.appendChild(c); });
   box.appendChild(cells);
   soundWordMark(0);
   box.classList.toggle('no-pic', !pic); box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
