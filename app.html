@@ -1669,6 +1669,11 @@
   .game-view.gm-type .gm-pic { flex: 1 1 0; flex-direction: column; gap: 16px; padding: 16px 20px 20px; }
   .game-view.gm-type .gm-pic .qa-card { flex: 1 1 0; min-height: 0; height: auto; }
   .dict-say { flex: 1 1 0; min-height: 0; border: none; background: transparent; font-size: clamp(60px, 12vmin, 120px); cursor: pointer; }
+  .cp-model { flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; font-size: clamp(56px, 11vmin, 120px); font-weight: 700; color: var(--ink); letter-spacing: 0.04em; cursor: pointer; }
+  .cp-model span { border-radius: 0.16em; padding: 0 0.04em; transition: color 0.2s, background 0.2s; }
+  .cp-model span.done { color: #1a8a3a; }
+  .cp-model span.hint { background: var(--prompt-soft, #dbe9ff); color: var(--prompt-dark, #1e4f9e); animation: cpHint 2.6s ease both; }
+  @keyframes cpHint { 0%, 85% { background: var(--prompt-soft, #dbe9ff); } 100% { background: transparent; } }
   .ty-boxes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
   .ty-box { width: var(--bx, 70px); height: calc(var(--bx, 70px) * 1.2); border-radius: 14px; border: 3px solid #cfd4dc; background: #fff; box-sizing: border-box; font-size: calc(var(--bx, 70px) * 0.72); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--ink); }
   .ty-box.next { border-color: var(--prompt, #2f7df6); box-shadow: 0 0 0 4px var(--prompt-soft, #dbe9ff); }
@@ -3447,7 +3452,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 623 - 14 Oct';
+const BUILD = 'build 624 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3711,11 +3716,11 @@ function groupPromptNow() {
 }
 const DECODE_RE = /^decod/i;      // the Decoding group: words practised with the sound keyboard, with prompting of their own
 const LTM_RE = /^least.?to.?most/i;      // Least to Most: targets typed with prompting that starts small and grows (see ltmNow)
-const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, qa: /^(questions?|answers?)$/i, dict: /^dictat/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match|questions?$|answers?$|dictat)/i };
+const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, qa: /^(questions?|answers?)$/i, dict: /^dictat/i, copy: /^copy/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match|questions?$|answers?$|dictat|copy)/i };
 // the practice group for a game mode: sight (picture to word tiles), write (picture to keyboard), tiles (picture to letter tiles)
-function practiceRe(mode) { return mode === 'qa' || mode === 'qatype' ? PRACTICE_RE.qa : mode === 'dict' ? PRACTICE_RE.dict : mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
+function practiceRe(mode) { return mode === 'qa' || mode === 'qatype' ? PRACTICE_RE.qa : mode === 'dict' ? PRACTICE_RE.dict : mode === 'copy' ? PRACTICE_RE.copy : mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
 // A practice group keeps its job when it is renamed: its kind is fixed once (from its name) and the app goes by that
-const GROUP_KIND_NAME = { typing: 'Typing', ltm: 'Least to Most', decode: 'Decoding', qa: 'Questions', dict: 'Dictation', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
+const GROUP_KIND_NAME = { typing: 'Typing', ltm: 'Least to Most', decode: 'Decoding', qa: 'Questions', dict: 'Dictation', copy: 'Copy', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
 function gKey(g) { return g && g.kind && GROUP_KIND_NAME[g.kind] ? GROUP_KIND_NAME[g.kind] : String((g && g.name) || '').trim(); }
 function isPracticeGroup(g) { return PRACTICE_RE.any.test(gKey(g)); }   // set by the star; lasts until this word is finished or changed
 let promptDelayTimer = null;
@@ -9321,7 +9326,7 @@ const RD_CLASSES = [
   ['w:action', 'Action words (go, eat, play ...)'], ['w:label', 'Labels (things, people, places, folder names)'], ['w:small', 'Small words (I, the, you, it, now, then ...)'],
   ['tile', 'Words chosen from tiles'], ['typed', 'Words typed'], ['message', 'Messages sent'], ['letter', 'Letters spelled (practice)'],
   ['game:sight', 'Word Match: picture \u2192 word'], ['game:write', 'Spelling: picture \u2192 keyboard'], ['game:tiles', 'Tiles: letters in order'], ['game:sound', 'Elkonin Boxes: sounds'],
-  ['game:hear', 'Sound Match: hear a sound'], ['game:qa', 'Questions: answering'], ['game:dict', 'Dictation: hear and type']];
+  ['game:hear', 'Sound Match: hear a sound'], ['game:qa', 'Questions: answering'], ['game:dict', 'Dictation: hear and type'], ['game:copy', 'Copy: type from a model']];
 // the kind of word: an action word, a small word (I, the, you, it - and the describing and time words from Choices: now, then, big), or a label
 function rdWordType(w) { let k = ''; try { k = kindOfWord(w); } catch (e) {} if (k === 'action' || (typeof MAGIC_WANTS !== 'undefined' && MAGIC_WANTS.includes(w))) return 'action';
   let d = false; try { d = isSmallWord(w) || describeWord(w) || k === 'describe'; } catch (e) {} return d ? 'small' : 'label'; }
@@ -13842,7 +13847,7 @@ function groupTrials(group) {
   const nm = gKey(group);
   const mode = PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : 'typing';
   if (isQaGroup(group)) { const ks = groupTargets(group); return { mode: 'qa', words: ks, wordT: (state.gameLog || []).filter(r => r.mode === 'qa' && ks.includes(r.tile)).map(r => Object.assign({}, r, { word: r.tile })), letterT: [] }; }
-  if (PRACTICE_RE.dict.test(nm)) { const ws = new Set((group.words || []).map(normaliseWord)); const wordT = (state.gameLog || []).filter(r => r.mode === 'dict' && ws.has(normaliseWord(r.tile || r.word))).map(r => Object.assign({}, r, { word: normaliseWord(r.tile || r.word) })); return { mode: 'dict', words: [...ws], wordT, letterT: wordT }; }
+  if (PRACTICE_RE.dict.test(nm) || PRACTICE_RE.copy.test(nm)) { const md = PRACTICE_RE.copy.test(nm) ? 'copy' : 'dict', ws = new Set((group.words || []).map(normaliseWord)); const wordT = (state.gameLog || []).filter(r => r.mode === md && ws.has(normaliseWord(r.tile || r.word))).map(r => Object.assign({}, r, { word: normaliseWord(r.tile || r.word) })); return { mode: md, words: [...ws], wordT, letterT: wordT }; }
   if (mode === 'hear' || mode === 'match') { const ks = group.tiles || []; const wordT = (state.gameLog || []).filter(r => r.mode === mode && ks.includes(r.tile || r.word)).map(r => Object.assign({}, r, { word: r.tile || r.word })); return { mode, words: ks.slice(), wordT, letterT: [] }; }
   const words = new Set((group.words || []).map(w => normaliseWord(w)));
   let wordT = [], letterT = [];
@@ -13909,7 +13914,7 @@ function masteryCfg(g) { return Object.assign({}, MASTERY_DEF, (g && g.mastery) 
 function groupKey(g) { return String(g && g.id != null ? g.id : (g && g.name) || ''); }
 function masteryRec(g, w) { state.mastery = state.mastery || {}; const k = groupKey(g); state.mastery[k] = state.mastery[k] || {}; return state.mastery[k][w] || (state.mastery[k][w] = { st: 'learning', since: 0 }); }
 function masteryOf(g, w) { const m = (state.mastery || {})[groupKey(g)]; return (m && m[w]) || { st: 'learning', since: 0 }; }
-function groupModeOf(g) { const nm = gKey(g); return PRACTICE_RE.qa.test(nm) ? 'qa' : PRACTICE_RE.dict.test(nm) ? 'dict' : PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : /^typing$/i.test(nm) ? 'typing' : null; }
+function groupModeOf(g) { const nm = gKey(g); return PRACTICE_RE.qa.test(nm) ? 'qa' : PRACTICE_RE.dict.test(nm) ? 'dict' : PRACTICE_RE.copy.test(nm) ? 'copy' : PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : /^typing$/i.test(nm) ? 'typing' : null; }
 function groupTargets(g) { return isQaGroup(g) ? (g.items || []).map(it => 'Q:' + it.id) : isTileGroup(g) ? (g.tiles || []).slice() : (g.words || []).slice(); }
 // a target's turns in this group's game, oldest first ({ t, ok })
 function masteryRows(g, w) {
@@ -16373,17 +16378,17 @@ function ensureTargets() {
     else if (/^sight words?$/i.test(nm)) g.name = 'Word Match'; else if (/^spelling tiles$/i.test(nm)) g.name = 'Tiles'; else if (/^sound it out$/i.test(nm)) g.name = 'Elkonin Boxes'; else if (/^hear the sound$/i.test(nm)) g.name = 'Sound Match'; });
   // each practice group's kind, fixed once from its name, so it can be renamed. A group renamed before kinds were kept
   // (Text-to-Speech: the targets spelled from the home page) takes back its job, and the empty one made in its place goes.
-  { const KR = [['typing', /^typing$/i], ['ltm', LTM_RE], ['decode', DECODE_RE], ['qa', PRACTICE_RE.qa], ['dict', PRACTICE_RE.dict], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
+  { const KR = [['typing', /^typing$/i], ['ltm', LTM_RE], ['decode', DECODE_RE], ['qa', PRACTICE_RE.qa], ['dict', PRACTICE_RE.dict], ['copy', PRACTICE_RE.copy], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
     const tts = t.groups.find(g => !g.kind && /^text.?to.?speech$/i.test(String(g.name || '').trim()));
     if (tts && !t.groups.some(g => g.kind === 'typing')) { tts.kind = 'typing'; const dup = t.groups.filter(g => g !== tts && !g.kind && /^typing$/i.test(String(g.name || '').trim())); dup.forEach(d => { (d.words || []).forEach(w => { if (!tts.words.includes(w)) tts.words.push(w); }); }); t.groups = t.groups.filter(g => !dup.includes(g)); }
     t.groups.forEach(g => { if (g.kind) return; const nm = String(g.name || '').trim(), k = KR.find(([, re]) => re.test(nm)); if (k && !t.groups.some(x => x.kind === k[0])) g.kind = k[0]; }); }
   // Match the spelling is taken out for now: its group goes (kept aside, with its spellings, in case it comes back)
   { const mi = t.groups.findIndex(g => /^match the spelling$/i.test(String(g.name || '').trim())); if (mi >= 0) { t.removedGroups = (t.removedGroups || []).concat(t.groups.splice(mi, 1)); } }
-  [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear], ['Questions', PRACTICE_RE.qa], ['Dictation', PRACTICE_RE.dict]].forEach(([nm, re]) => {
-    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : nm === 'Questions' ? { kind: 'qa', items: QA_STARTERS.map((x, i) => Object.assign({ id: i + 1 }, x)) } : nm === 'Dictation' ? { kind: 'dict' } : {}));
+  [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear], ['Questions', PRACTICE_RE.qa], ['Dictation', PRACTICE_RE.dict], ['Copy', PRACTICE_RE.copy]].forEach(([nm, re]) => {
+    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : nm === 'Questions' ? { kind: 'qa', items: QA_STARTERS.map((x, i) => Object.assign({ id: i + 1 }, x)) } : nm === 'Dictation' ? { kind: 'dict' } : nm === 'Copy' ? { kind: 'copy' } : {}));
   });
   // the groups in the order of the Games menu, after Typing and Decoding; once, the groups that are for no practice now are put aside (kept, not shown)
-  { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear, PRACTICE_RE.qa, PRACTICE_RE.dict];
+  { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear, PRACTICE_RE.qa, PRACTICE_RE.dict, PRACTICE_RE.copy];
     const rank = g => { const nm = gKey(g), i = order.findIndex(re => re.test(nm)); return i < 0 ? order.length : i; };
     if (!t.groupsTidyV1) { t.groupsTidyV1 = true; const out = t.groups.filter(g => rank(g) === order.length); if (out.length) { t.removedGroups = (t.removedGroups || []).concat(out); t.groups = t.groups.filter(g => rank(g) < order.length); } }
     t.groups = t.groups.map((g, i) => [g, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]); }
@@ -16401,7 +16406,7 @@ function practiceGroupWords(kind) {
   const re = practiceRe(kind), g = (t.groups || []).find(x => re.test(gKey(x)));
   if (g && (kind === 'hear' || kind === 'match')) return masteryPool(g, (g.tiles || []).filter(k => !(g.off || {})[k]));
   if (g && (kind === 'qa' || kind === 'qatype')) return masteryPool(g, (g.items || []).filter(it => it.q && it.a && !(g.off || {})['Q:' + it.id]).map(it => 'Q:' + it.id));
-  return g ? masteryPool(g, (g.words || []).filter(w => (t.words || []).includes(w) && !(g.off || {})[w] && !state.hiddenWords[w] && (kind === 'sound' ? soundSplit(w).length > 0 : kind === 'dict' ? /[A-Z]/.test(w) : picHas(w)))) : [];      // (dictation: no picture needed)      // (sound it out: the word is on the screen, a picture is not needed)
+  return g ? masteryPool(g, (g.words || []).filter(w => (t.words || []).includes(w) && !(g.off || {})[w] && !state.hiddenWords[w] && (kind === 'sound' ? soundSplit(w).length > 0 : (kind === 'dict' || kind === 'copy') ? /[A-Z]/.test(w) : picHas(w)))) : [];      // (dictation: no picture needed)      // (sound it out: the word is on the screen, a picture is not needed)
 }
 function targetStateOf(w) { const v = (state.targetState || {})[w]; return TARGET_STATES.some(x => x[0] === v) ? v : 'waiting'; }
 // how the voice says a word: some come out wrong on their own (bat heard as "bad"). A few ways of writing it to listen
@@ -17180,8 +17185,8 @@ function gameTargetSets(words) {
   return [...sets.values()].sort((a, b) => b.words.length - a.words.length || a.label.localeCompare(b.label));
 }
 // the games in the Games menu, and which are switched on (in settings, under Games)
-const GAME_LIST = [['sight', '\uD83D\uDC40', 'Word Match'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes'], ['hear', '\uD83D\uDC42', 'Sound Match'], ['qa', '\u2753', 'Questions'], ['qatype', '\u2328\uFE0F', 'Questions: type'], ['dict', '\uD83C\uDFA7', 'Dictation'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
-function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, qa: true, qatype: true, dict: true, builder: false }, state.gamesOn || {}, { match: false }); }      // (Match the spelling: taken out for now)
+const GAME_LIST = [['sight', '\uD83D\uDC40', 'Word Match'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes'], ['hear', '\uD83D\uDC42', 'Sound Match'], ['qa', '\u2753', 'Questions'], ['qatype', '\u2328\uFE0F', 'Questions: type'], ['dict', '\uD83C\uDFA7', 'Dictation'], ['copy', '\uD83D\uDCDD', 'Copy'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
+function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, qa: true, qatype: true, dict: true, copy: true, builder: false }, state.gamesOn || {}, { match: false }); }      // (Match the spelling: taken out for now)
 // + Add more in the Games menu: the whole library with ticks; a ticked word becomes a target in this game's group and
 // in the Unsorted group on the targets page (made when first needed), to be sorted later. Done goes back to the menu.
 function openGameAdd(mode) {
@@ -17213,7 +17218,7 @@ function openGameAdd(mode) {
         const paint = () => { const on = inG(w); r.classList.toggle('on', on); r.classList.toggle('no-pic', !picHas(w)); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w) + (picHas(w) ? ' \uD83D\uDDBC\uFE0F' : ' \uD83D\uDCF7'); };
         r.addEventListener('click', () => {
           if (inG(w)) { take(w); save(); buzz(8); paint(); return; }
-          if (picHas(w) || mode === 'sound' || mode === 'dict') { put(w); save(); buzz(8); paint(); return; }      // (sound it out does not need a picture)
+          if (picHas(w) || mode === 'sound' || mode === 'dict' || mode === 'copy') { put(w); save(); buzz(8); paint(); return; }      // (sound it out does not need a picture)
           // no picture yet: choose one first; the word goes in only once it has one
           picChoose(w, () => { if (picHas(w)) { put(w); save(); } paint(); });
         });
@@ -17341,7 +17346,7 @@ function presetRows(host) {
 // ===== The games home: the Games button turns the home page into the games - the tiles where the words would be.
 // First the kinds of game, then (one tapped) its saved games and a tile for a new one. Tokens and mastery on their own page.
 let gamesHome = null;      // null: the usual home page · { layer: 'types' | a game's mode | 'rewards' }
-const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', qa: 'Answer', qatype: 'Type it', dict: 'Dictate', builder: 'Build' };
+const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', qa: 'Answer', qatype: 'Type it', dict: 'Dictate', copy: 'Copy', builder: 'Build' };
 // Easy / Hard for a game: a switch, with a line on what each one does
 function gpLevelRow(m, after) {
   const row = document.createElement('div'); row.className = 'gp-level-row';
@@ -17559,9 +17564,9 @@ function gameChooseCount(preMode) {
         sv.addEventListener('click', () => { const ws = chosen(); if (!ws.length) return; const p0 = presetSave(mode, ws, turnsNow(ws)); if (p0) { buzz(10); if (gamesHome) { gamesHome = { layer: mode }; ghBack(); } else gameChooseCount(); } });
         count.appendChild(sv); }
       drawF(); };
-    [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear], ['qa', '\u2753', 'Questions', 'Hear a question, tap the answer', practiceGroupWords('qa')], ['qatype', '\u2328\uFE0F', 'Questions: type', 'Hear a question, type the answer', practiceGroupWords('qatype')], ['dict', '\uD83C\uDFA7', 'Dictation', 'Hear a word spelled out, type it', practiceGroupWords('dict')]].forEach(([m, ic, nm, sub, ws]) => {
+    [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear], ['qa', '\u2753', 'Questions', 'Hear a question, tap the answer', practiceGroupWords('qa')], ['qatype', '\u2328\uFE0F', 'Questions: type', 'Hear a question, type the answer', practiceGroupWords('qatype')], ['dict', '\uD83C\uDFA7', 'Dictation', 'Hear a word spelled out, type it', practiceGroupWords('dict')], ['copy', '\uD83D\uDCDD', 'Copy', 'See a word typed, type the same', practiceGroupWords('copy')]].forEach(([m, ic, nm, sub, ws]) => {
       const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
-      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : m === 'qa' || m === 'qatype' ? 'No questions in the Questions group yet' : m === 'sound' || m === 'dict' ? 'No targets in the "' + (m === 'dict' ? 'Dictation' : nm) + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
+      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : m === 'qa' || m === 'qatype' ? 'No questions in the Questions group yet' : m === 'sound' || m === 'dict' || m === 'copy' ? 'No targets in the "' + (m === 'dict' ? 'Dictation' : nm) + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
       b.dataset.m = m;
       b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else { count.innerHTML = ''; startNow = null; } });      // (one chosen: the others step away until it is tapped again)
       acts.appendChild(b);
@@ -17616,7 +17621,7 @@ function gpWrong(after) {
 // the right answer: how much help it took - g (none, or the least), b (some, or a mistake), y (the most)
 function gpRight() { clearTimeout(gpTimer); const c = game.cur, lv = c.lv || 0; if (gpBase(game.mode) === 0) return lv >= 3 ? 'y' : (lv >= 1 || c.gpErr) ? 'b' : 'g'; return lv >= 3 ? 'y' : (lv === 2 || c.gpErr) ? 'b' : 'g'; }
 // the typing games start with no prompt at all (the question, or the word spelled aloud, is the cue); the others with the least
-function gpBase(mode) { return mode === 'qatype' || mode === 'dict' ? 0 : 1; }
+function gpBase(mode) { return mode === 'qatype' || mode === 'dict' || mode === 'copy' ? 0 : 1; }
 // a turn done, on easy: the target's help fades one step after a turn with no mistakes, and comes back one after a mistake
 function gpTrialDone(tile, wrong) {
   clearTimeout(gpTimer); if (!game || game.pmode !== 'easy' || game.mode === 'write') return;
@@ -17633,7 +17638,7 @@ function gpTargetEl() {
 function gpPaint() {
   if (!gpOn()) return;
   const g = game, c = g.cur;
-  if (g.mode === 'qatype' || g.mode === 'dict') {      // (the keys: light blue from the second step, the darkest blue at the third - the first step is the letter shown in its box)
+  if (g.mode === 'qatype' || g.mode === 'dict' || g.mode === 'copy') {      // (the keys: light blue from the second step, the darkest blue at the third - the first step is the letter shown in its box)
     document.querySelectorAll('#gmKeys .gp-1, #gmKeys .gp-2, #gmKeys .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
     const L = c.word && c.word[c.k], el = L && document.querySelector('#gmKeys .key[data-letter="' + L + '"]'); if (el && c.lv >= 2) el.classList.add('gp-' + Math.min(3, c.lv)); return; }
   if (g.mode === 'sound' || g.mode === 'hear' || g.mode === 'match') { if (!gpPaint.busy) { gpPaint.busy = true; try { soundKbPaint(); } finally { gpPaint.busy = false; } } return; }
@@ -17645,7 +17650,7 @@ function gpSay() {
   const g = game, c = g && g.cur; if (!c) return;
   try {
     if (g.mode === 'sight' || g.mode === 'qa') { warmSpeech(); sayAnyway = true; try { speakWord(c.word, 0.9); } finally { sayAnyway = false; } return; }
-    if (g.mode === 'qatype' || g.mode === 'dict') { tyFlash(); return; }
+    if (g.mode === 'qatype' || g.mode === 'dict' || g.mode === 'copy') { tyFlash(); return; }
     if (g.mode === 'tiles') { const p = soundPartCovering(c.word, c.k); if (p) soundSay(p.id, p.sp); else { warmSpeech(); sayAnyway = true; try { speakLetter(String(c.letter).toUpperCase()); } finally { sayAnyway = false; } } return; }
     const want = c.parts && c.parts[c.k]; if (want) soundSay(want.alt[0] || want.id, want.sp);
   } catch (e) {}
@@ -17731,12 +17736,16 @@ function gameKeys(host) {
 // Questions typed, and Dictation: a box for each letter of the answer (or word); the letters typed fill them in turn
 function gameTypeTrial() {
   const g = game, s = g.seq[g.i], key = s.w, it = g.mode === 'qatype' ? qaItem(key) : null;
-  const word = normaliseWord(g.mode === 'qatype' ? (it ? it.a : '') : key);
+  const word = normaliseWord(g.mode === 'qatype' ? (it ? it.a : '') : key), copy = g.mode === 'copy';
   if (!word) { g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); return; }
   g.cur = { word, tile: key, k: -1, tries: 0, wrongs: 0, anyPrompt: false, gpB: false, lets: [], lv: 0, ready: false };
   const box = document.getElementById('gmPic'); box.innerHTML = ''; box.classList.add('no-pic');
   let card;
   if (it) { card = qaCard(''); card.addEventListener('click', e => { e.stopPropagation(); qaRead(card, it.q); }); }
+  else if (copy) {      // (Copy: the word typed out as the model to copy - each letter goes green as it is copied)
+    card = document.createElement('div'); card.className = 'cp-model'; card.id = 'cpModel';
+    [...plainLabel(word)].forEach((ch, k) => { const sp = document.createElement('span'); sp.textContent = ch === ' ' ? '\u00A0' : ch; sp.dataset.k = k; card.appendChild(sp); });
+    card.addEventListener('click', e => { e.stopPropagation(); try { warmSpeech(); sayAnyway = true; speakWord(word, 0.9); } catch (er) {} finally { sayAnyway = false; } }); }
   else { card = document.createElement('button'); card.className = 'dict-say'; card.textContent = '\uD83D\uDD0A'; card.setAttribute('aria-label', 'Hear it again'); card.addEventListener('click', e => { e.stopPropagation(); dictSay(word); }); }
   box.appendChild(card);
   const bx = document.createElement('div'); bx.className = 'ty-boxes'; bx.id = 'tyBoxes';
@@ -17748,7 +17757,7 @@ function gameTypeTrial() {
   const row = document.getElementById('gmRow'); row.innerHTML = ''; gameKeys(row);
   gameBar();
   const go = () => { if (game !== g || g.cur.tile !== key || g.cur.ready) return; g.cur.ready = true; tyNext(); };
-  if (it) qaRead(card, it.q, go); else dictSay(word, go);
+  if (it) qaRead(card, it.q, go); else if (copy) { if (groupOpt(gameGroup(), 'copySay', true)) { try { warmSpeech(); sayAnyway = true; speakWord(word, 0.9); } catch (e) {} finally { sayAnyway = false; } } setTimeout(go, 700); } else dictSay(word, go);
 }
 // Dictation: the word said, then its letters spelled aloud one by one (nothing shown); done() after
 function dictSay(word, done) {
@@ -17766,6 +17775,9 @@ function tyNext() {
 // a prompt's first step: the letter shows in its box for a moment (and is said), then goes again
 function tyFlash() {
   const c = game && game.cur; if (!c || c.k < 0 || c.k >= c.word.length) return;
+  if (game.mode === 'copy') {      // (Copy: the letter to copy next lights up in the model for a moment, and is said)
+    const m = document.querySelector('#cpModel span[data-k="' + c.k + '"]'); if (m) { m.classList.remove('hint'); void m.offsetWidth; m.classList.add('hint'); setTimeout(() => m.classList.remove('hint'), 2600); }
+    try { warmSpeech(); sayAnyway = true; speakLetter(c.word[c.k]); } catch (e) {} finally { sayAnyway = false; } return; }
   const el = document.querySelector('#tyBoxes .ty-box[data-k="' + c.k + '"]'); if (!el || el.classList.contains('filled')) return;
   el.innerHTML = ''; const h = document.createElement('span'); h.className = 'ty-hint'; h.textContent = c.word[c.k].toLowerCase(); el.appendChild(h);
   setTimeout(() => { if (h.isConnected && !el.classList.contains('filled')) el.innerHTML = ''; }, 2600);
@@ -17777,6 +17789,7 @@ function tyKey(L, b) {
     const q = gpRight(), gr = q === 'y' ? 'y' : (q === 'b' || c.tries) ? 'b' : 'g'; if (gr === 'y') c.anyPrompt = true; if (gr === 'b') c.gpB = true;
     c.lets.push(L + gr);
     const el = document.querySelector('#tyBoxes .ty-box[data-k="' + c.k + '"]'); if (el) { el.textContent = L.toLowerCase(); el.classList.add('filled'); el.classList.remove('next'); }
+    { const m = document.querySelector('#cpModel span[data-k="' + c.k + '"]'); if (m) { m.classList.remove('hint'); m.classList.add('done'); } }
     document.querySelectorAll('#gmKeys .gp-1, #gmKeys .gp-2, #gmKeys .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
     if (state.letterSpeech !== false) { try { warmSpeech(); sayAnyway = true; speakLetter(L); } catch (e) {} finally { sayAnyway = false; } }
     buzz(15); setTimeout(() => { if (game === g && g.cur === c) tyNext(); }, 200);
@@ -17791,7 +17804,7 @@ function gameTypeDone() {
   const g = game, c = g.cur; g.busy = true;
   const res = c.anyPrompt ? 'prompted' : (c.wrongs || c.gpB) ? 'second' : 'first'; gpTrialDone(c.tile, c.wrongs > 0);
   g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
-  state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: g.mode === 'dict' ? 'dict' : 'qa', style: 'type' }]).slice(-3000);
+  state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: g.mode === 'dict' || g.mode === 'copy' ? g.mode : 'qa', style: 'type' }]).slice(-3000);
   if (c.wrongs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
   save(); gameBar();
   const bx = document.getElementById('tyBoxes'); if (bx) bx.classList.add('done');
@@ -17885,7 +17898,7 @@ function picSay(box, word) {
 function picBtnSync() { const b = document.getElementById('homePicBtn'); if (b) { const on = !!state.picMode || !!state.builderMode; b.classList.toggle('off', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); } }      // (red when ready to start; greyed while a game is going)
 function gameView() {
   let v = document.getElementById('gameView'); if (v) v.remove();
-  v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '') + (game && /^(sound|hear|match)$/.test(game.mode) ? ' gm-sound' : '') + (game && /^(hear|match)$/.test(game.mode) ? ' gm-snd1' : '') + (game && game.mode === 'qa' ? ' gm-qa' : '') + (game && /^(qatype|dict)$/.test(game.mode) ? ' gm-type' : '');
+  v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '') + (game && /^(sound|hear|match)$/.test(game.mode) ? ' gm-sound' : '') + (game && /^(hear|match)$/.test(game.mode) ? ' gm-snd1' : '') + (game && game.mode === 'qa' ? ' gm-qa' : '') + (game && /^(qatype|dict|copy)$/.test(game.mode) ? ' gm-type' : '');
   v.innerHTML = '<div class="gm-top"><div class="gm-bar" id="gmBar"></div><button class="gm-x" aria-label="Stop the game">×</button></div><div class="gm-pic" id="gmPic"></div><div class="gm-slots" id="gmSlots"></div><div class="gm-msg" id="gmMsg"></div><div class="gm-row" id="gmRow"></div>';
   v.querySelector('.gm-x').addEventListener('click', () => { if (confirm('Stop the picture game?')) gameOff(); });
   v.querySelector('#gmPic').addEventListener('click', e => { if (game && game.cur) picSay(e.currentTarget, game.cur.word); });
@@ -17907,7 +17920,7 @@ function gameTrial() {
   if (g.mode === 'sound') { gameSoundTrial(); return; }
   if (g.mode === 'hear' || g.mode === 'match') { gameSnd1Trial(); return; }
   if (g.mode === 'qa') { gameQaTrial(); return; }
-  if (g.mode === 'qatype' || g.mode === 'dict') { gameTypeTrial(); return; }
+  if (g.mode === 'qatype' || g.mode === 'dict' || g.mode === 'copy') { gameTypeTrial(); return; }
   const s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile;
   g.cur = { word, tile, tries: 0, prompted: false };
