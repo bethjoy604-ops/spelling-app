@@ -1610,6 +1610,8 @@
   .gh-tile.gh-new { background: transparent; box-shadow: none; border: 3px dashed #c9ced8; }
   .gh-tile.gh-new .gh-ic { font-size: 54px; color: #8a93a3; font-weight: 300; }
   .gh-tile.gh-rew { background: #fbf7ec; }
+  .gh-tile.gh-open { background: #e8f0ff; box-shadow: 0 0 0 3px #9dbdf5, var(--shadow); }
+  .gh-tile.gh-in { animation: cueFade 0.35s ease-out both; }
   .gh-tile.gh-due { background: #fff4d6; }
   .gh-tile .gh-pic { width: 100%; flex: 1 1 auto; min-height: 70px; max-height: 120px; border-radius: 14px; background: #f2f3f6 center / cover no-repeat; }
   .gh-tile .gh-more { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border-radius: 12px; border: none; background: rgba(255,255,255,0.92); font-size: 22px; font-weight: 900; color: #6b7280; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
@@ -3459,7 +3461,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 626 - 14 Oct';
+const BUILD = 'build 627 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -17385,6 +17387,7 @@ function ghPaint() {
   if (host.dataset.sig === sig && host.childElementCount) return;      // (nothing to change: the page is left as it is, scrolled where it was)
   host.dataset.sig = sig; host.innerHTML = '';
   try { ensureTargets(); masteryEvalAll(); } catch (e) {}
+  if (GH_SHORT[gamesHome.layer] && gamesHome.layer !== 'builder') gamesHome = { layer: 'types', open: gamesHome.layer };      // (a kind of game opens in place on the games page)
   const L = gamesHome.layer;
   const head = document.createElement('div'); head.className = 'gh-head'; host.appendChild(head);
   if (L !== 'types') { const b = document.createElement('button'); b.className = 'gh-back'; b.textContent = '‹ Games'; b.addEventListener('click', () => { buzz(8); gamesHome = { layer: 'types' }; renderHome(true); }); head.appendChild(b); }
@@ -17403,33 +17406,35 @@ function ghPaint() {
     if (due.length) { const byMode = {}; due.forEach(d => { (byMode[d.mode] = byMode[d.mode] || []).push(d.w); }); const m = Object.keys(byMode).sort((a, b) => byMode[b].length - byMode[a].length)[0], ws = byMode[m];
       const grp = practiceGroups().find(g => groupModeOf(g) === m), ct = masteryCfg(grp).checkTurns || 1;
       tile('🔁', 'Check-in', due.length + ' due · ' + ws.length + ' in ' + GH_SHORT[m], () => gameStart(ws.length * ct, m, ws), 'gh-due'); }
-    const on = gamesOn();
+    const on = gamesOn(), op = gamesHome.open && on[gamesHome.open] !== false ? gamesHome.open : null;
+    if (op) {      // one kind of game open: its tile first (tap it again to close), then its saved games and a new one
+      tile(gameIcon(op), GH_SHORT[op], gameName(op) + ' \u00B7 tap to close', () => { gamesHome = { layer: 'types' }; renderHome(true); }, 'gh-open');
+      ghModeTiles(op, tile); host.appendChild(grid); return; }
     GAME_LIST.forEach(([m, ic, nm]) => {
       if (m === 'builder') { if (on.builder) tile(ic, GH_SHORT[m], nm, () => { gamesHome = null; gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); }); return; }
       if (on[m] === false) return;
       const ps = presets().filter(p => p.mode === m).length, ready = practiceGroupWords(m).length;
-      tile(ic, GH_SHORT[m], nm + ' · ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: m }; renderHome(true); });
+      tile(ic, GH_SHORT[m], nm + ' · ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: 'types', open: m }; renderHome(true); });
     });
     tile('🏆', 'Rewards', (state.tokens || 0) + ' tokens · mastered', () => { gamesHome = { layer: 'rewards' }; renderHome(true); }, 'gh-rew');
     host.appendChild(grid); return;
   }
   if (L === 'rewards') { ttl.innerHTML = '<span>🏆 Rewards</span>'; ghRewards(host); return; }
-  // one kind of game: easy or hard, its saved games, then a new one
-  const m = L, nm = gameName(m);
-  ttl.innerHTML = '<span></span>'; ttl.firstChild.textContent = gameIcon(m) + ' ' + nm;
+}
+// a kind of game opened on the games page: its saved games, then a tile for a new one, in the grid after its own tile
+function ghModeTiles(m, tile) {
   presets().filter(p => p.mode === m).forEach(p => {
     const n = presetPlayable(p).length, done = presetMastered(p).length;
-    const t = tile('', p.name, n + ' target' + (n === 1 ? '' : 's') + ' · ' + (p.turns || 0) + ' turns', () => presetPlay(p));
-    const w0 = (p.words || []).find(w => !/\|/.test(w) && picOn(w).length);
+    const t = tile('', p.name, n + ' target' + (n === 1 ? '' : 's') + ' \u00B7 ' + (p.turns || 0) + ' turns', () => presetPlay(p), 'gh-in');
+    const w0 = (p.words || []).find(w => !/\|/.test(w) && !/^Q:/.test(w) && picOn(w).length);
     const ic = t.querySelector('.gh-ic');
     if (w0) { const pic = picOn(w0)[0], d = document.createElement('span'); d.className = 'gh-pic'; d.style.backgroundImage = 'url("' + String(pic.url).replace(/"/g, '%22') + '")'; ic.replaceWith(d); }
     else ic.textContent = gameIcon(m);
-    if (done) { const bd = document.createElement('span'); bd.className = 'gh-badge'; bd.textContent = '🎉 ' + done; t.appendChild(bd); }
-    const mo = document.createElement('button'); mo.className = 'gh-more'; mo.textContent = '⋯'; mo.setAttribute('aria-label', 'Settings for ' + p.name);
+    if (done) { const bd = document.createElement('span'); bd.className = 'gh-badge'; bd.textContent = '\uD83C\uDF89 ' + done; t.appendChild(bd); }
+    const mo = document.createElement('button'); mo.className = 'gh-more'; mo.textContent = '\u22EF'; mo.setAttribute('aria-label', 'Settings for ' + p.name);
     mo.addEventListener('click', e => { e.stopPropagation(); buzz(8); presetEdit(p); }); t.appendChild(mo);
   });
-  tile('+', 'New ' + GH_SHORT[m].toLowerCase() + ' game', 'Choose targets and turns', () => gameChooseCount(m), 'gh-new');
-  host.appendChild(grid);
+  tile('+', 'New ' + GH_SHORT[m].toLowerCase() + ' game', 'Choose targets and turns', () => gameChooseCount(m), 'gh-new gh-in');
 }
 // tokens: the total, by colour, and a jar of them - then the targets mastered in each game's group
 function ghRewards(host) {
