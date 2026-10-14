@@ -540,6 +540,11 @@
     background: #1b1b1b; color: #fff; border-radius: 999px; padding: 10px 10px 10px 22px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.35); white-space: nowrap; }
   #pageEditBar button { border: none; border-radius: 999px; background: var(--green); color: #fff; font-family: inherit; font-weight: 900; font-size: 17px; padding: 10px 24px; cursor: pointer; }
   .home-card.group-tile { background: var(--surface); }
+  .home-card.gr-tile { flex-direction: column; gap: 2px; } .home-card.gr-tile .hw { font-weight: 800; }
+  .home-card.gr-tile .gr-ex { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .home-card.gr-long { background: linear-gradient(#e0457b 0 12px, #fff 12px); }
+  .home-card.gr-play { background: #e8f0ff; } .home-card.gr-play .hw { color: #1e4f9e; }
+  .home-card.gr-say { animation: cueGlow 0.6s ease-out; }
   .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .mg-dot { flex: none; width: 22px; height: 22px; border-radius: 7px; border: 2px solid rgba(0,0,0,0.08); }
   .mg-name { font-weight: 800; }
@@ -886,7 +891,7 @@
   .view-home.magic-full .sugg-host::-webkit-scrollbar { display: none; }
   /* each band fills the screen and snaps into place: scroll once, the next band clicks in */
   .view-home.magic-full .sugg-host { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-  .view-home.magic-full.no-small-band #smallHost { display: none !important; }
+  .view-home.magic-full.no-small-band:not(.fill-row) #smallHost { display: none !important; }
   /* the rows fit the screen: no bars over them, no gaps for half rows - just the tiles */
   .view-home.magic-full .sugg-host .sugg-head { display: none !important; }
   .view-home.magic-fit .sugg-band:last-child { min-height: 0 !important; }
@@ -897,6 +902,7 @@
   .view-home.magic-full #smallHost, .view-home.magic-full #smallHost.sm-open { padding-bottom: 0 !important; margin-bottom: 0 !important; }
   .view-home.magic-full #smallHost .small-strip { padding-bottom: 0 !important; }
   .view-home.magic-full .sugg-band { box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; padding-bottom: 14px; }
+  .view-home.magic-full #suggHost { touch-action: pan-x; overscroll-behavior: contain; }      /* (up and down is turned a grid at a time by the app; sideways the rows still slide) */
   /* the bands sit close together; only the last one fills the screen, so each can still click up to the top */
   .view-home.magic-full .sugg-band:last-child { min-height: 100%; }
   .view-home.magic-full .sugg-band .sugg-row:last-child { margin-bottom: 0; }
@@ -1609,6 +1615,8 @@
   .gh-tile.gh-new { background: transparent; box-shadow: none; border: 3px dashed #c9ced8; }
   .gh-tile.gh-new .gh-ic { font-size: 54px; color: #8a93a3; font-weight: 300; }
   .gh-tile.gh-rew { background: #fbf7ec; }
+  .gh-tile.gh-open { background: #e8f0ff; box-shadow: 0 0 0 3px #9dbdf5, var(--shadow); }
+  .gh-tile.gh-in { animation: cueFade 0.35s ease-out both; }
   .gh-tile.gh-due { background: #fff4d6; }
   .gh-tile .gh-pic { width: 100%; flex: 1 1 auto; min-height: 70px; max-height: 120px; border-radius: 14px; background: #f2f3f6 center / cover no-repeat; }
   .gh-tile .gh-more { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border-radius: 12px; border: none; background: rgba(255,255,255,0.92); font-size: 22px; font-weight: 900; color: #6b7280; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
@@ -1642,6 +1650,10 @@
   .gm-tile.gp-2, .sk.gp-2 { animation: gpSoft 1.6s ease-in-out infinite; background: var(--prompt-light, #a9c8ff) !important; color: var(--ink) !important; z-index: 3; position: relative; }
   .gm-tile.gp-3, .sk.gp-3 { animation: gpStrong 1.2s ease-in-out infinite; background: var(--prompt-dark, #1e4f9e) !important; color: #fff !important; z-index: 4; position: relative; }
   .sk.gp-3 *, .sk.gp-3 em { color: #fff !important; }
+  #gmKeys .key.gp-1 { animation: gpSoft 1.6s ease-in-out infinite; z-index: 3; position: relative; }
+  #gmKeys .key.gp-2 { animation: gpSoft 1.6s ease-in-out infinite; background: var(--prompt-light, #a9c8ff) !important; color: var(--ink) !important; z-index: 3; position: relative; }
+  #gmKeys .key.gp-3 { animation: gpStrong 1.2s ease-in-out infinite; background: var(--prompt-dark, #1e4f9e) !important; color: #fff !important; z-index: 4; position: relative; }
+  #gmKeys .key.gp-3 * { color: #fff !important; }
   @keyframes gpSoft { 0%, 100% { transform: scale(1.06); box-shadow: 0 0 0 0 rgba(0,0,0,0.12), var(--shadow); } 50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(0,0,0,0), var(--shadow); } }
   @keyframes gpStrong { 0%, 100% { transform: scale(1.2); box-shadow: 0 0 0 0 var(--prompt-glow, rgba(47,125,246,0.45)), var(--shadow); } 50% { transform: scale(1.27); box-shadow: 0 0 0 16px transparent, var(--shadow); } }
   .gp-level { display: flex; gap: 0; background: #e9ebef; border-radius: 16px; padding: 4px; flex: 0 0 auto; }
@@ -1649,6 +1661,81 @@
   .gp-level button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
   .gp-level-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .gp-level-row .gp-note { font-size: 15px; font-weight: 700; color: var(--muted); flex: 1; min-width: 220px; }
+  /* new suggested tiles turn over together */
+  .sugg-card.sugg-cue-flip { animation: suggFlip 0.45s ease-out both; }
+  /* the cue for new suggested tiles (Settings > Magic mode): a soft fade, a small rise, a soft glow round the edge - or a small turn */
+  .sugg-card.sugg-cue-fade { animation: cueFade 0.35s ease-out both; }
+  @keyframes cueFade { from { opacity: 0.35; } to { opacity: 1; } }
+  .sugg-card.sugg-cue-rise { animation: cueRise 0.4s ease-out both; }
+  @keyframes cueRise { from { opacity: 0.5; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .sugg-card.sugg-cue-glow { animation: cueGlow 0.8s ease-out both; }
+  @keyframes cueGlow { 0% { box-shadow: 0 0 0 0 rgba(47,125,246,0), var(--shadow); } 35% { box-shadow: 0 0 0 5px rgba(47,125,246,0.28), var(--shadow); } 100% { box-shadow: 0 0 0 0 rgba(47,125,246,0), var(--shadow); } }
+  @keyframes suggFlip { 0% { transform: perspective(1200px) rotateY(-28deg); opacity: 0.55; } 100% { transform: perspective(1200px) rotateY(0); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .sugg-card.sugg-cue-flip, .sugg-card.sugg-cue-rise { animation: cueFade 0.35s ease-out both; } }
+  /* Questions and Dictation */
+  .qa-card { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px 24px; box-sizing: border-box; cursor: pointer; }
+  .qa-q { font-size: clamp(30px, 5.6vmin, 60px); font-weight: 800; line-height: 1.35; color: var(--ink); }
+  .gm-pic.qa-has-pic { flex-direction: column; gap: 10px; padding: 14px 16px; }
+  .gm-pic.qa-has-pic .qa-img { flex: 1 1 0; min-height: 0; width: 100%; height: auto; object-fit: contain; border-radius: 16px; }
+  .gm-pic.qa-has-pic .qa-card { flex: 0 0 auto; height: auto; padding: 0 16px; }
+  .gm-pic.qa-has-pic .qa-q { font-size: clamp(26px, 4.4vmin, 46px); }
+.qa-pk-sec { margin-top: 8px; } .qa-pk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 8px 0 4px; }
+  .qa-pk { position: relative; border: 3px solid #dfe2e7; border-radius: 14px; background: #fff; padding: 4px 4px 6px; font: inherit; font-size: 13px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+  .qa-pk img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; }
+  .qa-pk.on { border-color: #2a78d6; background: #e8f0ff; } .qa-pk.on::after { content: '\2713'; position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; background: #2a78d6; color: #fff; font-size: 15px; line-height: 24px; text-align: center; }
+  .qa-pk.had { opacity: 0.45; }
+  .qa-pv { margin-top: 8px; min-height: 0; } .qa-pv img { max-height: 120px; max-width: 100%; border-radius: 12px; display: block; } .qa-pv span { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .qa-q span { border-radius: 0.2em; padding: 0 0.08em; transition: background 0.12s; }
+  .qa-q span.on { background: var(--prompt-soft); }
+  .game-view.gm-type .gm-pic { flex: 1 1 0; flex-direction: column; gap: 16px; padding: 16px 20px 20px; }
+  .game-view.gm-type .gm-pic .qa-card { flex: 1 1 0; min-height: 0; height: auto; }
+  .dict-say { flex: 1 1 0; min-height: 0; border: none; background: transparent; font-size: clamp(60px, 12vmin, 120px); cursor: pointer; }
+  .cp-model { flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; font-size: clamp(56px, 11vmin, 120px); font-weight: 700; color: var(--ink); letter-spacing: 0.04em; cursor: pointer; }
+  .cp-model span { border-radius: 0.16em; padding: 0 0.04em; transition: color 0.2s, background 0.2s; }
+  .cp-model span.done { color: #1a8a3a; }
+  .cp-model span.hint { background: var(--prompt-soft, #dbe9ff); color: var(--prompt-dark, #1e4f9e); animation: cpHint 2.6s ease both; }
+  @keyframes cpHint { 0%, 85% { background: var(--prompt-soft, #dbe9ff); } 100% { background: transparent; } }
+  .ty-boxes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
+  .ty-box { width: var(--bx, 70px); height: calc(var(--bx, 70px) * 1.2); border-radius: 14px; border: 3px solid #cfd4dc; background: #fff; box-sizing: border-box; font-size: calc(var(--bx, 70px) * 0.72); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--ink); }
+  .ty-box.next { border-color: var(--prompt, #2f7df6); box-shadow: 0 0 0 4px var(--prompt-soft, #dbe9ff); }
+  .ty-box.filled { background: var(--green-soft, #d4f5d8); border-color: transparent; color: #1a6c1a; }
+  .ty-box .ty-hint { color: var(--prompt-dark, #1e4f9e); animation: tyHint 2.6s ease both; }
+  @keyframes tyHint { 0% { opacity: 0; transform: scale(0.7); } 12% { opacity: 1; transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  .ty-gap { width: calc(var(--bx, 70px) * 0.45); }
+  .ty-boxes.done .ty-box { animation: tyDone 0.5s ease both; }
+  @keyframes tyDone { 50% { transform: scale(1.12); } }
+  .game-view.gm-type .gm-row { flex: 0 0 auto; display: block; overflow: visible; padding: 0; margin: 0; }
+  .gm-keys { display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 14px); padding: 0 2px; }
+  .gm-keys .row { display: flex; gap: clamp(6px, 1vw, 12px); justify-content: center; }
+  .gm-keys .key { flex: 0 0 calc((100% - 9 * clamp(6px, 1vw, 12px)) / 10); height: clamp(56px, 9vh, 96px); font-size: clamp(26px, 4.4vmin, 44px); }
+  .gm-keys .key.gm-wrong { background: #ffd9d4; }
+  .gl-pop { z-index: 80; }
+  .gl-card { gap: 16px; }
+  .gl-ic { font-size: 64px; line-height: 1; }
+  .gl-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 3px solid transparent !important; padding: 20px 18px !important; }
+  .gl-btn b { font-size: 30px; font-weight: 900; }
+  .gl-btn small { font-size: 17px; font-weight: 700; opacity: 0.85; }
+  .gl-easy { background: #e3f7e6; color: #1f6d2c; }
+  .gl-hard { background: #fff1d6; color: #8a4b00; }
+  .gl-btn.last { border-color: rgba(0,0,0,0.18) !important; }
+  .gm-hard { font-weight: 900; font-size: 18px; color: #b25e00; background: #fff1d6; border-radius: 12px; padding: 6px 14px; }
+  /* response rate & cumulative record */
+  .rd-ctx { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 10px; }
+  .rd-ctx .lab { font-weight: 900; font-size: 15px; color: var(--muted); margin-right: 4px; }
+  .rd-range { display: flex; gap: 6px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .rd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .rd-stat { background: #f6f7f9; border-radius: 14px; padding: 10px 12px; }
+  .rd-stat b { display: block; font-size: 26px; font-weight: 900; color: #0b0b0b; font-variant-numeric: tabular-nums; }
+  .rd-stat span { font-size: 13px; font-weight: 800; color: #52514e; }
+  .rd-chart { position: relative; background: #fcfcfb; border-radius: 14px; padding: 8px 8px 4px; }
+  .rd-chart svg { display: block; width: 100%; height: auto; }
+  .rd-tip { position: absolute; pointer-events: none; background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.16); padding: 6px 10px; font-size: 13px; font-weight: 700; color: #0b0b0b; white-space: nowrap; display: none; }
+  .rd-legend { display: flex; gap: 16px; font-size: 14px; font-weight: 800; color: #52514e; margin: 6px 4px 0; }
+  .rd-legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .rd-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 6px; }
+  .rd-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #52514e; padding: 6px 6px; border-bottom: 1px solid #e6e7ea; }
+  .rd-table td { padding: 8px 6px; border-bottom: 1px solid #f0f1f3; font-weight: 700; color: #0b0b0b; font-variant-numeric: tabular-nums; }
+  .rd-table td.tr { font-weight: 900; white-space: nowrap; }
   .gm-pop { position: fixed; inset: 0; z-index: 5; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
   .gm-card { background: #fff; border-radius: 28px; padding: 30px 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: min(460px, 86vw); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .gm-big { font-size: 80px; line-height: 1; }
@@ -2459,6 +2546,10 @@
   .view-keyboard:not(.pic-on) #targetBanner.active .tletter.magnify { line-height: 1.1; }
   .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace { width: 0.42em; min-width: 0.42em !important; padding: 0 !important; font-size: var(--tile); }
   .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace:not(.next) { color: transparent !important; background: transparent !important; }
+  /* the space to type next: its own full-width box (the space mark fits inside it, and it can grow like a letter) */
+  .view-keyboard:not(.pic-on) #targetBanner.active .tletter.tspace.next { width: auto !important; min-width: 0.9em !important; padding: 0 0.12em !important; text-align: center; justify-content: center; display: inline-flex; }
+  /* the space bar is wide already: when it is the key to press it grows a little, not over the keys beside it */
+  .key.space.prompt-size { --boost: 1.06 !important; }
   .view-keyboard:not(.pic-on):has(#targetBanner.active) .keyboard { flex: 5 1 0; min-height: 0; }
   /* coins at the end of a message typed from the home page */
   .rb-coins { position: absolute; left: 0; right: 0; bottom: 4vmin; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 0 5vmin; }
@@ -2981,6 +3072,8 @@
         <div class="sublabel">What fades each time</div>
         <div class="seg-row" id="segFadeOrder"></div>
         <div class="help-note" id="fadeNote"></div>
+        <div class="settings-list" style="margin-top:12px"><div class="setting-row"><span>Add a delay before the keyboard prompts</span><div class="toggle" id="toggleKbDelay"></div></div></div>
+        <div class="help-note" id="kbDelayNote">Off: the prompts in the target word and on the keyboard come almost together, straight away. On: the target word is prompted straight away and the keyboard waits.</div>
         <div class="settings-list" style="margin-top:12px"><div class="setting-row"><span>Step prompts back up after misses</span><div class="toggle on" id="togglePromptBack"></div></div></div>
         <div class="help-note" id="promptBackNote"></div>
       </div>
@@ -2997,6 +3090,7 @@
       <div class="sgroup-body">
         <div class="settings-list">
           <div class="setting-row"><span>Collect data (prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+          <div class="setting-row" id="rateDataRow" style="cursor:pointer"><span>&#128200; Response rate &amp; cumulative record</span><span style="color:var(--muted);font-weight:800">&#8250;</span></div>
         </div>
         <div class="sublabel" style="font-size:15px;color:var(--ink)">Stimulus prompts (record which were in use)</div>
         <div class="sublabel">On the keyboard</div>
@@ -3134,6 +3228,8 @@
       <div class="sgroup-body">
         <div class="sublabel" style="margin-top:0">In the Games menu</div>
         <div class="settings-list" id="gamesOnList"></div>
+        <div class="sublabel">Least to most: no answer at a prompt level for</div>
+        <div class="settings-list"><div class="setting-row"><span>Then the next prompt level comes by itself</span><div class="seg" id="segPromptStep"></div></div></div>
         <div class="help-note" style="margin:6px 4px 12px">A game switched off stays in the Games menu greyed out, and cannot be started.</div>
         <div class="sublabel">The other tiles in the row (Word Match)</div>
         <div class="seg-row" id="segPicLevel"></div>
@@ -3154,6 +3250,11 @@
           <div class="setting-row"><span>&#128269; Matching words while typing</span><div class="toggle on" id="toggleSuggestOn"></div></div>
         </div>
         <div id="bandSettings"></div>
+        <div class="sublabel">When new suggested tiles come up</div>
+        <div class="settings-list"><div class="setting-row"><span>How they show they are new</span><div class="seg" id="segTileCue"></div></div></div>
+        <div class="sublabel">Tags: tiles and folders that go together</div>
+        <div class="settings-list"><div class="setting-row" id="tagsRow" style="cursor:pointer"><span>&#127991;&#65039; Tags</span><span id="tagsSum" style="color:var(--muted);font-weight:800">&#8250;</span></div></div>
+        <div class="help-note" style="margin:6px 4px 0">Give tiles and folders the same tag and they come up together in the suggestions (tag park and the Forests folder "outside": after park, the forest tiles are offered). Hold a tile or folder to tag it too.</div>
         <div class="sublabel">In the message bar</div>
         <div class="settings-list">
           <div class="setting-row"><span>Ending buttons beside a word</span><div class="toggle on" id="togglePlural"></div></div>
@@ -3376,7 +3477,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 607 - 14 Oct';
+const BUILD = 'build 634 - 14 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3592,7 +3693,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, tileCue: 'fade', promptStepSec: 7, kbPromptDelay: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3640,11 +3741,11 @@ function groupPromptNow() {
 }
 const DECODE_RE = /^decod/i;      // the Decoding group: words practised with the sound keyboard, with prompting of their own
 const LTM_RE = /^least.?to.?most/i;      // Least to Most: targets typed with prompting that starts small and grows (see ltmNow)
-const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match)/i };
+const PRACTICE_RE = { sight: /^(sight|word match)/i, spell: /^(spell(?!ing tiles)|writ)/i, tiles: /^(spelling tiles|letter tiles|tiles$)/i, sound: /^(sound(?! match)|elkonin)/i, hear: /^(hear|sound match)/i, match: /^match/i, qa: /^(questions?|answers?)$/i, dict: /^dictat/i, copy: /^copy/i, any: /^(sight|word match|spell|writ|letter tiles|tiles$|sound|elkonin|hear|match|questions?$|answers?$|dictat|copy)/i };
 // the practice group for a game mode: sight (picture to word tiles), write (picture to keyboard), tiles (picture to letter tiles)
-function practiceRe(mode) { return mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
+function practiceRe(mode) { return mode === 'qa' || mode === 'qatype' ? PRACTICE_RE.qa : mode === 'dict' ? PRACTICE_RE.dict : mode === 'copy' ? PRACTICE_RE.copy : mode === 'write' ? PRACTICE_RE.spell : mode === 'tiles' ? PRACTICE_RE.tiles : mode === 'sound' ? PRACTICE_RE.sound : mode === 'hear' ? PRACTICE_RE.hear : mode === 'match' ? PRACTICE_RE.match : PRACTICE_RE.sight; }
 // A practice group keeps its job when it is renamed: its kind is fixed once (from its name) and the app goes by that
-const GROUP_KIND_NAME = { typing: 'Typing', ltm: 'Least to Most', decode: 'Decoding', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
+const GROUP_KIND_NAME = { typing: 'Typing', ltm: 'Least to Most', decode: 'Decoding', qa: 'Questions', dict: 'Dictation', copy: 'Copy', sight: 'Word Match', write: 'Spelling', tiles: 'Tiles', sound: 'Elkonin Boxes', hear: 'Sound Match' };
 function gKey(g) { return g && g.kind && GROUP_KIND_NAME[g.kind] ? GROUP_KIND_NAME[g.kind] : String((g && g.name) || '').trim(); }
 function isPracticeGroup(g) { return PRACTICE_RE.any.test(gKey(g)); }   // set by the star; lasts until this word is finished or changed
 let promptDelayTimer = null;
@@ -3770,7 +3871,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, tileCue: saved.tileCue || 'fade', promptStepSec: Number(saved.promptStepSec) || 7, kbPromptDelay: !!saved.kbPromptDelay, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4427,7 +4528,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, tileCue: state.tileCue || 'fade', promptStepSec: state.promptStepSec || 7, kbPromptDelay: !!state.kbPromptDelay, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -6396,6 +6497,13 @@ function anyPromptEnabled() {
          pOn('promptPulseOn') || pOn('promptTileOn') || pOn('promptTextColorOn') || pOn('promptTextPulseOn') || state.otherKeysMode !== 'normal';
 }
 // Prompts are showing right now (delay elapsed, letter not fully faded)
+// the target word's prompt straight away, before the wait the keyboard's prompts keep (unless it is set to wait too)
+function wordPromptNow() {
+  if (!state.currentTarget || isWordComplete()) return false;
+  if (fadeLevelAt(state.targetIndex) >= FADE_PLAIN) return false;
+  if (state.helpMode && !helpRequested) return false;
+  return true;
+}
 function promptsShowing() {
   if (!state.currentTarget || isWordComplete()) return false;
   if (ltmNow()) return true;      // (least to most: the first, smallest prompt is there from the start)
@@ -6416,8 +6524,8 @@ function kbPromptsShowing() {
   if (ltmNow()) return true;      // (the word bar and the key together)
   if (!barPromptNow()) return true;
   const key = state.currentTarget + '|' + state.targetIndex + '|' + (helpRequested ? 1 : 0);
-  if (key !== kbLagKey) { kbLagKey = key; kbLagAt = Date.now(); clearTimeout(kbLagTimer); kbLagTimer = setTimeout(() => { try { render(); } catch (e) {} }, 1010); }
-  return Date.now() - kbLagAt >= 1000;
+  if (key !== kbLagKey) { kbLagKey = key; kbLagAt = Date.now(); clearTimeout(kbLagTimer); kbLagTimer = setTimeout(() => { try { render(); } catch (e) {} }, 360); }
+  return Date.now() - kbLagAt >= 350;      // (the keyboard just after the word)
 }
 function clearPromptTimer() {
   if (promptDelayTimer) { clearTimeout(promptDelayTimer); promptDelayTimer = null; }
@@ -6536,7 +6644,9 @@ function soundPromptSay() { if (!soundPracticeNow() || isWordComplete() || docum
 //  2 the colour comes in (a light blue), and the sound again
 //  3 the most: the darkest blue, bigger, a strong pulse, and the sound again (said again every 5 s, three times)
 // A right key: the next letter starts back at 1.
-const LTM_WAIT_MS = 5000;
+const LTM_WAIT_MS = 7000;
+// least to most: no answer for this long at a prompt level and the next level comes by itself (Settings > Games; 7 s to start)
+function ltmStepMs() { const v = Number(state.promptStepSec) || 7; return Math.max(3, Math.min(15, v)) * 1000; }
 let ltm = { key: '', lv: 1, rep: 0 }, ltmTimer = null;
 function ltmGroup() { const t = state.categories.find(c => c.target); return t ? (t.groups || []).find(g => g.kind === 'ltm' || LTM_RE.test(gKey(g))) || null : null; }
 function ltmNow() {
@@ -6560,7 +6670,7 @@ function ltmArm() {
   clearTimeout(ltmTimer); ltmTimer = null;
   if (!ltmNow() || isWordComplete()) return;
   const key = ltmKey();
-  ltmTimer = setTimeout(() => { ltmTimer = null; if (ltmKey() === key) ltmUp(); }, LTM_WAIT_MS);
+  ltmTimer = setTimeout(() => { ltmTimer = null; if (ltmKey() === key) ltmUp(); }, ltmStepMs());
 }
 // one step more help (a wait with no key, or a wrong key)
 function ltmUp() {
@@ -6581,14 +6691,17 @@ function ltmStart() {
   ltmArm();
 }
 // the prompts on a key for the step it is at
+function ltmWordLevel() { return Math.min(3, ltmLevel() + 1); }
+function ltmKbLevel() { return state.kbPromptDelay ? ltmLevel() : ltmWordLevel(); }      // (a delay set: the keyboard a step behind the word)
 function ltmKeyPaint(k) {
-  const lv = ltmLevel();
+  const lv = ltmKbLevel();
   k.classList.add('prompting', 'prompt-size', lv >= 3 ? 'boost-large' : 'boost-small', lv >= 3 ? 'prompt-pulse' : 'ltm-pulse');
   if (lv === 2) k.classList.add('prompt-color', 'ltm-light');
   if (lv >= 3) k.classList.add('prompt-color', 'ltm-dark');
 }
 function armPrompt(force) {
   clearPromptTimer();
+  { const k = (state.currentTarget || '') + '|' + state.targetIndex; if (k !== letterTurnKey) { letterTurnKey = k; letterTurnAt = Date.now(); } }      // (each letter's turn: when it began, for how long the answer took)
   clearTimeout(ltmTimer); ltmTimer = null;
   if (ltmNow()) { clearTimeout(soundPromptTimer); soundPromptTimer = null; verbalSpokenFor = -1; if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; } ltmStart(); return; }
   if (soundPracticeNow()) { const fresh = state.targetIndex === 0 && !(state.text || '');      // (after the word is said: about its length, then 2 s - after a spelling's sound: 2 s)
@@ -6600,7 +6713,7 @@ function armPrompt(force) {
   // letter after its own short wait so there is a chance to try first
   const delay = helpRequested
     ? Math.max(0, Math.min(10, state.helpDelaySec ?? 3))
-    : Math.max(0, Math.min(10, state.promptDelaySec || 0));
+    : kbDelaySec();
   if (!state.currentTarget || isWordComplete()) { promptVisible = true; return; }
   if (delay === 0 && !force) {
     promptVisible = true;
@@ -6649,7 +6762,7 @@ function isLetterPrompted(letter) {
 
 function render() {
   applyPromptTheme();
-  const showing = promptsShowing();
+  const showing = promptsShowing(), wShow = showing || wordPromptNow();
 
 
   // While drafting from the bank, the target bar previews the phrase
@@ -6697,14 +6810,14 @@ function render() {
       s.className = 'tletter' + (ch === ' ' ? ' tspace' : '');
       if (i < state.targetIndex) s.classList.add('done');
       else if (i === state.targetIndex && ltmNow() && !isWordComplete()) {
-        const lv = ltmLevel();
+        const lv = ltmWordLevel();      // (the colour in the word straight away)
         s.classList.add(lv >= 2 ? 'next' : 'pending', 'magnify', lv >= 3 ? 'tmag-large' : 'tmag-small', lv >= 3 ? 'pulse' : 'ltm-pulse');
         if (lv === 2) s.classList.add('ltm-light'); if (lv >= 3) s.classList.add('ltm-dark');
       }
       else if (i === state.targetIndex &&
-               ((showing && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1 || hintAt(i).word)) {
-        const fl = fadeLevelAt(i), E = Math.max(boostLevel(i), hintAt(i).word ? 1 : 0), on = showing && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
-        const sh = (lim, step) => (showing && fl < lim) || E >= step;
+               ((wShow && (pOn('promptTextColorOn') || pOn('promptTileOn') || pOn('promptTextPulseOn'))) || helpLead || boostLevel(i) >= 1 || hintAt(i).word)) {
+        const fl = fadeLevelAt(i), E = Math.max(boostLevel(i), hintAt(i).word ? 1 : 0), on = wShow && !E ? 1 : 0;      // the word keeps its prompts until the keyboard's are gone (see FADE_MAX)
+        const sh = (lim, step) => (wShow && fl < lim) || E >= step;
         if (E >= 1) s.classList.add('boosted');      // (errors in a row: the letter shows again in the word)
         if ((pOn('promptTextColorOn') && sh(6, 4)) || helpLead) s.classList.add('next');
         else s.classList.add('pending');
@@ -7127,6 +7240,7 @@ function typeChar(letter) {
   if (state.currentTarget) {
     const expected = state.currentTarget[state.targetIndex];
     if (expected && !isWrong) {
+      try { respNote({ k: 'letter', w: String(expected).toUpperCase(), src: (typeof game !== 'undefined' && game && game.mode === 'write') ? 'game:write' : 'spell', p: prompted ? 1 : 0, lat: letterLatency() }); } catch (e) {}
       { const i = state.targetIndex, a = trialAt[i] || { w: 0 }; a.L = String(expected).toUpperCase(); a.p = !!prompted; if (ltmNow()) a.ltm = Math.max(a.ltm || 1, ltmLevel()); a.f = boostLevel(i) >= BOOST_MAX ? 0 : Math.max(fadeLevelAt(i), boostLevel(i) ? 1 : 0); trialAt[i] = a; }
       state.targetIndex++;
       state.targetProgress.push(true);
@@ -7274,6 +7388,7 @@ function boostNote() {
 let trialAt = [];
 function handleError(expectedLetter, typedLetter) {
   fadeStreak = 0; trialErrors++;
+  try { respNote({ k: 'letter', w: String(expectedLetter || '').toUpperCase(), src: 'spell', ok: false, lat: letterLatency() }); } catch (e) {}
   try { boostNote(); } catch (e) {}
   if (state.currentTarget) { const i = state.targetIndex; trialAt[i] = trialAt[i] || { w: 0 }; trialAt[i].w = (trialAt[i].w || 0) + 1; }
   try { missNote('wrong key', typedLetter); } catch (e) {}
@@ -7853,6 +7968,7 @@ function applyDefaultGroups() {
     }
   }
   DEFAULT_GROUPS.forEach((n, i) => { const c = byName(n); if (c) c.order = i; });
+  try { phonicsSeed(); } catch (e) {}
   save();
 }
 
@@ -8309,6 +8425,8 @@ function withGroup(cat, w, hint) {
   const gk = normaliseWord(box.name);
   const stem = x => x.replace(/(ES|S)$/, '');
   if (!gk || w.split(' ').some(part => stem(part) === stem(gk)) || w.endsWith(gk)) return w;     // "sugar cookie" already says it
+  // the group's name is noted in grey after the word (Where You Are · moana, chocolate · cookies): tapped, it goes in - and the two can be made one phrase
+  if (state.folderNotes !== false && !state.builderMode) { withGroupNote = { word: w, w: gk }; return w; }
   const key = w + ' ' + gk;
   magicKnow(key);
   state.keptPhrases[key] = true;
@@ -8365,6 +8483,7 @@ function markNameTile(card) {
 }
 function magicPathPick(cat, name) {
   if (!state.magicType || state.builderMode || !homePhrase.length || !cat || cat.target) return;
+  if (childrenOf(cat.id).length) return;      // (a folder of folders - Things, Choices under Categories - is a menu to look in, not a word for the message)
   const key = normaliseWord(name);
   if (!key) return;
   state.pathOf = state.pathOf || {};
@@ -8575,6 +8694,37 @@ function magicTwoRows() {
   if (acts.length) { r++; acts.forEach(m => out.push(Object.assign({}, m, { row: r, act: true }))); }
   return out;
 }
+// A message of main words made into a sentence by the small words it is missing, each where it goes:
+// "go play park now" -> "I want to go play at the park now"; "Dad go park" -> "Dad go to the park"; "want eat cookie" -> "I want to eat a cookie".
+//  - no one doing it, and a doing word first: I (and want to, unless want / need / like is there already)
+//  - want / need / like and then a doing word: to between them
+//  - a place: to the (after go, come, walk, run, drive) or at the (after any other doing word), unless it has one
+//  - a thing (food, a toy ...) straight after a doing word: a (some when it is more than one)
+function sentenceFill(ph) {
+  const W = (ph || []).filter(w => !isPunct(w)); if (W.length < 2) return null;
+  const SUBJ = ['I', 'WE', 'YOU', 'HE', 'SHE', 'THEY', "LET'S", 'LETS'], WANTS = ['WANT', 'NEED', 'LIKE', 'LOVE'], DET = ['THE', 'A', 'AN', 'MY', 'YOUR', 'SOME', 'MORE', 'TO', 'AT', 'IN', 'ON', 'FROM'];
+  const HELLO = ['HI', 'HELLO', 'HEY', 'PLEASE', 'YES', 'NO', 'OK'], MOVE = ['GO', 'COME', 'WALK', 'RUN', 'DRIVE', 'RIDE', 'GET'];
+  const kind = w => { try { return kindOfWord(w) || ''; } catch (e) { return ''; } }, mk = w => { try { return magicKind(w) || ''; } catch (e) { return ''; } };
+  const isVerb = w => WANTS.includes(w) || kind(w) === 'action';
+  const isPlace = w => mk(w) === 'place' || kind(w) === 'places';
+  const isThing = w => ['food', 'thing', 'drink', 'book', 'game', 'watch', 'music'].includes(mk(w)) && kind(w) !== 'action';
+  const isPerson = w => kind(w) === 'people' || mk(w) === 'person';
+  const v = W.findIndex(isVerb); if (v < 0) return null;
+  const out = []; let added = 0;
+  // who: greetings and names kept in front; nobody before the first doing word - I (want to)
+  const lead = W.slice(0, v), hasSubj = lead.some(w => SUBJ.includes(w) || isPerson(w));
+  lead.forEach(w => out.push(w));
+  if (!hasSubj && lead.every(w => HELLO.includes(w))) { out.push('I'); added++; if (!WANTS.includes(W[v]) && !W.some(w => WANTS.includes(w)) && W[v] !== 'CAN') { out.push('WANT', 'TO'); added += 2; } }
+  let lastVerb = '';
+  for (let i = v; i < W.length; i++) {
+    const w = W[i], prev = out[out.length - 1] || '';
+    if (isVerb(w) && WANTS.includes(prev) && !WANTS.includes(w)) { out.push('TO'); added++; }
+    else if (isPlace(w) && !DET.includes(prev) && lastVerb) { out.push(MOVE.includes(lastVerb) && MOVE.includes(prev) ? 'TO' : 'AT', 'THE'); added += 2; }
+    else if (isThing(w) && !DET.includes(prev) && isVerb(prev) && !WANTS.includes(prev)) { out.push(/[^S]S$/.test(w) ? 'SOME' : /^[AEIOU]/.test(w) ? 'AN' : 'A'); added++; }
+    out.push(w); if (isVerb(w) && !WANTS.includes(w)) lastVerb = w;
+  }
+  return added ? out : null;
+}
 function magicPhraseFull() {
   if (!homePhrase.length) { magicTarget = null; magicTargetExt = false; return null; }
   if (magicTarget && !magicMatch(magicTarget, homePhrase)) magicTargetExt = false;
@@ -8585,7 +8735,8 @@ function magicPhraseFull() {
     const main = homePhrase.filter((w, i) => !['TO', 'THE', 'A', 'AN'].includes(w) && !(w === 'I' && i > 0));
     magicTargetExt = false;
     magicTarget = magicExpand(homePhrase) || (homePhrase.length === 2 ? magicExpand(homePhrase.slice().reverse()) : null)
-      || (main.length < homePhrase.length ? magicExpand(main) : null);
+      || (main.length < homePhrase.length ? magicExpand(main) : null)
+      || sentenceFill(homePhrase);      // (a longer message - go play park now: the small words it still needs, each in its place)
     used = magicTarget ? magicMatch(magicTarget, homePhrase) : null;
   }
   if (!magicTarget || !used || homePhrase.join(' ') === magicTarget.join(' ')) {
@@ -9080,7 +9231,249 @@ function nextStep() {
   else { doing(); tail(); }
   return out;
 }
-function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} } }
+// ===== Tags: tiles and folders that go together (a tag is a name with its members: 'w:PARK', 'f:45' ...) =====
+function tagList() { state.tags = (state.tags && typeof state.tags === 'object') ? state.tags : {};
+  if (!state.tagsSeedV1) { state.tagsSeedV1 = true; try { if (!state.tags.park) { const m = [];      // (a first tag to show how they work: the park, with what goes there - change it or delete it)
+      ['PARK', 'PLAY', 'SWING', 'SLIDE', 'RUN', 'BALL', 'TREE', 'STICK', 'PLAYGROUND', 'WALK', 'BIKE', 'DOG'].forEach(w => { if (state.words.includes(w) || categoriesOf(w).length) m.push('w:' + w); });
+      state.categories.filter(c => /^(forests?|outside|outdoors|playground)$/i.test(String(c.name).trim())).forEach(c => m.push('f:' + c.id));
+      if (m.length > 1) state.tags.park = m; save(); } } catch (e) {} }
+  return state.tags; }
+function tagsOf(key) { const T = tagList(); return Object.keys(T).filter(t => (T[t] || []).includes(key)).sort(); }
+function tagLabel(key) { if (/^f:/.test(key)) { const c = catById(Number(key.slice(2))); return c ? '\uD83D\uDCC1 ' + c.name : null; }
+  if (/^g:/.test(key)) { const [ci, gi] = key.slice(2).split('/'), c = catById(Number(ci)), g = c && (c.groups || []).find(x => String(x.id) === gi); return g ? '\uD83D\uDCC2 ' + c.name + ' \u203A ' + g.name : null; }
+  return plainLabel(key.slice(2)); }
+function tagSet(t, key, on) { const T = tagList(); const m = T[t] = (T[t] || []).filter(x => x !== key); if (on) m.push(key); save(); }
+// the words and folders sharing a tag with the message: each word's own tags, and those of the folders it is in
+function tagRelated(ph) {
+  const T = tagList(); if (!Object.keys(T).length) return { words: [], folders: [], groups: [] };
+  const own = new Set(), tags = new Set();
+  (ph || []).filter(w => !isPunct(w)).forEach(w => { own.add('w:' + w); categoriesOf(w).forEach(c => { (c.groups || []).forEach(g => { if ((g.words || []).includes(w)) own.add('g:' + c.id + '/' + g.id); }); let x = c, g = 0; while (x && g++ < 6) { own.add('f:' + x.id); x = x.parent ? catById(x.parent) : null; } }); });
+  own.forEach(k => tagsOf(k).forEach(t => tags.add(t)));
+  const words = [], folders = [], groups = [];
+  tags.forEach(t => (T[t] || []).forEach(k => { if (own.has(k)) return;
+    if (/^w:/.test(k)) { const w = k.slice(2); if (!words.includes(w)) words.push(w); }
+    else if (/^g:/.test(k)) { const [ci, gi] = k.slice(2).split('/'), c = catById(Number(ci)), g = c && (c.groups || []).find(x => String(x.id) === gi); if (g && !g.hidden && !groups.some(x => x.group === g)) groups.push({ folder: c, group: g }); }
+    else { const c = catById(Number(k.slice(2))); if (c && !c.hidden && !folders.includes(c)) folders.push(c); } }));
+  return { words, folders, groups };
+}
+function tagBtn(key, label) { const ts = tagsOf(key); return sheetBtn('\uD83C\uDFF7\uFE0F  Tags' + (ts.length ? ': ' + ts.join(', ') : ' (to go with other tiles)'), '', () => openTagSheet(key, label)); }
+// a tile's or folder's tags: tap one to give it or take it off; a new one by name
+function openTagSheet(key, label) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Tags', label);
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 10px';
+    n.textContent = 'Tiles and folders with the same tag come up together in the suggestions. Tap a tag to give it to ' + label + ' (or take it off).';
+    body.appendChild(n);
+    const chips = document.createElement('div'); chips.className = 'tune-chips'; chips.style.flexWrap = 'wrap'; body.appendChild(chips);
+    const rel = document.createElement('div'); rel.className = 'help-note'; rel.style.marginTop = '12px'; body.appendChild(rel);
+    const paint = () => { chips.innerHTML = ''; const mine = tagsOf(key);
+      Object.keys(tagList()).sort().forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip' + (mine.includes(t) ? ' on' : ''); b.textContent = (mine.includes(t) ? '\u2713 ' : '') + t;
+        b.addEventListener('click', () => { buzz(8); tagSet(t, key, !tagsOf(key).includes(t)); paint(); }); chips.appendChild(b); });
+      const nb = document.createElement('button'); nb.className = 'tune-chip'; nb.textContent = '+ New tag';
+      nb.addEventListener('click', () => { const v = String(prompt('Name for the new tag (for example: outside, bedtime, bath)') || '').trim().toLowerCase(); if (!v) return; tagSet(v, key, true); paint(); }); chips.appendChild(nb);
+      const others = new Set(); tagsOf(key).forEach(t => (tagList()[t] || []).forEach(k => { if (k !== key) others.add(k); }));
+      const names = [...others].map(tagLabel).filter(Boolean);
+      rel.textContent = names.length ? 'Comes up with: ' + names.join(', ') : 'No other tiles share its tags yet.'; };
+    paint();
+    body.appendChild(sheetBtn('All tags', '', () => openTagsManager()));
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); try { const h = document.getElementById('suggHost'); h.dataset.sig = ''; suggRender(); } catch (e) {} }));
+  });
+}
+// every tag: open one to see what is in it, add tiles and folders to it, rename or delete it
+function openTagsManager() {
+  openWordSheet(body => {
+    sheetTitle(body, 'Tags');
+    const T = tagList(), names = Object.keys(T).sort();
+    if (!names.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'No tags yet. Make one here, or hold a tile or folder and tap Tags.'; body.appendChild(n); }
+    names.forEach(t => body.appendChild(sheetBtn('\uD83C\uDFF7\uFE0F  ' + t + '  \u00B7  ' + (T[t] || []).length, '', () => openTagDetail(t))));
+    body.appendChild(sheetBtn('+ New tag', '', () => { const v = String(prompt('Name for the new tag') || '').trim().toLowerCase(); if (!v) return; if (!T[v]) T[v] = []; save(); openTagDetail(v); }));
+    body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
+  });
+}
+function openTagDetail(t) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Tag', t);
+    const T = tagList(), list = document.createElement('div'); list.className = 'ps-list'; body.appendChild(list);
+    (T[t] || []).forEach(k => { const lb = tagLabel(k); if (!lb) return; const r = document.createElement('div'); r.className = 'ps-t'; const nm = document.createElement('span'); nm.textContent = lb; r.appendChild(nm);
+      const x = document.createElement('button'); x.className = 'chk-x'; x.textContent = 'Remove'; x.addEventListener('click', () => { tagSet(t, k, false); openTagDetail(t); }); r.appendChild(x); list.appendChild(r); });
+    if (!(T[t] || []).length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'Nothing has this tag yet.'; list.appendChild(n); }
+    body.appendChild(sheetBtn('+ Add tiles and folders', 'primary', () => openTagPicker(t)));
+    body.appendChild(sheetBtn('Rename', '', () => { const v = String(prompt('New name for the tag', t) || '').trim().toLowerCase(); if (!v || v === t) return; T[v] = [...new Set((T[v] || []).concat(T[t] || []))]; delete T[t]; save(); openTagDetail(v); }));
+    body.appendChild(sheetBtn('Delete this tag', 'danger', () => { if (!confirm('Delete the tag "' + t + '"? The tiles and folders stay.')) return; delete T[t]; save(); openTagsManager(); }));
+    body.appendChild(sheetBtn('Back to all tags', '', () => openTagsManager()));
+  });
+}
+// the whole library as it is laid out - each folder in its place, the folders inside it, its groups (Drinks in Food) and its
+// tiles - every one of them can be given the tag on its own; the arrow opens a folder or group to see what is inside
+let tagPickOpen = new Set();
+function openTagPicker(t) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Add to "' + t + '"');
+    const n0 = document.createElement('div'); n0.className = 'help-note'; n0.style.margin = '2px 0 8px'; n0.textContent = 'Tap a folder, group or tile to give it the tag (green). The arrow opens it to show what is inside.'; body.appendChild(n0);
+    const list = document.createElement('div'); list.style.cssText = 'max-height:58vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px'; body.appendChild(list);
+    const has = k => (tagList()[t] || []).includes(k);
+    const kids = id => state.categories.filter(c => (c.parent || null) === id && !c.target && !c.hidden && !c.smallSec).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const inside = (c, g) => { let n = 0; const T = tagList()[t] || []; const ws = g ? (g.words || []) : (c.words || []); ws.forEach(w => { if (T.includes('w:' + w)) n++; }); if (!g) { listGroups(c).forEach(x => { if (T.includes('g:' + c.id + '/' + x.id)) n++; }); kids(c.id).forEach(k => { if (T.includes('f:' + k.id)) n++; n += inside(k); }); } return n; };
+    const row = (depth, label, key, openKey, count) => {
+      const r = document.createElement('div'); r.style.cssText = 'display:flex;gap:8px;align-items:stretch;margin-left:' + (depth * 22) + 'px';
+      const b = document.createElement('button'); b.className = 'pick-row'; b.style.cssText = 'flex:1;text-align:left;font-weight:' + (openKey ? '900' : '700');
+      const paint = () => { b.classList.toggle('on', has(key)); b.textContent = (has(key) ? '\u2713 ' : '') + label + (count ? '   \u00B7 ' + count + ' tagged inside' : ''); };
+      b.addEventListener('click', () => { buzz(8); tagSet(t, key, !has(key)); paint(); }); paint(); r.appendChild(b);
+      if (openKey) { const o = document.createElement('button'); o.className = 'pick-row'; o.style.cssText = 'flex:0 0 56px;font-size:20px'; o.textContent = tagPickOpen.has(openKey) ? '\u25BE' : '\u25B8'; o.setAttribute('aria-label', 'Show what is inside');
+        o.addEventListener('click', () => { buzz(8); if (tagPickOpen.has(openKey)) tagPickOpen.delete(openKey); else tagPickOpen.add(openKey); draw(); }); r.appendChild(o); }
+      list.appendChild(r);
+    };
+    const wordsGrid = (depth, ws) => { if (!ws.length) return; const gr = document.createElement('div'); gr.className = 'pick-grid'; gr.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-left:' + (depth * 22) + 'px';
+      ws.forEach(w => { const b = document.createElement('button'); b.className = 'pick-row'; const pw = () => { b.classList.toggle('on', has('w:' + w)); b.textContent = (has('w:' + w) ? '\u2713 ' : '') + plainLabel(w); };
+        b.addEventListener('click', () => { buzz(8); tagSet(t, 'w:' + w, !has('w:' + w)); pw(); }); pw(); gr.appendChild(b); });
+      list.appendChild(gr); };
+    const folder = (c, depth) => {
+      const ok = 'f' + c.id; row(depth, '\uD83D\uDCC1 ' + c.name, 'f:' + c.id, ok, inside(c));
+      if (!tagPickOpen.has(ok)) return;
+      kids(c.id).forEach(k => folder(k, depth + 1));
+      const gs = listGroups(c).filter(g => !g.hidden && (g.words || []).length), inG = new Set([].concat(...gs.map(g => g.words || [])));
+      gs.forEach(g => { const gk = 'g' + c.id + '/' + g.id; row(depth + 1, '\uD83D\uDCC2 ' + g.name, 'g:' + c.id + '/' + g.id, gk, inside(c, g)); if (tagPickOpen.has(gk)) wordsGrid(depth + 2, (g.words || []).filter(w => !isPunct(w))); });
+      wordsGrid(depth + 1, (c.words || []).filter(w => !isPunct(w) && !inG.has(w)));
+    };
+    const draw = () => { const y = list.scrollTop; list.innerHTML = ''; kids(null).forEach(c => folder(c, 0)); list.scrollTop = y; };
+    draw();
+    body.appendChild(sheetBtn('Done', 'primary', () => openTagDetail(t)));
+  });
+}
+// ===== Response rate, continuously (the cumulative record): every response with its time, prompted or not, and with whom
+// and where. Home tiles, typed words and messages are logged here as they happen; the practice keyboard's letters too
+// (with how long each took); the games' turns come from the games' own log.
+var letterTurnAt = 0, letterTurnKey = '', respTypedNext = null, respPhraseWas = [];
+function letterLatency() { return letterTurnAt ? Math.max(0, Date.now() - letterTurnAt) : null; }
+function respNote(ev) {
+  const c = state.dataCtx || {}; const e = Object.assign({ t: Date.now() }, ev); if (c.who) e.who = c.who; if (c.where) e.where = c.where;
+  const L = state.respLog = Array.isArray(state.respLog) ? state.respLog : []; L.push(e); if (L.length > 20000) L.splice(0, L.length - 20000);
+}
+// the words that have just gone into the message (in any place in it): each is a response - a tile, a suggested tile, or typed
+function respWordsSeen() {
+  const now = homePhrase.slice(), was = respPhraseWas; respPhraseWas = now.slice();
+  if (state.builderMode || now.length <= was.length) { respTypedNext = null; return; }
+  const left = {}; was.forEach(w => { left[w] = (left[w] || 0) + 1; });
+  const added = now.filter(w => { if (left[w]) { left[w]--; return false; } return true; }).filter(w => !isPunct(w));
+  const viaSugg = Date.now() - (typeof magicPickAt !== 'undefined' ? magicPickAt : 0) < 600;
+  added.forEach(w => respNote({ k: 'word', w, src: respTypedNext === w ? 'typed' : viaSugg ? 'suggested' : 'tile', p: 0 }));
+  respTypedNext = null;
+}
+const RD_CLASSES = [
+  ['w:action', 'Action words (go, eat, play ...)'], ['w:label', 'Labels (things, people, places, folder names)'], ['w:small', 'Small words (I, the, you, it, now, then ...)'],
+  ['tile', 'Words chosen from tiles'], ['typed', 'Words typed'], ['message', 'Messages sent'], ['letter', 'Letters spelled (practice)'],
+  ['game:sight', 'Word Match: picture \u2192 word'], ['game:write', 'Spelling: picture \u2192 keyboard'], ['game:tiles', 'Tiles: letters in order'], ['game:sound', 'Elkonin Boxes: sounds'],
+  ['game:hear', 'Sound Match: hear a sound'], ['game:qa', 'Questions: answering'], ['game:dict', 'Dictation: hear and type'], ['game:copy', 'Copy: type from a model']];
+// the kind of word: an action word, a small word (I, the, you, it - and the describing and time words from Choices: now, then, big), or a label
+function rdWordType(w) { let k = ''; try { k = kindOfWord(w); } catch (e) {} if (k === 'action' || (typeof MAGIC_WANTS !== 'undefined' && MAGIC_WANTS.includes(w))) return 'action';
+  let d = false; try { d = isSmallWord(w) || describeWord(w) || k === 'describe'; } catch (e) {} return d ? 'small' : 'label'; }
+// every response in the logs, as one list: { t, cls, ok (independent), lat, who, where }
+function rdAll() {
+  const out = [];
+  (state.respLog || []).forEach(e => {
+    if (e.k === 'word') { out.push({ t: e.t, cls: e.src === 'typed' ? 'typed' : 'tile', ok: true, who: e.who, where: e.where }); out.push({ t: e.t, cls: 'w:' + rdWordType(e.w), ok: true, who: e.who, where: e.where, sub: true }); }
+    else if (e.k === 'message') out.push({ t: e.t, cls: 'message', ok: true, who: e.who, where: e.where });
+    else if (e.k === 'letter' && e.ok !== false) out.push({ t: e.t, cls: 'letter', ok: !e.p, lat: e.lat, who: e.who, where: e.where });
+  });
+  (state.gameLog || []).forEach(r => { const m = r.mode || 'sight'; if (m === 'write') return;      // (Spelling's letters are logged one by one above)
+    out.push({ t: r.t, cls: 'game:' + m, ok: r.res === 'first' }); });
+  (state.gameLog || []).filter(r => r.mode === 'write').forEach(r => out.push({ t: r.t, cls: 'game:write', ok: r.res === 'first', word: true }));
+  return out.sort((a, b) => a.t - b.t);
+}
+// time actually spent: the gaps between responses, each counted up to two minutes (so time away does not count)
+function rdActive(evs) { let ms = 0; for (let i = 1; i < evs.length; i++) ms += Math.min(120000, evs[i].t - evs[i - 1].t); return evs.length ? ms + 30000 : 0; }
+let rdRange = 7;
+function openRateData() {
+  openWordSheet(body => {
+    sheetTitle(body, 'Response rate', 'the cumulative record');
+    // with whom and where: every response from now on is marked with them (for generalisation)
+    const ctx = state.dataCtx = state.dataCtx || { who: '', where: '' };
+    const people = state.dataPeople = state.dataPeople || [], places = state.dataPlaces = state.dataPlaces || [];
+    const ctxRow = (lab, list, key, ask) => { const r = document.createElement('div'); r.className = 'rd-ctx'; const l = document.createElement('span'); l.className = 'lab'; l.textContent = lab; r.appendChild(l);
+      if (ctx[key] && !list.includes(ctx[key])) list.push(ctx[key]);
+      ['(not set)'].concat(list).forEach(v => { const val = v === '(not set)' ? '' : v, b = document.createElement('button'); b.className = 'tune-chip' + (ctx[key] === val ? ' on' : ''); b.textContent = v;
+        b.addEventListener('click', () => { ctx[key] = val; save(); openRateData(); }); r.appendChild(b); });
+      const add = document.createElement('button'); add.className = 'tune-chip'; add.textContent = '+ add';
+      add.addEventListener('click', () => { const v = String(prompt(ask) || '').trim(); if (!v) return; if (!list.includes(v)) list.push(v); ctx[key] = v; save(); openRateData(); }); r.appendChild(add);
+      body.appendChild(r); };
+    ctxRow('With', people, 'who', 'Who is communicating with them? (Mom, Dad, teacher ...)');
+    ctxRow('Where', places, 'where', 'Where are they? (home, school, park ...)');
+    const rg = document.createElement('div'); rg.className = 'rd-range'; body.appendChild(rg);
+    [[1, 'Today'], [7, '7 days'], [30, '30 days'], [0, 'All']].forEach(([d, l]) => { const b = document.createElement('button'); b.className = 'tune-chip' + (rdRange === d ? ' on' : ''); b.textContent = l; b.addEventListener('click', () => { rdRange = d; openRateData(); }); rg.appendChild(b); });
+    const all = rdAll(), now = Date.now(), dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const from = rdRange === 1 ? dayStart.getTime() : rdRange ? now - rdRange * 864e5 : 0, span = rdRange === 1 ? 864e5 : rdRange * 864e5;
+    const evs = all.filter(e => e.t >= from), prev = rdRange ? all.filter(e => e.t >= from - span && e.t < from) : [];
+    const main = evs.filter(e => !e.sub), hrs = rdActive(main) / 36e5;
+    const ind = main.filter(e => e.ok).length, pr = main.length - ind;
+    const lats = evs.filter(e => e.cls === 'letter' && e.ok && e.lat != null).map(e => e.lat).sort((a, b) => a - b), med = lats.length ? lats[Math.floor(lats.length / 2)] : null;
+    const st = document.createElement('div'); st.className = 'rd-stats'; body.appendChild(st);
+    const stat = (v, l) => { const d = document.createElement('div'); d.className = 'rd-stat'; d.innerHTML = '<b></b><span></span>'; d.firstChild.textContent = v; d.lastChild.textContent = l; st.appendChild(d); };
+    stat(hrs ? Math.round(ind / hrs) : 0, 'independent per hour'); stat(hrs ? Math.round(pr / hrs) : 0, 'prompted per hour');
+    stat(main.length ? Math.round(100 * ind / main.length) + '%' : '–', 'independent'); stat(hrs >= 1 ? hrs.toFixed(1) + ' h' : Math.round(hrs * 60) + ' min', 'active time');
+    if (med != null) stat((med / 1000).toFixed(1) + ' s', 'typical time per letter');
+    // the cumulative record: responses counted up over active time (steeper = faster), independent and prompted
+    const box = document.createElement('div'); box.className = 'rd-chart'; body.appendChild(box);
+    if (main.length < 2) { const n = document.createElement('div'); n.className = 'help-note'; n.style.padding = '18px'; n.textContent = 'Not enough responses in this time yet. Every tile, typed word, message, practice letter and game turn from now on is counted.'; box.appendChild(n); }
+    else {
+      const W = 560, H = 230, L = 36, R = 92, T = 14, B = 28;
+      let x = 0; const pts = []; main.forEach((e, i) => { if (i) x += Math.min(120000, e.t - main[i - 1].t); pts.push({ x, e }); });
+      const X = Math.max(1, x), maxY = Math.max(ind, pr, 1);
+      let ci = 0, cp = 0; const pi = [], pp = [];
+      pts.forEach(q => { if (q.e.ok) ci++; else cp++; pi.push([q.x, ci]); pp.push([q.x, cp]); });
+      const sx = v => L + (W - L - R) * v / X, sy = v => T + (H - T - B) * (1 - v / maxY);
+      const path = arr => 'M' + arr.map(([a, b]) => sx(a).toFixed(1) + ',' + sy(b).toFixed(1)).join(' L');
+      const ticks = [0, Math.round(maxY / 2), maxY];
+      let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cumulative responses over active time">';
+      ticks.forEach(v => { svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + sy(v) + '" y2="' + sy(v) + '" stroke="#e6e7ea" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end" font-size="12" fill="#52514e">' + v + '</text>'; });
+      const mins = Math.round(X / 60000); svg += '<text x="' + L + '" y="' + (H - 8) + '" font-size="12" fill="#52514e">0</text><text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end" font-size="12" fill="#52514e">' + mins + ' active min</text>';
+      svg += '<path d="' + path(pp) + '" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round"/><path d="' + path(pi) + '" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round"/>';
+      svg += '<text x="' + (W - R + 6) + '" y="' + (sy(ci) + 4) + '" font-size="12" font-weight="800" fill="#0b0b0b">' + ci + ' indep.</text><text x="' + (W - R + 6) + '" y="' + (sy(cp) + 4 + (Math.abs(sy(cp) - sy(ci)) < 14 ? 14 : 0)) + '" font-size="12" font-weight="800" fill="#0b0b0b">' + cp + ' prompted</text>';
+      svg += '<line class="rd-x" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="#52514e" stroke-width="1" stroke-dasharray="3 3" style="display:none"/><rect x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - T - B) + '" fill="transparent" class="rd-hit"/></svg>';
+      box.innerHTML = svg;
+      const tip = document.createElement('div'); tip.className = 'rd-tip'; box.appendChild(tip);
+      const svgEl = box.querySelector('svg'), hit = box.querySelector('.rd-hit'), xl = box.querySelector('.rd-x');
+      const move = ev => { const r = svgEl.getBoundingClientRect(), vx = (ev.clientX - r.left) * W / r.width, v = Math.max(0, Math.min(X, (vx - L) * X / (W - L - R)));
+        let k = 0; pts.forEach((q, i) => { if (q.x <= v) k = i; }); const q = pts[k], d = new Date(q.e.t);
+        xl.setAttribute('x1', sx(q.x)); xl.setAttribute('x2', sx(q.x)); xl.style.display = '';
+        tip.textContent = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + ' · ' + pi[k][1] + ' independent · ' + pp[k][1] + ' prompted';
+        tip.style.display = 'block'; const bx = box.getBoundingClientRect(); tip.style.left = Math.min(bx.width - tip.offsetWidth - 6, Math.max(6, ev.clientX - bx.left + 10)) + 'px'; tip.style.top = '8px'; };
+      hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move); hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; xl.style.display = 'none'; });
+      const lg = document.createElement('div'); lg.className = 'rd-legend'; lg.innerHTML = '<span><i style="background:#2a78d6"></i>Independent</span><span><i style="background:#eb6834"></i>Prompted</span><span style="font-weight:700">steeper line = faster responding</span>'; body.appendChild(lg);
+    }
+    // each kind of response: how many, how fast, and whether it is growing against the time before
+    const sub = document.createElement('div'); sub.className = 'sublabel'; sub.textContent = 'Each kind of response' + (rdRange ? ' (against the ' + (rdRange === 1 ? 'day' : rdRange + ' days') + ' before)' : ''); body.appendChild(sub);
+    const tb = document.createElement('table'); tb.className = 'rd-table'; tb.innerHTML = '<thead><tr><th>Response</th><th>Indep.</th><th>Prompted</th><th>Indep./hr</th><th>Trend</th></tr></thead><tbody></tbody>'; body.appendChild(tb);
+    RD_CLASSES.forEach(([k, lab]) => { const a = evs.filter(e => e.cls === k), b = prev.filter(e => e.cls === k); if (!a.length && !b.length) return;
+      const ai = a.filter(e => e.ok).length, bi = b.filter(e => e.ok).length;
+      const trend = !rdRange ? '' : ai >= bi * 1.2 + 2 ? '↗ growing' : ai <= bi * 0.8 - 2 ? '↘ falling' : '→ flat';
+      const tr = document.createElement('tr'); [lab, ai, a.length - ai, hrs ? Math.round(ai / hrs) : 0, trend].forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i === 4) td.className = 'tr'; tr.appendChild(td); }); tb.tBodies[0].appendChild(tr); });
+    if (!tb.tBodies[0].children.length) tb.remove();
+    // generalisation: independent responses with each person and in each place
+    const gen = (key, title) => { const m = {}; evs.filter(e => !e.sub && e.ok && e[key]).forEach(e => { m[e[key]] = (m[e[key]] || 0) + 1; }); const ks = Object.keys(m); if (!ks.length) return;
+      const s2 = document.createElement('div'); s2.className = 'sublabel'; s2.textContent = title; body.appendChild(s2);
+      const t2 = document.createElement('table'); t2.className = 'rd-table'; t2.innerHTML = '<tbody></tbody>'; ks.sort((a, b) => m[b] - m[a]).forEach(k => { const tr = document.createElement('tr'); tr.innerHTML = '<td></td><td></td>'; tr.children[0].textContent = k; tr.children[1].textContent = m[k] + ' independent'; t2.tBodies[0].appendChild(tr); }); body.appendChild(t2); };
+    gen('who', 'With each person'); gen('where', 'In each place');
+    body.appendChild(sheetBtn('Export every response (spreadsheet)', '', () => {
+      const rows = [['time', 'kind', 'what', 'independent', 'seconds', 'with', 'where']].concat(all.map(e => [new Date(e.t).toISOString(), e.cls, '', e.ok ? 1 : 0, e.lat != null ? (e.lat / 1000).toFixed(2) : '', e.who || '', e.where || '']));
+      (state.respLog || []).forEach((e, i) => {});      // (what each response was is in the full log below)
+      const full = [['time', 'type', 'what', 'source', 'prompted', 'seconds', 'with', 'where']].concat((state.respLog || []).map(e => [new Date(e.t).toISOString(), e.k, e.w || '', e.src || '', e.p ? 1 : 0, e.lat != null ? (e.lat / 1000).toFixed(2) : '', e.who || '', e.where || '']));
+      const csv = a => a.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv(full) + '\n\n' + csv(rows)], { type: 'text/csv' }), u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = 'responses.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1000);
+    }));
+    body.appendChild(sheetBtn('Done', 'primary', closeWordSheet));
+  });
+}
+function suggRender() { try { suggRender0(); } finally { try { gridSync(); } catch (e) {} try { suggFlip(); } catch (e) {} } }
+// new suggested tiles (after a tile is picked, or a folder opened): they turn over together, a cue that the grid has changed
+let suggFlipSig = null;
+function suggFlip() {
+  const cards = [...document.querySelectorAll('#suggHost .sugg-card')], sig = cards.map(c => c.textContent).join('|');
+  const was = suggFlipSig; suggFlipSig = sig;
+  if (was === null || !sig || sig === was || state.tileFlip === false) return;
+  const cue = ['fade', 'rise', 'glow', 'flip', 'off'].includes(state.tileCue) ? state.tileCue : 'fade'; if (cue === 'off') return;
+  const cls = 'sugg-cue-' + cue;
+  cards.forEach(c => { c.classList.remove(cls); void c.offsetWidth; c.classList.add(cls); setTimeout(() => c.classList.remove(cls), 900); });
+}
 const bandLike = { h: 0, fs: 0 };
 function suggRender0() {
   const grid = document.getElementById('homeGrid'), host = document.getElementById('suggHost');
@@ -9191,6 +9584,23 @@ function suggRender0() {
           const lead = greyLeadNow(), tier = r => { const f = r.find(m => m.folder); return f && lead.includes(String(f.folder.name).trim().toLowerCase()) ? 0 : 1; };
           const rs = runs.map((r, i) => [Math.max(0, ...r.filter(m => !m.folder).map(m => coScore(lastOf(m)))), i, r, tier(r)]);
           if (rs.some(x => x[0] > 0)) folders = [].concat(...rs.sort((a, b) => a[3] - b[3] || b[0] - a[0] || a[1] - b[1]).map(x => x[2])); } }      // (the doing word's own folders stay first)
+      // tags: the tiles and folders that share a tag with a word in the message come first - folders (with a few of their tiles) in grey,
+      // doing words in green, describing words in purple, things in the second grey row
+      if (live) { try { const rel = tagRelated(homePhrase); if (rel.words.length || rel.folders.length || rel.groups.length) {
+          const lastOf = m => m.phrase[m.phrase.length - 1], idxA = homePhrase.map((_, i) => i), mkI = w => ({ phrase: homePhrase.concat([w]), used: idxA });
+          const ok = w => !homePhrase.includes(w) && !state.hiddenWords[w] && state.words.includes(w) && magicAllowed(w) && !isPunct(w);
+          const pull = (list, w) => { const at = list.findIndex(m => !m.folder && lastOf(m) === w); return at >= 0 ? list.splice(at, 1)[0] : mkI(w); };
+          const gF = [], gT = [], gG = [], gC = [];
+          if (cfg.grey.on) rel.folders.forEach(c => { if (magicCatOff(c)) return; folders = folders.filter(m => !(m.folder === c && !m.group)); gF.push({ folder: c, group: null, phrase: homePhrase.concat(['\u25B8' + c.id]), used: idxA, tag: true });
+            (c.words || []).filter(ok).slice(0, 4).forEach(w => { if (!gT.some(m => lastOf(m) === w)) gT.push(pull(things2, w)); }); });
+          if (cfg.grey.on) rel.groups.forEach(({ folder: c, group: g }) => { if (magicCatOff(c)) return; folders = folders.filter(m => !(m.folder === c && m.group === g)); gF.push({ folder: c, group: g, phrase: homePhrase.concat(['\u25B8' + c.id + '/' + g.id]), used: idxA, tag: true });
+            (g.words || []).filter(ok).slice(0, 4).forEach(w => { if (!gT.some(m => lastOf(m) === w)) gT.push(pull(things2, w)); }); });
+          rel.words.filter(ok).forEach(w => { let k = ''; try { k = kindOfWord(w); } catch (e) {}
+            if (k === 'action') { if (cfg.green.on) gG.push(Object.assign(pull(green, w), { act: true })); }
+            else if (describeWord(w)) { if (cfg.cat.on) gC.push(pull(cats, w)); }
+            else if (cfg.grey.on && !gT.some(m => lastOf(m) === w)) gT.unshift(pull(things2, w)); });
+          folders = gF.concat(folders); things2 = gT.concat(things2); green = gG.concat(green); cats = gC.concat(cats);
+        } } catch (e) {} }
       // the word's own rule: its doing words first in green ("need" -> help, more), its describing words first in purple ("feel" -> feelings, "sit" -> down, now)
       { const rule = live ? magicRuleNow() : null; if (rule) {
           const lastOf = m => m.phrase[m.phrase.length - 1], mk = w => ({ phrase: homePhrase.concat([w]), used: homePhrase.map((_, i) => i) });
@@ -9299,7 +9709,7 @@ function suggRender0() {
     vwM.classList.toggle('no-small-band', !cfg.small.on);
     { const sh = document.getElementById('smallHost');
       if (sh) { if (host.contains(sh)) host.after(sh);
-        if (all && cfg.small.on) { if (sh.nextElementSibling !== host) host.before(sh); }
+        if (all && (cfg.small.on || vwM.classList.contains('fill-row'))) { if (sh.nextElementSibling !== host) host.before(sh); }
         else if (sh.previousElementSibling !== host) host.after(sh); } }
     if (all && cfg.small.on) { try { smallTopOpen(); } catch (e) {} }
     let fitH = 0;
@@ -9357,13 +9767,18 @@ function suggRender0() {
         // the open folder's own tile, tapped again: its name goes into the message as a word ("go play music"), and the folder closes
         if (m.folder && (m.openHead || (m.pf ? (catOpen && catOpen.id === m.folder.id) : (suggFolder && suggFolder.id === m.folder.id && suggFolder.gid === (m.group ? m.group.id : null))))) {
           const box = m.group || m.folder, name = String(box.name || ''), key = normaliseWord(name);
-          if (key && homePhrase[homePhrase.length - 1] !== key) {
+          // (the folder's name already the last word: this tap folds the folder away - see below)
+          const fold = !key || homePhrase.includes(key);      // (its name in the message already: folded away, not put in twice)
+          if (!fold) {
             state.wordCase = state.wordCase || {};
             if (m.group && !plainStuff(m.folder) && name !== name.toLowerCase()) state.wordCase[key] = name; else if (!(state.words || []).includes(key)) delete state.wordCase[key];
             magicKnow(key); homePhrase.push(key); warmSpeech(); speakWord(key, 0.95); save();
           }
           buzz(10);
-          if (m.pf) catOpen = null; else { suggFolder = null; suggStack = []; }
+          // its name put in: the folder stays open with its tiles (a song may be wanted from Music next) until it is folded away -
+          // its tile tapped once more, or the folder tab
+          if (fold) { if (m.pf) catOpen = null; else { suggFolder = null; suggStack = []; } }
+          else { const k2 = homePhrase.join(' '); if (m.pf) { if (catOpen) catOpen.key = k2; } else if (suggFolder) { suggFolder.key = k2; suggStack.forEach(x => { x.key = k2; }); } }
           const hs0 = document.getElementById('suggHost'); if (hs0) hs0.dataset.sig = '';
           magicPickAt = Date.now(); renderPhraseBar(); return; }
         if (m.pf) { buzz(10);      // a purple folder: its tiles fill the second purple row; again (or its own tile there) and the row is as it was
@@ -9386,6 +9801,12 @@ function suggRender0() {
         if (m.cat) { try { withGroup(m.cat, added[added.length - 1], m.hint); m.phrase = homePhrase.concat(added); } catch (er) {} }      // "want" + bottle -> "want to drink bottle"
         m.phrase.forEach(magicKnow);
         homePhrase = m.phrase.slice();
+        // a word from an open folder: the folder stays open; a word from one of its groups (a song from Moana) has the group's name noted in grey after it
+        if (m.cat && suggFolder && suggFolder.id === m.cat.id) { const k2 = homePhrase.join(' '); suggFolder.key = k2; suggStack.forEach(x => { x.key = k2; });
+          const w0 = added[added.length - 1], gg = !m.hint && (m.cat.groups || []).find(x => (x.words || []).includes(w0));
+          // (before the song, to build the sentence: "play music from moana where you are" - from, for music, films, shows and books)
+          if (gg && state.folderNotes !== false) { const media = /^(music|songs?|movies?|films?|tv|shows?|videos?|youtube|books?|stories)$/i.test(String(m.cat.name || '').trim());
+            withGroupNote = { word: w0, w: (media ? 'FROM ' : '') + normaliseWord(gg.name), before: true, noChip: media }; } }
         magicAccepted = homePhrase.join(' '); magicTarget = null;
         warmSpeech(); speakWord(added.join(' '), 0.95); buzz(10); save();
         magicPickAt = Date.now();
@@ -9798,6 +10219,8 @@ function pluralChip(box) {
   // a word typed with the sound keys that has the right sounds but not the right letters (kat): its spelling offered (cat)
   { const i = homePhrase.length - 1, w = homePhrase[i], fx = (soundFixes || {})[w];
     if (fx && fx.length) { fx.forEach(to => endingChip(box, i, w, to, '\u21BB ' + to.toLowerCase(), () => soundFixDone(w, to))); return; } }
+  folderPhraseChip(box);
+  phraseOrderChip(box);
   if (state.pluralChip === false) return;
   const i = homePhrase.length - 1, w = homePhrase[i];
   if (verbable(w)) {
@@ -9837,7 +10260,7 @@ function pbFit() {
 }
 // ---- Folders opened from a menu page (Food > Drinks) are noted in the key bar in grey, in their place among the words.
 // They are not part of the message: tapping one puts it in (and says it); the green enter leaves the grey ones out.
-var barNotes = [], notePathSeen = [], noteGroupSeen = '';      // { at: the word it sits before, w: the word }
+var barNotes = [], notePathSeen = [], noteGroupSeen = '', notesTaken = new Set(), notesAfter = new Set(), withGroupNote = null;      // { at: the word it sits before, w: the word }
 function barNotesSync() {
   const path = (typeof homePath !== 'undefined' ? homePath : []).filter(id => id !== RECENT_ID);
   const was = notePathSeen; notePathSeen = path.slice();
@@ -9858,10 +10281,51 @@ function barNotesSync() {
     if (w && /[A-Z]/.test(w) && homePhrase[at - 1] !== w && !barNotes.some(n => n.at === at && n.w === w)) { barNotes.push({ at, w }); added = true; } }
   if (added) renderPhraseBar();
 }
+// a folder's name taken into the message just before a word from it (Drinks, bottle): the two as one phrase offered,
+// the folder's name made singular - "drink bottle". Tapped, they become that phrase.
+function folderSingular(w) { w = String(w || ''); if (/IES$/.test(w) && w.length > 4) return w.slice(0, -3) + 'Y'; if (/(SS|US|IS)$/.test(w)) return w; if (/(CH|SH|X|Z|SS)ES$/.test(w)) return w.slice(0, -2); if (/S$/.test(w) && w.length > 3) return w.slice(0, -1); return w; }
+// a number or "some / more / another ..." put after a phrase (drink poppi, one): the word moved into its place - before the
+// thing it counts (drink one poppi) - or before the whole phrase (one drink poppi). Two offers; a tap takes one.
+const COUNT_WORDS = new Set(['A', 'AN', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'SOME', 'MORE', 'ANOTHER', 'ALL', 'NO', 'THE', 'MY', 'YOUR', 'BIG', 'LITTLE']);
+function phraseOrderChip(box) {
+  const n = homePhrase.length; if (n < 2) return;
+  const q = homePhrase[n - 1], P = homePhrase[n - 2];
+  if (!(COUNT_WORDS.has(q) || /^\d+$/.test(q)) || !/ /.test(String(P))) return;
+  const ws = String(P).split(' ').filter(Boolean); if (ws.length < 2 || COUNT_WORDS.has(ws[0])) return;
+  const opts = [ws.slice(0, -1).concat([q, ws[ws.length - 1]]), [q].concat(ws)];
+  opts.forEach(to => {
+    const b = document.createElement('button'); b.className = 'pb-plural pb-seq'; b.textContent = '⇄ ' + to.join(' ').toLowerCase(); b.setAttribute('aria-label', 'Put it in this order');
+    b.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[n - 1] !== q || homePhrase[n - 2] !== P) return;
+      const all = to.join(' '); homePhrase.splice(n - 2, 2, all); state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[all] = true;
+      try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {} buzz(10); renderPhraseBar();
+      try { warmSpeech(); sayAnyway = true; speakWord(all, 0.95); } catch (er) {} finally { sayAnyway = false; } });
+    box.appendChild(b);
+  });
+}
+function folderPhraseChip(box) {
+  if (!notesTaken.size) return;
+  { let k = -1; for (let x = homePhrase.length - 1; x >= 1; x--) if (notesAfter.has(homePhrase[x]) && !notesTaken.has(homePhrase[x - 1]) && !isPunct(homePhrase[x - 1])) { k = x; break; }
+    if (k > 0) { const a = homePhrase[k - 1], nm = homePhrase[k], to = (a + ' ' + folderSingular(nm)).trim();
+      const btn = document.createElement('button'); btn.className = 'pb-plural pb-seq'; btn.textContent = '\u21BB ' + to.toLowerCase(); btn.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
+      btn.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[k - 1] !== a || homePhrase[k] !== nm) return;
+        homePhrase.splice(k - 1, 2, to); notesTaken.delete(nm); notesAfter.delete(nm); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
+        state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; state.compoundOf = state.compoundOf || {}; state.compoundOf[to] = a; try { magicKnow(to); } catch (er) {} save(); buzz(10);
+        renderPhraseBar(); try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } });
+      box.appendChild(btn); return; } }
+  let j = -1; for (let k = homePhrase.length - 2; k >= 0; k--) if (notesTaken.has(homePhrase[k]) && !notesAfter.has(homePhrase[k]) && !notesTaken.has(homePhrase[k + 1]) && !isPunct(homePhrase[k + 1])) { j = k; break; }
+  if (j < 0) return;
+  const a = homePhrase[j], b = homePhrase[j + 1], to = (folderSingular(a) + ' ' + b).trim(); if (!b || to === a + ' ' + b && folderSingular(a) === a && false) return;
+  const btn = document.createElement('button'); btn.className = 'pb-plural pb-seq'; btn.textContent = '↻ ' + to.toLowerCase(); btn.setAttribute('aria-label', 'Make it ' + to.toLowerCase());
+  btn.addEventListener('click', e => { e.stopPropagation(); if (homePhrase[j] !== a || homePhrase[j + 1] !== b) return;
+    homePhrase.splice(j, 2, to); notesTaken.delete(a); try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (er) {}
+    state.keptPhrases = state.keptPhrases || {}; state.keptPhrases[to] = true; try { magicKnow(to); } catch (er) {} save(); buzz(10);
+    renderPhraseBar(); try { warmSpeech(); sayAnyway = true; speakWord(to, 0.95); } catch (er) {} finally { sayAnyway = false; } });
+  box.appendChild(btn);
+}
 function barNoteTake(n) {
   const k = barNotes.indexOf(n); if (k < 0) return;
   const at = Math.min(n.at, homePhrase.length);
-  homePhrase.splice(at, 0, n.w);
+  homePhrase.splice(at, 0, n.w); if (!n.noChip) notesTaken.add(n.w); if (n.after) notesAfter.add(n.w);
   barNotes.splice(k, 1); barNotes.slice(k).forEach(x => { if (x.at >= at) x.at++; });      // (the noted folders after it move along with the words)
   try { arrPrev = homePhrase.slice(); seqOffer = null; } catch (e) {}
   buzz(10); try { magicKnow(n.w); } catch (e) {}
@@ -9870,6 +10334,7 @@ function barNoteTake(n) {
 }
 function renderPhraseBar() { try { return renderPhraseBar0(); } finally { try { pbFit(); } catch (e) {} } }
 function renderPhraseBar0() {
+  try { respWordsSeen(); } catch (e) {}
   renderSpeakBtn();
   refreshSmallStrips();
   // a tile was chosen: the pop-out of switches has done its job
@@ -9889,6 +10354,7 @@ function renderPhraseBar0() {
   box.innerHTML = '';
   // a whole sentence: more than one word, and nothing the magic phrase would still add to it
   const whole = homePhrase.length >= 2;      // two words or more: it starts with a capital
+  if (withGroupNote) { const wg = withGroupNote; withGroupNote = null; const L = homePhrase.length, at = wg.before ? L - 1 : L; if (L && homePhrase[L - 1] === wg.word && !barNotes.some(n => n.at === at && n.w === wg.w)) barNotes.push(wg.before ? { at, w: wg.w, noChip: !!wg.noChip } : { at, w: wg.w, after: true }); }
   barNotes = barNotes.filter(n => n.at <= homePhrase.length && !(homePhrase[n.at] === n.w || homePhrase[n.at - 1] === n.w));
   const noteChips = at => barNotes.forEach(n => { if (n.at !== at) return; const c = document.createElement('button'); c.className = 'pb-chip pb-note'; c.textContent = plainLabel(n.w); c.setAttribute('aria-label', 'Add ' + plainLabel(n.w) + ' to the message');
     c.addEventListener('click', e => { e.stopPropagation(); barNoteTake(n); }); box.appendChild(c); });
@@ -9905,14 +10371,14 @@ function renderPhraseBar0() {
     if (!opts) { opts = document.createElement('div'); opts.id = 'pbOpts'; opts.className = 'pb-opts'; bar.appendChild(opts); }
     opts.innerHTML = '';
     try { pluralChip(opts); } catch (e) {}
-    { const sq = opts.querySelector('.pb-seq'); if (sq) box.appendChild(sq); }      // the word order offer sits beside the words, bigger
+    opts.querySelectorAll('.pb-seq').forEach(sq => box.appendChild(sq));      // the word order offer sits beside the words, bigger
     bar.classList.toggle('has-opts', !!opts.firstChild); }
   pbWordsFit(box);      // the first word stays in the top left: a long message gets smaller type rather than sliding up
   box.classList.toggle('clipped', box.scrollTop > 2);
   if (!box._clipWatch) { box._clipWatch = true; box.addEventListener('scroll', () => box.classList.toggle('clipped', box.scrollTop > 2)); }
   if (!homePhrase.length) magicPathIn = []; else magicPathIn = magicPathIn.filter(p => homePhrase.includes(p.key));
   { const ph = homePhrase.join(' '); if (ph !== magicAt.phrase) { magicAt = { phrase: ph, nav: magicNavKey() }; magicSkipped = null; } }
-  if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; magicStickPool = null; }      // a cleared bar starts the next sentence afresh
+  if (!homePhrase.length) { magicTarget = null; magicShowNow = false; magicOfferedFor = null; magicStickPool = null; document.getElementById('viewHome').classList.remove('fill-row'); }      // a cleared bar starts the next sentence afresh
   if (state.magicType && !state.builderMode) { if (homePhrase.length && magicSkipped !== homePhrase.join(' ')) renderMagic(homePhrase[homePhrase.length - 1]); else hideMagic(); }
   magicIntoBar();
   suggRender();
@@ -10028,7 +10494,8 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
-  barNotes = [];      // (the folders noted in the bar were not chosen: they go with the message)
+  try { if (homePhrase.length && !state.builderMode) { const m = homePhrase.filter(w => !isPunct(w)).join(' '); respNote({ k: 'message', w: m, src: state.chatMode ? 'chat' : 'home' }); } } catch (e) {}
+  barNotes = []; notesTaken.clear(); notesAfter.clear();      // (the folders noted in the bar were not chosen: they go with the message)
   try { if (homeKeysUp()) homeKeysClose(); } catch (e) {}
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
   // "I feel sad"): tap it to take it, or press the green button again to send the words as they are
@@ -10428,7 +10895,7 @@ document.getElementById('pbClear').addEventListener('click', () => {
   // with the keyboard down over the page this is its delete key: a letter at a time
   const twice = Date.now() - pbClearAt < 450;
   pbClearAt = Date.now();
-  if (twice) { inp.value = ''; homePhrase = []; barNotes = []; pbClearAt = 0; }
+  if (twice) { inp.value = ''; homePhrase = []; barNotes = []; notesTaken.clear(); notesAfter.clear(); pbClearAt = 0; }
   else if (inp.value) inp.value = '';
   else if (barNotes.length && barNotes[barNotes.length - 1].at >= homePhrase.length) barNotes.pop();      // (a folder noted after the last word goes first)
   else homePhrase.pop();
@@ -10815,7 +11282,7 @@ function commitTypedWord() {
   const typed = inp.value;
   const raw = normaliseWord(typed);
   if (!raw) return false;
-  rememberCase(typed, raw);
+  rememberCase(typed, raw); respTypedNext = raw;
   try { const fx = soundFixFor(typed); if (fx.length) soundFixes[raw] = fx; else delete soundFixes[raw]; } catch (e) {}
   inp.value = '';
   renderTypeSuggest();
@@ -10831,6 +11298,7 @@ function commitTypedWord() {
 }
 
 function renderHome(reset) { try { if (typeof gamesHome !== 'undefined' && !gamesHome && document.getElementById('viewHome').classList.contains('gh-on')) ghPaint(); } catch (e) {}      // (leaving the games: the tiles are shown again before they are laid out and sized)
+  if (!state.phonicsSeedV1) { try { phonicsSeed(); if (state.phonicsSeedV1) save(); } catch (e) {} }
   try { return renderHomeCore(reset); } finally { try { capsPass(); } catch (e) {} try { ghPaint(); } catch (e) {} try { barNotesSync(); } catch (e) {} } }
 function renderHomeCore(reset) {
   try { renderChatPane(); } catch (e) {}
@@ -11493,7 +11961,7 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const mp = magicPhraseFull();
     // (the words a sentence is still missing - I, want, to, the - never the guessed-at next thing of a
     //  sentence that is already whole: "I want to attach" does not offer "the park")
-    const core = ['I', 'TO', 'THE', 'A', 'AN', 'WANT', 'FEEL', 'AM', 'IS', 'ARE'];
+    const core = ['I', 'TO', 'THE', 'A', 'AN', 'AT', 'SOME', 'WANT', 'FEEL', 'AM', 'IS', 'ARE'];
     const need = mp && !mp.ext ? mp.phrase.filter((w, i) => !mp.used.includes(i) && (core.includes(w) || isSmallWord(w))) : [];
     // only the ones that really fit: what the sentence still needs, and what belongs after the last
     // word. No padding out to six - the blue is as short as the words that make sense. (A word with
@@ -11513,8 +11981,8 @@ function makeSmallStrip(rowH, base, owner, gutter) {
     const ctx = magicAsking() && MAGIC_SUBJ.includes(last) ? ['HELP', 'GET', 'FIND', 'COME', 'GO', 'OPEN']
       : MAGIC_ASK.includes(last) ? ['YOU', 'I', 'WE', 'HELP', 'GO', 'GET']
       : greeted ? ['I', 'CAN', 'YOU', 'WE', 'PLEASE'] : null;
-    const smAll = allSmallWords(), okS = w => smAll.includes(w);      // the blue row only ever holds small words; doing words and things are large tiles
-    (ctx || leads.concat(need.slice(0, leads.length ? 2 : 3), followSpecific(last), kindNext)).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w] && okS(w)) six.push(w); });
+    const smAll = allSmallWords(), okS = w => smAll.includes(w) || need.includes(w);      // (and the words the sentence is missing - want, at - even when they are not in the small words library)      // the blue row only ever holds small words; doing words and things are large tiles
+    (ctx || leads.concat(need.slice(0, leads.length ? 2 : 6), followSpecific(last), kindNext)).forEach(w => { if (!isPunct(w) && !six.includes(w) && fits(w) && !state.hiddenWords[w] && okS(w)) six.push(w); });
     [].forEach(w => { if (!isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     if (!six.length) followWords(last, []).forEach(w => { if (okS(w) && !isPunct(w) && !six.includes(w) && (!homePhrase.includes(w) || (w !== last && ['TO', 'THE', 'A', 'AND'].includes(w)))) six.push(w); });
     // never an empty row: failing all that, the page's own small words and then the most used ones
@@ -11946,7 +12414,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'tileCue', 'gameLevel', 'promptStepSec', 'kbPromptDelay',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -12659,6 +13127,7 @@ function openFolderEdit(c, extra) {
     const p = document.createElement('div');
     p.className = 'key-preview'; p.style.fontSize = '30px'; p.textContent = c.name;
     body.appendChild(p);
+    body.appendChild(tagBtn('f:' + c.id, c.name));
     body.appendChild(sheetBtn('Rename', '', () => openWordSheet(b2 => {
       sheetTitle(b2, 'Rename folder');
       const inp = builderInput(b2, c.name);
@@ -13254,6 +13723,32 @@ function looseSorted(cat, words) {
   const nums = rest.filter(w => numberValue(w) !== null);
   return order.concat(nums.length && nums.length * 2 >= rest.length ? sortAZ(rest) : rest);
 }
+// the Graphemes folder: Practise, then a tile for each spelling (tap: its sound; hold: practise it, or take it out)
+function renderGraphemeBody(grid, cat, rowStart, rowH, base, cols) {
+  if (!cat.gLongV1) { graphemeLongAdd(cat); save(); }
+  if (!(cat.words || []).length && !childrenOf(cat.id).length) { grid.querySelectorAll('.slot-empty, .add-folder').forEach(x => x.remove()); rowStart = 1; }      // (nothing else on the page: the graphemes from the top)
+  let i = 0; const cellW = (grid.clientWidth - 16 * (cols - 1)) / cols;
+  const put = card => { card.style.gridRow = String(rowStart + Math.floor(i / cols)); card.style.gridColumn = String(i % cols + 1); card.style.height = rowH + 'px'; grid.appendChild(card); i++; };
+  const mk = (label, cls) => { const card = document.createElement('button'); card.className = 'home-card ' + cls; const t = document.createElement('span'); t.className = 'hw'; t.textContent = label;
+    t.style.fontSize = Math.max(16, Math.min(base * 1.15, (cellW - 40) / (Math.max(1, label.length) * 0.72))) + 'px'; card.appendChild(t); return card; };
+  const tiles = cat.gtiles = cat.gtiles || [];
+  const pr = mk('▶ Practise', 'gr-play'); pr.addEventListener('click', () => graphemePractise(tiles.slice())); put(pr);
+  tiles.forEach(k => { const t = tileParse(k), card = mk(graphemeShow(k), 'gr-tile' + (graphemeIsLong(k) ? ' gr-long' : '')); card.dataset.gr = k;
+    const ex = document.createElement('span'); ex.className = 'gr-ex'; ex.textContent = tileEx(k); card.appendChild(ex);
+    let timer = null, held = false;
+    card.addEventListener('pointerdown', () => { held = false; timer = setTimeout(() => { timer = null; held = true; buzz(15); }, 520); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, () => { if (timer) { clearTimeout(timer); timer = null; } }));
+    card.addEventListener('contextmenu', e => e.preventDefault());
+    card.addEventListener('click', () => {
+      if (held) { held = false; openWordSheet(body => { sheetTitle(body, graphemeShow(k) + '  (' + tileEx(k) + ')');
+          body.appendChild(sheetBtn('Practise this one', 'primary', () => { closeWordSheet(); graphemePractise([k]); }));
+          body.appendChild(sheetBtn('Hear its sound', '', () => { try { soundSay(t.id); } catch (e) {} }));
+          body.appendChild(sheetBtn('Take it out of ' + cat.name, 'danger', () => { cat.gtiles = (cat.gtiles || []).filter(x => x !== k); save(); closeWordSheet(); renderHome(true); }));
+          body.appendChild(sheetBtn('Cancel', '', () => closeWordSheet())); }); return; }
+      buzz(8); try { soundSay(t.id); } catch (e) {} card.classList.remove('gr-say'); void card.offsetWidth; card.classList.add('gr-say'); });
+    put(card); });
+  const add = mk('+ grapheme', 'add-folder ghost-tile'); add.addEventListener('click', () => { const g = { name: cat.name, tiles: cat.gtiles }; openTileAdd(g, () => { cat.gtiles = g.tiles; save(); closeWordSheet(); renderHome(true); }); }); put(add);
+}
 function renderTileBody(grid, cat, listWords, rowH, base, cols) {
   grid.style.gridAutoRows = 'auto';
   const groups = listGroups(cat);
@@ -13415,6 +13910,8 @@ function groupOpt(g, k, dflt) { const o = (g && g.prompt) || {}; return k in o ?
 function groupTrials(group) {
   const nm = gKey(group);
   const mode = PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : 'typing';
+  if (isQaGroup(group)) { const ks = groupTargets(group); return { mode: 'qa', words: ks, wordT: (state.gameLog || []).filter(r => r.mode === 'qa' && ks.includes(r.tile)).map(r => Object.assign({}, r, { word: r.tile })), letterT: [] }; }
+  if (PRACTICE_RE.dict.test(nm) || PRACTICE_RE.copy.test(nm)) { const md = PRACTICE_RE.copy.test(nm) ? 'copy' : 'dict', ws = new Set((group.words || []).map(normaliseWord)); const wordT = (state.gameLog || []).filter(r => r.mode === md && ws.has(normaliseWord(r.tile || r.word))).map(r => Object.assign({}, r, { word: normaliseWord(r.tile || r.word) })); return { mode: md, words: [...ws], wordT, letterT: wordT }; }
   if (mode === 'hear' || mode === 'match') { const ks = group.tiles || []; const wordT = (state.gameLog || []).filter(r => r.mode === mode && ks.includes(r.tile || r.word)).map(r => Object.assign({}, r, { word: r.tile || r.word })); return { mode, words: ks.slice(), wordT, letterT: [] }; }
   const words = new Set((group.words || []).map(w => normaliseWord(w)));
   let wordT = [], letterT = [];
@@ -13481,8 +13978,8 @@ function masteryCfg(g) { return Object.assign({}, MASTERY_DEF, (g && g.mastery) 
 function groupKey(g) { return String(g && g.id != null ? g.id : (g && g.name) || ''); }
 function masteryRec(g, w) { state.mastery = state.mastery || {}; const k = groupKey(g); state.mastery[k] = state.mastery[k] || {}; return state.mastery[k][w] || (state.mastery[k][w] = { st: 'learning', since: 0 }); }
 function masteryOf(g, w) { const m = (state.mastery || {})[groupKey(g)]; return (m && m[w]) || { st: 'learning', since: 0 }; }
-function groupModeOf(g) { const nm = gKey(g); return PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : /^typing$/i.test(nm) ? 'typing' : null; }
-function groupTargets(g) { return isTileGroup(g) ? (g.tiles || []).slice() : (g.words || []).slice(); }
+function groupModeOf(g) { const nm = gKey(g); return PRACTICE_RE.qa.test(nm) ? 'qa' : PRACTICE_RE.dict.test(nm) ? 'dict' : PRACTICE_RE.copy.test(nm) ? 'copy' : PRACTICE_RE.tiles.test(nm) ? 'tiles' : PRACTICE_RE.sound.test(nm) ? 'sound' : PRACTICE_RE.hear.test(nm) ? 'hear' : PRACTICE_RE.match.test(nm) ? 'match' : PRACTICE_RE.sight.test(nm) ? 'sight' : PRACTICE_RE.spell.test(nm) ? 'write' : /^typing$/i.test(nm) ? 'typing' : null; }
+function groupTargets(g) { return isQaGroup(g) ? (g.items || []).map(it => 'Q:' + it.id) : isTileGroup(g) ? (g.tiles || []).slice() : (g.words || []).slice(); }
 // a target's turns in this group's game, oldest first ({ t, ok })
 function masteryRows(g, w) {
   const mode = groupModeOf(g); if (!mode) return [];
@@ -13632,7 +14129,9 @@ function openTargetGroupMenu(cat, group) {
     body.appendChild(sheetBtn('Rename', '', () => askText('Rename group', 'Save', group.name, typed => {
       const name = String(typed || '').replace(/\s+/g, ' ').trim(); if (!name) return false; group.name = name;
     })));
-    body.appendChild(sheetBtn('Delete this group', 'danger', () => {
+    if (group.kind && group.kind !== 'ltm' || isQaGroup(group) || isTileGroup(group) || groupModeOf(group)) {      // (a game's own group: deleting it would only bring it back empty - so it stays)
+      const nn = document.createElement('div'); nn.className = 'help-note'; nn.style.margin = '10px 4px'; nn.textContent = 'This group belongs to a game, so it can\u2019t be deleted. ' + (isQaGroup(group) ? 'To delete one question, tap it (or hold it) and choose Delete this question.' : 'To take a target out, hold it.'); body.appendChild(nn);
+    } else body.appendChild(sheetBtn('Delete this group', 'danger', () => {
       if (!confirm('Remove the group "' + group.name + '"? Its targets stay on the targets page.')) return;
       cat.groups = groups.filter(g => g !== group); save(); closeWordSheet(); renderHome(true);
     }));
@@ -14108,6 +14607,17 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
     put(mark(head, gi));
     if (!open) return;
     if (!depth) drawSubs(g);
+    if (isQaGroup(g)) {      // (Questions: each question with its answer; tap to change it, hold for the group's menu)
+      (g.items || []).forEach(it => { const key = 'Q:' + it.id, row = makeListRow('', rowH, base); row.removeAttribute('data-word'); row.classList.add('tile-target');
+        row.querySelector('.hw').textContent = (it.pic ? '\uD83D\uDDBC\uFE0F ' : '') + it.q + '  \u2192  ' + String(it.a || '').toLowerCase(); row.querySelector('.hw').style.whiteSpace = 'normal'; msPill(row, g, key);
+        if ((g.off || {})[key]) row.classList.add('paused');
+        holdTap(row, () => openQaEdit(g, it, () => renderHome(true)), () => openQaEdit(g, it, () => renderHome(true))); put(mark(row, -2)); });      // (holding a question opens that question - change it or delete it - not the whole group's menu)
+      const add = makeListRow('', rowH, base); add.classList.add('add-row'); add.removeAttribute('data-word'); add.querySelector('.hw').textContent = '+ question';
+      add.addEventListener('click', () => openQaPick(g, () => renderHome(true))); put(mark(add, -2));
+      if (qaStartersLeft(g)) { const rm = makeListRow('', rowH, base); rm.classList.add('add-row'); rm.removeAttribute('data-word'); rm.querySelector('.hw').textContent = '\u2715 remove the example questions';
+        rm.addEventListener('click', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); renderHome(true); }); put(mark(rm, -2)); }
+      return;
+    }
     if (isTileGroup(g)) {      // (Hear the sound / Match the spelling: its spellings, each says its sound; hold for the group's menu)
       const rank = { learning: 0, mastered: 1, maint: 2 };
       (g.tiles || []).slice().sort((a, b) => rank[masteryOf(g, a).st] - rank[masteryOf(g, b).st]).forEach(k => { const row = makeListRow('', rowH, base); row.removeAttribute('data-word'); row.classList.add('tile-target'); row.querySelector('.hw').textContent = tileLabel(k); msPill(row, g, k);
@@ -14156,6 +14666,7 @@ function renderListBody(grid, cat, listWords, rowStart, rowH, base) {
 // a person's name) are kept - being a title in My Stuff does not capitalise it here.
 function plainLabel(w) {
   const key = w || '';
+  if (/^Q:\d+$/.test(key)) return qaText(key);      // (a question target: its question)
   const kept = (state.wordCase || {})[key];
   if (kept && kept !== titleCase(key)) return kept;
   if (kept && categoriesOf(key).some(c => c.name.toLowerCase() === 'people')) return kept;
@@ -15208,6 +15719,7 @@ function renderSlotGrid(grid, cat, folders) {
       lib.style.gridRow = String(rowOff + r); lib.style.gridColumn = String(c + 1); }
     grid.appendChild(lib);
   }
+  if (arrange && cat && cat.graphemes && pageEdit !== cat.id) renderGraphemeBody(grid, cat, (topRow ? 1 : 0) + totalRows + 1, rowH, base, cols);
   if (listMode && tilesPage(cat)) renderTileBody(grid, cat, listWords, rowH, base, cols);
   else if (listMode) renderListBody(grid, cat, listWords, (topRow ? 1 : 0) + totalRows + 1, rowH, base);
   // Chat mode in menu mode: under the Recents / Popular tiles, a line and then the conversation
@@ -15398,6 +15910,25 @@ function seqOfferNow() {
   if (dropped) { arrMoved = dropped; moved = true; }
   seqOffer = moved && arrMoved.join(' ') !== was.join(' ') ? { from: was.join(' '), to: arrMoved } : keep;
 }
+// The small words row comes up by itself when the message has the shape of a sentence (a doing word and what it is about:
+// go play park now) and is missing only small words: the row leads with them, and each tapped goes where it belongs.
+function fillNearlyDone() {
+  if ((state.smallRowsOn === false && !smallBandWanted()) || state.builderMode || homePhrase.length < 2) return false;      // (either switch: the small words row on pages, or Magic mode's small words)
+  const mp = magicPhraseFull(); if (!mp || mp.ext) return false;
+  const content = homePhrase.filter(w => !isPunct(w) && !isSmallWord(w));
+  const kind = w => { try { return kindOfWord(w) || ''; } catch (e) { return ''; } };
+  const verb = content.some(w => kind(w) === 'action'), other = content.some(w => kind(w) !== 'action');
+  const missing = mp.phrase.filter((w, i) => !mp.used.includes(i));
+  return verb && other && content.length >= 2 && missing.length > 0 && missing.every(w => isSmallWord(w) || ['I', 'TO', 'THE', 'A', 'AN', 'AT', 'WANT', 'SOME'].includes(w));
+}
+function fillRowCheck() {
+  const vh = document.getElementById('viewHome');
+  if (!fillNearlyDone()) { vh.classList.remove('fill-row'); return; }
+  vh.classList.add('fill-row');      // (shown even where the small words band is folded away under Magic mode)
+  if (stripKey !== null || smallFullHook) { setBlue(true); return; }
+  popRowUntil = Infinity; popRowShut = false; stripFull = null; smallHostRedo = popRowDraw; popRowPaint = popRowDraw; popRowDraw();
+  try { gridSync(); } catch (e) {}
+}
 function smallRowPop() {
   const viaMagic = Date.now() - magicPickAt < 500;
   seqOfferNow();      // (a doing word picked from the magic rows after a thing is offered in order too: "mandarin" + eat -> eat mandarin)
@@ -15412,6 +15943,7 @@ function smallRowPop() {
   if (!navd) { bandOpen.fold = true; bandOpen.cat = true; bandOpen.things = true; }
   suggShut = navd; suggRender();      // a green tile chosen: the row fills again with what goes next, and stays open
   setBlue(false);      // the small words open only by their blue bar
+  try { fillRowCheck(); } catch (e) {}      // (but a sentence nearly there - go play park now - brings them up, with the words it is missing)
   // The rows take turns, five seconds each, while nothing else is done: the one that is open folds and the
   // other opens (a cue to look there too); then that folds as well - both bars shut says "ready to enter".
   clearTimeout(blueShutTimer); clearTimeout(greenShutTimer);
@@ -15501,6 +16033,11 @@ function attachWordHold(card, word, cat, folder, builder) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => card.addEventListener(ev, cancel));
   card.addEventListener('contextmenu', e => e.preventDefault());
 }
+// a short note at the foot of the screen saying where something went
+function moveNote(text) { const old = document.getElementById('moveNote'); if (old) old.remove();
+  const n = document.createElement('div'); n.id = 'moveNote'; n.textContent = text;
+  n.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2430;color:#fff;font-weight:800;font-size:18px;padding:12px 20px;border-radius:16px;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:86vw;text-align:center;';
+  document.body.appendChild(n); setTimeout(() => { n.style.transition = 'opacity .4s'; n.style.opacity = '0'; setTimeout(() => n.remove(), 450); }, 3200); }
 function startWordDrag(card, word, cat, x, y, folder, builder) {
   const r = card.getBoundingClientRect();
   const ghost = card.cloneNode(true);
@@ -15579,6 +16116,13 @@ function trackWordDrag() {
     let x = catById(id), g = 0, bad = false;
     while (x && g++ < 20) { if (x.id === d.folder.id) { bad = true; break; } x = x.parent ? catById(x.parent) : null; }
     if (bad) return;
+    // the menu tab of the page that is open names the folder you are in: a folder dropped on it goes up a level, out of
+    // that folder into the one around it (not into the top page the tab belongs to)
+    if (over.classList.contains('cat-tile') && over.classList.contains('selected') && homePath.length > 1) {
+      const here = catById(homePath[homePath.length - 1]);
+      if (here && d.folder.parent === here.id && here.parent) { over.classList.add('drop-into'); d.ghost.classList.add('over-folder'); d.target = { kind: 'folder-into', id: here.parent, up: true }; return; }
+      if (here && d.folder.parent === here.id && !here.parent) return;
+    }
     let how = 'into';
     if (over.classList.contains('folder-card')) {
       const r = over.getBoundingClientRect();
@@ -15684,6 +16228,7 @@ function endWordDrag(cancelled) {
     }
     if (homePath.includes(c.id)) homePath = [];
     save(); renderHome(true);
+    { const to = catById(c.parent); moveNote(c.name + ' moved ' + (t.kind === 'folder-into' ? 'into ' : 'next to ' + over.name + ' in ') + (t.kind === 'folder-into' ? (to ? to.name : 'the top') : (to ? to.name : 'the top'))); }
     return;
   }
   if (t.kind === 'slot') {
@@ -15913,17 +16458,17 @@ function ensureTargets() {
     else if (/^sight words?$/i.test(nm)) g.name = 'Word Match'; else if (/^spelling tiles$/i.test(nm)) g.name = 'Tiles'; else if (/^sound it out$/i.test(nm)) g.name = 'Elkonin Boxes'; else if (/^hear the sound$/i.test(nm)) g.name = 'Sound Match'; });
   // each practice group's kind, fixed once from its name, so it can be renamed. A group renamed before kinds were kept
   // (Text-to-Speech: the targets spelled from the home page) takes back its job, and the empty one made in its place goes.
-  { const KR = [['typing', /^typing$/i], ['ltm', LTM_RE], ['decode', DECODE_RE], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
+  { const KR = [['typing', /^typing$/i], ['ltm', LTM_RE], ['decode', DECODE_RE], ['qa', PRACTICE_RE.qa], ['dict', PRACTICE_RE.dict], ['copy', PRACTICE_RE.copy], ['sight', PRACTICE_RE.sight], ['write', PRACTICE_RE.spell], ['tiles', PRACTICE_RE.tiles], ['sound', PRACTICE_RE.sound], ['hear', PRACTICE_RE.hear]];
     const tts = t.groups.find(g => !g.kind && /^text.?to.?speech$/i.test(String(g.name || '').trim()));
     if (tts && !t.groups.some(g => g.kind === 'typing')) { tts.kind = 'typing'; const dup = t.groups.filter(g => g !== tts && !g.kind && /^typing$/i.test(String(g.name || '').trim())); dup.forEach(d => { (d.words || []).forEach(w => { if (!tts.words.includes(w)) tts.words.push(w); }); }); t.groups = t.groups.filter(g => !dup.includes(g)); }
     t.groups.forEach(g => { if (g.kind) return; const nm = String(g.name || '').trim(), k = KR.find(([, re]) => re.test(nm)); if (k && !t.groups.some(x => x.kind === k[0])) g.kind = k[0]; }); }
   // Match the spelling is taken out for now: its group goes (kept aside, with its spellings, in case it comes back)
   { const mi = t.groups.findIndex(g => /^match the spelling$/i.test(String(g.name || '').trim())); if (mi >= 0) { t.removedGroups = (t.removedGroups || []).concat(t.groups.splice(mi, 1)); } }
-  [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear]].forEach(([nm, re]) => {
-    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : {}));
+  [['Typing', /^typing$/i], ['Least to Most', LTM_RE], ['Decoding', DECODE_RE], ['Word Match', PRACTICE_RE.sight], ['Spelling', PRACTICE_RE.spell], ['Tiles', PRACTICE_RE.tiles], ['Elkonin Boxes', PRACTICE_RE.sound], ['Sound Match', PRACTICE_RE.hear], ['Questions', PRACTICE_RE.qa], ['Dictation', PRACTICE_RE.dict], ['Copy', PRACTICE_RE.copy]].forEach(([nm, re]) => {
+    if (!t.groups.some(g => re.test(gKey(g)))) t.groups.push(Object.assign({ id: Math.max(0, ...t.groups.map(g => g.id || 0)) + 1, name: nm, words: [], open: false }, /^sound match$/i.test(nm) ? { tiles: [] } : nm === 'Least to Most' ? { kind: 'ltm' } : nm === 'Questions' ? { kind: 'qa', items: [] } : nm === 'Dictation' ? { kind: 'dict' } : nm === 'Copy' ? { kind: 'copy' } : {}));
   });
   // the groups in the order of the Games menu, after Typing and Decoding; once, the groups that are for no practice now are put aside (kept, not shown)
-  { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear];
+  { const order = [/^typing$/i, LTM_RE, DECODE_RE, PRACTICE_RE.sight, PRACTICE_RE.spell, PRACTICE_RE.tiles, PRACTICE_RE.sound, PRACTICE_RE.hear, PRACTICE_RE.qa, PRACTICE_RE.dict, PRACTICE_RE.copy];
     const rank = g => { const nm = gKey(g), i = order.findIndex(re => re.test(nm)); return i < 0 ? order.length : i; };
     if (!t.groupsTidyV1) { t.groupsTidyV1 = true; const out = t.groups.filter(g => rank(g) === order.length); if (out.length) { t.removedGroups = (t.removedGroups || []).concat(out); t.groups = t.groups.filter(g => rank(g) < order.length); } }
     t.groups = t.groups.map((g, i) => [g, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]); }
@@ -15940,7 +16485,8 @@ function practiceGroupWords(kind) {
   const t = state.categories.find(c => c.target); if (!t) return [];
   const re = practiceRe(kind), g = (t.groups || []).find(x => re.test(gKey(x)));
   if (g && (kind === 'hear' || kind === 'match')) return masteryPool(g, (g.tiles || []).filter(k => !(g.off || {})[k]));
-  return g ? masteryPool(g, (g.words || []).filter(w => (t.words || []).includes(w) && !(g.off || {})[w] && !state.hiddenWords[w] && (kind === 'sound' ? soundSplit(w).length > 0 : picHas(w)))) : [];      // (sound it out: the word is on the screen, a picture is not needed)
+  if (g && (kind === 'qa' || kind === 'qatype')) return masteryPool(g, (g.items || []).filter(it => it.q && it.a && !(g.off || {})['Q:' + it.id]).map(it => 'Q:' + it.id));
+  return g ? masteryPool(g, (g.words || []).filter(w => (t.words || []).includes(w) && !(g.off || {})[w] && !state.hiddenWords[w] && (kind === 'sound' ? soundSplit(w).length > 0 : (kind === 'dict' || kind === 'copy') ? /[A-Z]/.test(w) : picHas(w)))) : [];      // (dictation: no picture needed)      // (sound it out: the word is on the screen, a picture is not needed)
 }
 function targetStateOf(w) { const v = (state.targetState || {})[w]; return TARGET_STATES.some(x => x[0] === v) ? v : 'waiting'; }
 // how the voice says a word: some come out wrong on their own (bat heard as "bad"). A few ways of writing it to listen
@@ -16222,6 +16768,7 @@ function openWordActions(word, cat, extra) {
       const nb = newListBtn(word);
       if (nb) body.appendChild(nb);
       body.appendChild(smallWordBtn(word));
+      body.appendChild(tagBtn('w:' + word, plainLabel(word)));
       picMenuBtns(body, word);
       body.appendChild(sheetBtn(filed ? 'Remove from ' + page : 'Delete this word', 'danger', () => poofWord(word)));
       body.appendChild(sheetBtn('Cancel', 'primary', closeWordSheet));
@@ -16242,6 +16789,7 @@ function openWordActions(word, cat, extra) {
     const nb = (newFolder() && cat !== newFolder()) ? newListBtn(word) : null;
     if (nb) body.appendChild(nb);
     body.appendChild(smallWordBtn(word));
+    body.appendChild(tagBtn('w:' + word, plainLabel(word)));
     picMenuBtns(body, word);
     if (hasSmallStrip(cat) && !cat.smallSec) pairBtns(body, word, cat);
     if (!cat.smallSec && !cat.target) body.appendChild(sheetBtn('Edit this page (show or hide tiles)', '', () => { pageEdit = cat.id; closeWordSheet(); renderHome(true); }));
@@ -16717,8 +17265,8 @@ function gameTargetSets(words) {
   return [...sets.values()].sort((a, b) => b.words.length - a.words.length || a.label.localeCompare(b.label));
 }
 // the games in the Games menu, and which are switched on (in settings, under Games)
-const GAME_LIST = [['sight', '\uD83D\uDC40', 'Word Match'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes'], ['hear', '\uD83D\uDC42', 'Sound Match'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
-function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, builder: false }, state.gamesOn || {}, { match: false }); }      // (Match the spelling: taken out for now)
+const GAME_LIST = [['sight', '\uD83D\uDC40', 'Word Match'], ['write', '\u270F\uFE0F', 'Spelling'], ['tiles', '\uD83D\uDD24', 'Tiles'], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes'], ['hear', '\uD83D\uDC42', 'Sound Match'], ['qa', '\u2753', 'Questions'], ['qatype', '\u2328\uFE0F', 'Questions: type'], ['dict', '\uD83C\uDFA7', 'Dictation'], ['copy', '\uD83D\uDCDD', 'Copy'], ['builder', '\uD83E\uDDF1', 'Sentence builder']];
+function gamesOn() { return Object.assign({ sight: true, write: true, tiles: true, sound: true, hear: true, qa: true, qatype: true, dict: true, copy: true, builder: false }, state.gamesOn || {}, { match: false }); }      // (Match the spelling: taken out for now)
 // + Add more in the Games menu: the whole library with ticks; a ticked word becomes a target in this game's group and
 // in the Unsorted group on the targets page (made when first needed), to be sorted later. Done goes back to the menu.
 function openGameAdd(mode) {
@@ -16726,6 +17274,7 @@ function openGameAdd(mode) {
   const gs = listGroups(t), re = practiceRe(mode), game = gs.find(x => re.test(gKey(x)));
   if (!game) return;
   if (mode === 'hear' || mode === 'match') { openTileAdd(game, () => gameChooseCount(mode)); return; }
+  if (mode === 'qa' || mode === 'qatype') { openQaList(game, () => gameChooseCount(mode)); return; }
   let uns = gs.find(x => /^unsorted$/i.test(String(x.name || '').trim()));
   const inG = w => (game.words || []).includes(w);
   openWordSheet(body => {
@@ -16749,7 +17298,7 @@ function openGameAdd(mode) {
         const paint = () => { const on = inG(w); r.classList.toggle('on', on); r.classList.toggle('no-pic', !picHas(w)); r.textContent = (on ? '\u2713  ' : '') + plainLabel(w) + (picHas(w) ? ' \uD83D\uDDBC\uFE0F' : ' \uD83D\uDCF7'); };
         r.addEventListener('click', () => {
           if (inG(w)) { take(w); save(); buzz(8); paint(); return; }
-          if (picHas(w) || mode === 'sound') { put(w); save(); buzz(8); paint(); return; }      // (sound it out does not need a picture)
+          if (picHas(w) || mode === 'sound' || mode === 'dict' || mode === 'copy') { put(w); save(); buzz(8); paint(); return; }      // (sound it out does not need a picture)
           // no picture yet: choose one first; the word goes in only once it has one
           picChoose(w, () => { if (picHas(w)) { put(w); save(); } paint(); });
         });
@@ -16781,7 +17330,7 @@ function picRandomFor(word, pics) {
 function presets() { return state.gamePresets = state.gamePresets || []; }
 function presetById(id) { return presets().find(p => p.id === id); }
 function presetGroup(p) { const t = state.categories.find(c => c.target); return t && (t.groups || []).find(x => practiceRe(p.mode).test(gKey(x))); }
-const gameName = m => (GAME_LIST.find(x => x[0] === m) || [])[2] || m, gameIcon = m => (GAME_LIST.find(x => x[0] === m) || [])[1] || '🎮';
+const gameName = m => (GAME_LIST.find(x => x[0] === m) || [])[2] || (m === 'match' ? 'Find the spelling' : m), gameIcon = m => (GAME_LIST.find(x => x[0] === m) || [])[1] || (m === 'match' ? '\uD83D\uDD0E' : '🎮');
 const targetName = w => /\|/.test(w) ? tileLabel(w) : plainLabel(w);
 // the targets of a saved game that can be played now: still being learned (or due a check), or kept on purpose after mastery
 function presetPlayable(p) {
@@ -16877,7 +17426,7 @@ function presetRows(host) {
 // ===== The games home: the Games button turns the home page into the games - the tiles where the words would be.
 // First the kinds of game, then (one tapped) its saved games and a tile for a new one. Tokens and mastery on their own page.
 let gamesHome = null;      // null: the usual home page · { layer: 'types' | a game's mode | 'rewards' }
-const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', builder: 'Build' };
+const GH_SHORT = { sight: 'Match', write: 'Spell', tiles: 'Tiles', sound: 'Boxes', hear: 'Sounds', qa: 'Answer', qatype: 'Type it', dict: 'Dictate', copy: 'Copy', builder: 'Build' };
 // Easy / Hard for a game: a switch, with a line on what each one does
 function gpLevelRow(m, after) {
   const row = document.createElement('div'); row.className = 'gp-level-row';
@@ -16905,6 +17454,7 @@ function ghPaint() {
   if (host.dataset.sig === sig && host.childElementCount) return;      // (nothing to change: the page is left as it is, scrolled where it was)
   host.dataset.sig = sig; host.innerHTML = '';
   try { ensureTargets(); masteryEvalAll(); } catch (e) {}
+  if (GH_SHORT[gamesHome.layer] && gamesHome.layer !== 'builder') gamesHome = { layer: 'types', open: gamesHome.layer };      // (a kind of game opens in place on the games page)
   const L = gamesHome.layer;
   const head = document.createElement('div'); head.className = 'gh-head'; host.appendChild(head);
   if (L !== 'types') { const b = document.createElement('button'); b.className = 'gh-back'; b.textContent = '‹ Games'; b.addEventListener('click', () => { buzz(8); gamesHome = { layer: 'types' }; renderHome(true); }); head.appendChild(b); }
@@ -16923,34 +17473,47 @@ function ghPaint() {
     if (due.length) { const byMode = {}; due.forEach(d => { (byMode[d.mode] = byMode[d.mode] || []).push(d.w); }); const m = Object.keys(byMode).sort((a, b) => byMode[b].length - byMode[a].length)[0], ws = byMode[m];
       const grp = practiceGroups().find(g => groupModeOf(g) === m), ct = masteryCfg(grp).checkTurns || 1;
       tile('🔁', 'Check-in', due.length + ' due · ' + ws.length + ' in ' + GH_SHORT[m], () => gameStart(ws.length * ct, m, ws), 'gh-due'); }
-    const on = gamesOn();
+    const on = gamesOn(), op = gamesHome.open && on[gamesHome.open] !== false ? gamesHome.open : null;
+    if (op) {      // one kind of game open: its tile first (tap it again to close), then its saved games and a new one
+      if (op === 'qa' || op === 'qatype') {      // (Answer: the questions answered by tapping a tile or by typing - their saved games, then a new one of each)
+        const ks = ['qa', 'qatype'].filter(m => on[m] !== false);
+        tile(gameIcon('qa'), 'Answer', 'Questions \u00B7 tap to close', () => { gamesHome = { layer: 'types' }; renderHome(true); }, 'gh-open');
+        ks.forEach(m => presets().some(p => p.mode === m) && ghModeTilesSaved(m, tile)); ks.forEach(m => ghModeTilesNew(m, tile)); host.appendChild(grid); return; }
+      tile(gameIcon(op), GH_SHORT[op], gameName(op) + ' \u00B7 tap to close', () => { gamesHome = { layer: 'types' }; renderHome(true); }, 'gh-open');
+      ghModeTiles(op, tile); host.appendChild(grid); return; }
     GAME_LIST.forEach(([m, ic, nm]) => {
       if (m === 'builder') { if (on.builder) tile(ic, GH_SHORT[m], nm, () => { gamesHome = null; gameOff(); state.builderMode = true; builderPath = []; save(); renderHome(true); picBtnSync(); }); return; }
+      if (m === 'qatype' && on.qa !== false) return;      // (one Answer tile for both ways of answering)
+      if (m === 'qa' && on.qa === false && on.qatype === false) return;
+      if (m === 'qa' || m === 'qatype') { const ps = presets().filter(p => p.mode === 'qa' || p.mode === 'qatype').length, ready = practiceGroupWords('qa').length;
+        tile(gameIcon('qa'), 'Answer', 'Questions \u00B7 ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: 'types', open: on.qa !== false ? 'qa' : 'qatype' }; renderHome(true); }); return; }
       if (on[m] === false) return;
       const ps = presets().filter(p => p.mode === m).length, ready = practiceGroupWords(m).length;
-      tile(ic, GH_SHORT[m], nm + ' · ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: m }; renderHome(true); });
+      tile(ic, GH_SHORT[m], nm + ' · ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: 'types', open: m }; renderHome(true); });
     });
     tile('🏆', 'Rewards', (state.tokens || 0) + ' tokens · mastered', () => { gamesHome = { layer: 'rewards' }; renderHome(true); }, 'gh-rew');
     host.appendChild(grid); return;
   }
   if (L === 'rewards') { ttl.innerHTML = '<span>🏆 Rewards</span>'; ghRewards(host); return; }
-  // one kind of game: easy or hard, its saved games, then a new one
-  const m = L, nm = gameName(m);
-  ttl.innerHTML = '<span></span>'; ttl.firstChild.textContent = gameIcon(m) + ' ' + nm;
-  host.appendChild(gpLevelRow(m, () => { host.dataset.sig = ''; renderHome(true); }));
+}
+// a kind of game opened on the games page: its saved games, then a tile for a new one, in the grid after its own tile
+function ghModeTiles(m, tile) { ghModeTilesSaved(m, tile); ghModeTilesNew(m, tile); }
+function ghModeTilesSaved(m, tile) {
   presets().filter(p => p.mode === m).forEach(p => {
     const n = presetPlayable(p).length, done = presetMastered(p).length;
-    const t = tile('', p.name, n + ' target' + (n === 1 ? '' : 's') + ' · ' + (p.turns || 0) + ' turns', () => presetPlay(p));
-    const w0 = (p.words || []).find(w => !/\|/.test(w) && picOn(w).length);
+    const t = tile('', p.name, (m === 'qa' ? 'Tap a tile \u00B7 ' : m === 'qatype' ? 'Type it \u00B7 ' : '') + n + ' target' + (n === 1 ? '' : 's') + ' \u00B7 ' + (p.turns || 0) + ' turns', () => presetPlay(p), 'gh-in');
+    const w0 = (p.words || []).find(w => !/\|/.test(w) && !/^Q:/.test(w) && picOn(w).length);
     const ic = t.querySelector('.gh-ic');
     if (w0) { const pic = picOn(w0)[0], d = document.createElement('span'); d.className = 'gh-pic'; d.style.backgroundImage = 'url("' + String(pic.url).replace(/"/g, '%22') + '")'; ic.replaceWith(d); }
     else ic.textContent = gameIcon(m);
-    if (done) { const bd = document.createElement('span'); bd.className = 'gh-badge'; bd.textContent = '🎉 ' + done; t.appendChild(bd); }
-    const mo = document.createElement('button'); mo.className = 'gh-more'; mo.textContent = '⋯'; mo.setAttribute('aria-label', 'Settings for ' + p.name);
+    if (done) { const bd = document.createElement('span'); bd.className = 'gh-badge'; bd.textContent = '\uD83C\uDF89 ' + done; t.appendChild(bd); }
+    const mo = document.createElement('button'); mo.className = 'gh-more'; mo.textContent = '\u22EF'; mo.setAttribute('aria-label', 'Settings for ' + p.name);
     mo.addEventListener('click', e => { e.stopPropagation(); buzz(8); presetEdit(p); }); t.appendChild(mo);
   });
-  tile('+', 'New ' + GH_SHORT[m].toLowerCase() + ' game', 'Choose targets and turns', () => gameChooseCount(m), 'gh-new');
-  host.appendChild(grid);
+}
+function ghModeTilesNew(m, tile) {
+  if (m === 'qa' || m === 'qatype') { tile('+', m === 'qa' ? 'Answer by tapping' : 'Answer by typing', (m === 'qa' ? 'Pick the answer from the tiles' : 'Type the answer in its boxes') + ' \u00B7 a new game', () => gameChooseCount(m), 'gh-new gh-in'); return; }
+  tile('+', 'New ' + GH_SHORT[m].toLowerCase() + ' game', 'Choose targets and turns', () => gameChooseCount(m), 'gh-new gh-in');
 }
 // tokens: the total, by colour, and a jar of them - then the targets mastered in each game's group
 function ghRewards(host) {
@@ -16964,6 +17527,7 @@ function ghRewards(host) {
   for (let k = 0; k < g; k++) list.push('g'); for (let k = 0; k < b; k++) list.push('b'); for (let k = 0; k < y; k++) list.push('y');
   jar.innerHTML = list.slice(0, show).map((k, i) => '<span class="tok ' + k + '" style="animation-delay:' + Math.min(1.2, i * 0.012).toFixed(3) + 's">★</span>').join('') + (total > show ? '<span class="gh-sub" style="align-self:center;font-weight:900">+' + (total - show) + ' more</span>' : '');
   if (ts.modes && Object.keys(ts.modes).length) { const k = document.createElement('div'); k.className = 'gh-sub'; k.style.cssText = 'margin-top:10px;font-weight:800'; k.textContent = Object.keys(ts.modes).map(m => gameIcon(m) + ' ' + gameName(m) + ': ' + ts.modes[m]).join('   ·   '); p1.appendChild(k); }
+  { const rb = document.createElement('button'); rb.className = 'gh-back'; rb.style.alignSelf = 'flex-start'; rb.textContent = '\uD83D\uDCC8 Response rate & cumulative record'; rb.addEventListener('click', () => { buzz(8); openRateData(); }); host.appendChild(rb); }
   const sec = document.createElement('div'); sec.className = 'gh-sec'; sec.textContent = 'Targets mastered'; host.appendChild(sec);
   const p2 = document.createElement('div'); p2.className = 'gh-panel'; host.appendChild(p2);
   const groups = practiceGroups().filter(x => { const m = groupModeOf(x); return m && m !== 'typing' && gamesOn()[m] !== false; });
@@ -17001,7 +17565,7 @@ function gameChooseCount(preMode) {
     const count = document.createElement('div'); body.appendChild(count);
     let mode = null, startNow = null;
     const pickCount = () => { count.innerHTML = ''; startNow = null;
-      const all = mode === 'write' ? write : mode === 'tiles' ? tiles : mode === 'sound' ? sound : mode === 'hear' ? hear : mode === 'match' ? match : sight;
+      const all = mode === 'write' ? write : mode === 'tiles' ? tiles : mode === 'sound' ? sound : mode === 'hear' ? hear : mode === 'match' ? match : mode === 'sight' ? sight : practiceGroupWords(mode);
       // which targets: every ready one, or the folders ticked - main folders, each opening to the folders inside it
       const tree = gameTargetTree(all), sets = [].concat(...tree.map(m => [m].concat(m.subs)));
       // what is chosen: the ticked folders (less the targets taken out of them) and the targets put in on their own;
@@ -17082,7 +17646,6 @@ function gameChooseCount(preMode) {
         const c = document.createElement('button'); c.className = 'gm-chip gm-add'; c.textContent = '+ Add more'; c.addEventListener('click', () => { buzz(8); openGameAdd(mode); }); chips.appendChild(c);
         paint(); };
       const head = t => { const h = document.createElement('div'); h.className = 'gm-head'; h.textContent = t; count.appendChild(h); return h; };
-      head('Level'); count.appendChild(gpLevelRow(mode));
       const wh = head('Targets'); wh.appendChild(n); count.appendChild(chips);
       const th = head('Turns'); tn = document.createElement('span'); tn.className = 'gm-head-n'; th.appendChild(tn);
       const go = k => { const ws = chosen(); if (!ws.length) return; closeWordSheet(); gameStart(k, mode, (allMode() && !skip.size) ? null : ws); };
@@ -17096,9 +17659,9 @@ function gameChooseCount(preMode) {
         sv.addEventListener('click', () => { const ws = chosen(); if (!ws.length) return; const p0 = presetSave(mode, ws, turnsNow(ws)); if (p0) { buzz(10); if (gamesHome) { gamesHome = { layer: mode }; ghBack(); } else gameChooseCount(); } });
         count.appendChild(sv); }
       drawF(); };
-    [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear]].forEach(([m, ic, nm, sub, ws]) => {
+    [['sight', '\uD83D\uDC40', 'Word Match', 'See the picture, tap its word', sight], ['write', '\u270F\uFE0F', 'Spelling', 'See the picture, type the word', write], ['tiles', '\uD83D\uDD24', 'Tiles', 'See the picture, put the letters in order', tiles], ['sound', '\uD83D\uDDE3\uFE0F', 'Elkonin Boxes', 'See and hear the word, build it sound by sound', sound], ['hear', '\uD83D\uDC42', 'Sound Match', 'Hear a sound, tap its spelling', hear], ['qa', '\u2753', 'Questions', 'Hear a question, tap the answer', practiceGroupWords('qa')], ['qatype', '\u2328\uFE0F', 'Questions: type', 'Hear a question, type the answer', practiceGroupWords('qatype')], ['dict', '\uD83C\uDFA7', 'Dictation', 'Hear a word spelled out, type it', practiceGroupWords('dict')], ['copy', '\uD83D\uDCDD', 'Copy', 'See a word typed, type the same', practiceGroupWords('copy')]].forEach(([m, ic, nm, sub, ws]) => {
       const b = document.createElement('button'); const off = !gamesOn()[m]; b.className = 'gm-act' + (off ? ' off' : ws.length ? '' : ' empty');
-      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : m === 'sound' ? 'No targets in the "' + nm + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
+      b.innerHTML = '<span class="ga-ic">' + ic + '</span><span class="ga-t">' + nm + '</span><span class="ga-s">' + (off ? 'Switched off in settings' : ws.length ? sub + ' \u00B7 ' + ws.length + ' ready' : (m === 'hear' || m === 'match' ? 'No sounds in the "' + nm + '" group yet' : m === 'qa' || m === 'qatype' ? 'No questions in the Questions group yet' : m === 'sound' || m === 'dict' || m === 'copy' ? 'No targets in the "' + (m === 'dict' ? 'Dictation' : nm) + '" group yet' : 'No targets with pictures in the "' + nm + '" group yet')) + '</span>';
       b.dataset.m = m;
       b.addEventListener('click', () => { if (off) { buzz(8); return; } buzz(8); mode = mode === m ? null : m; acts.querySelectorAll('.gm-act').forEach(x => x.classList.toggle('on', x === b && !!mode)); acts.classList.toggle('picked', !!mode); if (mode) pickCount(); else { count.innerHTML = ''; startNow = null; } });      // (one chosen: the others step away until it is tapped again)
       acts.appendChild(b);
@@ -17128,7 +17691,7 @@ function gpFadeOf(tile) { const v = (state.gameFade || {})[game.mode + '|' + til
 function gpStep(key, sayIn, keep) {
   clearTimeout(gpTimer); if (!gpOn()) return;
   const g = game, c = g.cur; c.gpKey = key; c.gpRep = 0; c.gpErr = false;
-  c.lv = g.pmode === 'hard' ? 1 : (keep && c.lv0 != null ? c.lv0 : gpFadeOf(c.tile)); if (c.lv0 == null) c.lv0 = c.lv;
+  c.lv = g.pmode === 'hard' ? gpBase(g.mode) : (keep && c.lv0 != null ? c.lv0 : gpFadeOf(c.tile)); if (c.lv0 == null) c.lv0 = c.lv;
   gpPaint();
   if (c.lv > 0 && sayIn != null) setTimeout(() => { if (game === g && g.cur === c && c.gpKey === key && !g.busy) gpSay(); }, sayIn);
   gpArm();
@@ -17136,7 +17699,7 @@ function gpStep(key, sayIn, keep) {
 function gpArm() {
   clearTimeout(gpTimer); if (!gpOn()) return;
   const g = game, c = g.cur, key = c.gpKey;
-  gpTimer = setTimeout(() => { if (game !== g || g.cur !== c || c.gpKey !== key) return; if (g.busy || soundOpen) { gpArm(); return; } gpUp(); }, 5000);
+  gpTimer = setTimeout(() => { if (game !== g || g.cur !== c || c.gpKey !== key) return; if (g.busy || soundOpen) { gpArm(); return; } gpUp(); }, ltmStepMs() + (c.lv > 0 ? 900 : 0));      // (counted from when the prompt has been given - its sound included)
 }
 // one step more help (no answer in 5 s)
 function gpUp() {
@@ -17151,7 +17714,9 @@ function gpWrong(after) {
   setTimeout(() => { if (game !== g || g.cur !== c || c.gpKey !== key) return; gpPaint(); if (!after) gpSay(); gpArm(); }, after || 700);
 }
 // the right answer: how much help it took - g (none, or the least), b (some, or a mistake), y (the most)
-function gpRight() { clearTimeout(gpTimer); const c = game.cur, lv = c.lv || 0; return lv >= 3 ? 'y' : (lv === 2 || c.gpErr) ? 'b' : 'g'; }
+function gpRight() { clearTimeout(gpTimer); const c = game.cur, lv = c.lv || 0; if (gpBase(game.mode) === 0) return lv >= 3 ? 'y' : (lv >= 1 || c.gpErr) ? 'b' : 'g'; return lv >= 3 ? 'y' : (lv === 2 || c.gpErr) ? 'b' : 'g'; }
+// the typing games start with no prompt at all (the question, or the word spelled aloud, is the cue); the others with the least
+function gpBase(mode) { return mode === 'qatype' || mode === 'dict' || mode === 'copy' ? 0 : 1; }
 // a turn done, on easy: the target's help fades one step after a turn with no mistakes, and comes back one after a mistake
 function gpTrialDone(tile, wrong) {
   clearTimeout(gpTimer); if (!game || game.pmode !== 'easy' || game.mode === 'write') return;
@@ -17161,13 +17726,16 @@ function gpTrialDone(tile, wrong) {
 function gpTargetEl() {
   const g = game, c = g && g.cur; if (!c) return null;
   const pick = v => [...document.querySelectorAll('#gmRow .gm-tile')].find(b => b.dataset.w === v);
-  if (g.mode === 'sight') return pick(c.word);
+  if (g.mode === 'sight' || g.mode === 'qa') return pick(c.word);
   if (g.mode === 'tiles') return pick(c.letter);
   return null;      // (the sound games: their keyboard paints it - see soundKbPaint)
 }
 function gpPaint() {
   if (!gpOn()) return;
   const g = game, c = g.cur;
+  if (g.mode === 'qatype' || g.mode === 'dict' || g.mode === 'copy') {      // (the keys: light blue from the second step, the darkest blue at the third - the first step is the letter shown in its box)
+    document.querySelectorAll('#gmKeys .gp-1, #gmKeys .gp-2, #gmKeys .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
+    const L = c.word && c.word[c.k], el = L && document.querySelector('#gmKeys .key[data-letter="' + L + '"]'); if (el && c.lv >= 2) el.classList.add('gp-' + Math.min(3, c.lv)); return; }
   if (g.mode === 'sound' || g.mode === 'hear' || g.mode === 'match') { if (!gpPaint.busy) { gpPaint.busy = true; try { soundKbPaint(); } finally { gpPaint.busy = false; } } return; }
   document.querySelectorAll('#gmRow .gp-1, #gmRow .gp-2, #gmRow .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
   const el = gpTargetEl(); if (el && c.lv > 0) el.classList.add('gp-' + Math.min(3, c.lv));
@@ -17176,22 +17744,288 @@ function gpPaint() {
 function gpSay() {
   const g = game, c = g && g.cur; if (!c) return;
   try {
-    if (g.mode === 'sight') { warmSpeech(); sayAnyway = true; try { speakWord(c.word, 0.9); } finally { sayAnyway = false; } return; }
+    if (g.mode === 'sight' || g.mode === 'qa') { warmSpeech(); sayAnyway = true; try { speakWord(c.word, 0.9); } finally { sayAnyway = false; } return; }
+    if (g.mode === 'qatype' || g.mode === 'dict' || g.mode === 'copy') { tyFlash(); return; }
     if (g.mode === 'tiles') { const p = soundPartCovering(c.word, c.k); if (p) soundSay(p.id, p.sp); else { warmSpeech(); sayAnyway = true; try { speakLetter(String(c.letter).toUpperCase()); } finally { sayAnyway = false; } } return; }
     const want = c.parts && c.parts[c.k]; if (want) soundSay(want.alt[0] || want.id, want.sp);
   } catch (e) {}
 }
-function gameStart(n, mode, only, presetId) {
+// ===== Questions (intraverbals: an answer controlled by someone else's words) and Dictation (typing what is heard) =====
+const QA_STARTERS = [
+  { q: 'What color is the sky?', a: 'BLUE', opts: 'RED, GREEN' }, { q: 'What do you drink when you are thirsty?', a: 'WATER', opts: 'SHOE, BED' },
+  { q: 'What animal says moo?', a: 'COW', opts: 'DOG, CAT' }, { q: 'What do you sleep in?', a: 'BED', opts: 'CUP, CAR' },
+  { q: 'What do you wear on your feet?', a: 'SHOES', opts: 'HAT, SPOON' }, { q: 'What is the capital of France?', a: 'PARIS', opts: 'LONDON, ROME' }];
+function isQaGroup(g) { return !!g && (g.kind === 'qa' || PRACTICE_RE.qa.test(gKey(g))); }
+function qaGroup() { const t = state.categories.find(c => c.target); return t ? (t.groups || []).find(isQaGroup) || null : null; }
+function qaItem(key) { const g = qaGroup(), id = String(key || '').replace(/^Q:/, ''); return g ? (g.items || []).find(x => String(x.id) === id) || null : null; }
+function qaText(key) { const it = qaItem(key); return it ? it.q : String(key || ''); }
+// a question: what is asked, the answer, and (if wanted) the other choices offered beside it
+function openQaEdit(g, it, after) {
+  openWordSheet(body => {
+    sheetTitle(body, it ? 'This question' : 'A new question');
+    const field = (label, val, big) => { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = label; body.appendChild(l);
+      const x = document.createElement(big ? 'textarea' : 'input'); x.value = val || ''; x.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:20px;font-weight:700;padding:12px 14px;border-radius:14px;border:2px solid #dfe2e7;' + (big ? 'min-height:84px;resize:vertical;' : ''); body.appendChild(x); return x; };
+    { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = 'Start with a simple question'; body.appendChild(l);
+      const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+      QA_WH.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip'; b.textContent = t; b.addEventListener('click', () => { buzz(8); q.value = t; }); ch.appendChild(b); }); }
+    const q = field('The question (read aloud, each word lit as it is said)', it && it.q, true);
+    const a = field('The answer', it && String(it.a || '').toLowerCase());
+    const pf = field('The picture shown with it (a word from the library - blank: no picture)', it ? String(it.pic || '').toLowerCase() : '');
+    const pv = document.createElement('div'); pv.className = 'qa-pv'; body.appendChild(pv);
+    const pvPaint = () => { pv.innerHTML = ''; const w = normaliseWord(pf.value), pics = w ? picOn(w) : []; if (pics.length) { const im = document.createElement('img'); im.src = pics[0].url; pv.appendChild(im); } else if (w) { const n2 = document.createElement('span'); n2.textContent = 'No picture for "' + pf.value.trim() + '" yet'; pv.appendChild(n2); } };
+    pf.addEventListener('input', pvPaint); pvPaint();
+    const same = document.createElement('button'); same.className = 'tune-chip'; same.style.marginTop = '6px'; same.textContent = 'Use the answer\'s picture'; same.addEventListener('click', () => { pf.value = a.value; pvPaint(); }); body.appendChild(same);
+    const o = field('Other choices for the tap version (optional, with commas)', it && String(it.opts || '').toLowerCase());
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.marginTop = '8px'; n.textContent = 'With no other choices given, other answers and words from the library are offered beside it (3 tiles to start).'; body.appendChild(n);
+    body.appendChild(sheetBtn('Save', 'primary', () => { const qq = q.value.trim(), aa = normaliseWord(a.value); if (!qq || !aa) { alert('A question and its answer are both needed.'); return; }
+      const pp = normaliseWord(pf.value);
+      g.items = g.items || []; if (it) { it.q = qq; it.a = aa; it.opts = o.value.trim().toUpperCase(); it.pic = pp; } else g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: aa, opts: o.value.trim().toUpperCase(), pic: pp });
+      save(); closeWordSheet(); if (after) after(); }));
+    if (it) body.appendChild(sheetBtn('Delete this question', 'danger', () => { if (!confirm('Delete this question?')) return; g.items = (g.items || []).filter(x => x !== it); save(); closeWordSheet(); if (after) after(); }));
+    body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
+  });
+}
+const QA_WH = ['What is this?', 'What is that?', 'Who is this?', 'Who is that?', 'Where is this?', 'What color is this?', 'What number is this?', 'What shape is this?'];
+// a set of questions in one go: one question for each picture in a folder ("What is this?" + Animals -> a question for each animal, its picture shown)
+function openQaFromFolder(g, after) {
+  let tpl = 'What is this?';
+  openWordSheet(body => {
+    sheetTitle(body, 'Questions from a folder');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 0 8px'; n.textContent = 'Pick the question, then a folder: each tile in it with a picture becomes a question, its picture shown and its word the answer.'; body.appendChild(n);
+    const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+    const paintCh = () => { ch.innerHTML = ''; QA_WH.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip' + (t === tpl ? ' on' : ''); b.textContent = t; b.addEventListener('click', () => { tpl = t; buzz(8); paintCh(); }); ch.appendChild(b); }); };
+    paintCh();
+    const list = document.createElement('div'); list.style.cssText = 'max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-top:10px'; body.appendChild(list);
+    const pathName = f => { const a = []; let x = f, k = 0; while (x && k++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a.join(' › '); };
+    const sets = [];
+    state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(c => { const ws = (c.words || []).filter(w => picHas(w)); if (ws.length) sets.push({ label: pathName(c), ws });
+      listGroups(c).filter(x => !x.hidden).forEach(x => { const gw = (x.words || []).filter(w => picHas(w)); if (gw.length) sets.push({ label: pathName(c) + ' › ' + x.name, ws: gw }); }); });
+    sets.forEach(st => { const b = document.createElement('button'); b.className = 'pick-row'; b.style.textAlign = 'left'; b.textContent = '📁 ' + st.label + '   · ' + st.ws.length + ' with pictures';
+      b.addEventListener('click', () => { const have = new Set((g.items || []).map(x => x.q + '|' + x.a)); g.items = g.items || []; let made = 0;
+        st.ws.forEach(w => { if (have.has(tpl + '|' + w)) return; g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: tpl, a: w, opts: '', pic: w }); made++; });
+        save(); buzz(10); alert(made + ' question' + (made === 1 ? '' : 's') + ' made: "' + tpl + '" for ' + st.label + '.'); closeWordSheet(); if (after) after(); });
+      list.appendChild(b); });
+    if (!sets.length) { const n2 = document.createElement('div'); n2.className = 'help-note'; n2.textContent = 'No folders have tiles with pictures yet.'; list.appendChild(n2); }
+    body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
+  });
+}
+// the quick way: pick the question, then tap the pictures - each picture becomes a question, its name the answer
+function openQaPick(g, after) {
+  let tpl = 'What is this?', q2 = '', open = null; const picked = new Set();
+  const pathName = f => { const a = []; let x = f, k = 0; while (x && k++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a.join(' › '); };
+  const sets = [];
+  state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(c => { const ws = (c.words || []).filter(w => picHas(w)); if (ws.length) sets.push({ label: pathName(c), ws });
+    listGroups(c).filter(x => !x.hidden).forEach(x => { const gw = (x.words || []).filter(w => picHas(w)); if (gw.length) sets.push({ label: pathName(c) + ' › ' + x.name, ws: gw }); }); });
+  const allWs = [...new Set(sets.flatMap(st => st.ws))].sort();
+  openWordSheet(body => {
+    sheetTitle(body, 'A new question');
+    const lab = t => { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = t; body.appendChild(l); return l; };
+    lab('1. The question');
+    const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+    const own = document.createElement('input'); own.placeholder = 'or type your own question'; own.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:18px;font-weight:700;padding:10px 14px;border-radius:14px;border:2px solid #dfe2e7;margin-top:8px;'; body.appendChild(own);
+    const qNow = () => (own.value.trim() || tpl);
+    const paintCh = () => { ch.innerHTML = ''; QA_WH.forEach(t => { const b = document.createElement('button'); b.className = 'tune-chip' + (t === tpl && !own.value.trim() ? ' on' : ''); b.textContent = t; b.addEventListener('click', () => { tpl = t; own.value = ''; buzz(8); paintCh(); paintHad(); }); ch.appendChild(b); }); };
+    own.addEventListener('input', () => { paintCh(); paintHad(); });
+    lab('2. Tap the pictures - the name of each picture is its answer');
+    const find = document.createElement('input'); find.placeholder = 'Find a picture'; find.style.cssText = own.style.cssText; body.appendChild(find);
+    const list = document.createElement('div'); list.style.cssText = 'max-height:44vh;overflow-y:auto;margin-top:6px;'; body.appendChild(list);
+    const have = () => new Set((g.items || []).filter(x => x.q === qNow()).map(x => x.a));
+    const pkTile = w => { const b = document.createElement('button'); b.className = 'qa-pk' + (picked.has(w) ? ' on' : ''); b.dataset.w = w;
+      const pics = picOn(w); if (pics.length) { const im = document.createElement('img'); im.src = pics[0].url; im.alt = ''; b.appendChild(im); }
+      const t = document.createElement('span'); t.textContent = w.toLowerCase(); b.appendChild(t);
+      b.addEventListener('click', () => { buzz(6); if (picked.has(w)) picked.delete(w); else picked.add(w); list.querySelectorAll('.qa-pk[data-w="' + CSS.escape(w) + '"]').forEach(x => x.classList.toggle('on', picked.has(w))); paintSave(); });
+      return b; };
+    const paintHad = () => { const h = have(); list.querySelectorAll('.qa-pk').forEach(x => x.classList.toggle('had', h.has(x.dataset.w))); };
+    const paintList = () => { list.innerHTML = ''; const f = normaliseWord(find.value);
+      if (f) { const grid = document.createElement('div'); grid.className = 'qa-pk-grid'; allWs.filter(w => w.includes(f)).slice(0, 60).forEach(w => grid.appendChild(pkTile(w))); list.appendChild(grid); if (!grid.children.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'No pictures match.'; list.appendChild(n); } paintHad(); return; }
+      sets.forEach((st, i) => { const sec = document.createElement('div'); sec.className = 'qa-pk-sec';
+        const n = st.ws.filter(w => picked.has(w)).length;
+        const hd = document.createElement('button'); hd.className = 'pick-row'; hd.style.cssText = 'text-align:left;width:100%;'; hd.textContent = (open === i ? '▾ ' : '▸ ') + '📁 ' + st.label + '   · ' + st.ws.length + (n ? '   · ' + n + ' picked' : '');
+        hd.addEventListener('click', () => { open = open === i ? null : i; paintList(); }); sec.appendChild(hd);
+        if (open === i) { const all = document.createElement('button'); all.className = 'tune-chip'; all.style.marginTop = '6px'; const allOn = st.ws.every(w => picked.has(w)); all.textContent = allOn ? 'Unpick all in this folder' : 'Pick all in this folder';
+          all.addEventListener('click', () => { st.ws.forEach(w => allOn ? picked.delete(w) : picked.add(w)); paintList(); paintSave(); }); sec.appendChild(all);
+          const grid = document.createElement('div'); grid.className = 'qa-pk-grid'; st.ws.forEach(w => grid.appendChild(pkTile(w))); sec.appendChild(grid); }
+        list.appendChild(sec); });
+      if (!sets.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'No tiles have pictures yet.'; list.appendChild(n); }
+      paintHad(); };
+    find.addEventListener('input', paintList);
+    const sv = sheetBtn('Pick some pictures', 'primary', () => { if (!picked.size) return; const qq = qNow(), h = have(); g.items = g.items || []; let made = 0;
+      [...picked].forEach(w => { if (h.has(w)) return; g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: w, opts: '', pic: w }); made++; });
+      save(); buzz(10); closeWordSheet(); if (after) after(); });
+    const paintSave = () => { const k = picked.size; sv.textContent = k ? 'Make ' + k + ' question' + (k === 1 ? '' : 's') : 'Pick some pictures'; sv.style.opacity = k ? '' : '0.5'; };
+    body.appendChild(sv);
+    body.appendChild(sheetBtn('Write a question and answer by hand', '', () => { closeWordSheet(); openQaEdit(g, null, after); }));
+    body.appendChild(sheetBtn('Cancel', '', () => { closeWordSheet(); if (after) after(); }));
+    paintCh(); paintList(); paintSave();
+  });
+}
+function qaStartersLeft(g) { const qs = QA_STARTERS.map(x => x.q); return (g.items || []).filter(it => qs.includes(it.q)).length; }
+function qaRemoveStarters(g) { const qs = QA_STARTERS.map(x => x.q); g.items = (g.items || []).filter(it => !qs.includes(it.q)); save(); }
+function openQaList(g, back) {
+  openWordSheet(body => {
+    sheetTitle(body, 'Questions');
+    (g.items || []).forEach(it => body.appendChild(sheetBtn(it.q + '  \u2192  ' + String(it.a || '').toLowerCase(), '', () => openQaEdit(g, it, () => openQaList(g, back)))));
+    body.appendChild(sheetBtn('+ New questions (pick the question, then the pictures)', '', () => openQaPick(g, () => openQaList(g, back))));
+    if (qaStartersLeft(g)) body.appendChild(sheetBtn('Remove the example questions', 'danger', () => { if (!confirm('Remove the example questions? Your own questions stay.')) return; qaRemoveStarters(g); openQaList(g, back); }));
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); if (back) back(); }));
+  });
+}
+// the question in the card, read aloud with each word lit as it is said; done() once it has been read
+function qaRead(card, text, done) {
+  const q = card.querySelector('.qa-q') || (() => { const d = document.createElement('div'); d.className = 'qa-q'; card.appendChild(d); return d; })();
+  q.innerHTML = ''; const words = String(text || '').split(/\s+/).filter(Boolean);
+  const spans = words.map((w, i) => { const sp = document.createElement('span'); sp.textContent = w; q.appendChild(sp); if (i < words.length - 1) q.appendChild(document.createTextNode(' ')); return sp; });
+  try { warmSpeech(); sayAnyway = true; speak(text, 0.9); } catch (e) {} finally { sayAnyway = false; }
+  let t = 250; const g0 = game;
+  spans.forEach((sp, i) => { const d = Math.round((210 + 62 * words[i].replace(/[^A-Za-z0-9]/g, '').length) / 0.9);
+    setTimeout(() => { if (game !== g0) return; spans.forEach(x => x.classList.remove('on')); sp.classList.add('on'); }, t); t += d; });
+  setTimeout(() => { spans.forEach(x => x.classList.remove('on')); if (done && game === g0) done(); }, t + 350);
+}
+// a question's picture (the word it shows), above the question
+function qaPicInto(box, it) { box.classList.remove('qa-has-pic'); const pics = it && it.pic ? picOn(it.pic) : []; if (!pics.length) return; const pic = picRandomFor(it.pic, pics); const im = document.createElement('img'); im.className = 'qa-img'; im.src = pic.url; im.alt = ''; if (pic.fit) im.style.objectFit = pic.fit; box.appendChild(im); box.classList.add('qa-has-pic'); box.classList.remove('no-pic'); }
+function qaCard(text) { const card = document.createElement('div'); card.className = 'qa-card'; const q = document.createElement('div'); q.className = 'qa-q'; q.textContent = text; card.appendChild(q); return card; }
+// the other answers offered beside the right one: its own choices, then other questions' answers, then words from the library
+function qaChoices(it, n) {
+  const ans = normaliseWord(it.a), out = [], add = w => { w = normaliseWord(w); if (w && w !== ans && !out.includes(w)) out.push(w); };
+  String(it.opts || '').split(',').forEach(add);
+  const g = qaGroup(), others = ((g && g.items) || []).filter(x => x !== it).sort(() => Math.random() - 0.5);
+  others.filter(x => x.q === it.q).map(x => x.a).forEach(add); others.filter(x => x.q !== it.q).map(x => x.a).forEach(add);      // ("what is this?": the other things asked the same way first)
+  if (out.length < n - 1) state.words.filter(w => !isSmallWord(w) && !isPunct(w) && /^[A-Z]+$/.test(w)).sort(() => Math.random() - 0.5).slice(0, 20).forEach(add);
+  return [ans].concat(out.slice(0, Math.max(1, n - 1)));
+}
+// Questions, tapped: the question read aloud, then the answer among the tiles (3 to start)
+function gameQaTrial() {
+  const g = game, s = g.seq[g.i], key = s.w, it = qaItem(key);
+  if (!it) { g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); return; }
+  g.cur = { word: normaliseWord(it.a), tile: key, tries: 0, prompted: false };
+  const box = document.getElementById('gmPic'); box.innerHTML = ''; box.classList.add('no-pic');
+  qaPicInto(box, it);
+  const card = qaCard(''); box.appendChild(card); box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
+  card.addEventListener('click', e => { e.stopPropagation(); qaRead(card, it.q); });
+  document.getElementById('gmMsg').textContent = '';
+  g.cur.tiles = qaChoices(it, Math.max(2, Math.min(6, groupOpt(gameGroup(), 'qaChoices', 3))));
+  gameLay(); gameBar();
+  qaRead(card, it.q, () => { if (game === g && g.cur && g.cur.tile === key) gpStep('w', 500); });
+}
+// the letter keys for the typing games (the letters only: a wrong letter is not put in, so there is nothing to delete)
+function gameKeys(host) {
+  const kb = document.createElement('div'); kb.className = 'keyboard gm-keys'; kb.id = 'gmKeys';
+  LAYOUT.forEach(row => { const r = document.createElement('div'); r.className = 'row';
+    row.forEach(L => { const b = document.createElement('button'); b.className = 'key letter'; b.dataset.letter = L; b.textContent = L.toLowerCase(); b.addEventListener('click', e => { e.stopPropagation(); tyKey(L, b); }); r.appendChild(b); });
+    kb.appendChild(r); });
+  host.appendChild(kb);
+}
+// Questions typed, and Dictation: a box for each letter of the answer (or word); the letters typed fill them in turn
+function gameTypeTrial() {
+  const g = game, s = g.seq[g.i], key = s.w, it = g.mode === 'qatype' ? qaItem(key) : null;
+  const word = normaliseWord(g.mode === 'qatype' ? (it ? it.a : '') : key), copy = g.mode === 'copy';
+  if (!word) { g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); return; }
+  g.cur = { word, tile: key, k: -1, tries: 0, wrongs: 0, anyPrompt: false, gpB: false, lets: [], lv: 0, ready: false };
+  const box = document.getElementById('gmPic'); box.innerHTML = ''; box.classList.add('no-pic');
+  let card;
+  if (it) { card = qaCard(''); card.addEventListener('click', e => { e.stopPropagation(); qaRead(card, it.q); }); }
+  else if (copy) {      // (Copy: the word typed out as the model to copy - each letter goes green as it is copied)
+    card = document.createElement('div'); card.className = 'cp-model'; card.id = 'cpModel';
+    [...plainLabel(word)].forEach((ch, k) => { const sp = document.createElement('span'); sp.textContent = ch === ' ' ? '\u00A0' : ch; sp.dataset.k = k; card.appendChild(sp); });
+    card.addEventListener('click', e => { e.stopPropagation(); try { warmSpeech(); sayAnyway = true; speakWord(word, 0.9); } catch (er) {} finally { sayAnyway = false; } }); }
+  else { card = document.createElement('button'); card.className = 'dict-say'; card.textContent = '\uD83D\uDD0A'; card.setAttribute('aria-label', 'Hear it again'); card.addEventListener('click', e => { e.stopPropagation(); dictSay(word); }); }
+  if (it) qaPicInto(box, it);
+  box.appendChild(card);
+  const bx = document.createElement('div'); bx.className = 'ty-boxes'; bx.id = 'tyBoxes';
+  const n = word.length, size = Math.max(36, Math.min(88, Math.floor(((box.clientWidth || window.innerWidth) - 60) / (n * 1.2))));
+  bx.style.setProperty('--bx', size + 'px');
+  [...word].forEach((ch, k) => { const el = document.createElement('span'); if (ch === ' ') el.className = 'ty-gap'; else if (/[A-Z]/.test(ch)) { el.className = 'ty-box'; el.dataset.k = k; } else { el.className = 'ty-box filled'; el.textContent = ch; } bx.appendChild(el); });
+  box.appendChild(bx); box.classList.remove('gm-in'); void box.offsetWidth; box.classList.add('gm-in');
+  document.getElementById('gmMsg').textContent = '';
+  const row = document.getElementById('gmRow'); row.innerHTML = ''; gameKeys(row);
+  gameBar();
+  const go = () => { if (game !== g || g.cur.tile !== key || g.cur.ready) return; g.cur.ready = true; tyNext(); };
+  if (it) qaRead(card, it.q, go); else if (copy) { if (groupOpt(gameGroup(), 'copySay', true)) { try { warmSpeech(); sayAnyway = true; speakWord(word, 0.9); } catch (e) {} finally { sayAnyway = false; } } setTimeout(go, 700); } else dictSay(word, go);
+}
+// Dictation: the word said, then its letters spelled aloud one by one (nothing shown); done() after
+function dictSay(word, done) {
+  const g0 = game; try { warmSpeech(); sayAnyway = true; speakWord(word, 0.85); } catch (e) {} finally { sayAnyway = false; }
+  let t = 700 + 90 * word.length;
+  [...word].filter(ch => /[A-Z]/.test(ch)).forEach(ch => { setTimeout(() => { if (game !== g0) return; try { sayAnyway = true; speakLetter(ch); } catch (e) {} finally { sayAnyway = false; } }, t); t += 750; });
+  setTimeout(() => { if (done && game === g0) done(); }, t + 300);
+}
+function tyNext() {
+  const g = game, c = g.cur; c.k++; while (c.k < c.word.length && !/[A-Z]/.test(c.word[c.k])) c.k++;
+  document.querySelectorAll('#tyBoxes .ty-box').forEach(el => el.classList.toggle('next', el.dataset.k === String(c.k)));
+  if (c.k >= c.word.length) { gameTypeDone(); return; }
+  c.tries = 0; gpStep(c.k, 300);
+}
+// a prompt's first step: the letter shows in its box for a moment (and is said), then goes again
+function tyFlash() {
+  const c = game && game.cur; if (!c || c.k < 0 || c.k >= c.word.length) return;
+  if (game.mode === 'copy') {      // (Copy: the letter to copy next lights up in the model for a moment, and is said)
+    const m = document.querySelector('#cpModel span[data-k="' + c.k + '"]'); if (m) { m.classList.remove('hint'); void m.offsetWidth; m.classList.add('hint'); setTimeout(() => m.classList.remove('hint'), 2600); }
+    try { warmSpeech(); sayAnyway = true; speakLetter(c.word[c.k]); } catch (e) {} finally { sayAnyway = false; } return; }
+  const el = document.querySelector('#tyBoxes .ty-box[data-k="' + c.k + '"]'); if (!el || el.classList.contains('filled')) return;
+  el.innerHTML = ''; const h = document.createElement('span'); h.className = 'ty-hint'; h.textContent = c.word[c.k].toLowerCase(); el.appendChild(h);
+  setTimeout(() => { if (h.isConnected && !el.classList.contains('filled')) el.innerHTML = ''; }, 2600);
+  try { warmSpeech(); sayAnyway = true; speakLetter(c.word[c.k]); } catch (e) {} finally { sayAnyway = false; }
+}
+function tyKey(L, b) {
+  const g = game; if (!g || g.busy || !g.cur || !g.cur.ready) return; const c = g.cur, want = c.word[c.k]; if (!want) return;
+  if (L === want) {
+    const q = gpRight(), gr = q === 'y' ? 'y' : (q === 'b' || c.tries) ? 'b' : 'g'; if (gr === 'y') c.anyPrompt = true; if (gr === 'b') c.gpB = true;
+    c.lets.push(L + gr);
+    const el = document.querySelector('#tyBoxes .ty-box[data-k="' + c.k + '"]'); if (el) { el.textContent = L.toLowerCase(); el.classList.add('filled'); el.classList.remove('next'); }
+    { const m = document.querySelector('#cpModel span[data-k="' + c.k + '"]'); if (m) { m.classList.remove('hint'); m.classList.add('done'); } }
+    document.querySelectorAll('#gmKeys .gp-1, #gmKeys .gp-2, #gmKeys .gp-3').forEach(x => x.classList.remove('gp-1', 'gp-2', 'gp-3'));
+    if (state.letterSpeech !== false) { try { warmSpeech(); sayAnyway = true; speakLetter(L); } catch (e) {} finally { sayAnyway = false; } }
+    buzz(15); setTimeout(() => { if (game === g && g.cur === c) tyNext(); }, 200);
+    return;
+  }
+  c.tries++; c.wrongs++; buzz([60, 40, 60]); gameBuzz();
+  const v = document.getElementById('gameView'); v.classList.remove('gm-shake'); void v.offsetWidth; v.classList.add('gm-shake');
+  if (b) { b.classList.add('gm-wrong'); setTimeout(() => b.classList.remove('gm-wrong'), 500); }
+  gpWrong();
+}
+function gameTypeDone() {
+  const g = game, c = g.cur; g.busy = true;
+  const res = c.anyPrompt ? 'prompted' : (c.wrongs || c.gpB) ? 'second' : 'first'; gpTrialDone(c.tile, c.wrongs > 0);
+  g.seq[g.i].res = res; g.res.push({ word: c.word, res, t: Date.now(), fix: !!g.seq[g.i].fix });
+  state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, wrongLetters: c.wrongs, letters: c.lets.join(' '), fix: !!g.seq[g.i].fix, mode: g.mode === 'dict' || g.mode === 'copy' ? g.mode : 'qa', style: 'type' }]).slice(-3000);
+  if (c.wrongs > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 2 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
+  save(); gameBar();
+  const bx = document.getElementById('tyBoxes'); if (bx) bx.classList.add('done');
+  setTimeout(() => { try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.9); } catch (e) {} finally { sayAnyway = false; } }, 350);
+  buzz([20, 80, 40]); gameStars(bx || document.getElementById('gmPic'));
+  setTimeout(() => { g.busy = false; if (game !== g) return; g.i++; if (g.i >= g.seq.length) gameEnd(); else gameTrial(); }, 2000);
+}
+// Easy or hard, asked as a game starts: easy - most to least (all the help first); hard - least to most, and double tokens
+function gameLevelAsk(mode, then) {
+  try { closeWordSheet(); } catch (e) {}
+  document.querySelectorAll('.gl-pop').forEach(x => x.remove());
+  const pop = document.createElement('div'); pop.className = 'gm-pop gl-pop';
+  pop.innerHTML = '<div class="gm-card gl-card"><div class="gl-ic"></div><div class="gm-done gl-title"></div>'
+    + '<button class="gl-btn gl-easy"><b>😊 Easy</b><small>All the help first, less as it gets right</small></button>'
+    + '<button class="gl-btn gl-hard"><b>🔥 Hard</b><small>A little help only when it is needed · double tokens ⭐⭐</small></button>'
+    + '<button class="gm-all gl-cancel">Not now</button></div>';
+  pop.querySelector('.gl-ic').textContent = gameIcon(mode); pop.querySelector('.gl-title').textContent = gameName(mode);
+  const last = gameLevelOf(mode); pop.querySelector(last === 'hard' ? '.gl-hard' : '.gl-easy').classList.add('last');
+  const pick = lv => { buzz(10); pop.remove(); then(lv); };
+  pop.querySelector('.gl-easy').addEventListener('click', () => pick('easy'));
+  pop.querySelector('.gl-hard').addEventListener('click', () => pick('hard'));
+  pop.querySelector('.gl-cancel').addEventListener('click', () => { buzz(8); pop.remove(); });
+  pop.addEventListener('click', e => { if (e.target === pop) pop.remove(); });
+  document.body.appendChild(pop);
+}
+function gameStart(n, mode, only, presetId, level) {
   mode = mode || (game && game.mode) || 'sight';
+  if (level !== 'easy' && level !== 'hard') { gameLevelAsk(mode, lv => gameStart(n, mode, only, presetId, lv)); return; }      // (easy or hard is chosen as each game starts)
+  state.gameLevel = Object.assign({}, state.gameLevel || {}, { [mode]: level });
   const pr = presetId ? presetById(presetId) : null;
-  const ready = pr ? [...new Set(practiceGroupWords(mode).concat(presetPlayable(pr)))] : practiceGroupWords(mode), ws = only ? ready.filter(w => only.includes(w)) : ready; if (!ws.length) return;
+  let ready = pr ? [...new Set(practiceGroupWords(mode).concat(presetPlayable(pr)))] : practiceGroupWords(mode); if (mode === 'match' && only) ready = [...new Set(ready.concat(graphemeTiles()))]; const ws = only ? ready.filter(w => only.includes(w)) : ready; if (!ws.length) return;
   const seq = []; let pool = [];
   // the turns: every chosen target about the same number of times, all mixed up at random (not one round of each
   // before the next), and never the same target twice in a row when there is more than one
   const bag = []; while (bag.length < n) bag.push(...ws); bag.length = n; const mixed = bag.sort(() => Math.random() - 0.5);
   mixed.forEach(w => seq.push({ w }));
   for (let i = 1; i < seq.length; i++) if (seq[i].w === seq[i - 1].w) { const j = seq.findIndex((x, k) => k > i && x.w !== seq[i].w && (k + 1 >= seq.length || seq[k + 1].w !== seq[i].w) && seq[k - 1].w !== seq[i].w); if (j > 0) { const t = seq[i]; seq[i] = seq[j]; seq[j] = t; } }
-  game = { n, seq, i: 0, res: [], mode, only: only || null, preset: pr ? pr.id : null, pmode: gameLevelOf(mode) };
+  game = { n, seq, i: 0, res: [], mode, only: only || null, preset: pr ? pr.id : null, pmode: level };
   state.picMode = true; picBtnSync();
   if (mode === 'write') { const v = document.getElementById('gameView'); if (v) v.remove(); gameTrial(); return; }
   gameView(); gameTrial();
@@ -17247,7 +18081,7 @@ function picSay(box, word) {
 function picBtnSync() { const b = document.getElementById('homePicBtn'); if (b) { const on = !!state.picMode || !!state.builderMode; b.classList.toggle('off', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); } }      // (red when ready to start; greyed while a game is going)
 function gameView() {
   let v = document.getElementById('gameView'); if (v) v.remove();
-  v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '') + (game && /^(sound|hear|match)$/.test(game.mode) ? ' gm-sound' : '') + (game && /^(hear|match)$/.test(game.mode) ? ' gm-snd1' : '');
+  v = document.createElement('div'); v.id = 'gameView'; v.className = 'game-view' + (game && game.mode === 'tiles' ? ' gm-tiles' : '') + (game && /^(sound|hear|match)$/.test(game.mode) ? ' gm-sound' : '') + (game && /^(hear|match)$/.test(game.mode) ? ' gm-snd1' : '') + (game && game.mode === 'qa' ? ' gm-qa' : '') + (game && /^(qatype|dict|copy)$/.test(game.mode) ? ' gm-type' : '');
   v.innerHTML = '<div class="gm-top"><div class="gm-bar" id="gmBar"></div><button class="gm-x" aria-label="Stop the game">×</button></div><div class="gm-pic" id="gmPic"></div><div class="gm-slots" id="gmSlots"></div><div class="gm-msg" id="gmMsg"></div><div class="gm-row" id="gmRow"></div>';
   v.querySelector('.gm-x').addEventListener('click', () => { if (confirm('Stop the picture game?')) gameOff(); });
   v.querySelector('#gmPic').addEventListener('click', e => { if (game && game.cur) picSay(e.currentTarget, game.cur.word); });
@@ -17268,6 +18102,8 @@ function gameTrial() {
   if (g.mode === 'tiles') { gameTilesTrial(); return; }
   if (g.mode === 'sound') { gameSoundTrial(); return; }
   if (g.mode === 'hear' || g.mode === 'match') { gameSnd1Trial(); return; }
+  if (g.mode === 'qa') { gameQaTrial(); return; }
+  if (g.mode === 'qatype' || g.mode === 'dict' || g.mode === 'copy') { gameTypeTrial(); return; }
   const s = g.seq[g.i], tile = s.w, pics = picOn(tile), pic = picRandomFor(tile, pics);
   const word = (pic && pic.label) || tile;
   g.cur = { word, tile, tries: 0, prompted: false };
@@ -18127,6 +18963,35 @@ const soundSpShow = sp => String(sp || '').replace(/-/g, '‑');      // (a-e wi
 // ===== Hear the sound / Match the spelling: one sound a turn. Their targets are spellings (sh, ea, igh ...), kept in their
 // own groups on the targets page as "sound|spelling" (ee|ea is the ea in eat). Hear: the sound (or its video) plays and
 // the spelling is found on the sound keyboard. Match: the spelling is shown and the same one is found on the keyboard.
+// ===== Categories > Things > Phonics > Graphemes: a tile for each spelling on the sound keyboard. A tile says its sound;
+// Practise starts Match the spelling with them (the spelling shown, found on the sound keyboard)
+// a long vowel spelled with its own letter (a in baby, e in me, i in find, o in go): shown with the long-vowel line on top (ā)
+function graphemeIsLong(key) { const t = tileParse(key); return 'aeiou'.includes(t.sp) && t.sp.length === 1 && SOUND_LONG.includes(t.id); }
+function sp0(t) { return t.sp + '\u0304'; }
+function graphemeShow(key) { const t = tileParse(key); return soundSpShow(t.sp) + (graphemeIsLong(key) ? '\u0304' : ''); }
+function graphemeKeys() { const seen = new Set(), out = [];
+  tileAll().forEach(({ key }) => { const t = tileParse(key), sp = graphemeIsLong(key) ? sp0(t) : t.sp; if (seen.has(sp)) return; seen.add(sp); out.push(key); });
+  const rank = sp => sp.replace(/-/g, '').length;
+  return out.sort((a, b) => { const x = tileParse(a).sp, y = tileParse(b).sp; return rank(x) - rank(y) || x.localeCompare(y) || graphemeIsLong(a) - graphemeIsLong(b); }); }
+function graphemeFolder() { return state.categories.find(c => c.graphemes) || null; }
+function graphemeLongAdd(f) { if (!f || f.gLongV1) return; f.gLongV1 = true; f.gtiles = f.gtiles || [];
+  graphemeKeys().filter(graphemeIsLong).forEach(k => { if (f.gtiles.includes(k)) return; const short = f.gtiles.findIndex(x => tileParse(x).sp === tileParse(k).sp && !graphemeIsLong(x)); f.gtiles.splice(short >= 0 ? short + 1 : f.gtiles.length, 0, k); }); }
+function graphemeTiles() { const f = graphemeFolder(); return f ? (f.gtiles || []) : []; }
+function phonicsSeed() {
+  if (state.phonicsSeedV1) return;
+  const things = state.categories.find(c => c.name.toLowerCase() === 'things' && c.parent && /^categories$/i.test(String((catById(c.parent) || {}).name || ''))); if (!things) return;
+  state.phonicsSeedV1 = true;
+  if (graphemeFolder()) return;
+  let ph = state.categories.find(c => c.parent === things.id && /^phonics$/i.test(String(c.name).trim()));
+  if (!ph) ph = addCategory('Phonics', things.id);
+  let gf = state.categories.find(c => c.parent === ph.id && /^graphemes$/i.test(String(c.name).trim()));
+  if (!gf) gf = addCategory('Graphemes', ph.id);
+  gf.graphemes = true; gf.gtiles = graphemeKeys(); gf.gLongV1 = true;
+}
+function graphemePractise(keys) {
+  const ks = (keys || []).filter(Boolean); if (!ks.length) return;
+  buzz(10); const n = ks.length === 1 ? 3 : Math.min(10, ks.length); const pick = ks.length > n ? ks.slice().sort(() => Math.random() - 0.5).slice(0, n) : ks; gameStart(n, 'match', pick);
+}
 function isTileGroup(g) { return /^(hear|match|sound match)/i.test(gKey(g)); }
 function tileParse(key) { const [id, sp] = String(key || '').split('|'); return { id, sp: sp || (SOUND_K[id] ? SOUND_K[id].label : id) }; }
 function tileEx(key) { const t = tileParse(key); for (const l of Object.keys(SOUND_TILES)) { const x = SOUND_TILES[l].find(([id, sp]) => id === t.id && sp === t.sp); if (x) return x[2]; } return (SOUND_K[t.id] || {}).ex || ''; }
@@ -18164,7 +19029,7 @@ function gameSnd1Trial() {
     card.classList.remove('saying'); void card.offsetWidth; card.classList.add('saying');
   };
   if (g.mode === 'hear') { card.innerHTML = '<span class="snd1-ear">🔊</span>'; }
-  else { const t = document.createElement('div'); t.className = 'snd1-sp'; t.textContent = soundSpShow(want.sp); card.appendChild(t); }
+  else { const t = document.createElement('div'); t.className = 'snd1-sp' + (graphemeIsLong(key) ? ' snd1-long' : ''); t.textContent = graphemeIsLong(key) ? graphemeShow(key) : soundSpShow(want.sp); card.appendChild(t); }
   card.addEventListener('click', e => { e.stopPropagation(); play(); });
   const cells = document.createElement('div'); cells.className = 'snd-cells'; cells.id = 'gmCells';
   const c0 = document.createElement('span'); c0.className = 'snd-cell next' + (soundIsVowel(want.id) ? ' v' : ' c'); c0.dataset.k = 0; cells.appendChild(c0); box.appendChild(cells);
@@ -18177,7 +19042,7 @@ function gameSnd1Trial() {
 }
 // which tap counts: Hear - any spelling of the sound (unless the group asks for this spelling); Match - the same spelling
 function snd1Ok(id, sp, want) {
-  if (game.mode === 'match') return sp === want.sp;
+  if (game.mode === 'match') return sp === want.sp && (!('aeiou'.includes(sp) && sp.length === 1) || (SOUND_LONG.includes(want.id) === SOUND_LONG.includes(id)));      // (a long vowel: the ā, not the a of at)
   if (game.mode === 'hear' && groupOpt(gameGroup(), 'anySpelling', true)) return want.alt.includes(id);
   return soundTileOk({ id, sp }, want);
 }
@@ -18409,7 +19274,7 @@ function gameTap(w, b) {
     b.classList.add('gm-right'); buzz([20, 80, 40]);
     try { warmSpeech(); sayAnyway = true; speakWord(c.word, 0.95); } catch (e) {} finally { sayAnyway = false; }
     gameStars(b);
-    state.gameLog = (state.gameLog || []).concat([{ t: Date.now(), word: c.word, tile: c.tile, res, tries: c.tries, fix: !!g.seq[g.i].fix, level: groupOpt(gameGroup(), 'picLevel', state.picLevel || 'easy') }]).slice(-3000);
+    state.gameLog = (state.gameLog || []).concat([Object.assign({ t: Date.now(), word: c.word, tile: c.tile, res, tries: c.tries, fix: !!g.seq[g.i].fix, level: groupOpt(gameGroup(), 'picLevel', state.picLevel || 'easy') }, g.mode === 'qa' ? { mode: 'qa', style: 'tap' } : {})]).slice(-3000);
     // a target got wrong comes back one or two turns later (once)
     if (c.tries > 0 && !g.seq[g.i].fix && groupOpt(gameGroup(), 'gameFix', true)) { const at = Math.min(g.seq.length, g.i + 1 + 1 + Math.floor(Math.random() * 2)); g.seq.splice(at, 0, { w: c.tile, fix: true }); }
     save(); gameBar();
@@ -18429,6 +19294,7 @@ function picTile(im) {
   if (!im || !im.naturalWidth || !im.isConnected) return;
   im.style.background = '';
   if (getComputedStyle(im).objectFit !== 'contain') return;      // (a picture set to fill, or the tiles game's cover: as it is)
+  if (im.classList.contains('qa-img')) return;      // (a question's picture stays one picture: "what is this?" with three of it would confuse)
   const bw = im.clientWidth, bh = im.clientHeight; if (!bw || !bh) return;
   const ir = im.naturalWidth / im.naturalHeight, br = bw / bh, url = 'url("' + String(im.currentSrc || im.src).replace(/"/g, '%22') + '")', veil = 'linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3))';
   if (ir < br * 0.88) im.style.background = veil + ', ' + url + ' center / auto 100% repeat-x';
@@ -18487,11 +19353,11 @@ function gameEnd() {
   try { masteryEvalAll(); save(); } catch (e) {}
   const g = game, first = g.res.filter(r => r.res === 'first').length, second = g.res.filter(r => r.res === 'second').length, pr = g.res.filter(r => r.res === 'prompted').length;
   const v = document.getElementById('gameView') || document.body; const pop = document.createElement('div'); pop.className = 'gm-pop';
-  const had = Math.max(0, +state.tokens || 0), kinds = g.res.map(r => r.res === 'first' ? 'g' : r.res === 'second' ? 'b' : 'y');
+  const had = Math.max(0, +state.tokens || 0), kinds0 = g.res.map(r => r.res === 'first' ? 'g' : r.res === 'second' ? 'b' : 'y'), kinds = g.pmode === 'hard' ? [].concat(...kinds0.map(k => [k, k])) : kinds0;      // (hard: double tokens - two for every turn)
   state.tokens = had + kinds.length;
   { const ts = state.tokenStats = state.tokenStats || {}; kinds.forEach(k => { ts[k] = (ts[k] || 0) + 1; }); ts.modes = ts.modes || {}; ts.modes[g.mode] = (ts.modes[g.mode] || 0) + kinds.length; ts.games = (ts.games || 0) + 1; }
   try { save(); } catch (e) {}
-  pop.innerHTML = '<div class="gm-card"><div class="gm-done">All ' + g.res.length + ' done!</div><div class="gm-tokens">' + kinds.map(k => '<span class="tok ' + k + '">\u2605</span>').join('') + '</div>'
+  pop.innerHTML = '<div class="gm-card"><div class="gm-done">All ' + g.res.length + ' done!</div>' + (g.pmode === 'hard' ? '<div class="gm-hard">\uD83D\uDD25 Hard mode: double tokens</div>' : '') + '<div class="gm-tokens">' + kinds.map(k => '<span class="tok ' + k + '">\u2605</span>').join('') + '</div>'
     + '<div class="gm-pile"><span class="stack"><span class="tok g">\u2605</span><span class="tok b">\u2605</span><span class="tok y">\u2605</span></span><span class="n">' + had + '</span><span class="lab">tokens</span></div>'
     + '<div class="gm-sum"><span class="g">' + first + ' first try</span><span class="b">' + second + ' second try</span><span class="y">' + pr + ' with help</span></div><button class="gm-again">▶ Play again</button><button class="gm-all">All done</button></div>';
   setTimeout(() => tokensPlay(pop, had), 250);
@@ -18502,7 +19368,7 @@ function gameEnd() {
     const card = pop.querySelector('.gm-card'); card.insertBefore(b, card.querySelector('.gm-again')); card.insertBefore(m, b);
     setTimeout(() => { if (pop.isConnected) b.click(); }, 900);
   }
-  [...pop.querySelectorAll('.gm-again')].filter(x => /Play again/.test(x.textContent)).forEach(x => x.addEventListener('click', () => { pop.remove(); if (psg && presetById(psg.id)) { const ws = presetPlayable(psg); if (presetMastered(psg).length || !ws.length) { gameOff(); presetPlay(psg); return; } gameStart(psg.turns || g.n, g.mode, ws, psg.id); } else gameStart(g.n, g.mode, g.only); }));
+  [...pop.querySelectorAll('.gm-again')].filter(x => /Play again/.test(x.textContent)).forEach(x => x.addEventListener('click', () => { pop.remove(); if (psg && presetById(psg.id)) { const ws = presetPlayable(psg); if (presetMastered(psg).length || !ws.length) { gameOff(); presetPlay(psg); return; } gameStart(psg.turns || g.n, g.mode, ws, psg.id, g.pmode); } else gameStart(g.n, g.mode, g.only, null, g.pmode); }));
   pop.querySelector('.gm-all').addEventListener('click', () => { if (!gamesHome) gamesHome = { layer: g.mode && GH_SHORT[g.mode] ? g.mode : 'types' }; gameOff(); showHome(); });
   v.appendChild(pop);
 }
@@ -18720,6 +19586,32 @@ function blueAutoOpen() {
   if (bar && bar.getAttribute('aria-expanded') !== 'true' && !sec.querySelector('.small-strip')) bar.click();
 }
 { let t = null; document.getElementById('suggHost').addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(blueAutoOpen, 120); }, { passive: true }); }
+// one grid of six at a time: a swipe moves on (or back) by one grid only - however hard it is flicked, it stops at the next
+// grid instead of flying past it to the last one (the scroll is brought back to the next grid once it settles)
+{ const host = document.getElementById('suggHost'); let from = null, settle = null;
+  const bands = () => [...host.querySelectorAll('.sugg-band')].filter(b => b.offsetParent && b.offsetHeight > 0);
+  const tops = () => bands().map(b => b.offsetTop - host.offsetTop - (host.firstElementChild ? host.firstElementChild.offsetTop - host.offsetTop : 0));
+  const nearest = (ts, y) => { let k = 0; ts.forEach((t, i) => { if (Math.abs(t - y) < Math.abs(ts[k] - y)) k = i; }); return k; };
+  const start = () => { if (from === null) { const ts = tops(); if (ts.length) from = nearest(ts, host.scrollTop); } };
+  ['touchstart', 'pointerdown', 'wheel'].forEach(ev => host.addEventListener(ev, start, { passive: true }));
+  const fix = () => {
+    const ts = tops(); if (from === null || ts.length < 3) { from = null; return; }
+    const at = nearest(ts, host.scrollTop), want = Math.max(from - 1, Math.min(from + 1, at));
+    const maxTop = host.scrollHeight - host.clientHeight, y = Math.min(ts[want], maxTop);
+    from = null;
+    if (want !== at && Math.abs(host.scrollTop - y) > 4) { host.style.scrollSnapType = 'none'; host.scrollTo({ top: y, behavior: 'smooth' }); setTimeout(() => { host.style.scrollSnapType = ''; }, 450); }
+  };
+  host.addEventListener('scroll', () => { clearTimeout(settle); settle = setTimeout(fix, 140); }, { passive: true });
+  // a swipe up or down turns exactly one grid, by itself (the page does not scroll freely: rows still slide sideways)
+  let ty0 = null, tx0 = 0, tFrom = 0, wheelAt = 0;
+  const pageTo = k => { const ts = tops(); if (!ts.length) return; k = Math.max(0, Math.min(ts.length - 1, k)); const y = Math.min(ts[k], host.scrollHeight - host.clientHeight); host.style.scrollSnapType = 'none'; host.scrollTo({ top: y, behavior: 'smooth' }); setTimeout(() => { host.style.scrollSnapType = ''; }, 500); };
+  host.addEventListener('touchstart', e => { if (!document.getElementById('viewHome').classList.contains('magic-full')) { ty0 = null; return; } const t = e.touches[0]; ty0 = t.clientY; tx0 = t.clientX; const ts = tops(); tFrom = ts.length ? nearest(ts, host.scrollTop) : 0; }, { passive: true });
+  host.addEventListener('touchend', e => { if (ty0 === null) return; const t = e.changedTouches[0], dy = ty0 - t.clientY, dx = tx0 - t.clientX; ty0 = null;
+    if (Math.abs(dy) > 30 && Math.abs(dy) > Math.abs(dx)) { from = null; pageTo(tFrom + (dy > 0 ? 1 : -1)); } }, { passive: true });
+  host.addEventListener('wheel', e => { if (!document.getElementById('viewHome').classList.contains('magic-full') || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return; e.preventDefault();
+    const now = Date.now(); if (now - wheelAt < 450) { wheelAt = now; return; } wheelAt = now; const ts = tops(); from = null; pageTo(nearest(ts, host.scrollTop) + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+  if ('onscrollend' in window) host.addEventListener('scrollend', () => { clearTimeout(settle); fix(); });
+}
 // A tile tapped again within three seconds of putting its word in the message does not add it a second time
 let tileAdd = null;      // { el, label, at, len }
 window.addEventListener('click', e => {
@@ -19487,7 +20379,7 @@ function promptSummary() {
   if (state.promptTextPulseOn) on.push('Word pulse');
   if (state.promptVerbalOn) on.push('Voice');
   if (state.otherKeysMode !== 'normal') on.push(OTHER_KEYS_LABELS[state.otherKeysMode]);
-  if (state.promptDelaySec > 0) on.push(state.promptDelaySec + 's wait');
+  if (state.kbPromptDelay) on.push(kbDelaySec() + 's keyboard wait');
   if (state.helpMode) on.push('On request');
   return on.length ? on.join(' · ') : 'None';
 }
@@ -19658,6 +20550,9 @@ function renderSettings() {
   document.getElementById('toggleMagic').classList.toggle('on', state.magicType);
   document.getElementById('toggleSuggestOn').classList.toggle('on', state.suggestOn !== false);
   document.getElementById('toggleMagicCols').classList.toggle('on', state.magicCols !== false);
+  try { buildSeg('segPromptStep', [3, 5, 7, 10, 15].map(v => ({ value: v, label: v + ' s' })), Math.max(3, Math.min(15, Number(state.promptStepSec) || 7)), v => { state.promptStepSec = v; save(); renderSettings(); }); } catch (e) {}
+  try { buildSeg('segTileCue', [{ value: 'fade', label: 'Fade' }, { value: 'rise', label: 'Rise' }, { value: 'glow', label: 'Glow' }, { value: 'flip', label: 'Turn' }, { value: 'off', label: 'Off' }], ['fade', 'rise', 'glow', 'flip', 'off'].includes(state.tileCue) ? state.tileCue : 'fade', v => { state.tileCue = v; save(); renderSettings(); }); } catch (e) {}
+  { const ts = document.getElementById('tagsSum'); if (ts) { const n = Object.keys(state.tags || {}).length; ts.textContent = (n ? n + ' tag' + (n === 1 ? '' : 's') + ' ' : '') + '\u203A'; } }
   document.getElementById('toggleChatMode').classList.toggle('on', !!state.chatMode);
   document.getElementById('toggleSoundOn').classList.toggle('on', state.soundOn !== false);
   document.getElementById('togglePlural').classList.toggle('on', state.pluralChip !== false);
@@ -19742,7 +20637,8 @@ function renderSettings() {
       : 'Off: prompts only ever fade.') + (lg.length ? ' So far: ' + lg.length + ' misses noted, ' + ups + ' step' + (ups === 1 ? '' : 's') + ' back up.' : ''); }
   document.getElementById('toggleRotate').classList.toggle('on', state.rotateMode);
   document.getElementById('togglePromptText').classList.toggle('on', state.promptTextOn !== false);
-  document.getElementById('togglePromptDelay').classList.toggle('on', state.promptDelaySec > 0);
+  document.getElementById('togglePromptDelay').classList.toggle('on', !!state.kbPromptDelay);
+  { const t = document.getElementById('toggleKbDelay'); if (t) t.classList.toggle('on', !!state.kbPromptDelay); const n = document.getElementById('kbDelayNote'); if (n) n.textContent = state.kbPromptDelay ? 'On: the target word is prompted straight away and the keyboard waits ' + kbDelaySec() + ' s (least to most: the keyboard stays a step behind the word, stepping up after ' + Math.round(ltmStepMs() / 1000) + ' s). The wait is set in Prompting > Wait before prompting.' : 'Off: the prompts in the target word and on the keyboard come almost together, straight away.'; }
   document.getElementById('fadeEveryVal').textContent = fadeN();
   buildSeg('segFadeCount', [{ value: 'letter', label: 'Letter typed' }, { value: 'word', label: 'Word typed' }], state.fadeCount, v => { state.fadeCount = v; fadeStreak = 0; save(); renderSettings(); });
   buildSeg('segFadeOrder', [{ value: 'last', label: 'Last letter' }, { value: 'first', label: 'First letter' }, { value: 'full', label: 'Full word' }], state.fadeOrder, v => { state.fadeOrder = v; save(); renderSettings(); });
@@ -20041,6 +20937,8 @@ document.getElementById('toggleMagic').addEventListener('click', () => {
   try { if (!state.magicType) hideMagic(); renderHome(true); } catch (e) {}
 });
 document.getElementById('toggleChatMode').addEventListener('click', () => { state.chatMode = !state.chatMode; save(); renderSettings(); try { renderHome(true); } catch (e) {} });
+document.getElementById('rateDataRow').addEventListener('click', () => { buzz(8); openRateData(); });
+document.getElementById('tagsRow').addEventListener('click', () => { buzz(8); openTagsManager(); });
 document.getElementById('toggleMagicCols').addEventListener('click', () => { state.magicCols = state.magicCols === false; save(); renderSettings(); try { const h = document.getElementById('suggHost'); if (h) h.dataset.sig = ''; suggRender(); } catch (e) {} });
 document.getElementById('toggleSuggestOn').addEventListener('click', () => { state.suggestOn = state.suggestOn === false; save(); renderSettings(); try { renderTypeSuggest(); } catch (e) {} });
 document.getElementById('toggleSoundOn').addEventListener('click', () => { document.getElementById('homeSoundBtn').click(); renderSettings(); });
@@ -20071,7 +20969,7 @@ document.getElementById('helpDelaySlider').addEventListener('input', e => {
   save();
 });
 document.getElementById('delaySlider').addEventListener('input', e => {
-  state.promptDelaySec = parseInt(e.target.value) || 0;
+  state.promptDelaySec = parseInt(e.target.value) || 0; state.kbPromptDelay = state.promptDelaySec > 0;
   document.getElementById('delayValue').textContent =
     state.promptDelaySec === 0 ? 'Off' : state.promptDelaySec + ' sec';
   document.getElementById('sumPrompts').textContent = promptSummary();
@@ -20124,8 +21022,10 @@ document.getElementById('voicePreviewBtn').addEventListener('click', testVoice);
 document.getElementById('voicePicker').addEventListener('change', () => setTimeout(testVoice, 50));
 document.getElementById('togglePromptText').addEventListener('click', () => { state.promptTextOn = state.promptTextOn === false; save(); render(); renderSettings(); });
 let promptDelayWas = 3;
+function kbDelaySec() { return state.kbPromptDelay ? Math.max(1, Math.min(10, state.promptDelaySec || promptDelayWas || 3)) : 0; }
+document.getElementById('toggleKbDelay').addEventListener('click', () => { state.kbPromptDelay = !state.kbPromptDelay; if (state.kbPromptDelay && !(state.promptDelaySec > 0)) state.promptDelaySec = promptDelayWas || 3; save(); armPrompt(); render(); renderSettings(); });
 document.getElementById('togglePromptDelay').addEventListener('click', () => {
-  if (state.promptDelaySec > 0) { promptDelayWas = state.promptDelaySec; state.promptDelaySec = 0; } else state.promptDelaySec = promptDelayWas || 3;
+  if (state.kbPromptDelay) { state.kbPromptDelay = false; } else { state.kbPromptDelay = true; if (!(state.promptDelaySec > 0)) state.promptDelaySec = promptDelayWas || 3; }
   save(); armPrompt(); render(); renderSettings();
 });
 document.getElementById('fadeLess').addEventListener('click', () => { state.fadeEvery = Math.max(1, fadeN() - 1); save(); renderSettings(); });
