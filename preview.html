@@ -566,6 +566,32 @@
   .home-card > .tile-pic.out { animation: tpOut 0.3s ease-in both; }
   @keyframes tpIn { from { transform: perspective(800px) rotateY(90deg); opacity: 0.4; } to { transform: perspective(800px) rotateY(0); opacity: 1; } }
   @keyframes tpOut { from { transform: perspective(800px) rotateY(0); opacity: 1; } to { transform: perspective(800px) rotateY(-90deg); opacity: 0.3; } }
+  .xg { position: fixed; inset: 0; z-index: 60; background: var(--bg, #b0b3b9); display: flex; flex-direction: column; padding: 14px 18px 18px; box-sizing: border-box; }
+  .xg-top { display: flex; align-items: center; gap: 12px; } .xg-bar { flex: 1; display: flex; gap: 6px; align-items: center; min-height: 44px; }
+  .xg-seg { flex: 1; height: 14px; border-radius: 99px; background: rgba(255,255,255,0.55); } .xg-seg.now { background: #fff; box-shadow: 0 0 0 3px #9dbdf5; } .xg-seg.g { background: #4cc764; } .xg-seg.b { background: #4d8df7; } .xg-seg.y { background: #f4b52a; }
+  .xg-x { width: 46px; height: 46px; border-radius: 50%; border: none; background: rgba(255,255,255,0.8); font-size: 30px; line-height: 1; cursor: pointer; }
+  .xg-body { flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0; margin-top: 12px; }
+  .cl-sky { position: relative; flex: 1; background: linear-gradient(#eaf3ff, #fff); border-radius: 28px; overflow: hidden; }
+  .cl-lines { position: absolute; inset: 0; width: 100%; height: 100%; } .cl-lines line { stroke: #9dbdf5; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 6 8; }
+  .cl-mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #2a78d6; color: #fff; font-weight: 900; font-size: clamp(26px, 4vw, 46px); padding: 16px 30px; border-radius: 999px; box-shadow: 0 8px 24px rgba(42,120,214,0.35); z-index: 2; }
+  .cl-word { position: absolute; transform: translate(-50%, -50%); background: #fff; border: 3px solid #9dbdf5; border-radius: 999px; padding: 10px 22px; font-weight: 900; font-size: clamp(20px, 2.8vw, 32px); z-index: 2; animation: clIn 0.5s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes clIn { from { transform: translate(-50%, -50%) scale(0.2); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+  .cl-row { display: flex; gap: 14px; overflow-x: auto; padding: 6px 2px 10px; scroll-snap-type: x mandatory; }
+  .cl-opt, .fi-tile { flex: none; min-width: 180px; min-height: 110px; background: #fff; border: none; border-radius: 22px; font: inherit; font-weight: 900; font-size: clamp(22px, 3vw, 34px); padding: 10px 22px; box-shadow: var(--shadow); cursor: pointer; scroll-snap-align: start; position: relative; }
+  .cl-opt:disabled { opacity: 0.45; } .cl-opt.no, .fi-tile.no { animation: xgNo 0.4s; } @keyframes xgNo { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+  .cl-opt.gp-2, .fi-tile.gp-2 { background: var(--prompt-light, #a9c8ff) !important; animation: gpSoft 1.6s ease-in-out infinite; } .cl-opt.gp-3, .fi-tile.gp-3 { background: var(--prompt-dark, #1e4f9e) !important; color: #fff; animation: gpStrong 1.2s ease-in-out infinite; }
+  .fi-want { display: flex; align-items: center; justify-content: center; gap: 18px; background: #fff; border-radius: 28px; padding: 18px; } .fi-word { font-weight: 900; font-size: clamp(40px, 7vw, 80px); }
+  .fi-say { border: none; background: #eef3fb; border-radius: 50%; width: 64px; height: 64px; font-size: 30px; cursor: pointer; }
+  .fi-crumb { font-weight: 900; font-size: 20px; color: #4a5160; padding: 0 6px; min-height: 26px; }
+  .fi-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); grid-auto-rows: 120px; gap: 14px; overflow-y: auto; align-content: start; }
+  .fi-tile { min-width: 0; width: 100%; } .fi-folder { background: #eef1f5; } .fi-back { background: rgba(255,255,255,0.6); font-size: 22px; } .fi-yes { background: #d3f0d7 !important; }
+  .st-coins { display: inline-flex; align-items: center; gap: 8px; font-weight: 900; font-size: 22px; background: #fff; border-radius: 999px; padding: 6px 16px; } .st-coins .tok, .st-price .tok, .st-msg .tok { width: 28px; height: 28px; font-size: 16px; }
+  .st-head { display: flex; align-items: center; justify-content: space-between; font-weight: 900; font-size: 30px; } .st-edit { border: none; background: rgba(255,255,255,0.7); border-radius: 14px; padding: 8px 16px; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; }
+  .st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; overflow-y: auto; align-content: start; flex: 1; }
+  .st-item { background: #fff; border: none; border-radius: 24px; box-shadow: var(--shadow); padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; font: inherit; cursor: pointer; }
+  .st-item.poor { opacity: 0.6; } .st-pic { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 64px; border-radius: 16px; overflow: hidden; background: #f5f6f8; } .st-pic img { width: 100%; height: 100%; object-fit: cover; }
+  .st-name { font-weight: 900; font-size: 22px; } .st-price { display: inline-flex; align-items: center; gap: 6px; font-weight: 900; font-size: 22px; }
+  .st-buy .st-pic { width: 200px; } .st-msg { font-weight: 800; font-size: 22px; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; } .st-btns { display: flex; gap: 12px; }
   .home-card.gr-play { background: #e8f0ff; } .home-card.gr-play .hw { color: #1e4f9e; }
   .home-card.gr-say { animation: cueGlow 0.6s ease-out; }
   .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -3725,7 +3751,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, links: {}, tileCue: 'fade', tilePicShow: 'off', askWho: true, ladder: null, wordHl: true, tilePlus: 'all', tileVideo: {}, promptStepSec: 7, kbPromptDelay: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, links: {}, tileCue: 'fade', store: null, tilePicShow: 'off', askWho: true, ladder: null, wordHl: true, tilePlus: 'all', tileVideo: {}, promptStepSec: 7, kbPromptDelay: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3903,7 +3929,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, links: (saved.links && typeof saved.links === 'object') ? saved.links : {}, tileCue: saved.tileCue || 'fade', tilePicShow: ['off', 'first', 'shuffle'].includes(saved.tilePicShow) ? saved.tilePicShow : 'off', askWho: saved.askWho !== false, ladder: (saved.ladder && typeof saved.ladder === 'object') ? saved.ladder : null, wordHl: saved.wordHl !== false, tilePlus: ['all', 'stuff', 'off'].includes(saved.tilePlus) ? saved.tilePlus : 'all', tileVideo: (saved.tileVideo && typeof saved.tileVideo === 'object') ? saved.tileVideo : {}, promptStepSec: Number(saved.promptStepSec) || 7, kbPromptDelay: !!saved.kbPromptDelay, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, links: (saved.links && typeof saved.links === 'object') ? saved.links : {}, tileCue: saved.tileCue || 'fade', store: (saved.store && typeof saved.store === 'object') ? saved.store : null, tilePicShow: ['off', 'first', 'shuffle'].includes(saved.tilePicShow) ? saved.tilePicShow : 'off', askWho: saved.askWho !== false, ladder: (saved.ladder && typeof saved.ladder === 'object') ? saved.ladder : null, wordHl: saved.wordHl !== false, tilePlus: ['all', 'stuff', 'off'].includes(saved.tilePlus) ? saved.tilePlus : 'all', tileVideo: (saved.tileVideo && typeof saved.tileVideo === 'object') ? saved.tileVideo : {}, promptStepSec: Number(saved.promptStepSec) || 7, kbPromptDelay: !!saved.kbPromptDelay, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4575,7 +4601,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, links: state.links || {}, tileCue: state.tileCue || 'fade', tilePicShow: state.tilePicShow || 'off', askWho: state.askWho !== false, ladder: state.ladder || null, wordHl: state.wordHl !== false, tilePlus: state.tilePlus || 'all', tileVideo: state.tileVideo || {}, promptStepSec: state.promptStepSec || 7, kbPromptDelay: !!state.kbPromptDelay, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, links: state.links || {}, tileCue: state.tileCue || 'fade', store: state.store || null, tilePicShow: state.tilePicShow || 'off', askWho: state.askWho !== false, ladder: state.ladder || null, wordHl: state.wordHl !== false, tilePlus: state.tilePlus || 'all', tileVideo: state.tileVideo || {}, promptStepSec: state.promptStepSec || 7, kbPromptDelay: !!state.kbPromptDelay, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -12637,7 +12663,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'links', 'tileCue', 'tilePicShow', 'askWho', 'ladder', 'wordHl', 'tilePlus', 'tileVideo', 'gameLevel', 'promptStepSec', 'kbPromptDelay',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'links', 'tileCue', 'store', 'tilePicShow', 'askWho', 'ladder', 'wordHl', 'tilePlus', 'tileVideo', 'gameLevel', 'promptStepSec', 'kbPromptDelay',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -17801,6 +17827,9 @@ function ghPaint() {
       const ps = presets().filter(p => p.mode === m).length, ready = practiceGroupWords(m).length;
       tile(ic, GH_SHORT[m], nm + ' · ' + (ps ? ps + ' game' + (ps === 1 ? '' : 's') : ready + ' ready'), () => { gamesHome = { layer: 'types', open: m }; renderHome(true); });
     });
+    tile('\u2601\uFE0F', 'Cloud', 'Word web \u00B7 what goes together', () => cloudSetup());
+    tile('\uD83E\uDDED', 'Find it', 'Find the word in its folders', () => findSetup());
+    tile('\uD83D\uDECD\uFE0F', 'Store', (state.tokens || 0) + ' tokens to spend', () => storeOpen(), 'gh-rew');
     tile('🏆', 'Rewards', (state.tokens || 0) + ' tokens · mastered', () => { gamesHome = { layer: 'rewards' }; renderHome(true); }, 'gh-rew');
     host.appendChild(grid); return;
   }
@@ -19671,6 +19700,164 @@ function tokSparks(el) {
     s.style.left = (r.left + r.width / 2 - 5) + 'px'; s.style.top = (r.top + r.height / 2 - 5) + 'px'; s.style.background = cols[k % cols.length];
     s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d + 'px'); document.body.appendChild(s); setTimeout(() => s.remove(), 800); }
 }
+// ===== More games: Cloud (what goes together), Find it (finding a word through its folders) and the Store =====
+// the end of one of these: tokens for each turn (first try, after a try, with help) added up as at the end of the other games
+function xgEnd(ov, title, kinds, again) {
+  const had = Math.max(0, +state.tokens || 0); state.tokens = had + kinds.length;
+  { const ts = state.tokenStats = state.tokenStats || {}; kinds.forEach(k => { ts[k] = (ts[k] || 0) + 1; }); ts.games = (ts.games || 0) + 1; } save();
+  const pop = document.createElement('div'); pop.className = 'gm-pop';
+  pop.innerHTML = '<div class="gm-card"><div class="gm-done"></div><div class="gm-tokens">' + kinds.map(k => '<span class="tok ' + k + '">★</span>').join('') + '</div>'
+    + '<div class="gm-pile"><span class="stack"><span class="tok g">★</span><span class="tok b">★</span><span class="tok y">★</span></span><span class="n">' + had + '</span><span class="lab">tokens</span></div>'
+    + '<button class="gm-again">▶ Play again</button><button class="gm-all">All done</button></div>';
+  pop.querySelector('.gm-done').textContent = title;
+  pop.querySelector('.gm-again').addEventListener('click', () => { pop.remove(); ov.remove(); again(); });
+  pop.querySelector('.gm-all').addEventListener('click', () => { pop.remove(); ov.remove(); gamesHome = { layer: 'types' }; renderHome(true); });
+  ov.appendChild(pop); setTimeout(() => tokensPlay(pop, had), 250);
+}
+function xgShell(title, onClose) { document.querySelectorAll('.xg').forEach(x => x.remove());
+  const ov = document.createElement('div'); ov.className = 'xg'; ov.innerHTML = '<div class="xg-top"><div class="xg-bar"></div><button class="xg-x" aria-label="Close">×</button></div><div class="xg-body"></div>';
+  ov.querySelector('.xg-x').addEventListener('click', () => { ov.remove(); if (onClose) onClose(); renderHome(true); }); document.body.appendChild(ov); return ov; }
+function xgBar(ov, n, i, res) { const b = ov.querySelector('.xg-bar'); b.innerHTML = ''; for (let k = 0; k < n; k++) { const s2 = document.createElement('span'); s2.className = 'xg-seg' + (k < i ? ' ' + (res[k] || 'g') : k === i ? ' now' : ''); b.appendChild(s2); } }
+function xgSay(w) { try { warmSpeech(); sayAnyway = true; speakWord(w, 0.95); } catch (e) {} finally { sayAnyway = false; } }
+const xgPath = c => { const a = []; let x = c, k = 0; while (x && k++ < 20) { a.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a; };
+// the sets of words for Cloud: each folder and each group of tiles with at least 4 words
+function cloudSets() { const out = [];
+  state.categories.filter(c => !c.target && !c.hidden && !c.smallSec && !c.graphemes).forEach(c => {
+    const ws = (c.words || []).filter(w => !state.hiddenWords[w] && !isPunct(w)); const gs = listGroups(c).filter(g => !g.hidden && (g.words || []).length >= 4);
+    const loose = ws.filter(w => !gs.some(g => g.words.includes(w))); if (loose.length >= 4 || (ws.length >= 4 && !gs.length)) out.push({ key: 'c' + c.id, name: c.name, path: xgPath(c).slice(-3).join(' › '), words: gs.length ? loose : ws });
+    gs.forEach(g => out.push({ key: 'g' + c.id + '_' + g.id, name: g.name, path: xgPath(c).slice(-2).join(' › ') + ' › ' + g.name, words: g.words.filter(w => !state.hiddenWords[w]) })); });
+  return out; }
+function cloudSetup() { const sets = cloudSets(); let pickN = (state.cloudN || 3), sel = null;
+  openWordSheet(body => {
+    sheetTitle(body, '☁️ Cloud', 'What goes together');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 4px 10px'; n.textContent = 'The name of a group is in the middle. Choose the word that goes with it from the row of choices - each one found joins the cloud around it.'; body.appendChild(n);
+    const l1 = document.createElement('div'); l1.className = 'sublabel'; l1.textContent = 'Choices in the row'; body.appendChild(l1);
+    const seg = document.createElement('div'); seg.className = 'tune-chips'; body.appendChild(seg);
+    const segP = () => { seg.innerHTML = ''; [3, 4, 5, 6, 7, 8, 9].forEach(k => { const b = document.createElement('button'); b.className = 'tune-chip' + (k === pickN ? ' on' : ''); b.textContent = k; b.addEventListener('click', () => { pickN = k; state.cloudN = k; save(); segP(); }); seg.appendChild(b); }); }; segP();
+    const l2 = document.createElement('div'); l2.className = 'sublabel'; l2.textContent = 'The group to practise'; body.appendChild(l2);
+    const list = document.createElement('div'); list.style.cssText = 'max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;'; body.appendChild(list);
+    sets.forEach(st => { const b = document.createElement('button'); b.className = 'pick-row'; b.style.textAlign = 'left'; b.textContent = '☁️ ' + st.path + '   · ' + st.words.length;
+      b.addEventListener('click', () => { closeWordSheet(); cloudPlay(st, pickN); }); list.appendChild(b); });
+    if (!sets.length) { const e = document.createElement('div'); e.className = 'help-note'; e.textContent = 'No folders or groups with 4 or more words yet.'; list.appendChild(e); }
+    body.appendChild(sheetBtn('Cancel', '', () => closeWordSheet()));
+  }); }
+function cloudPlay(st, nChoice) {
+  const others = [...new Set([].concat(...cloudSets().filter(x => x.key !== st.key).map(x => x.words)))].filter(w => !st.words.includes(w));
+  const goal = Math.min(8, st.words.length), order = st.words.slice().sort(() => Math.random() - 0.5).slice(0, goal);
+  const ov = xgShell('Cloud'), body = ov.querySelector('.xg-body'); body.innerHTML = '<div class="cl-sky"><svg class="cl-lines"></svg><div class="cl-mid"></div></div><div class="cl-row"></div>';
+  const sky = body.querySelector('.cl-sky'), mid = body.querySelector('.cl-mid'), row = body.querySelector('.cl-row'), svg = body.querySelector('.cl-lines'); mid.textContent = st.name.toLowerCase();
+  const res = []; let i = 0, wrong = 0;
+  const spot = k => { const a = -Math.PI / 2 + k * (Math.PI * 2 / Math.max(goal, 5)), rx = 36, ry = 34; return [50 + Math.cos(a) * rx, 50 + Math.sin(a) * ry]; };
+  const turn = () => { xgBar(ov, goal, i, res); if (i >= goal) { setTimeout(() => xgEnd(ov, 'Cloud done: ' + st.name.toLowerCase() + '!', res, () => cloudPlay(st, nChoice)), 900); return; }
+    wrong = 0; const want = order[i], pool = others.slice().sort(() => Math.random() - 0.5).slice(0, Math.max(2, nChoice - 1));
+    const opts = pool.concat([want]).sort(() => Math.random() - 0.5); row.innerHTML = '';
+    opts.forEach(w => { const b = document.createElement('button'); b.className = 'cl-opt'; b.textContent = plainLabel(w).toLowerCase(); b.dataset.w = w;
+      b.addEventListener('click', () => { if (b.disabled) return;
+        if (w === want) { buzz(15); xgSay(w); res.push(wrong ? (wrong > 1 ? 'y' : 'b') : 'g'); row.querySelectorAll('.cl-opt').forEach(x => x.disabled = true);
+          const [x, y] = spot(i), r = b.getBoundingClientRect(), sr = sky.getBoundingClientRect(), node = document.createElement('div'); node.className = 'cl-word'; node.textContent = b.textContent;
+          node.style.left = x + '%'; node.style.top = y + '%'; sky.appendChild(node);
+          const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line'); ln.setAttribute('x1', '50%'); ln.setAttribute('y1', '50%'); ln.setAttribute('x2', x + '%'); ln.setAttribute('y2', y + '%'); svg.appendChild(ln);
+          void r; void sr; i++; setTimeout(turn, 700); }
+        else { buzz([30, 40, 30]); wrong++; b.classList.remove('no'); void b.offsetWidth; b.classList.add('no'); b.disabled = true;
+          const ok = row.querySelector('.cl-opt[data-w="' + CSS.escape(want) + '"]'); if (ok) { ok.classList.remove('gp-1', 'gp-2', 'gp-3'); ok.classList.add(wrong > 1 ? 'gp-3' : 'gp-2'); } } });
+      row.appendChild(b); });
+    xgSay(st.name); };
+  turn(); }
+// Find it: a word in the window; find it by going into its folders (Food, then Drinks, then milk)
+function findTargets(roots) { const out = [];
+  const walk = (c, path) => { if (!c || c.hidden || c.target || c.smallSec || c.graphemes) return; const p2 = path.concat([{ cat: c.id }]);
+    const gs = listGroups(c).filter(g => !g.hidden); (c.words || []).filter(w => !state.hiddenWords[w] && !isPunct(w)).forEach(w => { const g = gs.find(x => (x.words || []).includes(w)); const p3 = g ? p2.concat([{ cat: c.id, group: g.id }]) : p2; if (p3.length >= 2) out.push({ w, path: p3 }); });
+    childrenOf(c.id).forEach(ch => walk(ch, p2)); };
+  roots.forEach(r => childrenOf(r.id).forEach(ch => walk(ch, []))); return out; }
+function findSetup() { const tops = childrenOf(null).filter(c => !c.target && !c.hidden && !c.smallSec && childrenOf(c.id).length); const pick = new Set(tops.filter(c => /categor/i.test(c.name)).map(c => c.id)); if (!pick.size && tops[0]) pick.add(tops[0].id); let turns = state.findTurns || 5;
+  openWordSheet(body => {
+    sheetTitle(body, '🧭 Find it', 'Find the word in its folders');
+    const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '2px 4px 10px'; n.textContent = 'A word is shown at the top. Read the folder names and go into the one it belongs in, then the next, until you find the word (milk: Food, then Drinks, then milk).'; body.appendChild(n);
+    const l1 = document.createElement('div'); l1.className = 'sublabel'; l1.textContent = 'Words from'; body.appendChild(l1);
+    const ch = document.createElement('div'); ch.className = 'tune-chips'; ch.style.flexWrap = 'wrap'; body.appendChild(ch);
+    const chP = () => { ch.innerHTML = ''; tops.forEach(c => { const b = document.createElement('button'); b.className = 'tune-chip' + (pick.has(c.id) ? ' on' : ''); b.textContent = c.name; b.addEventListener('click', () => { if (pick.has(c.id)) pick.delete(c.id); else pick.add(c.id); chP(); }); ch.appendChild(b); }); }; chP();
+    const l2 = document.createElement('div'); l2.className = 'sublabel'; l2.textContent = 'Turns'; body.appendChild(l2);
+    const tr = document.createElement('div'); tr.className = 'tune-chips'; body.appendChild(tr);
+    const trP = () => { tr.innerHTML = ''; [3, 5, 8, 10].forEach(k => { const b = document.createElement('button'); b.className = 'tune-chip' + (k === turns ? ' on' : ''); b.textContent = k; b.addEventListener('click', () => { turns = k; state.findTurns = k; save(); trP(); }); tr.appendChild(b); }); }; trP();
+    body.appendChild(sheetBtn('▶ Start', 'primary', () => { const ts = findTargets(tops.filter(c => pick.has(c.id))); if (!ts.length) { alert('No words inside folders there yet.'); return; } closeWordSheet(); findPlay(ts, turns, tops.filter(c => pick.has(c.id))); }));
+    body.appendChild(sheetBtn('Cancel', '', () => closeWordSheet()));
+  }); }
+function findPlay(all, turns, roots) {
+  const seq = all.slice().sort(() => Math.random() - 0.5).slice(0, turns), n = seq.length, res = [];
+  const ov = xgShell('Find it'), body = ov.querySelector('.xg-body'); body.innerHTML = '<div class="fi-want"><button class="fi-say">🔊</button><span class="fi-word"></span></div><div class="fi-crumb"></div><div class="fi-grid"></div>';
+  const wantEl = body.querySelector('.fi-word'), crumb = body.querySelector('.fi-crumb'), grid = body.querySelector('.fi-grid');
+  let i = 0, at = null, wrong = 0;
+  body.querySelector('.fi-say').addEventListener('click', () => xgSay(seq[i] && seq[i].w));
+  const onPath = step => { const t = seq[i]; return t.path.find(p => (step.group != null ? p.group === step.group && p.cat === step.cat : p.cat === step.cat && p.group == null)); };
+  const nextStep = () => { const t = seq[i], k = at ? t.path.findIndex(p => p.cat === at.cat && (p.group == null) === (at.group == null) && (at.group == null || p.group === at.group)) : -1; return t.path[k + 1] || null; };
+  const draw = () => { grid.innerHTML = ''; const t = seq[i];
+    const here = at ? catById(at.cat) : null, g = here && at.group != null ? listGroups(here).find(x => x.id === at.group) : null;
+    const chainNames = c => { const a2 = []; let x = c, k = 0; while (x && k++ < 20 && !roots.some(r => r.id === x.id)) { a2.unshift(x.name); x = x.parent ? catById(x.parent) : null; } return a2; };
+    crumb.textContent = at ? chainNames(here).concat(g ? [g.name] : []).join(' \u203A ') : 'Choose a folder';
+    if (at) { const back = document.createElement('button'); back.className = 'fi-tile fi-back'; back.textContent = '‹ back'; back.addEventListener('click', () => { buzz(8); const k = at.group != null ? { cat: at.cat } : (here.parent && !roots.some(r => r.id === here.parent) ? { cat: here.parent } : null); at = k; draw(); }); grid.appendChild(back); }
+    const items = [];
+    if (!at) roots.forEach(r => childrenOf(r.id).filter(c => !c.hidden && !c.target && !c.smallSec && !c.graphemes).forEach(c => items.push({ kind: 'f', step: { cat: c.id }, label: c.name })));
+    else if (g) (g.words || []).filter(w => !state.hiddenWords[w]).forEach(w => items.push({ kind: 'w', w, label: plainLabel(w) }));
+    else { childrenOf(here.id).filter(c => !c.hidden && !c.graphemes).forEach(c => items.push({ kind: 'f', step: { cat: c.id }, label: c.name }));
+      const gs = listGroups(here).filter(x => !x.hidden); gs.forEach(x => items.push({ kind: 'f', step: { cat: here.id, group: x.id }, label: x.name }));
+      (here.words || []).filter(w => !state.hiddenWords[w] && !gs.some(x => (x.words || []).includes(w))).forEach(w => items.push({ kind: 'w', w, label: plainLabel(w) })); }
+    const ns = nextStep();
+    items.forEach(it => { const b = document.createElement('button'); b.className = 'fi-tile' + (it.kind === 'f' ? ' fi-folder' : ''); b.textContent = it.kind === 'f' ? '📁 ' + it.label : it.label.toLowerCase();
+      const right = it.kind === 'f' ? !!(ns && ns.cat === it.step.cat && (ns.group == null) === (it.step.group == null) && (ns.group == null || ns.group === it.step.group)) : (it.w === t.w && !ns);
+      if (right && wrong) b.classList.add(wrong > 1 ? 'gp-3' : 'gp-2');
+      b.addEventListener('click', () => { if (right) { buzz(12); if (it.kind === 'f') { at = it.step; xgSay(it.label); draw(); } else { xgSay(it.w); res.push(wrong ? (wrong > 1 ? 'y' : 'b') : 'g'); i++; b.classList.add('fi-yes'); setTimeout(turn, 800); } }
+        else { buzz([30, 40, 30]); wrong++; b.classList.remove('no'); void b.offsetWidth; b.classList.add('no'); setTimeout(draw, 450); } });
+      grid.appendChild(b); }); };
+  const turn = () => { xgBar(ov, n, i, res); if (i >= n) { xgEnd(ov, 'Found them all!', res, () => findPlay(all, turns, roots)); return; } at = null; wrong = 0; wantEl.textContent = plainLabel(seq[i].w).toLowerCase(); xgSay(seq[i].w); draw(); };
+  void onPath; turn(); }
+// the Store: things to buy with tokens - each with a name, a picture and a price; an adult adds them (✏️)
+function storeCfg() { const S = state.store = state.store || {}; S.items = S.items || []; S.bought = S.bought || []; return S; }
+function storeOpen() { const S = storeCfg(); const ov = xgShell('Store'), body = ov.querySelector('.xg-body');
+  const paint = () => { body.innerHTML = ''; ov.querySelector('.xg-bar').innerHTML = '<span class="st-coins">' + ghTok('y') + ' <b>' + (state.tokens || 0) + '</b> tokens</span>';
+    const head = document.createElement('div'); head.className = 'st-head'; head.innerHTML = '<span>🛍️ Store</span>'; const ed = document.createElement('button'); ed.className = 'st-edit'; ed.textContent = '✏️ Edit'; ed.addEventListener('click', () => storeEdit(paint)); head.appendChild(ed); body.appendChild(head);
+    const grid = document.createElement('div'); grid.className = 'st-grid'; body.appendChild(grid);
+    if (!S.items.length) { const e = document.createElement('div'); e.className = 'help-note'; e.style.fontSize = '18px'; e.textContent = 'Nothing in the store yet. Tap ✏️ Edit to add things to buy (a name, a picture and a price in tokens).'; grid.appendChild(e); }
+    S.items.forEach(it => { const c = document.createElement('button'); c.className = 'st-item' + ((state.tokens || 0) < it.price ? ' poor' : '');
+      c.innerHTML = '<span class="st-pic"></span><span class="st-name"></span><span class="st-price">' + ghTok('y') + ' <b></b></span>';
+      if (it.pic) { const im = document.createElement('img'); im.src = it.pic; im.alt = ''; c.querySelector('.st-pic').appendChild(im); } else c.querySelector('.st-pic').textContent = '🎁';
+      c.querySelector('.st-name').textContent = it.name; c.querySelector('.st-price b').textContent = it.price;
+      c.addEventListener('click', () => storeBuy(it, paint)); grid.appendChild(c); }); };
+  paint(); }
+function storeBuy(it, paint) { const have = state.tokens || 0;
+  const pop = document.createElement('div'); pop.className = 'gm-pop'; pop.innerHTML = '<div class="gm-card st-buy"><span class="st-pic"></span><div class="gm-done"></div><div class="st-msg"></div><div class="st-btns"></div></div>';
+  const card = pop.querySelector('.gm-card'); if (it.pic) { const im = document.createElement('img'); im.src = it.pic; card.querySelector('.st-pic').appendChild(im); } else card.querySelector('.st-pic').textContent = '🎁';
+  card.querySelector('.gm-done').textContent = it.name; const msg = card.querySelector('.st-msg'), btns = card.querySelector('.st-btns');
+  const close = () => pop.remove();
+  if (have >= it.price) { msg.innerHTML = 'Buy it for ' + ghTok('y') + ' <b>' + it.price + '</b>?';
+    const yes = document.createElement('button'); yes.className = 'gm-again'; yes.textContent = '🛒 Buy it'; yes.addEventListener('click', () => { state.tokens = have - it.price; storeCfg().bought.unshift({ id: it.id, name: it.name, price: it.price, t: Date.now() }); save(); buzz([20, 60, 30]);
+      try { tokSparks(card); tokNote(523, 0, 0.09); setTimeout(() => tokNote(659, 0, 0.09), 120); setTimeout(() => tokNote(784, 0, 0.09), 240); } catch (e) {}
+      msg.innerHTML = '🎉 You bought it! ' + ghTok('y') + ' <b>' + state.tokens + '</b> left'; btns.innerHTML = ''; const ok = document.createElement('button'); ok.className = 'gm-all'; ok.textContent = 'Yay!'; ok.addEventListener('click', () => { close(); paint(); }); btns.appendChild(ok); });
+    const no = document.createElement('button'); no.className = 'gm-all'; no.textContent = 'Not now'; no.addEventListener('click', close); btns.appendChild(yes); btns.appendChild(no); }
+  else { msg.innerHTML = ghTok('y') + ' <b>' + (it.price - have) + '</b> more tokens to get this. Keep playing!'; const ok = document.createElement('button'); ok.className = 'gm-all'; ok.textContent = 'OK'; ok.addEventListener('click', close); btns.appendChild(ok); }
+  document.querySelector('.xg').appendChild(pop); }
+function storeShrink(file) { return new Promise((res, rej) => { const img = new Image(), u = URL.createObjectURL(file); img.onload = () => { const M = 360, k = Math.min(1, M / Math.max(img.width, img.height)), cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(u); res(cv.toDataURL('image/jpeg', 0.82)); }; img.onerror = () => { URL.revokeObjectURL(u); rej(new Error('That file is not a picture this iPad can open.')); }; img.src = u; }); }
+function storeEdit(back, edit) { const S = storeCfg();
+  openWordSheet(body => {
+    if (edit !== undefined) { const it = edit || { id: 'si' + Date.now().toString(36), name: '', price: 10, pic: '' }, isNew = !edit;
+      sheetTitle(body, isNew ? 'Something new for the store' : 'This item');
+      const lab = t => { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = t; body.appendChild(l); };
+      lab('Name'); const nm = document.createElement('input'); nm.value = it.name; nm.placeholder = 'e.g. iPad time, sticker, bubbles'; nm.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:20px;font-weight:700;padding:12px 14px;border-radius:14px;border:2px solid #dfe2e7;'; body.appendChild(nm);
+      lab('Price in tokens'); const pr = document.createElement('div'); pr.className = 'tune-chips'; pr.style.flexWrap = 'wrap'; body.appendChild(pr); let price = it.price;
+      const prP = () => { pr.innerHTML = ''; [5, 10, 15, 20, 30, 50, 75, 100].forEach(k => { const b = document.createElement('button'); b.className = 'tune-chip' + (k === price ? ' on' : ''); b.textContent = k; b.addEventListener('click', () => { price = k; prP(); }); pr.appendChild(b); });
+        const o = document.createElement('button'); o.className = 'tune-chip' + ([5, 10, 15, 20, 30, 50, 75, 100].includes(price) ? '' : ' on'); o.textContent = [5, 10, 15, 20, 30, 50, 75, 100].includes(price) ? 'other' : price; o.addEventListener('click', () => { const v = parseInt(prompt('Price in tokens', price), 10); if (v > 0) { price = v; prP(); } }); pr.appendChild(o); }; prP();
+      lab('Picture'); const pv = document.createElement('div'); pv.className = 'qa-pv'; body.appendChild(pv); let pic = it.pic;
+      const pvP = () => { pv.innerHTML = ''; if (pic) { const im = document.createElement('img'); im.src = pic; pv.appendChild(im); } }; pvP();
+      body.appendChild(sheetBtn('🖼️  Choose a picture', '', () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.style.display = 'none'; document.body.appendChild(inp); inp.onchange = async () => { const f = inp.files && inp.files[0]; inp.remove(); if (!f) return; try { pic = await storeShrink(f); pvP(); } catch (e) { alert(e.message); } }; inp.click(); }));
+      body.appendChild(sheetBtn('Save', 'primary', () => { const n2 = nm.value.trim(); if (!n2) { alert('Give it a name.'); return; } Object.assign(it, { name: n2, price, pic }); if (isNew) S.items.push(it); save(); storeEdit(back); }));
+      if (!isNew) body.appendChild(sheetBtn('Take it out of the store', 'danger', () => { if (!confirm('Take "' + it.name + '" out of the store?')) return; S.items = S.items.filter(x => x !== it); save(); storeEdit(back); }));
+      body.appendChild(sheetBtn('Back', '', () => storeEdit(back))); return; }
+    sheetTitle(body, '✏️ The store');
+    S.items.forEach(it => body.appendChild(sheetBtn(it.name + '   · ' + it.price + ' tokens', '', () => storeEdit(back, it))));
+    body.appendChild(sheetBtn('+ Add something to buy', '', () => storeEdit(back, null)));
+    if (S.bought.length) { const l = document.createElement('div'); l.className = 'sublabel'; l.textContent = 'Bought'; body.appendChild(l); const n = document.createElement('div'); n.className = 'help-note'; n.style.margin = '0 4px 8px';
+      n.textContent = S.bought.slice(0, 12).map(b => b.name + ' (' + b.price + ') ' + new Date(b.t).toLocaleDateString()).join('  ·  '); body.appendChild(n); }
+    body.appendChild(sheetBtn('Done', 'primary', () => { closeWordSheet(); if (back) back(); }));
+  }); }
 function gameEnd() {
   try { masteryEvalAll(); save(); } catch (e) {}
   const g = game, first = g.res.filter(r => r.res === 'first').length, second = g.res.filter(r => r.res === 'second').length, pr = g.res.filter(r => r.res === 'prompted').length;
