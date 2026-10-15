@@ -552,6 +552,20 @@
   .lad-hint { border-color: #cfd3da !important; color: #8a909b !important; pointer-events: none; }
   .lad-lv.on { background: #e8f0ff !important; color: #1e4f9e !important; }
   .howto-steps { margin: 6px 4px 8px 26px; padding: 0; font-weight: 700; font-size: 17px; line-height: 1.4; } .howto-steps li { margin-bottom: 8px; }
+  .home-build { position: fixed; right: 12px; bottom: 3px; font-size: 11px; font-weight: 800; color: rgba(0,0,0,0.32); pointer-events: none; z-index: 1; }
+  .view-home:not(.active) .home-build { display: none; }
+  .who-pop { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 700; background: #fff; border-radius: 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.28); padding: 16px 18px 12px; width: min(620px, 92vw); text-align: center; overflow: hidden; animation: whoIn 0.3s ease-out; } @keyframes whoIn { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .who-q { font-weight: 900; font-size: 20px; margin-bottom: 10px; } .who-btns { display: flex; gap: 10px; }
+  .who-btn { flex: 1; border: 3px solid #e3e6ea; background: #f8f9fb; border-radius: 16px; padding: 10px 6px; font: inherit; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+  .who-btn .ic { font-size: 30px; } .who-btn b { font-size: 17px; } .who-btn small { font-size: 14px; font-weight: 700; color: #6b7280; }
+  .who-btn.who-learner { border-color: #9dd8a7; background: #eefaf0; }
+  .who-quiet { margin-top: 8px; border: none; background: none; font: inherit; font-size: 14px; font-weight: 800; color: #8a909b; cursor: pointer; }
+  .who-bar { position: absolute; left: 0; bottom: 0; height: 4px; background: #9dd8a7; animation: whoBar 9s linear forwards; } @keyframes whoBar { from { width: 100%; } to { width: 0; } }
+  .home-card > .tile-pic { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; background: #fff; z-index: 2; pointer-events: none; animation: tpIn 0.38s ease-out both; backface-visibility: hidden; }
+  .home-card > .tile-pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .home-card > .tile-pic.out { animation: tpOut 0.3s ease-in both; }
+  @keyframes tpIn { from { transform: perspective(800px) rotateY(90deg); opacity: 0.4; } to { transform: perspective(800px) rotateY(0); opacity: 1; } }
+  @keyframes tpOut { from { transform: perspective(800px) rotateY(0); opacity: 1; } to { transform: perspective(800px) rotateY(-90deg); opacity: 0.3; } }
   .home-card.gr-play { background: #e8f0ff; } .home-card.gr-play .hw { color: #1e4f9e; }
   .home-card.gr-say { animation: cueGlow 0.6s ease-out; }
   .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -3101,6 +3115,7 @@
       <div class="sgroup-body">
         <div class="settings-list">
           <div class="setting-row"><span>Collect data (prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+          <div class="setting-row"><span>&#129490; Ask who made each message (learner or adult)</span><div class="toggle" id="toggleAskWho"></div></div>
           <div class="setting-row" id="ladderRow" style="cursor:pointer"><span>&#129692; Skill ladder (Type-to-Speak)</span><span id="ladderSum" style="color:var(--muted);font-weight:800">&#8250;</span></div>
           <div class="setting-row" id="rateDataRow" style="cursor:pointer"><span>&#128200; View progress</span><span style="color:var(--muted);font-weight:800">&#8250;</span></div>
         </div>
@@ -3265,6 +3280,7 @@
         <div class="sublabel">When new suggested tiles come up</div>
         <div class="settings-list"><div class="setting-row"><span>How they show they are new</span><div class="seg" id="segTileCue"></div></div></div>
         <div class="settings-list"><div class="setting-row"><span>Colour behind each kind of word (green, grey, purple)</span><div class="toggle" id="toggleWordHl"></div></div></div>
+        <div class="settings-list"><div class="setting-row"><span>A chosen tile turns into its picture</span><div class="seg" id="segTilePic"></div></div></div>
         <div class="help-note" style="margin:6px 4px 12px">Off: the suggested tiles keep their rows and columns by kind of word, without the coloured highlight behind the words. Folders keep their grey.</div>
 
         <div class="sublabel">Tags: tiles and folders that go together</div>
@@ -3458,7 +3474,7 @@
       <button class="mbtn action primary" data-action="cancel" style="grid-column: span 2;">Done</button>
     </div>
     <div style="display:none"><div class="phoneme-grid" id="phonemeGrid"></div><button id="resetAll"></button><button id="endSessionBtn"></button></div>
-    <div class="build-stamp" id="buildStamp"></div>
+
   </div>
 </div>
 
@@ -3492,7 +3508,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 640 - 14 Oct';
+const BUILD = 'build 641 - 15 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -3709,7 +3725,7 @@ const state = {
   barV2: true,                // marks saves made since the strip became folded by default
   kbRailOpen: false,          // the same strip on the keyboard page, closed by default
   settingsOrder: [],          // the order the settings sections sit in
-  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, links: {}, tileCue: 'fade', ladder: null, wordHl: true, tilePlus: 'all', tileVideo: {}, promptStepSec: 7, kbPromptDelay: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
+  letterFade: {}, letterStreak: {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: [], trialLog: [], picSightV1: false, picAnswer: 'write', picLevel: 'easy', soundSplits: {}, mastery: {}, soundSpeak: {}, gamePresets: [], picOrder: {}, wordSay: {}, soundKeysOn: false, soundStage: 3, tokens: 0, tokenStats: {}, gameLevel: {}, gameFade: {}, tags: {}, links: {}, tileCue: 'fade', tilePicShow: 'off', askWho: true, ladder: null, wordHl: true, tilePlus: 'all', tileVideo: {}, promptStepSec: 7, kbPromptDelay: false, respLog: [], dataCtx: { who: '', where: '' }, dataPeople: [], dataPlaces: [], spellFade: { lv: 0, streak: 0, watch: 0 }, gamesOn: { sight: true, write: true, tiles: true, sound: true, builder: false }, promptBack: true, promptMiss: {}, promptMissLog: [],
   promptTextOn: true, fadeEvery: 3, fadeCount: 'word', fadeOrder: 'last', dataCollect: {},
   magicType: true,            // offer whole-phrase suggestions on tap
   categories: [],             // [{id,name,color,parent,words:[],rule,hidden,order}]
@@ -3887,7 +3903,7 @@ async function load() {
         smallRowsOn: saved.smallRowsOn ?? true,
         bandCfg: saved.bandCfg || null, magicOffCat: saved.magicOffCat || {}, magicOffWord: saved.magicOffWord || {}, magicActAfterThing: saved.magicActAfterThing !== false, magicCols: saved.magicCols !== false, seqOn: saved.seqOn !== false, endCfg: saved.endCfg || null, voicePack: saved.voicePack || null, magicPrio: saved.magicPrio || {}, coUse: saved.coUse || {},
         smallRowsFold: saved.smallRowsFold ?? true,
-        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, links: (saved.links && typeof saved.links === 'object') ? saved.links : {}, tileCue: saved.tileCue || 'fade', ladder: (saved.ladder && typeof saved.ladder === 'object') ? saved.ladder : null, wordHl: saved.wordHl !== false, tilePlus: ['all', 'stuff', 'off'].includes(saved.tilePlus) ? saved.tilePlus : 'all', tileVideo: (saved.tileVideo && typeof saved.tileVideo === 'object') ? saved.tileVideo : {}, promptStepSec: Number(saved.promptStepSec) || 7, kbPromptDelay: !!saved.kbPromptDelay, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
+        letterFade: (() => { const f = Object.assign({}, saved.letterFade || {}); if (!saved.fadeV3) Object.keys(f).forEach(L => { if ((f[L] || 0) >= 6) f[L] = 8; }); return f; })(), letterStreak: saved.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: Array.isArray(saved.gameLog) ? saved.gameLog : [], trialLog: Array.isArray(saved.trialLog) ? saved.trialLog : [], picSightV1: !!saved.picSightV1, picAnswer: saved.picAnswer === 'choose' ? 'choose' : 'write', picLevel: saved.picLevel === 'hard' ? 'hard' : 'easy', soundSplits: saved.soundSplits || {}, mastery: saved.mastery || {}, soundSpeak: saved.soundSpeak || {}, gamePresets: saved.gamePresets || [], picOrder: saved.picOrder || {}, wordSay: saved.wordSay || {}, soundKeysOn: false,      /* (the letters each time the app opens: the sound keyboard only when switched to) */ soundStage: [1, 2, 3].includes(saved.soundStage) ? saved.soundStage : 3, tokens: Math.max(0, +saved.tokens || 0), tokenStats: (saved.tokenStats && typeof saved.tokenStats === 'object') ? saved.tokenStats : {}, gameLevel: (saved.gameLevel && typeof saved.gameLevel === 'object') ? saved.gameLevel : {}, gameFade: (saved.gameFade && typeof saved.gameFade === 'object') ? saved.gameFade : {}, tags: (saved.tags && typeof saved.tags === 'object') ? saved.tags : {}, links: (saved.links && typeof saved.links === 'object') ? saved.links : {}, tileCue: saved.tileCue || 'fade', tilePicShow: ['off', 'first', 'shuffle'].includes(saved.tilePicShow) ? saved.tilePicShow : 'off', askWho: saved.askWho !== false, ladder: (saved.ladder && typeof saved.ladder === 'object') ? saved.ladder : null, wordHl: saved.wordHl !== false, tilePlus: ['all', 'stuff', 'off'].includes(saved.tilePlus) ? saved.tilePlus : 'all', tileVideo: (saved.tileVideo && typeof saved.tileVideo === 'object') ? saved.tileVideo : {}, promptStepSec: Number(saved.promptStepSec) || 7, kbPromptDelay: !!saved.kbPromptDelay, tagsSeedV1: !!saved.tagsSeedV1, phonicsSeedV1: !!saved.phonicsSeedV1, respLog: Array.isArray(saved.respLog) ? saved.respLog : [], dataCtx: saved.dataCtx || { who: '', where: '' }, dataPeople: saved.dataPeople || [], dataPlaces: saved.dataPlaces || [], spellFade: Object.assign({ lv: 0, streak: 0, watch: 0 }, saved.spellFade || {}), gamesOn: Object.assign({ sight: true, write: true, tiles: true, sound: true, builder: false }, saved.gamesOn || {}), promptBack: saved.promptBack !== false, promptMiss: saved.promptMiss || {}, promptMissLog: Array.isArray(saved.promptMissLog) ? saved.promptMissLog : [],
         promptTextOn: saved.promptTextOn ?? true, fadeEvery: Math.min(10, Math.max(1, parseInt(saved.fadeEvery) || 3)), fadeCount: saved.fadeCount === 'letter' ? 'letter' : 'word', fadeOrder: ['last', 'first', 'full'].includes(saved.fadeOrder) ? saved.fadeOrder : 'last', dataCollect: saved.dataCollect || {},
         recentTiles: Array.isArray(saved.recentTiles) ? saved.recentTiles.slice(-30) : [],
         smallRowMax: saved.smallRowMax || 0,
@@ -4559,7 +4575,7 @@ async function save() {
       smallRowsOn: state.smallRowsOn !== false,
       bandCfg: state.bandCfg || null, magicOffCat: state.magicOffCat || {}, magicOffWord: state.magicOffWord || {}, magicCols: state.magicCols !== false, magicActAfterThing: state.magicActAfterThing !== false, seqOn: state.seqOn !== false, endCfg: state.endCfg || null, voicePack: state.voicePack || null, magicPrio: state.magicPrio || {}, coUse: state.coUse || {},
       smallRowsFold: state.smallRowsFold !== false,
-      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, links: state.links || {}, tileCue: state.tileCue || 'fade', ladder: state.ladder || null, wordHl: state.wordHl !== false, tilePlus: state.tilePlus || 'all', tileVideo: state.tileVideo || {}, promptStepSec: state.promptStepSec || 7, kbPromptDelay: !!state.kbPromptDelay, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
+      letterFade: state.letterFade || {}, letterStreak: state.letterStreak || {}, fadeV2: true, fadeV3: true, picMode: false, gameLog: state.gameLog || [], trialLog: state.trialLog || [], picSightV1: !!state.picSightV1, picAnswer: state.picAnswer || 'write', picLevel: state.picLevel || 'easy', soundSplits: state.soundSplits || {}, mastery: state.mastery || {}, soundSpeak: state.soundSpeak || {}, gamePresets: state.gamePresets || [], picOrder: state.picOrder || {}, wordSay: state.wordSay || {}, soundKeysOn: !!state.soundKeysOn, soundStage: state.soundStage || 3, tokens: state.tokens || 0, tokenStats: state.tokenStats || {}, gameLevel: state.gameLevel || {}, gameFade: state.gameFade || {}, tags: state.tags || {}, links: state.links || {}, tileCue: state.tileCue || 'fade', tilePicShow: state.tilePicShow || 'off', askWho: state.askWho !== false, ladder: state.ladder || null, wordHl: state.wordHl !== false, tilePlus: state.tilePlus || 'all', tileVideo: state.tileVideo || {}, promptStepSec: state.promptStepSec || 7, kbPromptDelay: !!state.kbPromptDelay, tagsSeedV1: !!state.tagsSeedV1, phonicsSeedV1: !!state.phonicsSeedV1, respLog: state.respLog || [], dataCtx: state.dataCtx || { who: '', where: '' }, dataPeople: state.dataPeople || [], dataPlaces: state.dataPlaces || [], spellFade: state.spellFade || { lv: 0, streak: 0, watch: 0 }, gamesOn: state.gamesOn || {}, promptBack: state.promptBack !== false, promptMiss: state.promptMiss || {}, promptMissLog: state.promptMissLog || [],
       promptTextOn: state.promptTextOn !== false, fadeEvery: state.fadeEvery, fadeCount: state.fadeCount, fadeOrder: state.fadeOrder, dataCollect: state.dataCollect || {},
       recentTiles: (state.recentTiles || []).slice(-30),
       smallRowMax: state.smallRowMax || 0,
@@ -9276,7 +9292,7 @@ function tagLabel(key) { if (/^f:/.test(key)) { const c = catById(Number(key.sli
 function tagSet(t, key, on) { const T = tagList(); const m = T[t] = (T[t] || []).filter(x => x !== key); if (on) m.push(key); save(); }
 // the words and folders sharing a tag with the message: each word's own tags, and those of the folders it is in
 function tagRelated(ph) {
-  const LK = state.links || {}, linked = []; (ph || []).forEach(w => (LK[w] || []).forEach(x => { if (!linked.includes(x) && !(ph || []).includes(x)) linked.push(x); }));
+  const linked = []; (ph || []).forEach(w => linksOf(w).forEach(x => { if (!linked.includes(x) && !(ph || []).includes(x)) linked.push(x); }));
   const r = tagRelated0(ph); r.words = linked.concat(r.words.filter(w => !linked.includes(w))); return r; }      // (a tile's linked tiles first, then those sharing a tag)
 function tagRelated0(ph) {
   const T = tagList(); if (!Object.keys(T).length) return { words: [], folders: [], groups: [] };
@@ -9305,7 +9321,7 @@ const LINK_SKIP_F = /^(chat|time|quantity|questions?|small words?|numbers?|lette
 function linkType(w) { let k = ''; try { k = kindOfWord(w); } catch (e) {} if (k === 'action') return 'action';
   if (k === 'describe' || k === 'feelings' || categoriesOf(w).some(c => LINK_DESC_F.test(String(c.name).trim()))) return 'describe'; return 'label'; }
 function linkSkip(x) { return isSmallWord(x) || categoriesOf(x).some(c => LINK_SKIP_F.test(String(c.name).trim())) || /^FROM /.test(x); }
-function linksOf(w) { return ((state.links || {})[w] || []).slice(); }
+function linksOf(w) { const L = state.links || {}, own = (L[w] || []).slice(); Object.keys(L).forEach(k => { if (k !== w && (L[k] || []).includes(w) && !own.includes(k)) own.push(k); }); return own; }      // (a link goes both ways: linked from either tile, it shows on both)
 function linkBtn(w) { const n = linksOf(w).length; return sheetBtn('🔗  Link tiles' + (n ? ' (' + n + ' linked)' : ''), '', () => openLinkSheet(w)); }
 function linkPool(w) { const seen = new Set(), out = [];
   state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(c => (c.words || []).forEach(x => { if (x === w || seen.has(x) || state.hiddenWords[x] || isPunct(x) || linkSkip(x)) return; seen.add(x); out.push(x); }));
@@ -9338,9 +9354,11 @@ function openLinkSheet(w, draft) {
       else { const a = document.createElement('button'); a.className = 'tune-chip lk-add'; a.textContent = '+ one more'; a.style.opacity = '0.6';
         a.addEventListener('click', () => linkPick(w, type, title, [].concat(...slots), pick => { if (pick) slots[i].push(pick); openLinkSheet(w, slots); })); row.appendChild(a); }
     });
-    body.appendChild(sheetBtn('Save links', 'primary', () => { const all = [...new Set([].concat(...slots))]; state.links = state.links || {}; if (all.length) state.links[w] = all; else delete state.links[w]; save(); buzz(10); closeWordSheet(); try { renderHome(true); } catch (e) {} }));
+    body.appendChild(sheetBtn('Save links', 'primary', () => { const all = [...new Set([].concat(...slots))]; state.links = state.links || {}; const LK = state.links;
+      Object.keys(LK).forEach(k => { if (k !== w && (LK[k] || []).includes(w) && !all.includes(k)) { LK[k] = LK[k].filter(x => x !== w); if (!LK[k].length) delete LK[k]; } });      // (taken off here: off the other tile too)
+      if (all.length) LK[w] = all; else delete LK[w]; save(); buzz(10); closeWordSheet(); try { renderHome(true); } catch (e) {} }));
     body.appendChild(sheetBtn('Fill the empty places with suggestions', '', () => { plan.forEach(([type, n], i) => { const taken = [].concat(...slots); slots[i] = slots[i].concat(linkRanked(w, type, taken).slice(0, Math.max(0, n - slots[i].length))); }); openLinkSheet(w, slots); }));
-    if (linksOf(w).length) body.appendChild(sheetBtn('Take all the links off', 'danger', () => { if (!confirm('Take all the links off "' + plainLabel(w).toLowerCase() + '"?')) return; delete state.links[w]; save(); closeWordSheet(); }));
+    if (linksOf(w).length) body.appendChild(sheetBtn('Take all the links off', 'danger', () => { if (!confirm('Take all the links off "' + plainLabel(w).toLowerCase() + '"?')) return; const LK = state.links; delete LK[w]; Object.keys(LK).forEach(k => { LK[k] = (LK[k] || []).filter(x => x !== w); if (!LK[k].length) delete LK[k]; }); save(); closeWordSheet(); }));
     body.appendChild(sheetBtn('Cancel', '', () => closeWordSheet()));
   });
 }
@@ -9473,8 +9491,9 @@ function rdWordType(w) { let k = ''; try { k = kindOfWord(w); } catch (e) {} if 
 function rdAll() {
   const out = [];
   (state.respLog || []).forEach(e => {
-    if (e.k === 'word') { out.push({ t: e.t, cls: e.src === 'typed' ? 'typed' : 'tile', ok: true, who: e.who, where: e.where }); out.push({ t: e.t, cls: 'w:' + rdWordType(e.w), ok: true, who: e.who, where: e.where, sub: true }); }
-    else if (e.k === 'message') out.push({ t: e.t, cls: 'message', ok: true, who: e.who, where: e.where });
+    if (e.by === 'adult') return;      // (a message an adult made, to show how: not the learner's)
+    if (e.k === 'word') { out.push({ t: e.t, cls: e.src === 'typed' ? 'typed' : 'tile', ok: e.by !== 'helped', who: e.who, where: e.where }); out.push({ t: e.t, cls: 'w:' + rdWordType(e.w), ok: true, who: e.who, where: e.where, sub: true }); }
+    else if (e.k === 'message') out.push({ t: e.t, cls: 'message', ok: e.by !== 'helped', who: e.who, where: e.where });
     else if (e.k === 'letter' && e.ok !== false) out.push({ t: e.t, cls: 'letter', ok: !e.p, lat: e.lat, who: e.who, where: e.where });
   });
   (state.gameLog || []).forEach(r => { const m = r.mode || 'sight'; if (m === 'write') return;      // (Spelling's letters are logged one by one above)
@@ -9519,12 +9538,33 @@ function ladSkills(ws) {
   if (flat.some(w => /..ING$/.test(w) || (/[^S]S$/.test(w) && w.length > 3 && !LAD_PERSON.has(w)))) { if (n >= 2) out.add('endings'); }
   if (LAD_WH.test(flat[0] || '') && flat.length > 1) out.add('question'); if (flat.length >= 5) out.add('five'); if (flat.some(w => w === 'NOT' || w === "DON'T" || w === 'DONT')) out.add('not');
   return out; }
-function ladMessages() { return (state.respLog || []).filter(e => e.k === 'message' && (e.w || e.ws)).map(e => ({ t: e.t, ws: e.ws || String(e.w).split(' '), key: (e.ws || [e.w]).join(' ').toUpperCase() })); }
+function ladMessages() { return (state.respLog || []).filter(e => e.k === 'message' && (e.w || e.ws) && !e.by).map(e => ({ t: e.t, ws: e.ws || String(e.w).split(' '), key: (e.ws || [e.w]).join(' ').toUpperCase() })); }
 // one level's progress: its skills, each with the different messages that showed it; the days they came on
 function ladProgress(lv, since) { const L = LADDER.find(x => x.id === lv); const per = {}, msgs = new Set(), days = new Set();
   L.skills.forEach(([k]) => { per[k] = new Set(); });
   ladMessages().filter(m => !since || m.t >= since).forEach(m => { const sk = ladSkills(m.ws); let hit = false; L.skills.forEach(([k]) => { if (sk.has(k)) { per[k].add(m.key); hit = true; } }); if (hit) { msgs.add(m.key); days.add(new Date(m.t).toDateString()); } });
   return { per, msgs: msgs.size, days: days.size }; }
+// ===== Who made the message: after the green enter, a small question - the learner on their own, the learner with help, or an
+// adult showing how. Only the learner's own messages count for the skill ladder; an adult's is left out of the data and Popular.
+var whoQuietUntil = 0;
+function whoAsk(entry, words) {
+  if (!entry) return; if (state.askWho === false || Date.now() < whoQuietUntil) { try { ladderCheck(); } catch (e) {} return; }
+  document.querySelectorAll('.who-pop').forEach(x => x.remove());
+  const pop = document.createElement('div'); pop.className = 'who-pop';
+  pop.innerHTML = '<div class="who-q">Who made this message?</div><div class="who-btns"></div><button class="who-quiet">Don\u2019t ask for 30 min</button><div class="who-bar"></div>';
+  const t0 = Date.now(), since = (() => { const L = state.respLog || []; for (let i = L.length - 2; i >= 0; i--) if (L[i].k === 'message') return L[i].t; return 0; })();
+  let done = false;
+  const pick = by => { if (done) return; done = true; clearTimeout(tm); pop.remove();
+    if (by) { (state.respLog || []).forEach(e => { if (e.t > since && e.t <= entry.t + 1 && (e.k === 'word' || e.k === 'message')) e.by = by; });
+      if (by === 'adult') { const set = new Set(words || []); let r = (state.recentTiles || []).slice(); for (let i = r.length - 1, n = 0; i >= 0 && n < set.size; i--) if (set.has(r[i])) { r.splice(i, 1); n++; } state.recentTiles = r; } }
+    save(); try { ladderCheck(); } catch (e) {} };
+  [['learner', '\uD83E\uDDD2', 'The learner', 'on their own'], ['helped', '\uD83E\uDD1D', 'The learner', 'with help'], ['adult', '\uD83E\uDDD1', 'An adult', 'showing how']].forEach(([v, ic, a, b2]) => {
+    const b = document.createElement('button'); b.className = 'who-btn who-' + v; b.innerHTML = '<span class="ic"></span><b></b><small></small>'; b.querySelector('.ic').textContent = ic; b.querySelector('b').textContent = a; b.querySelector('small').textContent = b2;
+    b.addEventListener('click', e => { e.stopPropagation(); buzz(8); pick(v === 'learner' ? null : v); }); pop.querySelector('.who-btns').appendChild(b); });
+  pop.querySelector('.who-quiet').addEventListener('click', e => { e.stopPropagation(); whoQuietUntil = Date.now() + 30 * 60000; pick(null); });
+  document.body.appendChild(pop);
+  const tm = setTimeout(() => pick(null), 9000);      // (no answer: the learner's)
+}
 function ladderCheck() { const L = ladCfg(); if (!L.on || L.level >= LADDER.length) return;
   const p = ladProgress(L.level, L.since[L.level]); if (p.msgs >= L.need && p.days >= L.days) { L.level++; L.since[L.level] = Date.now(); save(); try { moveNote('🪜 Skill ladder: on to ' + LADDER[L.level - 1].name + '!'); } catch (e) {} } }
 // the hint in the bar: one word in and working on two words - the kind of word that would go with it
@@ -10496,7 +10536,7 @@ function barNoteTake(n) {
   try { warmSpeech(); sayAnyway = true; speakWord(n.w, 0.95); } catch (e) {} finally { sayAnyway = false; }
   renderPhraseBar();
 }
-function renderPhraseBar() { try { return renderPhraseBar0(); } finally { try { pbFit(); } catch (e) {} } }
+function renderPhraseBar() { try { return renderPhraseBar0(); } finally { try { pbFit(); } catch (e) {} try { tilePicSync(); } catch (e) {} } }
 function renderPhraseBar0() {
   try { respWordsSeen(); } catch (e) {}
   renderSpeakBtn();
@@ -10658,7 +10698,7 @@ function activeTargets(words) {
   return words.filter((w, i) => (t.words || []).includes(w) && !(state.targetOff || {})[w] && words.indexOf(w) === i);
 }
 function homeEnter() {
-  try { if (homePhrase.length && !state.builderMode) { const m = homePhrase.filter(w => !isPunct(w)).join(' '); respNote({ k: 'message', w: m, ws: homePhrase.filter(w => !isPunct(w)), src: state.chatMode ? 'chat' : 'home' }); try { ladderCheck(); } catch (e) {} } } catch (e) {}
+  try { if (homePhrase.length && !state.builderMode) { const m = homePhrase.filter(w => !isPunct(w)).join(' '); respNote({ k: 'message', w: m, ws: homePhrase.filter(w => !isPunct(w)), src: state.chatMode ? 'chat' : 'home' }); try { whoAsk(state.respLog[state.respLog.length - 1], homePhrase.filter(w => !isPunct(w))); } catch (e) {} } } catch (e) {}
   barNotes = []; notesTaken.clear(); notesAfter.clear();      // (the folders noted in the bar were not chosen: they go with the message)
   try { if (homeKeysUp()) homeKeysClose(); } catch (e) {}
   // the first press of the green button offers the whole sentence the words could make ("sad" ->
@@ -11463,7 +11503,21 @@ function commitTypedWord() {
   return true;
 }
 
-function wordHlApply() { document.documentElement.classList.toggle('no-word-hl', state.wordHl === false); }
+// ===== The tile turns into its picture: the tile just chosen shows one of its pictures in its frame (the first, or one at random),
+// and turns back when the next tile is chosen, the message is sent or the page goes back to the start
+var tilePicFor = '', tilePicUrl = '';
+function tilePicSync() {
+  const mode = state.tilePicShow || 'off', grid = document.getElementById('homeGrid'); if (!grid) return;
+  const last = mode !== 'off' && !state.builderMode && homePhrase.length ? homePhrase[homePhrase.length - 1] : '';
+  const pics = last ? picOn(last) : [];
+  if (last !== tilePicFor) { tilePicFor = last; tilePicUrl = pics.length ? (mode === 'shuffle' ? pics[Math.floor(Math.random() * pics.length)] : pics[0]).url : ''; }
+  grid.querySelectorAll('.home-card > .tile-pic').forEach(o => { const c = o.parentNode; if (c.dataset.word === tilePicFor && tilePicUrl) return; if (o.classList.contains('out')) return; o.classList.add('out'); setTimeout(() => o.remove(), 320); });
+  if (!tilePicFor || !tilePicUrl) return;
+  grid.querySelectorAll('.home-card[data-word]').forEach(c => { if (c.dataset.word !== tilePicFor || c.querySelector(':scope > .tile-pic:not(.out)')) return;
+    const o = document.createElement('div'); o.className = 'tile-pic'; const im = document.createElement('img'); im.src = tilePicUrl; im.alt = ''; o.appendChild(im); c.appendChild(o); });
+}
+function homeBuildStamp() { const v = document.getElementById('viewHome'); if (!v || document.getElementById('homeBuild')) return; const d = document.createElement('div'); d.id = 'homeBuild'; d.className = 'home-build'; d.textContent = BUILD; v.appendChild(d); }
+function wordHlApply() { try { homeBuildStamp(); } catch (e) {} document.documentElement.classList.toggle('no-word-hl', state.wordHl === false); }
 function renderHome(reset) { try { if (typeof gamesHome !== 'undefined' && !gamesHome && document.getElementById('viewHome').classList.contains('gh-on')) ghPaint(); } catch (e) {}      // (leaving the games: the tiles are shown again before they are laid out and sized)
   wordHlApply();
   if (!state.phonicsSeedV1) { try { phonicsSeed(); if (state.phonicsSeedV1) save(); } catch (e) {} }
@@ -12583,7 +12637,7 @@ const SETTINGS_KEYS = ['caseMode', 'requireCaps', 'keyLevels', 'hiddenKeys', 'ph
   'voiceName', 'scoreMode', 'fadeMode', 'rotateMode', 'promptColorOn', 'promptColor', 'promptIntensity', 'promptPulseOn', 'promptTextColorOn', 'promptTextPulseOn', 'promptSizeOn', 'promptTileOn', 'promptTileSize', 'promptSize',
   'promptVerbalOn', 'promptDelaySec', 'helpMode', 'helpDelaySec', 'sosPrompts', 'otherKeysMode', 'showBankCount', 'showSearchBtn', 'showHelpBtn', 'homeEnabled', 'practiceMode', 'homeMode',
   'railOpen', 'kbRailOpen', 'magicCols', 'settingsOrder', 'colorCoding', 'bankLimit', 'groupOrder', 'tileMode', 'smallRowsOn', 'bandCfg', 'magicOffCat', 'magicOffWord', 'magicActAfterThing', 'seqOn',
-  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'links', 'tileCue', 'ladder', 'wordHl', 'tilePlus', 'tileVideo', 'gameLevel', 'promptStepSec', 'kbPromptDelay',
+  'endCfg', 'magicPrio', 'promptBack', 'picAnswer', 'picLevel', 'gamesOn', 'soundSplits', 'soundStage', 'soundSpeak', 'gamePresets', 'picOrder', 'wordSay', 'smallRowsFold', 'promptTextOn', 'fadeEvery', 'fadeCount', 'fadeOrder', 'dataCollect', 'smallRowMax', 'suggestOn', 'soundOn', 'chatPaneShut', 'pluralChip', 'tags', 'links', 'tileCue', 'tilePicShow', 'askWho', 'ladder', 'wordHl', 'tilePlus', 'tileVideo', 'gameLevel', 'promptStepSec', 'kbPromptDelay',
   'chatMode', 'speakMode', 'magicType', 'keySize', 'displaySize', 'bannerSize', 'errorFeedback', 'errorPhrase', 'errorPromptAction', 'errorLetterMode', 'speakErrorLetter', 'enterSpeechMode'];
 function settingsNow() { const o = {}; SETTINGS_KEYS.forEach(k => { if (state[k] !== undefined) o[k] = JSON.parse(JSON.stringify(state[k])); }); return o; }
 async function exportLayout() {
@@ -16916,7 +16970,7 @@ function newListBtn(word) {
   });
   const paint = () => {
     const on = nf.words.includes(word);
-    b.textContent = on ? '\u2713  In targets \uD83C\uDFAF (tap to take it out)' : 'Add to targets \uD83C\uDFAF';
+    b.textContent = on ? '\u2713  In targets \uD83C\uDFAF' : 'Add to targets \uD83C\uDFAF';
     b.style.background = on ? 'var(--green)' : '';
     b.style.color = on ? '#fff' : '';
   };
@@ -17446,8 +17500,8 @@ function openTileAdd2(w) {
 function picMenuBtns(body, word) {
   if (!word) return;      // (a name with no letters, like an emoji folder, has nowhere to keep pictures)
   const k = (picURL[word] || []).length;
-  body.appendChild(sheetBtn('📷  ' + (k ? 'Pictures (' + k + ')' : 'Add pictures'), '', () => { closeWordSheet(); setTimeout(() => openPicSheet(word), 30); }));
-  body.appendChild(sheetBtn('\u2795  Add a picture, sound or video', '', () => { closeWordSheet(); setTimeout(() => openTileAdd2(word), 30); }));
+  const bits = [k ? k + ' picture' + (k === 1 ? '' : 's') : '', (recordings.word || {})[word] ? 'sound' : '', (state.tileVideo || {})[word] ? 'video' : ''].filter(Boolean);
+  body.appendChild(sheetBtn('\u2795  Pictures, sound, video' + (bits.length ? '  (' + bits.join(', ') + ')' : ''), '', () => { closeWordSheet(); setTimeout(() => openTileAdd2(word), 30); }));
 }
 // the tiles on the page: one of its pictures for each that has one; faded with a camera for those that do not; a tick when picked
 function picDecorate() {
@@ -17457,7 +17511,7 @@ function picDecorate() {
   grid.querySelectorAll('.home-card[data-word]').forEach(card => {
     const w = card.dataset.word;
     let b = card.querySelector(':scope > .tgt-pic');
-    if (!on) { if (b) b.remove(); tileBadges(card, w); return; }
+    if (!on) { if (b) b.remove(); tileBadges(card, w); if (tilePicFor) { try { tilePicSync(); } catch (e) {} } return; }
     if (!b) { b = document.createElement('button'); b.className = 'tgt-pic'; b.setAttribute('aria-label', 'Pictures for this target');
       ['pointerdown', 'touchstart', 'mousedown'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
       b.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); buzz(8); const ww = card.dataset.word; if ((picURL[ww] || []).length) openPicSheet(ww); else picChoose(ww); });
@@ -17495,14 +17549,15 @@ function gameTargetTree(words) {
   const mains = new Map();
   const node = (m, c) => { if (!m.has(c.id)) m.set(c.id, { key: 'f' + c.id, label: c.name, words: [], subs: new Map(), order: c.order || 0 }); return m.get(c.id); };
   words.forEach(w => {
-    categoriesOf(w).filter(c => !c.target && !c.small && !c.smallSec && /[A-Za-z0-9]/.test(c.name || '')).forEach(c => {
+    const cw = /^Q:/.test(w) ? (() => { const it = qaItem(w) || {}; return it.pic || it.a || w; })() : w;      // (a question: under the folder of its answer's picture)
+    categoriesOf(cw).filter(c => !c.target && !c.small && !c.smallSec && /[A-Za-z0-9]/.test(c.name || '')).forEach(c => {
       const chain = []; let x = c, g = 0; while (x && g++ < 20) { chain.unshift(x); x = x.parent ? catById(x.parent) : null; }
       // (the folders that only hold other folders - Categories, Groups, Choices, Things ... - are passed over: the main folder is the first real one)
       let k = 0; while (k < chain.length - 1 && GAME_ROOTS.test(String(chain[k].name).trim())) k++;
       const mainC = chain[k];
       const m = node(mains, mainC); if (!m.words.includes(w)) m.words.push(w);
       if (c !== mainC) { const sb = node(m.subs, chain[k + 1] || c); if (!sb.words.includes(w)) sb.words.push(w); }
-      else { try { listGroups(mainC).filter(g => !g.hidden && (g.words || []).includes(w)).forEach(g => { const key = 'g' + mainC.id + '_' + (g.id != null ? g.id : g.name);
+      else { try { listGroups(mainC).filter(g => !g.hidden && (g.words || []).includes(cw)).forEach(g => { const key = 'g' + mainC.id + '_' + (g.id != null ? g.id : g.name);
         if (!m.subs.has(key)) m.subs.set(key, { key, label: g.name, words: [], subs: new Map() }); const sb = m.subs.get(key); if (!sb.words.includes(w)) sb.words.push(w); }); } catch (e) {} }
     });
   });
@@ -18104,8 +18159,16 @@ function openQaPick(g, after) {
       if (!sets.length) { const n = document.createElement('div'); n.className = 'help-note'; n.textContent = 'No tiles have pictures yet.'; list.appendChild(n); }
       paintHad(); };
     find.addEventListener('input', paintList);
+    lab('3. Other answer choices for the tap version (optional)');
+    const choice = new Set(); const chRow = document.createElement('div'); chRow.className = 'tune-chips'; chRow.style.flexWrap = 'wrap'; body.appendChild(chRow);
+    const chFind = document.createElement('input'); chFind.placeholder = 'Find tiles to offer beside the answer (blank: other words are chosen for you)'; chFind.style.cssText = own.style.cssText; body.appendChild(chFind);
+    const chList = document.createElement('div'); chList.className = 'tune-chips'; chList.style.cssText = 'flex-wrap:wrap;max-height:20vh;overflow-y:auto;margin-top:6px;'; body.appendChild(chList);
+    const chAll = (() => { const se = new Set(); state.categories.filter(c => !c.target && !c.hidden && !c.smallSec).forEach(c => (c.words || []).forEach(x => se.add(x))); return [...se].sort(); })();
+    const chPaint = () => { chRow.innerHTML = ''; [...choice].forEach(x => { const b = document.createElement('button'); b.className = 'tune-chip on'; b.textContent = plainLabel(x).toLowerCase() + '  \u2715'; b.addEventListener('click', () => { choice.delete(x); chPaint(); }); chRow.appendChild(b); });
+      chList.innerHTML = ''; const f = normaliseWord(chFind.value); if (!f) return; chAll.filter(x => x.includes(f) && !choice.has(x)).slice(0, 30).forEach(x => { const b = document.createElement('button'); b.className = 'tune-chip'; b.textContent = plainLabel(x).toLowerCase(); b.addEventListener('click', () => { choice.add(x); buzz(6); chPaint(); }); chList.appendChild(b); }); };
+    chFind.addEventListener('input', chPaint);
     const sv = sheetBtn('Pick some pictures', 'primary', () => { if (!picked.size) return; const qq = qNow(), h = have(); g.items = g.items || []; let made = 0;
-      [...picked].forEach(w => { if (h.has(w)) return; g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: w, opts: '', pic: w }); made++; });
+      [...picked].forEach(w => { if (h.has(w)) return; g.items.push({ id: Math.max(0, ...g.items.map(x => x.id || 0)) + 1, q: qq, a: w, opts: [...choice].filter(x => x !== w).join(', '), pic: w }); made++; });
       save(); buzz(10); closeWordSheet(); if (after) after(); });
     const paintSave = () => { const k = picked.size; sv.textContent = k ? 'Make ' + k + ' question' + (k === 1 ? '' : 's') : 'Pick some pictures'; sv.style.opacity = k ? '' : '0.5'; };
     body.appendChild(sv);
@@ -20716,7 +20779,7 @@ function openSettingsSheet() {
 }
 
 function renderSettings() {
-  document.getElementById('buildStamp').textContent = BUILD;
+  { const bs = document.getElementById('buildStamp'); if (bs) bs.textContent = BUILD; }
   { const box = document.getElementById('gamesOnList'); if (box) { box.innerHTML = ''; const on = gamesOn();
     GAME_LIST.forEach(([k, ic, nm]) => { const r = document.createElement('div'); r.className = 'setting-row'; const t = document.createElement('span'); t.textContent = ic + '  ' + nm; r.appendChild(t);
       const x = document.createElement('div'); x.className = 'toggle' + (on[k] ? ' on' : ''); x.addEventListener('click', () => { state.gamesOn = Object.assign({}, gamesOn(), { [k]: !on[k] }); save(); renderSettings(); }); r.appendChild(x); box.appendChild(r); }); } }
@@ -20810,7 +20873,9 @@ function renderSettings() {
   document.getElementById('toggleSuggestOn').classList.toggle('on', state.suggestOn !== false);
   document.getElementById('toggleMagicCols').classList.toggle('on', state.magicCols !== false);
   try { buildSeg('segPromptStep', [3, 5, 7, 10, 15].map(v => ({ value: v, label: v + ' s' })), Math.max(3, Math.min(15, Number(state.promptStepSec) || 7)), v => { state.promptStepSec = v; save(); renderSettings(); }); } catch (e) {}
+  try { buildSeg('segTilePic', [{ value: 'off', label: 'Off' }, { value: 'first', label: 'First picture' }, { value: 'shuffle', label: 'Shuffled' }], state.tilePicShow || 'off', v => { state.tilePicShow = v; tilePicFor = ''; save(); renderSettings(); }); } catch (e) {}
   try { const t = document.getElementById('toggleWordHl'); if (t) { t.classList.toggle('on', state.wordHl !== false); if (!t.dataset.wired) { t.dataset.wired = '1'; t.addEventListener('click', () => { state.wordHl = state.wordHl === false; save(); wordHlApply(); renderSettings(); }); } } } catch (e) {}
+  try { const t = document.getElementById('toggleAskWho'); if (t) { t.classList.toggle('on', state.askWho !== false); if (!t.dataset.wired) { t.dataset.wired = '1'; t.addEventListener('click', () => { state.askWho = state.askWho === false; save(); renderSettings(); }); } } } catch (e) {}
   try { const L = ladCfg(), e = document.getElementById('ladderSum'); if (e) e.textContent = L.on ? 'Level ' + L.level + ': ' + LADDER[L.level - 1].name + ' \u203A' : 'Off \u203A'; } catch (e) {}
   try { buildSeg('segTileCue', [{ value: 'fade', label: 'Fade' }, { value: 'rise', label: 'Rise' }, { value: 'glow', label: 'Glow' }, { value: 'flip', label: 'Turn' }, { value: 'off', label: 'Off' }], ['fade', 'rise', 'glow', 'flip', 'off'].includes(state.tileCue) ? state.tileCue : 'fade', v => { state.tileCue = v; save(); renderSettings(); }); } catch (e) {}
   { const ts = document.getElementById('tagsSum'); if (ts) { const n = Object.keys(state.tags || {}).length; ts.textContent = (n ? n + ' tag' + (n === 1 ? '' : 's') + ' ' : '') + '\u203A'; } }
