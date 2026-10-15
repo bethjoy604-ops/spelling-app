@@ -592,6 +592,36 @@
   .st-item.poor { opacity: 0.6; } .st-pic { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 64px; border-radius: 16px; overflow: hidden; background: #f5f6f8; } .st-pic img { width: 100%; height: 100%; object-fit: cover; }
   .st-name { font-weight: 900; font-size: 22px; } .st-price { display: inline-flex; align-items: center; gap: 6px; font-weight: 900; font-size: 22px; }
   .st-buy .st-pic { width: 200px; } .st-msg { font-weight: 800; font-size: 22px; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; } .st-btns { display: flex; gap: 12px; }
+  #settingsMenu .sheet { background: #eef0f3; }
+  #settingsMenu .set-top { background: #eef0f3; }
+  #settingsMenu .set-section { color: #3d4452; font-size: 14px; margin-top: 22px; }
+  #settingsMenu .sgroup { border: none; border-radius: 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  #settingsMenu .sgroup-head { background: #fff; font-size: 18px; padding: 16px 18px; color: #1d2230; }
+  #settingsMenu .sgroup-head .sg-emoji { font-size: 22px; width: 30px; text-align: center; }
+  #settingsMenu .sgroup.open .sgroup-head { border-bottom: 2px solid #eef0f3; }
+  #settingsMenu .sgroup-body { background: #fff; }
+  #settingsMenu .setting-row { background: #f3f5f8; color: #1d2230; border: 1px solid #e3e7ec; }
+  #settingsMenu .sublabel { color: #4a5263; }
+  #settingsMenu .help-note { color: #5a6273; font-size: 13.5px; }
+  #settingsMenu .toggle { background: #c9ced6; }
+  #settingsMenu .toggle.on { background: var(--green); }
+  .ssub { border: 2px solid #e3e7ec; border-radius: 14px; margin: 10px 0; background: #fbfcfd; }
+  .ssub > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 13px 14px; font-weight: 900; font-size: 17px; color: #1d2230; cursor: pointer; }
+  .ssub > summary::-webkit-details-marker { display: none; }
+  .ssub > summary::after { content: '\25BE'; margin-left: auto; color: #8a909b; transition: transform 0.2s; }
+  .ssub[open] > summary::after { transform: rotate(180deg); }
+  .ssub[open] > summary { border-bottom: 2px solid #eef0f3; }
+  .ssub > :not(summary) { margin-left: 14px; margin-right: 14px; }
+  .ssub > :last-child { margin-bottom: 14px; }
+  .ss-ic { font-size: 20px; width: 28px; text-align: center; }
+  .info-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #2a78d6; background: #fff; color: #2a78d6; font: inherit; font-weight: 900; font-size: 14px; font-style: italic; line-height: 20px; padding: 0; cursor: pointer; flex: none; }
+  .info-btn.sm { width: 22px; height: 22px; font-size: 12px; line-height: 16px; vertical-align: middle; margin-left: 6px; }
+  .info-text { background: #e8f0ff; border-radius: 12px; padding: 12px 14px; margin-top: 10px; font-size: 16px; font-weight: 600; line-height: 1.5; color: #1d2230; text-transform: none; letter-spacing: 0; }
+  .help-big { margin-top: 10px; font-size: 17px; line-height: 1.5; color: #1d2230; } .help-big p { margin: 0 0 10px; }
+  .seg .seg-ex { display: block; font-weight: 900; line-height: 1.1; margin-bottom: 4px; color: #1d2230; }
+  .seg .grid-ex { display: grid; gap: 2px; width: 42px; height: 30px; margin: 0 auto 4px; } .grid-ex i { background: #b9c3d1; border-radius: 2px; }
+  .seg.selected .grid-ex i { background: #fff; } .seg.selected .seg-ex { color: inherit; }
+  .lib-row { padding: 9px 12px !important; }
   .home-card.gr-play { background: #e8f0ff; } .home-card.gr-play .hw { color: #1e4f9e; }
   .home-card.gr-say { animation: cueGlow 0.6s ease-out; }
   .mg-row .mg-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -3032,40 +3062,87 @@
   <div class="sheet">
     <div class="set-top"><h3>Settings</h3><button class="set-done" data-action="cancel">Done</button></div>
 
-    <!-- ============ PROMPTS ============ -->
-    <div class="sgroup" data-group="prompts">
+    <div class="sgroup" data-group="voice">
       <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">🎯</span>
-        <span class="sg-title">Prompting</span>
-        <span class="sg-sum" id="sumPrompts"></span>
+        <span class="sg-emoji">🔤</span>
+        <span class="sg-title">Letters keyboard &amp; voice</span>
+        <span class="sg-sum" id="sumVoice"></span>
         <span class="sg-chev">▾</span>
       </button>
       <div class="sgroup-body">
-        <div class="hero-setting">
-          <div class="hero-row">
-            <span class="hero-title">&#11088; Help mode</span>
-            <div class="toggle" id="toggleHelpMode"></div>
-          </div>
-          <div class="hero-note">On: nothing prompts by itself. The red SOS button appears on the spelling page once a word is chosen. Tapping SOS prompts the current letter straight away, then each following letter after the wait below.<br>Off: the prompts below happen automatically, and the star is hidden.</div>
-          <div class="sublabel" style="margin-top:10px;">After SOS, wait before each next letter</div>
-          <div class="slider-row">
-            <input type="range" id="helpDelaySlider" min="0" max="10" step="1" value="3">
-            <span class="slider-val" id="helpDelayValue">3 sec</span>
-          </div>
+        <div class="settings-list" style="margin-bottom:10px">
+          <div class="setting-row"><span>&#128266; Sound on</span><div class="toggle on" id="toggleSoundOn"></div></div>
         </div>
+        <div class="sublabel">Voice (English US only)</div>
+        <select class="voice-picker" id="voicePicker"></select>
+        <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">&#9654; Test this voice</button>
+        <div class="help-note" id="voiceTestNote">Plays a short sentence in the voice chosen above, even with the sound switched off.</div>
+        <button class="mbtn action primary" id="recordVoiceBtn" style="width: 100%; margin-top: 8px;">🎤 Record my own voice →</button>
+        <div class="sublabel" style="margin-top:14px;">Voice packs (a voice made from sound clips)</div>
+        <div class="settings-list" id="voicePacks"></div>
+        <button class="mbtn action" id="addVoicePackBtn" style="width:100%; margin-top:8px;">Add a voice pack (.zip of word clips)</button>
+        <input type="file" id="voicePackFile" accept=".zip,application/zip" style="display:none">
+        <button class="mbtn action" id="wordListBtn" style="width:100%; margin-top:8px;">Export the word list (to make clips for)</button>
+        <div class="help-note">A voice pack is a .zip of short sound files, one per word, each named after its word (go.mp3, want.m4a, wake up.wav). With a pack chosen, every word that has a clip is said in that voice; any other word uses the voice above.</div>
 
-        <div class="help-note">Each kind of prompt has its own switch. Turn on as many as you like — they stack.</div>
+      </div>
+    </div>
 
-        <div class="sublabel" style="margin-top:12px;">Vocal prompts</div>
+    <div class="sgroup" data-group="phonics">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#128483;&#65039;</span>
+        <span class="sg-title">Sounds keyboard</span>
+        <span class="sg-sum" id="sumPhonics"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="help-note" style="margin:0 4px 10px">The keyboard of sounds and spellings used by Elkonin Boxes and Sound Match. Its sounds are its own - the ordinary keyboard keeps its letters and its voice.</div>
+        <div class="sublabel" style="margin-top:0">Its sounds</div>
         <div class="settings-list">
-          <div class="setting-row"><span>Say the next letter</span><div class="toggle" id="togglePromptVerbal"></div></div>
-          <div class="setting-row"><span>Speak target word when selected</span><div class="toggle on" id="toggleTargetSpeech"></div></div>
-          <div class="setting-row"><span>Speak text on Enter</span><div class="toggle on" id="toggleEnterSpeech"></div></div>
-          <div class="setting-row"><span>Speak each letter as it's typed</span><div class="toggle on" id="toggleLetterSpeech"></div></div>
+          <div class="setting-row" id="soundMediaRow" style="cursor:pointer"><span>&#128264;  Sound files: Google voice, recordings, sharing</span><span class="hf-btn">Open</span></div>
+          <div class="setting-row" id="soundTunerRow" style="cursor:pointer"><span>&#128483;&#65039;  How the iPad voice says each sound</span><span class="hf-btn">Open</span></div>
         </div>
-        <div class="help-note">"Say the next letter" is spoken once when the prompt appears, and again after a wrong letter.</div>
+        <div class="sublabel">Which sounds the keys offer</div>
+        <div class="seg-row" id="segSoundStage"></div>
+        <div id="soundCreditsBox"></div>
+        <div class="help-note" style="margin:6px 4px 12px">First stage: m s a t n i f p. Second: all the letters, and sh ch th ng. Third: every vowel sound, vowel + r, the weak vowel and zh. A word's sounds are worked out from its spelling; change them from the word's menu on the targets page (Sounds).</div>
+      </div>
+    </div>
 
-        <div class="sublabel">Target word prompts (the word to copy)</div>
+    <div class="sgroup" data-group="prompts">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#127919;</span>
+        <span class="sg-title">Prompting &amp; targets</span>
+        <span class="sg-sum" id="sumPrompts"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <details class="ssub"><summary><span class="ss-ic">&#127919;</span><span class="ss-t">Targets &amp; skills</span><button class="info-btn" type="button" aria-label="What this means">i</button></summary>
+        <div class="info-text" hidden><b>Skills</b> - what the learner is working on: the skill ladder (single words to sentences), grammar such as endings and word order, small words and capital letters.</div>
+        <div class="settings-list">
+          <div class="setting-row" id="ladderRow" style="cursor:pointer"><span>&#129692; Skill ladder (Type-to-Speak)</span><span id="ladderSum" style="color:var(--muted);font-weight:800">&#8250;</span></div>
+        </div>
+        <div class="setting-row" style="margin-top:10px;"><span>&#8679; Require the up arrow for capitals</span><div class="toggle" id="toggleRequireCaps"></div></div>
+        <div class="help-note">Off: capitals appear by themselves and the up arrow is never needed.<br>On: the up arrow is prompted before a capital letter, and typing the letter without it counts as an error.</div>
+        <div class="sublabel">In the message bar</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Ending buttons beside a word</span><div class="toggle on" id="togglePlural"></div></div>
+          <div class="setting-row"><span>Word order help (park + go offers "go park")</span><div class="toggle on" id="toggleSeq"></div></div>
+        </div>
+        <div class="sublabel">Which endings are offered</div>
+        <div class="settings-list" id="endingSettings"></div>
+        <div class="help-note" style="margin:6px 4px 0">Either one is only offered: tap it to take it, or tap the word itself to keep it as it is.</div>
+        <div class="sublabel">Small words rows (every page)</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
+          <div class="setting-row" style="display:none"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
+          <div class="help-note" style="margin:6px 4px 0">These apply to every page. Hold the blue row on a page to give that page its own words or number.</div>
+        </div>
+
+        </details>
+        <details class="ssub"><summary><span class="ss-ic">&#128065;&#65039;</span><span class="ss-t">Stimulus prompts</span><button class="info-btn" type="button" aria-label="What this means">i</button></summary>
+        <div class="info-text" hidden><b>Stimulus prompt</b> - a change to the right answer itself (its colour, size or movement) so it is easier to choose. The goal is for the learner to respond to the letter or word itself, so these are faded away.</div>
+        <div class="sublabel">In the target word (textual model) <button class="info-btn sm" type="button" aria-label="What this means">i</button></div><div class="info-text" hidden><b>Textual model</b> - the written word to copy. Copying a written model is the first step; with fading, the letters still to type disappear so the word is spelled from memory.</div>
         <div class="settings-list">
           <div class="setting-row"><span>Show the word to copy above the keyboard</span><div class="toggle on" id="togglePromptText"></div></div>
           <div class="setting-row"><span>Colour the next letter in the word</span><div class="toggle" id="togglePromptTextColor"></div></div>
@@ -3075,7 +3152,7 @@
         <div class="seg-row" id="segTileSize" style="margin-top:8px;"></div>
         <div class="help-note">Word off: the letters still to type are left blank, so the word is spelled from memory. Letters appear as they are typed.</div>
 
-        <div class="sublabel">Keyboard prompts (typing the letters)</div>
+        <div class="sublabel">On the keyboard</div>
         <div class="settings-list">
           <div class="setting-row"><span>Colour the next key</span><div class="toggle" id="togglePromptColor"></div></div>
         </div>
@@ -3087,7 +3164,27 @@
         </div>
         <div class="seg-row" id="segPromptSize" style="margin-top:8px;"></div>
 
-        <div class="sublabel">Time delay</div>
+        <div class="sublabel">Hiding the other keys <button class="info-btn sm" type="button" aria-label="What this means">i</button></div><div class="info-text" hidden><b>Stimulus fading of the other choices</b> - the other keys are dimmed or hidden so the right one stands out, then brought back gradually.</div>
+        <div class="seg-row" id="segOtherKeys"></div>
+
+        <div class="sublabel">Preview</div>
+        <div class="prompt-preview" id="promptPreview"></div>
+        </details>
+        <details class="ssub"><summary><span class="ss-ic">&#128483;&#65039;</span><span class="ss-t">Vocal prompts &amp; speech</span><button class="info-btn" type="button" aria-label="What this means">i</button></summary>
+        <div class="info-text" hidden><b>Vocal (echoic) prompt</b> - saying the letter or word out loud. The learner's response is guided by what they hear. Fade it so the response comes from the written cue, not the voice.</div>
+        
+        <div class="settings-list">
+          <div class="setting-row"><span>Say the next letter</span><div class="toggle" id="togglePromptVerbal"></div></div>
+          <div class="setting-row"><span>Speak target word when selected</span><div class="toggle on" id="toggleTargetSpeech"></div></div>
+          <div class="setting-row"><span>Speak text on Enter</span><div class="toggle on" id="toggleEnterSpeech"></div></div>
+          <div class="setting-row"><span>Speak each letter as it's typed</span><div class="toggle on" id="toggleLetterSpeech"></div></div>
+        </div>
+        <div class="help-note">"Say the next letter" is spoken once when the prompt appears, and again after a wrong letter.</div>
+
+        </details>
+        <details class="ssub"><summary><span class="ss-ic">&#9201;&#65039;</span><span class="ss-t">Time delay</span><button class="info-btn" type="button" aria-label="What this means">i</button></summary>
+        <div class="info-text" hidden><b>Time delay</b> - the prompt waits a few seconds, giving a chance to answer on their own first. An answer before the prompt counts as independent.</div>
+        
         <div class="settings-list">
           <div class="setting-row"><span>Wait before prompting</span><div class="toggle" id="togglePromptDelay"></div></div>
         </div>
@@ -3097,23 +3194,11 @@
         </div>
         <div class="help-note">The prompt is held back this long, giving an independent try first. A correct letter typed during the wait counts as independent.</div>
 
-        <div class="sublabel">Hiding other keys</div>
-        <div class="seg-row" id="segOtherKeys"></div>
-
-        <div class="sublabel">Preview</div>
-        <div class="prompt-preview" id="promptPreview"></div>
-      </div>
-    </div>
-
-    <!-- ============ PROMPT FADING ============ -->
-    <div class="sgroup" data-group="practice">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">&#127767;</span>
-        <span class="sg-title">Prompt fading</span>
-        <span class="sg-sum" id="sumPractice"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
+        <div class="settings-list" style="margin-top:12px"><div class="setting-row"><span>Add a delay before the keyboard prompts</span><div class="toggle" id="toggleKbDelay"></div></div></div>
+        <div class="help-note" id="kbDelayNote">Off: the prompts in the target word and on the keyboard come almost together, straight away. On: the target word is prompted straight away and the keyboard waits.</div>
+        </details>
+        <details class="ssub"><summary><span class="ss-ic">&#128201;</span><span class="ss-t">Fading</span><button class="info-btn" type="button" aria-label="What this means">i</button></summary>
+        <div class="info-text" hidden><b>Prompt fading</b> - after correct answers the prompt gets smaller step by step until it is gone. This moves control from the prompt to the natural cue (transfer of stimulus control). <b>Least to most</b> starts with the least help and adds more only when needed.</div>
         <div class="settings-list">
           <div class="setting-row"><span>Fade the prompt</span><div class="toggle on" id="toggleFade"></div></div>
           <div class="setting-row"><span>across this many consecutive successes</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="fadeLess">&minus;</button><span id="fadeEveryVal" style="min-width:34px;text-align:center;font-weight:900">3</span><button id="fadeMore">+</button></div></div>
@@ -3123,61 +3208,11 @@
         <div class="sublabel">What fades each time</div>
         <div class="seg-row" id="segFadeOrder"></div>
         <div class="help-note" id="fadeNote"></div>
-        <div class="settings-list" style="margin-top:12px"><div class="setting-row"><span>Add a delay before the keyboard prompts</span><div class="toggle" id="toggleKbDelay"></div></div></div>
-        <div class="help-note" id="kbDelayNote">Off: the prompts in the target word and on the keyboard come almost together, straight away. On: the target word is prompted straight away and the keyboard waits.</div>
         <div class="settings-list" style="margin-top:12px"><div class="setting-row"><span>Step prompts back up after misses</span><div class="toggle on" id="togglePromptBack"></div></div></div>
         <div class="help-note" id="promptBackNote"></div>
-      </div>
-    </div>
-
-    <!-- ============ DATA COLLECTION ============ -->
-    <div class="sgroup" data-group="data">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">&#128202;</span>
-        <span class="sg-title">Data collection</span>
-        <span class="sg-sum" id="sumData"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="settings-list">
-          <div class="setting-row"><span>Collect data (prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
-          <div class="setting-row"><span>&#129490; Ask who made each message (learner or adult)</span><div class="toggle" id="toggleAskWho"></div></div>
-          <div class="setting-row" id="ladderRow" style="cursor:pointer"><span>&#129692; Skill ladder (Type-to-Speak)</span><span id="ladderSum" style="color:var(--muted);font-weight:800">&#8250;</span></div>
-          <div class="setting-row" id="rateDataRow" style="cursor:pointer"><span>&#128200; View progress</span><span style="color:var(--muted);font-weight:800">&#8250;</span></div>
-        </div>
-        <div class="sublabel" style="font-size:15px;color:var(--ink)">Stimulus prompts (record which were in use)</div>
-        <div class="sublabel">On the keyboard</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Highlight: the key coloured, and how strongly</span><div class="toggle on" data-dc="highlight"></div></div>
-          <div class="setting-row"><span>Magnifying: the key made bigger</span><div class="toggle on" data-dc="magnify"></div></div>
-          <div class="setting-row"><span>Pulsing / movement of the key</span><div class="toggle on" data-dc="movement"></div></div>
-          <div class="setting-row"><span>Verbal: saying the letter to type next</span><div class="toggle on" data-dc="verbal"></div></div>
-        </div>
-        <div class="sublabel">In the text model (the target word in the bar)</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Textual model: the written word shown</span><div class="toggle on" data-dc="textual"></div></div>
-          <div class="setting-row"><span>Highlight: the next letter coloured</span><div class="toggle on" data-dc="tilecolor"></div></div>
-          <div class="setting-row"><span>Magnifying: the next letter made bigger</span><div class="toggle on" data-dc="tilemag"></div></div>
-        </div>
-        <div class="sublabel">Record error corrections and delays</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Error corrections (a wrong letter before the right one)</span><div class="toggle on" data-dc="errors"></div></div>
-          <div class="setting-row"><span>Time delay prompts (letter chosen after a delayed prompt)</span><div class="toggle on" data-dc="delay"></div></div>
-        </div>
-        <div class="help-note">These are saved with every word or message spelled on the keyboard page while "Collect data" is on, and shown beside it in the session data.</div>
-        <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
-      </div>
-    </div>
-
-    <!-- ============ ERROR CORRECTION ============ -->
-    <div class="sgroup" data-group="errors">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">↩️</span>
-        <span class="sg-title">Error correction</span>
-        <span class="sg-sum" id="sumErrors"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
+        </details>
+        <details class="ssub"><summary><span class="ss-ic">&#8617;&#65039;</span><span class="ss-t">Error correction</span><button class="info-btn" type="button" aria-label="What this means">i</button></summary>
+        <div class="info-text" hidden><b>Error correction</b> - what happens straight after a wrong answer: a quick model and another chance, without making a fuss of the error.</div>
         <div class="sublabel">When a wrong letter is picked</div>
         <div class="seg-row" id="segErrorFeedback"></div>
 
@@ -3207,73 +3242,117 @@
         <div class="sublabel">Enter reads back</div>
         <div class="seg-row" id="segEnterSpeech"></div>
         <div class="help-note">With wrong letters left in the bar, "only correct letters" keeps the word sounding right when Enter is pressed.</div>
+        </details>
+        <details class="ssub"><summary><span class="ss-ic">&#128202;</span><span class="ss-t">Data</span><button class="info-btn" type="button" aria-label="What this means">i</button></summary>
+        <div class="info-text" hidden><b>Data</b> - every answer is recorded as independent (no prompt) or prompted, with how long it took, so you can see progress over time.</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Collect data (prompted vs independent)</span><div class="toggle" id="toggleScore"></div></div>
+          <div class="setting-row"><span>&#129490; Ask who made each message (learner or adult)</span><div class="toggle" id="toggleAskWho"></div></div>
+          <div class="setting-row" id="rateDataRow" style="cursor:pointer"><span>&#128200; View progress</span><span style="color:var(--muted);font-weight:800">&#8250;</span></div>
+        </div>
+        <div class="sublabel" style="font-size:15px;color:var(--ink)">Stimulus prompts (record which were in use)</div>
+        <div class="sublabel">On the keyboard</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Highlight: the key coloured, and how strongly</span><div class="toggle on" data-dc="highlight"></div></div>
+          <div class="setting-row"><span>Magnifying: the key made bigger</span><div class="toggle on" data-dc="magnify"></div></div>
+          <div class="setting-row"><span>Pulsing / movement of the key</span><div class="toggle on" data-dc="movement"></div></div>
+          <div class="setting-row"><span>Verbal: saying the letter to type next</span><div class="toggle on" data-dc="verbal"></div></div>
+        </div>
+        <div class="sublabel">In the text model (the target word in the bar)</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Textual model: the written word shown</span><div class="toggle on" data-dc="textual"></div></div>
+          <div class="setting-row"><span>Highlight: the next letter coloured</span><div class="toggle on" data-dc="tilecolor"></div></div>
+          <div class="setting-row"><span>Magnifying: the next letter made bigger</span><div class="toggle on" data-dc="tilemag"></div></div>
+        </div>
+        <div class="sublabel">Record error corrections and delays</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>Error corrections (a wrong letter before the right one)</span><div class="toggle on" data-dc="errors"></div></div>
+          <div class="setting-row"><span>Time delay prompts (letter chosen after a delayed prompt)</span><div class="toggle on" data-dc="delay"></div></div>
+        </div>
+        <div class="help-note">These are saved with every word or message spelled on the keyboard page while "Collect data" is on, and shown beside it in the session data.</div>
+        <button class="mbtn action primary" id="viewDataBtn" style="width: 100%; margin-top: 10px;">View Session Data →</button>
+        </details>
+        <span id="sumPractice" hidden></span><span id="sumData" hidden></span><span id="sumErrors" hidden></span>
       </div>
     </div>
 
-    <!-- ============ SIZE & DISPLAY ============ -->
-    <div class="sgroup" data-group="sizes">
+    <div class="sgroup" data-group="help">
       <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">🔠</span>
-        <span class="sg-title">Size &amp; display</span>
-        <span class="sg-sum" id="sumSizes"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="sublabel">Keyboard letters</div>
-        <div class="seg-row" id="segKeySize"></div>
-
-        <div class="sublabel">Typing bar</div>
-        <div class="seg-row" id="segDisplaySize"></div>
-
-        <div class="sublabel">Target word bar</div>
-        <div class="seg-row" id="segBannerSize"></div>
-
-        <div class="sublabel">Letter case</div>
-        <div class="seg-row" id="segCaseMode"></div>
-        <div class="help-note">Auto keeps everything lowercase and uses a capital only where the word itself has one — a name such as Coco. To save a word with a capital, type it that way when adding it.</div>
-        <div class="setting-row" style="margin-top:10px;"><span>&#8679; Require the up arrow for capitals</span><div class="toggle" id="toggleRequireCaps"></div></div>
-        <div class="help-note">Off: capitals appear by themselves and the up arrow is never needed.<br>On: the up arrow is prompted before a capital letter, and typing the letter without it counts as an error.</div>
-      </div>
-    </div>
-
-    <!-- ============ WORD BANK ============ -->
-    <div class="sgroup" data-group="bank">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">&#128218;</span>
-        <span class="sg-title">Word bank</span>
-        <span class="sg-sum" id="sumBank"></span>
+        <span class="sg-emoji">&#127384;</span>
+        <span class="sg-title">Help mode</span>
+        <span class="sg-sum" id="sumHelp"></span>
         <span class="sg-chev">&#9662;</span>
       </button>
       <div class="sgroup-body">
-        <div class="sublabel">Add a word</div>
-        <div class="word-add" style="margin-top:0;">
-          <input type="text" id="setWordInput" placeholder="Add a word or phrase..." maxlength="80"
-                 autocomplete="off" autocapitalize="off" spellcheck="false">
-          <button id="setWordAdd">Add</button>
+        <div class="hero-setting">
+          <div class="hero-row">
+            <span class="hero-title">&#127384; Help mode</span>
+            <div class="toggle" id="toggleHelpMode"></div>
+          </div>
+          <div class="sublabel" style="margin-top:10px;">After SOS, wait before each next letter</div>
+          <div class="slider-row">
+            <input type="range" id="helpDelaySlider" min="0" max="10" step="1" value="3">
+            <span class="slider-val" id="helpDelayValue">3 sec</span>
+          </div>
         </div>
-        <div class="help-note" id="setWordCount"></div>
 
-        <div class="sublabel">Add a list to a group</div>
-        <select class="voice-picker" id="bulkGroupSel"></select>
-        <textarea id="bulkWords" class="import-box" style="min-height:72px; margin-top:8px;"
-                  placeholder="apple, plum, cherry" spellcheck="false"></textarea>
-        <button class="mbtn action primary" id="bulkAddBtn" style="width:100%; margin-top:8px;">Add these to the group</button>
-
-        <div class="sublabel">Every word</div>
-        <div class="seg-row" id="segBankFilter"></div>
-        <div class="word-list" id="bankEditList"></div>
-
-        <div class="full-row" style="margin-top:14px;">
-          <button class="mbtn action primary" id="setGroupsBtn">Edit groups &rarr;</button>
-          <button class="mbtn action" id="setImportBtn">Import / export</button>
+        <div class="help-big">
+          <p><b>What it is:</b> the learner asks for help. Nothing is prompted by itself.</p>
+          <p><b>How it works:</b> once a word is chosen, a red <b>SOS</b> button shows on the spelling page. Tapping it prompts the letter to type now, then each next letter after the wait above.</p>
+          <p><b>Why:</b> asking for help is a skill of its own, and the learner tries every letter first.</p>
+          <p><b>Off:</b> the prompts in Prompting &amp; targets come by themselves.</p>
         </div>
       </div>
     </div>
 
-    <!-- ============ KEYS & BEHAVIOR ============ -->
+    <div class="sgroup" data-group="features">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#10024;</span>
+        <span class="sg-title">Features</span>
+        <span class="sg-sum" id="sumFeatures"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sublabel" style="margin-top:0">Turn features on or off</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>&#10024; Magic suggestions after each tile</span><div class="toggle on" id="toggleMagic"></div></div>
+          <div class="setting-row"><span>&#128269; Matching words while typing</span><div class="toggle on" id="toggleSuggestOn"></div></div>
+        </div>
+        
+        <div class="settings-list">
+          <div class="setting-row"><span>&#128172; Chat mode (the green enter opens the chat page with the message on top)</span><div class="toggle on" id="toggleChatMode"></div></div>
+        </div>
+        <div class="sublabel">Buttons and pages</div>
+        <div class="settings-list">
+          <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
+          <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
+          <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
+          <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
+        </div>
+
+
+
+      </div>
+    </div>
+
+    <div class="sgroup" data-group="magic">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#129668;</span>
+        <span class="sg-title">Magic suggestions</span>
+        <span class="sg-sum" id="sumMagic"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div id="bandSettings"></div>
+        <div class="sublabel">Tags: tiles and folders that go together</div>
+        <div class="settings-list"><div class="setting-row" id="tagsRow" style="cursor:pointer"><span>&#127991;&#65039; Tags</span><span id="tagsSum" style="color:var(--muted);font-weight:800">&#8250;</span></div></div>
+        <div class="help-note" style="margin:6px 4px 0">Give tiles and folders the same tag and they come up together in the suggestions (tag park and the Forests folder "outside": after park, the forest tiles are offered). Hold a tile or folder to tag it too.</div>
+      </div>
+    </div>
+
     <div class="sgroup" data-group="pictures">
       <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">&#128444;&#65039;</span>
+        <span class="sg-emoji">&#127918;</span>
         <span class="sg-title">Games</span>
         <span class="sg-sum" id="sumPictures"></span>
         <span class="sg-chev">&#9662;</span>
@@ -3289,71 +3368,24 @@
         <div class="help-note">Pictures are added on the targets page: tap the camera at the end of a target (up to 7 pictures each, switched on or off, each with its own spelling if needed, like "strawberries"). The games button (&#127918;) in the pop-out starts a game: choose the game, the folders and how many turns. Green in the bar: right first time; blue: right on the second go; yellow: after the right tile was shown. A target got wrong comes back a turn or two later.</div>
       </div>
     </div>
-    <div class="sgroup" data-group="magic">
+    <div class="sgroup" data-group="keys">
       <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">&#10024;</span>
-        <span class="sg-title">Magic mode</span>
-        <span class="sg-sum" id="sumMagic"></span>
+        <span class="sg-emoji">&#127912;</span>
+        <span class="sg-title">Look &amp; feel</span>
+        <span class="sg-sum" id="sumKeys"></span>
         <span class="sg-chev">&#9662;</span>
       </button>
       <div class="sgroup-body">
-        <div class="sublabel" style="margin-top:0">Magic on or off</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>&#10024; Magic suggestions after each tile</span><div class="toggle on" id="toggleMagic"></div></div>
-          <div class="setting-row"><span>&#128269; Matching words while typing</span><div class="toggle on" id="toggleSuggestOn"></div></div>
-        </div>
-        <div id="bandSettings"></div>
         <div class="sublabel">When new suggested tiles come up</div>
         <div class="settings-list"><div class="setting-row"><span>How they show they are new</span><div class="seg" id="segTileCue"></div></div></div>
         <div class="settings-list"><div class="setting-row"><span>Colour behind each kind of word (green, grey, purple)</span><div class="toggle" id="toggleWordHl"></div></div></div>
         <div class="settings-list"><div class="setting-row"><span>A chosen tile turns into its picture</span><div class="seg" id="segTilePic"></div></div></div>
-        <div class="help-note" style="margin:6px 4px 12px">Off: the suggested tiles keep their rows and columns by kind of word, without the coloured highlight behind the words. Folders keep their grey.</div>
+        
 
-        <div class="sublabel">Tags: tiles and folders that go together</div>
-        <div class="settings-list"><div class="setting-row" id="tagsRow" style="cursor:pointer"><span>&#127991;&#65039; Tags</span><span id="tagsSum" style="color:var(--muted);font-weight:800">&#8250;</span></div></div>
-        <div class="help-note" style="margin:6px 4px 0">Give tiles and folders the same tag and they come up together in the suggestions (tag park and the Forests folder "outside": after park, the forest tiles are offered). Hold a tile or folder to tag it too.</div>
-        <div class="sublabel">In the message bar</div>
         <div class="settings-list">
-          <div class="setting-row"><span>Ending buttons beside a word</span><div class="toggle on" id="togglePlural"></div></div>
-          <div class="setting-row"><span>Word order help (park + go offers "go park")</span><div class="toggle on" id="toggleSeq"></div></div>
           <div class="setting-row"><span>Magic tiles in columns: green, grey, purple side by side</span><div class="toggle on" id="toggleMagicCols"></div></div>
-        </div>
-        <div class="sublabel">Which endings are offered</div>
-        <div class="settings-list" id="endingSettings"></div>
-        <div class="help-note" style="margin:6px 4px 0">Either one is only offered: tap it to take it, or tap the word itself to keep it as it is.</div>
-      </div>
-    </div>
-
-    <div class="sgroup" data-group="keys">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">⌨️</span>
-        <span class="sg-title">Pages, tiles &amp; keys</span>
-        <span class="sg-sum" id="sumKeys"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="sublabel" style="margin-top:0">Chat</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>&#128172; Chat mode (the green enter opens the chat page with the message on top)</span><div class="toggle on" id="toggleChatMode"></div></div>
-        </div>
-        <div class="sublabel">On-screen buttons</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>&#128269; Search past words</span><div class="toggle" id="toggleSearchBtn"></div></div>
-          <div class="setting-row" style="display:none"><span>&#11088; Help button (prompt on demand)</span><div class="toggle" id="toggleHelpBtn"></div></div>
-          <div class="setting-row"><span>&#127968; Home page (word bank grid)</span><div class="toggle" id="toggleHome"></div></div>
-          <div class="setting-row"><span>Rotate words when there is no home page</span><div class="toggle" id="toggleRotate"></div></div>
-        </div>
-
-
-
-        <div class="sublabel">Small words rows (every page)</div>
-        <div class="settings-list">
-          <div class="setting-row"><span>Show a small words row on pages</span><div class="toggle on" id="toggleSmallRows"></div></div>
-          <div class="setting-row" style="display:none"><span>How many small words show</span><div class="sheet-stepper" style="margin:0;padding:0;background:none"><button id="smallMaxLess" style="background:var(--bg)" aria-label="Fewer">&minus;</button><b id="smallMaxN">3</b><button id="smallMaxMore" style="background:var(--bg)" aria-label="More">+</button></div></div>
           <div class="setting-row"><span>Fold an open row away after 3 seconds</span><div class="toggle on" id="toggleSmallFold"></div></div>
-          <div class="help-note" style="margin:6px 4px 0">These apply to every page. Hold the blue row on a page to give that page its own words or number.</div>
         </div>
-
         <div class="sublabel">Order words by</div>
         <div class="seg-row" id="segBankSort"></div>
 
@@ -3372,35 +3404,94 @@
       </div>
     </div>
 
-
-    <!-- ============ LAYOUT & FILES ============ -->
-    <div class="sgroup" data-group="layout">
+    <div class="sgroup" data-group="sizes">
       <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">&#128193;</span>
-        <span class="sg-title">Hidden items &amp; layout files</span>
-        <span class="sg-sum" id="sumLayout"></span>
-        <span class="sg-chev">▾</span>
+        <span class="sg-emoji">&#128288;</span>
+        <span class="sg-title">Size &amp; display</span>
+        <span class="sg-sum" id="sumSizes"></span>
+        <span class="sg-chev">&#9662;</span>
       </button>
       <div class="sgroup-body">
+        <div class="help-note" style="margin:0 4px 10px">Each choice shows a sample at that size.</div>
+        <div class="sublabel">Keyboard letters</div>
+        <div class="seg-row" id="segKeySize"></div>
+
+        <div class="sublabel">Typing bar</div>
+        <div class="seg-row" id="segDisplaySize"></div>
+
+        <div class="sublabel">Target word bar</div>
+        <div class="seg-row" id="segBannerSize"></div>
+
+        <div class="sublabel">Letter case</div>
+        <div class="seg-row" id="segCaseMode"></div>
+        <div class="help-note">Auto keeps everything lowercase and uses a capital only where the word itself has one — a name such as Coco. To save a word with a capital, type it that way when adding it.</div>
+      </div>
+    </div>
+
+    <div class="sgroup" data-group="bank">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#128218;</span>
+        <span class="sg-title">Library</span>
+        <span class="sg-sum" id="sumBank"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
+        <div class="sublabel" style="margin-top:0">Folders in the library</div>
+        <div class="help-note" style="margin:0 4px 8px">Switch folders off to fit the learner's age, skills and goals. A folder switched off is hidden everywhere (its words are kept).</div>
+        <div id="libFolders"></div>
+        <div class="sublabel">Add a word</div>
+        <div class="word-add" style="margin-top:0;">
+          <input type="text" id="setWordInput" placeholder="Add a word or phrase..." maxlength="80"
+                 autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button id="setWordAdd">Add</button>
+        </div>
+        <div class="help-note" id="setWordCount"></div>
+
+        <div class="sublabel">Add a list to a group</div>
+        <select class="voice-picker" id="bulkGroupSel"></select>
+        <textarea id="bulkWords" class="import-box" style="min-height:72px; margin-top:8px;"
+                  placeholder="apple, plum, cherry" spellcheck="false"></textarea>
+        <button class="mbtn action primary" id="bulkAddBtn" style="width:100%; margin-top:8px;">Add these to the group</button>
+
+        <details class="ssub"><summary><span class="ss-ic">&#128221;</span><span class="ss-t">Every word in the library</span></summary>
+        <div class="seg-row" id="segBankFilter"></div>
+        <div class="word-list" id="bankEditList"></div>
+        </details>
+
+        <div class="full-row" style="margin-top:14px;">
+          <button class="mbtn action primary" id="setGroupsBtn">Edit groups &rarr;</button>
+          <button class="mbtn action" id="setImportBtn">Import / export</button>
+        </div>
         <button class="mbtn action" id="unhideWordsBtn" style="width:100%; margin-top:8px;">Show hidden words</button>
         <div class="sublabel" style="margin-top:14px;">Hidden folders</div>
         <div id="hiddenFolders"></div>
-        <div class="sublabel" style="margin-top:14px;">Recently removed</div>
-        <div id="trashList"></div>
-        <div class="help-note">Anything deleted (a folder, a tab, a group) can be put back here. The last ten are kept on this device.</div>
+      </div>
+    </div>
+
+    <div class="sgroup" data-group="layout">
+      <button class="sgroup-head" data-toggle-group>
+        <span class="sg-emoji">&#128190;</span>
+        <span class="sg-title">Backup</span>
+        <span class="sg-sum" id="sumLayout"></span>
+        <span class="sg-chev">&#9662;</span>
+      </button>
+      <div class="sgroup-body">
         <button class="mbtn action" id="restoreFoldersBtn" style="width:100%; margin-top:8px;">Bring back missing default folders</button>
         <div class="help-note">Puts back any built-in folder that has been deleted, such as Chat, with its original words. Folders that are still there are left exactly as they are.</div>
         <button class="mbtn action" id="exportLayoutBtn" style="width:100%; margin-top:8px;">Export my layout</button>
         <button class="mbtn action" id="exportSettingsBtn" style="width:100%; margin-top:8px;">Export my settings</button>
         <button class="mbtn action" id="importLayoutBtn" style="width:100%; margin-top:8px;">Import a layout or settings file</button>
         <input type="file" id="importLayoutFile" accept=".json,application/json" style="display:none">
-        <div class="help-note">The layout file has everything needed to make this device's set-up the built-in one: the folders, tiles and groups and their places, hidden tiles, targets, custom pages, builder pages, the small words, what magic has learned about words, the pictures for picture writing, and every setting. The settings file is just the settings (magic, prompting and fading, keyboard, voice, sizes ...). Not in either: what each device learns as it is used - word use, letter scores, prompt fading progress, chat history, recordings and voice files.</div>
+        <div class="help-note">Layout: folders, tiles, groups, targets and every setting. Settings: just the settings.</div>
         <button class="mbtn action" id="exportLogBtn" style="width:100%; margin-top:8px;">Export the builder transcript</button>
         <div class="help-note">Saves every sentence built in the builder, with its date and time, as a file that opens in Numbers or Excel. The builder page itself shows the latest 30.</div>
+        <div hidden>        <div class="sublabel" style="margin-top:14px;">Recently removed</div>
+        <div id="trashList"></div>
+        <div class="help-note">Anything deleted (a folder, a tab, a group) can be put back here. The last ten are kept on this device.</div>
+</div>
       </div>
     </div>
 
-    <!-- ============ VOICE ============ -->
     <div class="sgroup" data-group="sync" style="display:none;">
       <button class="sgroup-head" data-toggle-group>
         <span class="sg-emoji">&#9729;</span>
@@ -3449,53 +3540,6 @@
       </div>
     </div>
 
-    <div class="sgroup" data-group="phonics">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">&#128483;&#65039;</span>
-        <span class="sg-title">Sound keyboard (phonics)</span>
-        <span class="sg-sum" id="sumPhonics"></span>
-        <span class="sg-chev">&#9662;</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="help-note" style="margin:0 4px 10px">The keyboard of sounds and spellings used by Elkonin Boxes and Sound Match. Its sounds are its own - the ordinary keyboard keeps its letters and its voice.</div>
-        <div class="sublabel" style="margin-top:0">Its sounds</div>
-        <div class="settings-list">
-          <div class="setting-row" id="soundMediaRow" style="cursor:pointer"><span>&#128264;  Sound files: Google voice, recordings, sharing</span><span class="hf-btn">Open</span></div>
-          <div class="setting-row" id="soundTunerRow" style="cursor:pointer"><span>&#128483;&#65039;  How the iPad voice says each sound</span><span class="hf-btn">Open</span></div>
-        </div>
-        <div class="sublabel">Which sounds the keys offer</div>
-        <div class="seg-row" id="segSoundStage"></div>
-        <div id="soundCreditsBox"></div>
-        <div class="help-note" style="margin:6px 4px 12px">First stage: m s a t n i f p. Second: all the letters, and sh ch th ng. Third: every vowel sound, vowel + r, the weak vowel and zh. A word's sounds are worked out from its spelling; change them from the word's menu on the targets page (Sounds).</div>
-      </div>
-    </div>
-
-    <div class="sgroup" data-group="voice">
-      <button class="sgroup-head" data-toggle-group>
-        <span class="sg-emoji">🔊</span>
-        <span class="sg-title">Keyboard voice</span>
-        <span class="sg-sum" id="sumVoice"></span>
-        <span class="sg-chev">▾</span>
-      </button>
-      <div class="sgroup-body">
-        <div class="settings-list" style="margin-bottom:10px">
-          <div class="setting-row"><span>&#128266; Sound on</span><div class="toggle on" id="toggleSoundOn"></div></div>
-        </div>
-        <div class="sublabel">Voice (English US only)</div>
-        <select class="voice-picker" id="voicePicker"></select>
-        <button class="voice-preview-btn" id="voicePreviewBtn" style="margin-top: 8px;">&#9654; Test this voice</button>
-        <div class="help-note" id="voiceTestNote">Plays a short sentence in the voice chosen above, even with the sound switched off.</div>
-        <button class="mbtn action primary" id="recordVoiceBtn" style="width: 100%; margin-top: 8px;">🎤 Record my own voice →</button>
-        <div class="sublabel" style="margin-top:14px;">Voice packs (a voice made from sound clips)</div>
-        <div class="settings-list" id="voicePacks"></div>
-        <button class="mbtn action" id="addVoicePackBtn" style="width:100%; margin-top:8px;">Add a voice pack (.zip of word clips)</button>
-        <input type="file" id="voicePackFile" accept=".zip,application/zip" style="display:none">
-        <button class="mbtn action" id="wordListBtn" style="width:100%; margin-top:8px;">Export the word list (to make clips for)</button>
-        <div class="help-note">A voice pack is a .zip of short sound files, one per word, each named after its word (go.mp3, want.m4a, wake up.wav). With a pack chosen, every word that has a clip is said in that voice; any other word uses the voice above.</div>
-
-      </div>
-    </div>
-
     <div class="full-row" style="margin-top: 8px;">
       <button class="mbtn action primary" data-action="cancel" style="grid-column: span 2;">Done</button>
     </div>
@@ -3534,7 +3578,7 @@ const CASE_VALUES = ['ABC', 'abc', 'Abc', 'aA'];
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 // Where backups go. Built in, so no one is ever asked for a server address.
 const SYNC_SERVER = 'https://youspell-sync.bethjoy604.workers.dev';
-const BUILD = 'build 641 - 15 Oct';
+const BUILD = 'build 642 - 15 Oct';
 
 // ===== Prompt appearance options =====
 const PROMPT_COLORS = {
@@ -20864,6 +20908,7 @@ const SETUP_STEPS = [
 ];
 // Open the settings sheet with one group expanded and scrolled to
 function openSettingsAt(groupKey) {
+  groupKey = ({ practice: 'prompts', errors: 'prompts', data: 'prompts' })[groupKey] || groupKey;
   refreshVoiceList();
   renderSettings();
   arrangeSettings();
@@ -20899,7 +20944,7 @@ function settingsSections() {
 }
 function applySettingsOrder() {
   let order = state.settingsOrder || [];
-  if (!order.includes('data') || !order.includes('layout')) order = state.settingsOrder = [];      // (an order saved before the sections were reworked no longer fits)
+  if (!order.includes('features')) order = state.settingsOrder = [];      // (an order saved before the sections were reworked no longer fits)      // (an order saved before the sections were reworked no longer fits)
   if (!order.length) return;
   const parent = document.querySelector('#settingsMenu .sheet');
   const byKey = {};
@@ -20942,8 +20987,7 @@ function addSectionMovers() {
 
 // Every group folded away, so the sheet opens calm
 // The settings in sections: the two keyboards and their voices first, then prompting, games, the pages, the files
-const SETTINGS_SECTIONS = [['Keyboards and voices', ['voice', 'phonics']], ['Prompting and learning', ['prompts', 'practice', 'errors', 'data']], ['Games', ['pictures']],
-  ['Pages and display', ['sizes', 'keys', 'bank', 'magic']], ['Files and backup', ['layout', 'sync']]];
+const SETTINGS_SECTIONS = [['Keyboards', ['voice', 'phonics']], ['Teaching', ['prompts', 'help']], ['Features', ['features', 'magic', 'pictures']], ['Look', ['keys', 'sizes']], ['Library & backup', ['bank', 'layout', 'sync']]];
 function arrangeSettings() {
   const sheet = document.querySelector('#settingsMenu .sheet'); if (!sheet) return;
   const anchor = Array.from(sheet.children).find(el => el.classList.contains('full-row')) || null;
@@ -20955,6 +20999,23 @@ function arrangeSettings() {
     keys.forEach(k => { if (byKey[k]) sheet.insertBefore(byKey[k], anchor); delete byKey[k]; });
   });
   Object.values(byKey).forEach(g => sheet.insertBefore(g, anchor));
+}
+// the settings page's extras: a sample at each size, the library's folders on or off, and the "i" explanations
+function settingsExtras() {
+  const ex = { small: 16, med: 22, large: 30 };
+  [['segKeySize', 'a b c'], ['segDisplaySize', 'I want'], ['segBannerSize', 'park']].forEach(([id, t]) => { const c = document.getElementById(id); if (!c) return;
+    [...c.querySelectorAll('.seg')].forEach((b, i) => { const v = SIZE_STEPS[i]; if (b.querySelector('.seg-ex')) return; const sp = document.createElement('span'); sp.className = 'seg-ex'; sp.style.fontSize = ex[v] + 'px'; sp.textContent = t; b.prepend(sp); }); });
+  { const c = document.getElementById('segGridFill'); if (c) [...c.querySelectorAll('.seg')].forEach((b, i) => { if (b.querySelector('.seg-ex')) return; const n = [6, 9, 12][i], cols = 3, rows = n / cols; const g = document.createElement('span'); g.className = 'seg-ex grid-ex';
+      g.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)'; for (let k = 0; k < n; k++) g.appendChild(document.createElement('i')); g.style.gridTemplateRows = 'repeat(' + rows + ', 1fr)'; b.prepend(g); b.append(' \u00B7 ' + n + ' tiles'); }); }
+  const lib = document.getElementById('libFolders');
+  if (lib) { lib.innerHTML = ''; const row = (c, depth) => { const r = document.createElement('div'); r.className = 'setting-row lib-row'; r.style.marginLeft = (depth * 18) + 'px';
+      const t = document.createElement('span'); t.textContent = (childrenOf(c.id, true).length ? '\uD83D\uDCC1 ' : '\uD83D\uDCC4 ') + c.name; r.appendChild(t);
+      const tg = document.createElement('div'); tg.className = 'toggle' + (c.hidden ? '' : ' on'); tg.addEventListener('click', () => { c.hidden = !c.hidden; if (!c.hidden) delete c.hidden; save(); try { renderHome(true); } catch (e) {} settingsExtras(); }); r.appendChild(tg); lib.appendChild(r);
+      if (depth < 1 && !c.hidden) childrenOf(c.id, true).filter(x => !x.target && !x.smallSec).sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(ch => row(ch, depth + 1)); };
+    childrenOf(null, true).filter(c => !c.target && !c.smallSec).sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(c => row(c, 0)); }
+  document.querySelectorAll('#settingsMenu .ssub > summary').forEach(sm => { if (sm.dataset.on) return; sm.dataset.on = '1'; sm.addEventListener('click', e => { e.preventDefault(); if (e.target.closest('.info-btn')) return; const d = sm.parentNode; d.open = !d.open; buzz(6); }); });
+  document.querySelectorAll('#settingsMenu .info-btn').forEach(b => { if (b.dataset.on) return; b.dataset.on = '1'; b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation();
+    const box = b.closest('summary') ? b.closest('details').querySelector(':scope > .info-text') : b.parentNode.nextElementSibling; if (box && box.classList.contains('info-text')) { box.hidden = !box.hidden; buzz(6); } }); });
 }
 function openSettingsSheet() {
   refreshVoiceList();
@@ -21128,6 +21189,7 @@ function renderSettings() {
   buildSeg('segKeySize', sizeOpts, state.keySize, v => { state.keySize = v; save(); render(); renderSettings(); });
   buildSeg('segDisplaySize', sizeOpts, state.displaySize, v => { state.displaySize = v; save(); render(); renderSettings(); });
   buildSeg('segBannerSize', sizeOpts, state.bannerSize, v => { state.bannerSize = v; save(); render(); renderSettings(); });
+  try { settingsExtras(); } catch (e) {}
   buildSeg('segCaseMode', CASE_VALUES.map((v, i) => ({ value: i, label: v + ' · ' + CASE_LABELS[i] })), state.caseMode,
     v => { state.caseMode = v; save(); render(); renderSetup(); renderSettings(); });
 
